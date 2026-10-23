@@ -72,6 +72,17 @@ Library asset way:
 Same approach for the tank set dressing: rocks, driftwood, plants, a treasure chest, a castle. These don't
 need genes, so keep Meshy's textures. Budget ~2k–5k polygons each.
 
+The current set lives in `Assets/Resources/Decor/` and came from one Meshy "kit" mesh:
+
+1. Separate by loose parts (after merging doubles); fold tiny islands (the pearl, small leaves) into the
+   piece they touch.
+2. Per piece: put the pivot at the centre of its base, decimate the render mesh (1.2k–5k tris) and a copy
+   to 120–300 tris named `<Piece>_Collider`, export both in one FBX (forward -Z, up Y, bake space transform).
+3. All pieces share one atlas: `Decor_Albedo`, `Decor_Normal` and `Decor_MetallicSmoothness`
+   (metallic in R, 1 − roughness in A, built from Meshy's metallic and roughness maps).
+4. `TankDecor` places each piece by name, scales it to a height in metres, gives the `_Collider` mesh a
+   MeshCollider and marks the piece as a `TankObstacle`. Edit its `Layout` table to rearrange the tank.
+
 ## Checklist per fish model
 
 - [ ] Generated with white body and target poly count

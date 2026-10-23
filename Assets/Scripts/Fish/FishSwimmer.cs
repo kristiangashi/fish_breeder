@@ -326,20 +326,33 @@ namespace FishBreeder
             return distanceToWall >= comfort ? 0f : 1f - Mathf.Clamp01(distanceToWall / comfort);
         }
 
-        /// <summary>Safety net: if the fish ends up inside a decoration, nudge it back out.</summary>
+        static SphereCollider pushProbe;
+
+        /// <summary>
+        /// Safety net: if the fish ends up inside a decoration, nudge it back out.
+        /// Uses ComputePenetration because decorations have non-convex mesh colliders.
+        /// </summary>
         static Vector3 PushOutOfObstacles(Vector3 position, float radius)
         {
+            if (pushProbe == null)
+            {
+                // A trigger far below the tank: only used as a shape for ComputePenetration.
+                var go = new GameObject("FishPushProbe") { hideFlags = HideFlags.HideAndDontSave };
+                go.transform.position = Vector3.down * 1000f;
+                pushProbe = go.AddComponent<SphereCollider>();
+                pushProbe.isTrigger = true;
+            }
+            pushProbe.radius = radius;
+
             int count = Physics.OverlapSphereNonAlloc(position, radius, overlapBuffer, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
                 var other = overlapBuffer[i];
                 if (!TankObstacle.IsObstacle(other)) continue;
-                var closest = other.ClosestPoint(position);
-                var away = position - closest;
-                if (away.sqrMagnitude < 1e-8f) away = position - other.bounds.center;
-                float distance = away.magnitude;
-                if (distance < radius && distance > 1e-5f)
-                    position += away / distance * (radius - distance);
+                var otherTransform = other.transform;
+                if (Physics.ComputePenetration(pushProbe, position, Quaternion.identity,
+                        other, otherTransform.position, otherTransform.rotation, out var direction, out var distance))
+                    position += direction * distance;
             }
             return position;
         }

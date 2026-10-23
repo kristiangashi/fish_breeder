@@ -3,20 +3,23 @@ using UnityEditor;
 namespace FishBreeder.EditorTools
 {
     /// <summary>
-    /// Import settings for fish models and textures under Assets/Resources/Fish,
-    /// so a new Meshy fish only needs to be dropped into a folder there.
+    /// Import settings for Meshy models and textures under Assets/Resources/Fish and
+    /// Assets/Resources/Decor, so a new model only needs to be dropped into a folder there.
     /// </summary>
     public class FishAssetPostprocessor : AssetPostprocessor
     {
         const string FishFolder = "Assets/Resources/Fish/";
+        const string DecorFolder = "Assets/Resources/Decor/";
 
-        public override uint GetVersion() => 1;
+        public override uint GetVersion() => 2;
+
+        static bool IsManaged(string path) => path.StartsWith(FishFolder) || path.StartsWith(DecorFolder);
 
         void OnPreprocessModel()
         {
-            if (!assetPath.StartsWith(FishFolder)) return;
+            if (!IsManaged(assetPath)) return;
             var importer = (ModelImporter)assetImporter;
-            // Readable so FishVisual can work out which end is the head.
+            // Readable so FishVisual can work out which end is the head, and decor can build mesh colliders.
             importer.isReadable = true;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
             importer.importAnimation = false;
@@ -27,10 +30,13 @@ namespace FishBreeder.EditorTools
 
         void OnPreprocessTexture()
         {
-            if (!assetPath.StartsWith(FishFolder)) return;
+            if (!IsManaged(assetPath)) return;
             var importer = (TextureImporter)assetImporter;
             if (assetPath.EndsWith("_Normal.png")) importer.textureType = TextureImporterType.NormalMap;
-            importer.maxTextureSize = 1024;
+            // Metallic in R, smoothness in A: linear data, not colour.
+            if (assetPath.EndsWith("_MetallicSmoothness.png")) importer.sRGBTexture = false;
+            // The decor pieces share one texture atlas, so it keeps more resolution.
+            importer.maxTextureSize = assetPath.StartsWith(DecorFolder) ? 2048 : 1024;
         }
     }
 }

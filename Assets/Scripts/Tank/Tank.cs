@@ -122,16 +122,19 @@ namespace FishBreeder
                 MaterialFactory.Decor(PrimitiveType.Cube, "FrameZ", root, new Vector3(s * b.x * 0.5f, sy * b.y, 0f), new Vector3(t, t, b.z), frame);
             }
 
-            BuildObstacles(root, b);
+            if (TankDecor.Available) TankDecor.Build(root, b);
+            else BuildPlaceholderObstacles(root, b);
+            BuildPebbles(root, b);
             // New colliders must be in the physics scene before fish pick spawn points.
             Physics.SyncTransforms();
         }
 
         /// <summary>
-        /// Rocks, a rock arch, driftwood and plants spread through the tank so fish have to
-        /// swim around (and through) them. All are TankObstacles with colliders.
+        /// Stand-in decor for when the Meshy decorations are missing: rocks, a rock arch, driftwood
+        /// and plants spread through the tank so fish have to swim around (and through) them.
+        /// All are TankObstacles with colliders.
         /// </summary>
-        static void BuildObstacles(Transform root, Vector3 b)
+        static void BuildPlaceholderObstacles(Transform root, Vector3 b)
         {
             var rock = new Color(0.45f, 0.45f, 0.48f);
             var darkRock = new Color(0.35f, 0.34f, 0.36f);
@@ -166,7 +169,11 @@ namespace FishBreeder
                 }
             }
 
-            // Pebbles are pure decoration; fish can swim over them.
+        }
+
+        /// <summary>Pebbles are pure decoration; fish can swim over them.</summary>
+        static void BuildPebbles(Transform root, Vector3 b)
+        {
             for (int i = 0; i < 14; i++)
             {
                 float size = GameRandom.Range(0.02f, 0.05f);

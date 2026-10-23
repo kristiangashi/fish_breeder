@@ -50,7 +50,8 @@ namespace FishBreeder.Core
             float width = Screen.width / scale;
             float height = Screen.height / scale;
 
-            leftPanel = new Rect(10f, 10f, 270f, 520f);
+            // Runs down to the log, so eggs, pregnancies and breeding lines never push the buttons off the bottom.
+            leftPanel = new Rect(10f, 10f, 270f, Mathf.Max(520f, height - 170f));
             logPanel = new Rect(10f, height - 150f, 460f, 140f);
             breedBar = selected.Count == 2 ? new Rect(width * 0.5f - 210f, height - 70f, 420f, 60f) : Rect.zero;
             fishWindow = Rect.zero;

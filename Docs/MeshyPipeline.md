@@ -67,6 +67,13 @@ Library asset way:
   (side-to-side sine that grows toward the tail) in the same shader, plus the separate `Tail` object wag.
   No skeleton needed.
 
+## 5b. Multi-fish kits
+
+`Assets/Resources/Fish/AquariumSet/` came from one Meshy mesh with nine fish. Same steps as the decor kit
+below: separate by loose parts, centre each fish, decimate (1.5k–3k tris), export one FBX per fish named after
+its species id (see `Species.cs`), and keep the shared 2048 atlas (`AquariumFish_Albedo`, `_Normal`, and
+`_Smoothness` = 1 − roughness). `FishModelLibrary.LoadBuiltIn` registers each fish with its swimming values.
+
 ## 6. Other assets from Meshy
 
 Same approach for the tank set dressing: rocks, driftwood, plants, a treasure chest, a castle. These don't

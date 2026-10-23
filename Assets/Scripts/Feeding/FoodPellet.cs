@@ -80,13 +80,14 @@ namespace FishBreeder.Feeding
             return true;
         }
 
-        public static FoodPellet FindNearest(Vector3 position, float maxDistance)
+        /// <summary>Nearest uneaten pellet within <paramref name="maxDistance"/> and no higher than <paramref name="maxHeight"/>.</summary>
+        public static FoodPellet FindNearest(Vector3 position, float maxDistance, float maxHeight = float.PositiveInfinity)
         {
             FoodPellet best = null;
             float bestSqr = maxDistance * maxDistance;
             foreach (var pellet in active)
             {
-                if (pellet.IsConsumed) continue;
+                if (pellet.IsConsumed || pellet.transform.position.y > maxHeight) continue;
                 float sqr = (pellet.transform.position - position).sqrMagnitude;
                 if (sqr < bestSqr)
                 {

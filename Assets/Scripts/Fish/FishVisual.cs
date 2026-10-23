@@ -31,6 +31,9 @@ namespace FishBreeder
         float swimPhase;
         float stroke = 0.5f;
 
+        /// <summary>Tail stroke when not swimming: a gentle scull for hovering fish, near zero for a resting one.</summary>
+        public float IdleStroke { get; set; } = 0.12f;
+
         static readonly int SpineEnabledId = Shader.PropertyToID("_SpineEnabled");
         static readonly int SpinePosId = Shader.PropertyToID("_SpinePos");
         static readonly int SpineFwdId = Shader.PropertyToID("_SpineFwd");
@@ -58,7 +61,7 @@ namespace FishBreeder
             modelRoot.SetParent(transform, false);
 
             var library = modelLibrary != null ? modelLibrary : DefaultLibrary;
-            var entry = library != null ? library.Find(phenotype.finShape, phenotype.tailShape) : null;
+            var entry = library != null ? library.Find(phenotype.species.id, phenotype.finShape, phenotype.tailShape) : null;
             if (entry != null) BuildFromModel(entry, phenotype);
             else BuildPlaceholder(phenotype);
 
@@ -144,6 +147,7 @@ namespace FishBreeder
                 var material = new Material(shader) { name = entry.displayName, color = tint };
                 if (entry.albedo != null) material.mainTexture = entry.albedo;
                 if (entry.normalMap != null && material.HasProperty("_BumpMap")) material.SetTexture("_BumpMap", entry.normalMap);
+                if (entry.smoothnessMap != null && material.HasProperty("_SmoothnessMap")) material.SetTexture("_SmoothnessMap", entry.smoothnessMap);
                 if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", entry.smoothness);
                 ConfigureSwim(material, filter);
 
@@ -324,7 +328,7 @@ namespace FishBreeder
 
             if (spine != null)
             {
-                float targetStroke = Mathf.Clamp(0.12f + 0.45f * effort + 0.6f * thrust + 0.3f * turning, 0.1f, 1.3f);
+                float targetStroke = Mathf.Clamp(IdleStroke + 0.45f * effort + 0.6f * thrust + 0.3f * turning, 0.02f, 1.3f);
                 stroke = Mathf.MoveTowards(stroke, targetStroke, deltaTime * 1.2f);
                 float beats = modelEntry.tailBeatsPerSecond * Mathf.Lerp(0.35f, 1.4f, Mathf.Clamp01(0.5f * effort + 0.6f * thrust));
                 swimPhase = Mathf.Repeat(swimPhase + deltaTime * Mathf.PI * 2f * beats, Mathf.PI * 2f);

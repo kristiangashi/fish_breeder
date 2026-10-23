@@ -6,9 +6,9 @@ using UnityEngine;
 namespace FishBreeder
 {
     /// <summary>
-    /// Maps fin/tail combinations to imported Meshy models, with a default model for every
-    /// other fish. Create one via Assets > Create > Fish Breeder > Fish Model Library, or let
-    /// GameBootstrap use <see cref="LoadBuiltIn"/> (the Comet Goldfish in Resources/Fish).
+    /// Maps species (and optionally fin/tail combinations within a species) to imported Meshy
+    /// models, with a default model for anything else. Create one via Assets > Create > Fish Breeder >
+    /// Fish Model Library, or let GameBootstrap use <see cref="LoadBuiltIn"/> (the models in Resources/Fish).
     /// </summary>
     [CreateAssetMenu(menuName = "Fish Breeder/Fish Model Library", fileName = "FishModelLibrary")]
     public class FishModelLibrary : ScriptableObject
@@ -17,12 +17,18 @@ namespace FishBreeder
         public class Entry
         {
             public string displayName = "Fish";
+            [Tooltip("Species id this model is for (see Species). Empty matches any species.")]
+            public string species;
+            [Tooltip("Optional: only use this model for fish with these fins and tail.")]
+            public bool matchFinsAndTail;
             public FinShape finShape;
             public TailShape tailShape;
             [Tooltip("The Meshy model. Any orientation with Y up works; the head end is detected automatically.")]
             public GameObject model;
             public Texture2D albedo;
             public Texture2D normalMap;
+            [Tooltip("Optional greyscale smoothness map (white = glossy), multiplied by Smoothness.")]
+            public Texture2D smoothnessMap;
             [Range(0f, 1f)] public float smoothness = 0.6f;
             [Tooltip("How much the genetic body colour tints the texture. 0 keeps the texture as is.")]
             [Range(0f, 1f)] public float geneTintStrength;
@@ -43,35 +49,88 @@ namespace FishBreeder
         public Entry defaultModel = new Entry();
         public List<Entry> entries = new List<Entry>();
 
-        public Entry Find(FinShape finShape, TailShape tailShape)
+        public Entry Find(string species, FinShape finShape, TailShape tailShape)
         {
-            Entry tailOnly = null;
+            Entry speciesOnly = null;
             foreach (var entry in entries)
             {
-                if (entry.model == null || entry.tailShape != tailShape) continue;
-                if (entry.finShape == finShape) return entry;
-                if (tailOnly == null) tailOnly = entry;
+                if (entry.model == null) continue;
+                if (!string.IsNullOrEmpty(entry.species) && entry.species != species) continue;
+                if (!entry.matchFinsAndTail)
+                {
+                    if (speciesOnly == null) speciesOnly = entry;
+                    continue;
+                }
+                if (entry.finShape == finShape && entry.tailShape == tailShape) return entry;
             }
-            if (tailOnly != null) return tailOnly;
+            if (speciesOnly != null) return speciesOnly;
             return defaultModel != null && defaultModel.model != null ? defaultModel : null;
         }
 
-        /// <summary>Library with the Comet Goldfish from Resources/Fish/CometGoldfish as the default model.</summary>
+        /// <summary>
+        /// Library with every built-in Meshy fish: the Comet Goldfish (also the default) and the
+        /// aquarium set in Resources/Fish/AquariumSet, which share one texture atlas.
+        /// Swimming values are per species: small fish beat their tails faster, angelfish and
+        /// bettas glide on big fins, the armoured corydoras bends less.
+        /// </summary>
         public static FishModelLibrary LoadBuiltIn()
         {
-            const string folder = "Fish/CometGoldfish/";
             var library = CreateInstance<FishModelLibrary>();
             library.name = "Built-in Fish Models";
+
+            const string comet = "Fish/CometGoldfish/";
             library.defaultModel = new Entry
             {
                 displayName = "Comet Goldfish",
-                model = Resources.Load<GameObject>(folder + "CometGoldfish"),
-                albedo = Resources.Load<Texture2D>(folder + "CometGoldfish_Albedo"),
-                normalMap = Resources.Load<Texture2D>(folder + "CometGoldfish_Normal"),
+                species = Species.CometGoldfish.id,
+                model = Resources.Load<GameObject>(comet + "CometGoldfish"),
+                albedo = Resources.Load<Texture2D>(comet + "CometGoldfish_Albedo"),
+                normalMap = Resources.Load<Texture2D>(comet + "CometGoldfish_Normal"),
             };
             if (library.defaultModel.model == null)
                 Debug.LogWarning("[FishBreeder] Comet Goldfish model not found in Resources; using placeholder fish.");
+            library.entries.Add(library.defaultModel);
+
+            const string set = "Fish/AquariumSet/";
+            var albedo = Resources.Load<Texture2D>(set + "AquariumFish_Albedo");
+            var normal = Resources.Load<Texture2D>(set + "AquariumFish_Normal");
+            var smoothnessMap = Resources.Load<Texture2D>(set + "AquariumFish_Smoothness");
+
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "FancyGoldfish", 2.2f, 0.9f, 0.8f, 10f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "Angelfish", 1.4f, 0.6f, 0.6f, 6f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "Betta", 1.6f, 0.8f, 0.8f, 12f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "Clownfish", 3.2f, 0.7f, 0.6f, 6f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "Guppy", 3.5f, 1f, 0.85f, 10f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "TigerBarb", 3.6f, 1f, 0.85f, 8f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "NeonTetra", 4f, 1f, 0.9f, 8f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "ZebraDanio", 4.5f, 1.1f, 0.9f, 8f);
+            AddSetFish(library, set, albedo, normal, smoothnessMap, "Corydoras", 4f, 1f, 0.5f, 4f);
             return library;
+        }
+
+        static void AddSetFish(FishModelLibrary library, string folder, Texture2D albedo, Texture2D normal, Texture2D smoothnessMap,
+            string id, float beats, float stroke, float follow, float twist)
+        {
+            var model = Resources.Load<GameObject>(folder + id);
+            if (model == null)
+            {
+                Debug.LogWarning($"[FishBreeder] {id} model not found in Resources/{folder}.");
+                return;
+            }
+            library.entries.Add(new Entry
+            {
+                displayName = Species.Get(id).displayName,
+                species = id,
+                model = model,
+                albedo = albedo,
+                normalMap = normal,
+                smoothnessMap = smoothnessMap,
+                smoothness = 0.75f,
+                tailBeatsPerSecond = beats,
+                strokeStrength = stroke,
+                pathFollow = follow,
+                tailTwistDegrees = twist,
+            });
         }
     }
 }

@@ -1,4 +1,5 @@
 using System;
+using FishBreeder.Core;
 using UnityEngine;
 
 namespace FishBreeder.Genetics
@@ -10,6 +11,9 @@ namespace FishBreeder.Genetics
     [Serializable]
     public class Genome
     {
+        [Tooltip("Species id (see Species). Fixed for life and inherited from the mother.")]
+        public string species;
+
         [Header("Colour")]
         public HueGene bodyHue;
         public ContinuousGene bodySaturation;
@@ -33,10 +37,17 @@ namespace FishBreeder.Genetics
         public ContinuousGene hardiness;
         public ContinuousGene swimSpeed;
 
-        public static Genome CreateRandom()
+        public Species Species => Species.Get(species);
+
+        /// <summary>A random wild fish of a random species.</summary>
+        public static Genome CreateRandom() => CreateRandom(Species.All[GameRandom.Range(0, Species.All.Count)]);
+
+        /// <summary>A random wild fish of the given species.</summary>
+        public static Genome CreateRandom(Species kind)
         {
             return new Genome
             {
+                species = kind.id,
                 bodyHue = HueGene.Random(),
                 bodySaturation = ContinuousGene.Random(),
                 bodyBrightness = ContinuousGene.Random(),

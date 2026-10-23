@@ -15,6 +15,7 @@ namespace FishBreeder.Breeding
             var m = new Mutator(mutationChance, mutationStrength);
             return new Genome
             {
+                species = mother.species,
                 bodyHue = m.Inherit(mother.bodyHue, father.bodyHue),
                 bodySaturation = m.Inherit(mother.bodySaturation, father.bodySaturation),
                 bodyBrightness = m.Inherit(mother.bodyBrightness, father.bodyBrightness),

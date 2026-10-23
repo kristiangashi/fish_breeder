@@ -71,12 +71,15 @@ namespace FishBreeder
             return false;
         }
 
-        public Vector3 Clamp(Vector3 point, float margin)
+        public Vector3 Clamp(Vector3 point, float margin) => Clamp(point, margin, margin);
+
+        /// <summary>Keeps a point inside the water, with its own (usually smaller) margin above the sand.</summary>
+        public Vector3 Clamp(Vector3 point, float margin, float floorMargin)
         {
             var b = InnerBounds;
             return new Vector3(
                 Mathf.Clamp(point.x, b.min.x + margin, b.max.x - margin),
-                Mathf.Clamp(point.y, b.min.y + margin, b.max.y - margin),
+                Mathf.Clamp(point.y, b.min.y + floorMargin, b.max.y - margin),
                 Mathf.Clamp(point.z, b.min.z + margin, b.max.z - margin));
         }
 

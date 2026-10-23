@@ -8,6 +8,7 @@ namespace FishBreeder.Genetics
     /// </summary>
     public readonly struct Phenotype
     {
+        public readonly Species species;
         public readonly Color bodyColor;
         public readonly Color patternColor;
         public readonly Color finColor;
@@ -17,7 +18,7 @@ namespace FishBreeder.Genetics
         public readonly FinShape finShape;
         public readonly TailShape tailShape;
         public readonly float finSize;
-        /// <summary>Adult length in metres, nose to tail base.</summary>
+        /// <summary>Adult length in metres, nose to tail tip.</summary>
         public readonly float lengthMeters;
         /// <summary>Body height as a fraction of length.</summary>
         public readonly float heightRatio;
@@ -26,6 +27,7 @@ namespace FishBreeder.Genetics
 
         public Phenotype(Genome g)
         {
+            species = g.Species;
             float saturation = Mathf.Lerp(0.35f, 1f, g.bodySaturation.Expressed);
             float brightness = Mathf.Lerp(0.45f, 1f, g.bodyBrightness.Expressed);
             bodyColor = Color.HSVToRGB(g.bodyHue.Expressed, saturation, brightness);
@@ -40,7 +42,7 @@ namespace FishBreeder.Genetics
             finShape = (FinShape)g.finShape.Expressed;
             tailShape = (TailShape)g.tailShape.Expressed;
             finSize = Mathf.Lerp(0.6f, 1.6f, g.finSize.Expressed);
-            lengthMeters = Mathf.Lerp(0.08f, 0.22f, g.bodyLength.Expressed);
+            lengthMeters = Mathf.Lerp(species.minLength, species.maxLength, g.bodyLength.Expressed);
             heightRatio = Mathf.Lerp(0.25f, 0.55f, g.bodyHeight.Expressed);
 
             hardiness = g.hardiness.Expressed;
@@ -64,7 +66,7 @@ namespace FishBreeder.Genetics
 
         public string Describe()
         {
-            return $"{pattern} body, {finShape} fins, {tailShape} tail, {lengthMeters * 100f:0} cm";
+            return $"{species}, {pattern} body, {finShape} fins, {tailShape} tail, {lengthMeters * 100f:0} cm";
         }
     }
 }

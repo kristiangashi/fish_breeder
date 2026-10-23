@@ -11,7 +11,7 @@ namespace FishBreeder.EditorTools
         const string FishFolder = "Assets/Resources/Fish/";
         const string DecorFolder = "Assets/Resources/Decor/";
 
-        public override uint GetVersion() => 2;
+        public override uint GetVersion() => 3;
 
         static bool IsManaged(string path) => path.StartsWith(FishFolder) || path.StartsWith(DecorFolder);
 
@@ -35,8 +35,10 @@ namespace FishBreeder.EditorTools
             if (assetPath.EndsWith("_Normal.png")) importer.textureType = TextureImporterType.NormalMap;
             // Metallic in R, smoothness in A: linear data, not colour.
             if (assetPath.EndsWith("_MetallicSmoothness.png")) importer.sRGBTexture = false;
-            // The decor pieces share one texture atlas, so it keeps more resolution.
-            importer.maxTextureSize = assetPath.StartsWith(DecorFolder) ? 2048 : 1024;
+            // Smoothness maps are data, not colour.
+            if (assetPath.EndsWith("_Smoothness.png")) importer.sRGBTexture = false;
+            // Keep Meshy's full 2048 textures: several fish or decorations share each atlas.
+            importer.maxTextureSize = 2048;
         }
     }
 }

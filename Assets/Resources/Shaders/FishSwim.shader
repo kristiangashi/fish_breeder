@@ -11,6 +11,7 @@ Shader "FishBreeder/FishSwim"
         _Color ("Tint", Color) = (1,1,1,1)
         _MainTex ("Albedo", 2D) = "white" {}
         [Normal] _BumpMap ("Normal Map", 2D) = "bump" {}
+        _SmoothnessMap ("Smoothness Map (white = glossy)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.6
         [HideInInspector] _SpineEnabled ("Spine Enabled", Float) = 0
         [HideInInspector] _BodyAxis ("Body Axis (towards nose)", Vector) = (0,0,1,0)
@@ -34,6 +35,7 @@ Shader "FishBreeder/FishSwim"
 
         sampler2D _MainTex;
         sampler2D _BumpMap;
+        sampler2D _SmoothnessMap;
         fixed4 _Color;
         half _Glossiness;
 
@@ -87,7 +89,7 @@ Shader "FishBreeder/FishSwim"
             o.Albedo = c.rgb;
             o.Normal = UnpackNormal(tex2D(_BumpMap, IN.uv_MainTex));
             o.Metallic = 0;
-            o.Smoothness = _Glossiness;
+            o.Smoothness = _Glossiness * tex2D(_SmoothnessMap, IN.uv_MainTex).r;
             o.Alpha = 1;
         }
         ENDCG

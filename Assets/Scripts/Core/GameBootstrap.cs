@@ -14,7 +14,8 @@ namespace FishBreeder.Core
     {
         [SerializeField] GameConfig config;
         [SerializeField] FishModelLibrary modelLibrary;
-        [SerializeField] int starterFish = 6;
+        [Tooltip("Comet Goldfish to start with, so there is a pair to breed. One of every other species joins them.")]
+        [SerializeField] int starterGoldfish = 2;
         [Tooltip("0 = random every run.")]
         [SerializeField] int randomSeed;
 
@@ -44,8 +45,11 @@ namespace FishBreeder.Core
             var cam = SetupCamera(tank);
             SetupLight();
 
-            for (int i = 0; i < starterFish; i++)
-                FishFactory.Spawn(Genome.CreateRandom(), 1, 1f, tank, tank.RandomFreePoint(0.15f));
+            for (int i = 0; i < starterGoldfish; i++)
+                FishFactory.Spawn(Genome.CreateRandom(Species.CometGoldfish), 1, 1f, tank, tank.RandomFreePoint(0.15f));
+            foreach (var species in Species.All)
+                if (species != Species.CometGoldfish)
+                    FishFactory.Spawn(Genome.CreateRandom(species), 1, 1f, tank, tank.RandomFreePoint(0.15f));
 
             gameObject.AddComponent<FishTankHUD>().Initialize(tank, feeding, breeding, cam);
             GameLog.Add("Welcome! Feed your fish, keep the water clean and breed for rare traits.");

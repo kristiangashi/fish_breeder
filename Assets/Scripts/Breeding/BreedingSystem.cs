@@ -17,6 +17,7 @@ namespace FishBreeder.Breeding
             if (a == null || b == null) reason = "Select two fish to breed.";
             else if (a == b) reason = "A fish can't breed with itself.";
             else if (a.IsDead || b.IsDead) reason = "Both fish need to be alive.";
+            else if (a.Phenotype.species != b.Phenotype.species) reason = $"A {a.Phenotype.species} can only breed with another {a.Phenotype.species}.";
             else if (a.Stage != LifeStage.Adult) reason = $"{a.FishName} isn't an adult yet.";
             else if (b.Stage != LifeStage.Adult) reason = $"{b.FishName} isn't an adult yet.";
             else if (a.Health.IsSick) reason = $"{a.FishName} is sick.";

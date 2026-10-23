@@ -118,6 +118,9 @@ namespace FishBreeder.Core
                 GameLog.Add("You netted out the dead fish.");
             }
             GUI.enabled = true;
+#if UNITY_EDITOR
+            if (!ReadOnly && GUILayout.Button("Dirty the water (dev)")) tank.DevMakeDirty();
+#endif
             if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
             GUILayout.EndArea();
         }

@@ -14,6 +14,7 @@ namespace FishBreeder
         static readonly int ClarityId = Shader.PropertyToID("_Clarity");
         static readonly int StrengthId = Shader.PropertyToID("_Strength");
         static readonly int TintId = Shader.PropertyToID("_Tint");
+        static readonly int MaxThicknessId = Shader.PropertyToID("_MaxThickness");
 
         public static TankWater Build(Transform root, Vector3 size)
         {
@@ -27,6 +28,8 @@ namespace FishBreeder
                 float height = size.y * 0.94f;
                 var box = MaterialFactory.Decor(PrimitiveType.Cube, "Water", root, new Vector3(0f, height * 0.5f, 0f), new Vector3(size.x - 0.01f, height, size.z - 0.01f), Color.white);
                 water.volume = new Material(volumeShader);
+                // The longest look through the water is corner to corner; murk never builds past that.
+                water.volume.SetFloat(MaxThicknessId, new Vector3(size.x, height, size.z).magnitude);
                 box.GetComponent<Renderer>().sharedMaterial = water.volume;
                 box.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }

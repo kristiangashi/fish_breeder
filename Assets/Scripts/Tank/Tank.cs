@@ -29,7 +29,7 @@ namespace FishBreeder
         static readonly Color MurkyWater = new Color(0.25f, 0.33f, 0.12f);
         static readonly Color AlgaeWater = new Color(0.18f, 0.42f, 0.16f);
 
-        /// <summary>The tank the camera is looking into. Only it tints the fog and background; null in the store view.</summary>
+        /// <summary>The tank the camera is looking into; null in the store view.</summary>
         public static Tank Focused;
 
         /// <summary>Living fish.</summary>
@@ -129,6 +129,14 @@ namespace FishBreeder
             GameLog.Add($"Water treated: pH {ph:0.0}, pests gone.");
         }
 
+        /// <summary>Developer shortcut: makes the water filthy to check how dirty tanks look and how shoppers react.</summary>
+        public void DevMakeDirty()
+        {
+            waterQuality = 0.15f;
+            algae = 0.55f;
+            GameLog.Add("(dev) Water made dirty.");
+        }
+
         public void SetSaltwater(bool salt)
         {
             salinity = salt ? 35f : 0f;
@@ -218,14 +226,8 @@ namespace FishBreeder
         {
             var color = WaterColor;
             if (backWallMaterial != null) backWallMaterial.color = color * 1.3f;
+            // Dirty water shows only inside the glass, through the water volume's murk.
             if (water != null) water.SetLook(color, waterQuality, algae);
-            if (Focused != this) return;
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Exponential;
-            RenderSettings.fogColor = color;
-            RenderSettings.fogDensity = Mathf.Lerp(0.6f, 0.08f, Mathf.Min(waterQuality, 1f - algae * 0.6f));
-            var cam = Camera.main;
-            if (cam != null) cam.backgroundColor = color * 0.5f;
         }
 
         public void InstallFilter()

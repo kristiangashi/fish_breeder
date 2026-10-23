@@ -48,7 +48,7 @@ All balancing numbers (species rarity, prices, needs, compatibilities, diseases,
 | `Scripts/Tank` | `Tank` (bounds, residents, water quality, filter, placeholder glass tank), `EggClutch` (eggs that hatch at the next day) |
 | `Scripts/Store` | `StoreLayout` (rooms, sections, tank spots, register, computer, walkable area), `StoreView` (store camera and windows), `StoreTank` (tank roles), `SupplierCatalog` (prices) |
 | `Scripts/Shop` | `ShopDay` (open-shop day, sales, reviews), `TimeStep` (everything that happens at open and close), `Customer` and `ShopperBrain` (shoppers and their reactions), `MoodIcons`, `StoreNavMesh` |
-| `Scripts/Core` | `GameBootstrap`, `Balance` (all balancing numbers, loaded from the balance file), `Economy` (money, stock, day, reputation), `UnderwaterFilter`, `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
+| `Scripts/Core` | `GameBootstrap`, `Balance` (all balancing numbers, loaded from the balance file), `Economy` (money, stock, day, reputation), `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
 | `Art/Fish/Meshy` | Imported Meshy models go here (see `Docs/MeshyPipeline.md`) |
 
 ## Fish models

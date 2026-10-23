@@ -25,7 +25,6 @@ namespace FishBreeder.Store
         StoreLayout store;
         ShopDay shopDay;
         FishTankHUD hud;
-        UnderwaterFilter underwater;
         Camera cam;
         StoreTank focused;
         Panel panel;
@@ -45,9 +44,8 @@ namespace FishBreeder.Store
             hud = tankHud;
             cam = camera;
             hud.enabled = false;
-            underwater = cam.GetComponent<UnderwaterFilter>();
-            if (underwater == null) underwater = cam.gameObject.AddComponent<UnderwaterFilter>();
-            underwater.enabled = false;
+            // The water's murk measures how much water each pixel looks through.
+            cam.depthTextureMode |= DepthTextureMode.Depth;
             ApplyStoreLook();
             GetStorePose(out var position, out var rotation);
             cam.transform.SetPositionAndRotation(position, rotation);
@@ -123,7 +121,6 @@ namespace FishBreeder.Store
             Tank.Focused = tank.Tank;
             hud.Initialize(tank, store.Tanks, cam, ExitTank, () => shopDay.IsOpen);
             hud.enabled = true;
-            underwater.enabled = true;
         }
 
         void ExitTank()
@@ -132,7 +129,6 @@ namespace FishBreeder.Store
             focused = null;
             Tank.Focused = null;
             hud.enabled = false;
-            underwater.enabled = false;
             ApplyStoreLook();
         }
 

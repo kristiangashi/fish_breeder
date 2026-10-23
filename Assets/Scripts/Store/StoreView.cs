@@ -332,7 +332,7 @@ namespace FishBreeder.Store
 
         void DrawRegister()
         {
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
+            GUILayout.BeginArea(panelRect, UiStyles.Window);
             GUILayout.Label("<size=16><b>Register</b></size>", Rich());
             GUILayout.Label($"Balance: <b>{Economy.Format(Economy.Money)}</b>     Day {Economy.Day}     Reputation {Economy.Reputation * 100f:0}%", Rich());
             if (shopDay.IsOpen)
@@ -370,7 +370,7 @@ namespace FishBreeder.Store
         void DrawDayReport()
         {
             var report = shopDay.LastReport;
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
+            GUILayout.BeginArea(panelRect, UiStyles.Window);
             if (report == null)
             {
                 panel = Panel.None;
@@ -397,7 +397,7 @@ namespace FishBreeder.Store
 
         void DrawSupplier()
         {
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
+            GUILayout.BeginArea(panelRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
             GUILayout.Label("<size=16><b>Supplier</b></size>", Rich());
             GUILayout.FlexibleSpace();
@@ -548,7 +548,7 @@ namespace FishBreeder.Store
         void DrawUnlock()
         {
             var section = pendingSection;
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
+            GUILayout.BeginArea(panelRect, UiStyles.Window);
             GUILayout.Label($"<size=16><b>Unlock the {section.name}?</b></size>", Rich());
             GUILayout.Label("Opens up room for 6 more tanks.");
             var next = store.NextLockedSection;
@@ -569,7 +569,7 @@ namespace FishBreeder.Store
 
         void DrawBuyTank()
         {
-            GUILayout.BeginArea(panelRect, GUI.skin.box);
+            GUILayout.BeginArea(panelRect, UiStyles.Window);
             GUILayout.Label("<size=16><b>Buy a tank for this spot</b></size>", Rich());
             foreach (var role in BuyableRoles)
             {

@@ -149,7 +149,7 @@ namespace FishBreeder.Core
             float y = Mathf.Clamp(anchor.y - h * 0.4f, 10f, height - h - 80f);
             fishWindow = new Rect(x, y, w, h);
 
-            GUILayout.BeginArea(fishWindow, GUI.skin.box);
+            GUILayout.BeginArea(fishWindow, UiStyles.Window);
             var species = fish.Species;
             var p = fish.Phenotype;
             string sex = fish.Sex == Sex.Male ? "male" : "female";
@@ -338,7 +338,7 @@ namespace FishBreeder.Core
         /// <summary>Small fish and fry are hard to hit with a ray, so a click near one on screen also selects it.</summary>
         Fish NearestFishOnScreen(Vector2 screenPoint)
         {
-            float best = Mathf.Max(28f, Screen.height * 0.04f);
+            float best = Mathf.Max(40f, Screen.height * 0.06f);
             Fish nearest = null;
             foreach (var list in new[] { tank.Residents, tank.Corpses })
             {

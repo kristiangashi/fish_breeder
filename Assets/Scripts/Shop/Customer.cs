@@ -193,7 +193,8 @@ namespace FishBreeder.Shop
         {
             if (MoodTimeLeft > 0f)
             {
-                MoodTimeLeft -= Time.deltaTime;
+                // Real time, so bubbles stay readable when the day runs at 5x or 20x.
+                MoodTimeLeft -= Time.unscaledDeltaTime;
                 if (MoodTimeLeft <= 0f) Mood = Mood.None;
             }
 

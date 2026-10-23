@@ -74,7 +74,7 @@ namespace FishBreeder.Shop
                 foreach (var fish in candidates)
                     if (fish.Species.id == shopper.favoriteSpecies && GameRandom.Chance(0.6f)) pick = fish;
 
-                float willingToPay = pick.TrueValue * shopper.priceTolerance;
+                float willingToPay = pick.TrueValueExact * shopper.priceTolerance;
                 if (pick.Price > willingToPay)
                 {
                     if (GameRandom.Chance(0.8f)) reaction.mood = Mood.Mad;

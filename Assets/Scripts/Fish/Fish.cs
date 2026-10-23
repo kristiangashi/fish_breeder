@@ -102,7 +102,7 @@ namespace FishBreeder
 
         void ApplyGrowthScale()
         {
-            transform.localScale = Vector3.one * Mathf.Lerp(0.35f, 1f, growth);
+            transform.localScale = Vector3.one * Mathf.Lerp(0.5f, 1f, growth);
         }
 
         public void Eat(FoodPellet pellet)
@@ -137,7 +137,9 @@ namespace FishBreeder
         }
 
         /// <summary>What customers really think it's worth. Hidden from the player.</summary>
-        public int TrueValue => Mathf.Max(1, Mathf.RoundToInt(AppraisedValue * valueFactor));
+        public int TrueValue => Mathf.Max(1, Mathf.RoundToInt(TrueValueExact));
+        /// <summary>Unrounded true value, so cheap fish aren't over- or under-valued by rounding.</summary>
+        public float TrueValueExact => AppraisedValue * valueFactor;
 
         /// <summary>Moves the fish into another tank. Fish in a For Sale tank get the appraised price if they had none.</summary>
         public bool MoveTo(Tank destination)

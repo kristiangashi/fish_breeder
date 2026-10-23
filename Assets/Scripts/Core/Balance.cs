@@ -78,7 +78,7 @@ namespace FishBreeder.Core
         [Tooltip("Chance a happy shopper at a For Sale tank buys a fish they like.")]
         [Range(0f, 1f)] public float purchaseChance = 0.35f;
         [Tooltip("Shoppers pay up to fish value times a random number between these.")]
-        public float minPriceTolerance = 0.85f, maxPriceTolerance = 1.3f;
+        public float minPriceTolerance = 0.95f, maxPriceTolerance = 1.35f;
         [Tooltip("Water quality below this grosses shoppers out.")]
         [Range(0f, 1f)] public float grossWaterQuality = 0.45f;
         [Range(0f, 1f)] public float grossAlgae = 0.6f;

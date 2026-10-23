@@ -309,7 +309,7 @@ namespace FishBreeder.Store
                 GameLog.Add("Every tank looks fine. Nothing urgent to do.");
                 return;
             }
-            GameLog.Add($"{todo.Count} things need seeing to after closing.");
+            GameLog.Add(todo.Count == 1 ? "One thing needs seeing to after closing." : $"{todo.Count} things need seeing to after closing.");
             if (Balance.Data.notifications.startAutomatically && todo.Next()) GoToCurrent();
         }
 
@@ -361,7 +361,7 @@ namespace FishBreeder.Store
                 {
                     GUILayout.BeginArea(new Rect(todoBar.x, todoBar.y, todoBar.width, 34f), UiStyles.Window);
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label($"{todo.Remaining} things still need seeing to.", Rich());
+                    GUILayout.Label(todo.Remaining == 1 ? "One thing still needs seeing to." : $"{todo.Remaining} things still need seeing to.", Rich());
                     if (GUILayout.Button("Resume", GUILayout.Width(90f)))
                     {
                         if (todo.Next()) GoToCurrent();
@@ -699,7 +699,7 @@ namespace FishBreeder.Store
                     var odds = EggBoxes.AtLeastRareOdds(tier);
                     var oddsText = new List<string>();
                     for (int k = 0; k < odds.Length && k < 3; k++) oddsText.Add($"{k + 1}+ {Percent(odds[k])}");
-                    details += $"\n{tier.eggs} eggs. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText) : "none unlocked yet");
+                    details += $"\n{tier.eggs} eggs. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText) : RareUnlockText(tier));
                 }
                 string label = free >= tier.eggs ? $"Buy {tier.eggs} eggs  {Economy.Format(tier.price)}" : $"Needs {tier.eggs} free spaces";
                 bool canBuy = anyFish && free >= tier.eggs && Economy.CanAfford(tier.price) && orderTarget != null;
@@ -710,6 +710,15 @@ namespace FishBreeder.Store
         }
 
         static string Percent(float chance) => chance < 0.01f ? "<1%" : $"{chance * 100f:0}%";
+
+        /// <summary>When the first species of the tier's rare pool unlocks, for boxes that can't hatch one yet.</summary>
+        static string RareUnlockText(EggTierBalance tier)
+        {
+            int first = int.MaxValue;
+            foreach (var species in Species.All)
+                if (species.rarity == tier.rarePool) first = Mathf.Min(first, species.unlockLevel);
+            return first == int.MaxValue ? "none in the game yet" : $"from Fishkeeping level {first}";
+        }
 
         /// <summary>Little pictures of the fish a box can hatch at the player's level (rare ones marked).</summary>
         void DrawPoolPictures(List<Species> normal, List<Species> rare)

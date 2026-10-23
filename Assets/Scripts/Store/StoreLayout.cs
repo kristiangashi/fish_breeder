@@ -387,7 +387,7 @@ namespace FishBreeder.Store
             Wall(root, "Buckets", new Vector3(cx - BackRoomWidth * 0.2f, 1.05f, -halfD + 0.45f), new Vector3(0.3f, 0.3f, 0.3f), new Color(0.3f, 0.5f, 0.75f));
         }
 
-        public Vector3 BackRoomLabelPoint => new Vector3(BackRoomCenterX, 3.2f, 0f);
+        public Vector3 BackRoomLabelPoint => new Vector3(BackRoomCenterX, 2.2f, -2.4f);
 
         void BuildRegister()
         {

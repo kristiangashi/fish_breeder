@@ -111,7 +111,7 @@ namespace FishBreeder.Core
         void DrawTankPanel()
         {
             GUILayout.BeginArea(leftPanel, GUI.skin.box);
-            panelScroll = GUILayout.BeginScrollView(panelScroll);
+            panelScroll = GUILayout.BeginScrollView(panelScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
             var size = tank.SizeInfo;
             GUILayout.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
             if (ReadOnly) GUILayout.Label("<color=#ffd27f>The shop is open: you can look, but tank work waits until closing.</color>", Rich());

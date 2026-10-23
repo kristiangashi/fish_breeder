@@ -44,7 +44,7 @@ namespace FishBreeder.Core
             shopDay.Initialize(store);
             var hud = gameObject.AddComponent<FishTankHUD>();
             gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
-            GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first eggs or fry at the supplier computer.");
+            GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first box of eggs at the supplier computer.");
         }
 
         static Camera SetupCamera()

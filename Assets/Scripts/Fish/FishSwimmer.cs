@@ -5,23 +5,33 @@ using UnityEngine;
 namespace FishBreeder
 {
     /// <summary>
-    /// Wanders around the tank, chases food when hungry and steers around decorations.
-    /// The fish always moves along its own forward axis and turns at a limited rate,
-    /// which reads as real swimming. Obstacles are colliders marked with <see cref="TankObstacle"/>.
+    /// Moves a fish around the tank the way aquarium fish actually behave: mostly short, unhurried
+    /// trips of a few body lengths, pauses to hover in place, nosing around decorations and the
+    /// sand, and only now and then a longer lap of the tank. Hungry fish chase food.
+    /// The fish always moves along its own forward axis and turns smoothly at a limited rate
+    /// (turning on the spot when hovering). Obstacles are colliders marked with <see cref="TankObstacle"/>.
+    /// Speeds are in body lengths per second, so small and big fish both look right.
     /// </summary>
     [RequireComponent(typeof(Fish))]
     public class FishSwimmer : MonoBehaviour
     {
+        enum Activity { Hover, Potter, Inspect, Cruise }
+
         [Tooltip("Top turning speed. Turns ease in and out up to this rate.")]
         [SerializeField] float turnDegreesPerSecond = 90f;
         [Tooltip("Seconds to settle onto a new heading when relaxed; halved when dodging.")]
         [SerializeField] float turnSmoothTime = 0.55f;
-        [SerializeField] float acceleration = 0.4f;
-        [SerializeField] float maxPitch = 25f;
+        [Tooltip("Body lengths per second gained or lost each second.")]
+        [SerializeField] float acceleration = 1.2f;
+        [SerializeField] float maxPitch = 20f;
         [SerializeField] float foodSenseRadius = 1.5f;
+        [Tooltip("Pottering speed in body lengths per second.")]
+        [SerializeField] float potterSpeed = 0.7f;
+        [Tooltip("Speed of the occasional lap of the tank, in body lengths per second.")]
+        [SerializeField] float cruiseSpeed = 1.4f;
         [Tooltip("How far ahead to look for obstacles, in body lengths (plus a little per unit of speed).")]
         [SerializeField] float lookAheadBodyLengths = 2.5f;
-        [Tooltip("How strongly Owner keep away from the glass, in body lengths.")]
+        [Tooltip("How strongly fish keep away from the glass, in body lengths.")]
         [SerializeField] float wallComfortBodyLengths = 1.2f;
 
         static readonly RaycastHit[] hitBuffer = new RaycastHit[16];
@@ -31,9 +41,9 @@ namespace FishBreeder
         static readonly Vector3[] probeDirections =
         {
             new Vector3(0f, 0f, 1f),
-            new Vector3(-0.5f, 0f, 0.87f), new Vector3(0.5f, 0f, 0.87f),
-            new Vector3(0f, 0.4f, 0.92f), new Vector3(0f, -0.4f, 0.92f),
-            new Vector3(-0.87f, 0f, 0.5f), new Vector3(0.87f, 0f, 0.5f),
+            new Vector3(-0.5f, 0f, 0.87f).normalized, new Vector3(0.5f, 0f, 0.87f).normalized,
+            new Vector3(0f, 0.4f, 0.92f).normalized, new Vector3(0f, -0.4f, 0.92f).normalized,
+            new Vector3(-0.87f, 0f, 0.5f).normalized, new Vector3(0.87f, 0f, 0.5f).normalized,
             new Vector3(-1f, 0f, 0f), new Vector3(1f, 0f, 0f),
         };
 
@@ -42,9 +52,11 @@ namespace FishBreeder
         // Looked up lazily: when Fish is added, Unity adds this required component
         // (and runs its Awake) before the Fish component itself exists.
         Fish Owner => owner != null ? owner : owner = GetComponent<Fish>();
+        Activity activity = Activity.Hover;
+        float activityTimeLeft;
+        float activitySpeed;
         Vector3 target;
-        float retargetIn;
-        float currentSpeed;
+        float currentSpeed; // body lengths per second
         float blockedTime;
         float bank;
         float yaw, pitch, yawVelocity, pitchVelocity;
@@ -59,18 +71,17 @@ namespace FishBreeder
 
             var phenotype = Owner.Phenotype;
             float bodyLength = phenotype.lengthMeters * transform.localScale.x;
-
-            float cruiseSpeed = Mathf.Lerp(0.1f, 0.3f, phenotype.swimSpeed)
-                                * Owner.Health.SwimSpeedMultiplier
-                                * Mathf.Lerp(0.6f, 1f, Owner.Growth);
-            float desiredSpeed = cruiseSpeed;
+            float speedScale = Mathf.Lerp(0.8f, 1.2f, phenotype.swimSpeed)
+                               * Owner.Health.SwimSpeedMultiplier
+                               * Mathf.Lerp(0.8f, 1f, Owner.Growth);
             float pitchLimit = maxPitch;
+            float desiredSpeed;
 
             UpdateFoodTarget();
             if (targetFood != null)
             {
                 target = targetFood.transform.position;
-                desiredSpeed *= 1.6f;
+                desiredSpeed = cruiseSpeed * 1.2f;
                 pitchLimit = 70f;
 
                 var mouth = transform.position + transform.forward * bodyLength * 0.5f;
@@ -79,23 +90,30 @@ namespace FishBreeder
                 {
                     Owner.Eat(targetFood);
                     targetFood = null;
-                    PickWanderTarget(bodyLength);
+                    StartActivity(Activity.Hover, bodyLength);
                 }
             }
             else
             {
-                retargetIn -= dt;
-                if (retargetIn <= 0f || (target - transform.position).sqrMagnitude < bodyLength * bodyLength)
-                    PickWanderTarget(bodyLength);
+                activityTimeLeft -= dt;
+                float distance = (target - transform.position).magnitude;
+                bool arrived = activity != Activity.Hover && distance < bodyLength * 0.6f;
+                if (arrived || activityTimeLeft <= 0f) NextActivity(bodyLength);
+                desiredSpeed = activitySpeed;
+
+                // Ease in to a stop rather than overshooting the spot.
+                if (activity != Activity.Hover)
+                    desiredSpeed *= Mathf.Lerp(0.25f, 1f, Mathf.Clamp01(distance / (bodyLength * 2f)));
             }
+            desiredSpeed *= speedScale;
 
             var toTarget = target - transform.position;
             float targetDistance = toTarget.magnitude;
             var desired = targetDistance > 1e-4f ? toTarget / targetDistance : transform.forward;
 
             // Steer around obstacles between us and the target.
-            float lookAhead = bodyLength * lookAheadBodyLengths + currentSpeed * 0.5f;
-            float danger = AvoidObstacles(bodyLength, Mathf.Min(lookAhead, targetDistance), ref desired);
+            float lookAhead = bodyLength * (lookAheadBodyLengths + currentSpeed * 0.5f);
+            float danger = AvoidObstacles(bodyLength, Mathf.Min(lookAhead, Mathf.Max(targetDistance, bodyLength)), ref desired);
 
             // Keep a comfortable distance from the glass.
             desired = (desired + WallPush(bodyLength * wallComfortBodyLengths)).normalized;
@@ -104,22 +122,23 @@ namespace FishBreeder
             else blockedTime = Mathf.Max(0f, blockedTime - dt);
             if (blockedTime > 2.5f && targetFood == null)
             {
-                PickWanderTarget(bodyLength);
+                StartActivity(Activity.Potter, bodyLength);
                 blockedTime = 0f;
             }
 
-            Turn(desired, pitchLimit, danger, dt);
+            float turnRate = activity == Activity.Hover && targetFood == null ? turnDegreesPerSecond * 0.5f : turnDegreesPerSecond;
+            Turn(desired, pitchLimit, turnRate, danger, dt);
 
             // Slow down when something is close ahead, or when turning hard.
             float alignment = Mathf.Clamp01(Vector3.Dot(transform.forward, desired));
-            desiredSpeed *= Mathf.Lerp(0.45f, 1f, alignment) * Mathf.Lerp(1f, 0.5f, danger);
-            float thrust = Mathf.Clamp01((desiredSpeed - currentSpeed) / Mathf.Max(cruiseSpeed * 0.3f, 0.01f));
+            desiredSpeed *= Mathf.Lerp(0.3f, 1f, alignment) * Mathf.Lerp(1f, 0.5f, danger);
+            float thrust = Mathf.Clamp01((desiredSpeed - currentSpeed) / 0.3f);
             currentSpeed = Mathf.MoveTowards(currentSpeed, desiredSpeed, acceleration * dt);
 
-            var next = transform.position + transform.forward * currentSpeed * dt;
+            var next = transform.position + transform.forward * currentSpeed * bodyLength * dt;
             transform.position = Owner.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f);
 
-            Owner.Visual.Animate(currentSpeed / Mathf.Max(cruiseSpeed, 0.01f), thrust, bank, dt);
+            Owner.Visual.Animate(currentSpeed, thrust, bank, yawVelocity, dt);
         }
 
         /// <summary>
@@ -127,7 +146,7 @@ namespace FishBreeder
         /// so turns build up and settle smoothly instead of snapping. Danger (an obstacle ahead)
         /// makes the fish react faster.
         /// </summary>
-        void Turn(Vector3 desired, float pitchLimit, float danger, float dt)
+        void Turn(Vector3 desired, float pitchLimit, float turnRate, float danger, float dt)
         {
             if (!headingInitialised)
             {
@@ -141,13 +160,110 @@ namespace FishBreeder
             float targetPitch = Mathf.Clamp(-Mathf.Asin(Mathf.Clamp(desired.y, -1f, 1f)) * Mathf.Rad2Deg, -pitchLimit, pitchLimit);
 
             float smooth = turnSmoothTime * Mathf.Lerp(1f, 0.5f, danger);
-            float maxRate = turnDegreesPerSecond * (1f + danger);
+            float maxRate = turnRate * (1f + danger);
             yaw = Mathf.SmoothDampAngle(yaw, targetYaw, ref yawVelocity, smooth, maxRate, dt);
             pitch = Mathf.SmoothDampAngle(pitch, targetPitch, ref pitchVelocity, smooth * 1.6f, maxRate * 0.5f, dt);
             transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
 
-            // Lean into the turn a little, like a real fish.
-            bank = Mathf.Lerp(bank, Mathf.Clamp(-yawVelocity * 0.12f, -20f, 20f), dt * 3f);
+            // Lean into the turn a little, more so at speed.
+            float lean = Mathf.Clamp(-yawVelocity * 0.12f * Mathf.Clamp01(currentSpeed), -20f, 20f);
+            bank = Mathf.Lerp(bank, lean, dt * 3f);
+        }
+
+        void NextActivity(float bodyLength)
+        {
+            // After a trip, usually pause a moment; after a pause, usually potter on.
+            float roll = GameRandom.Value;
+            if (activity != Activity.Hover && roll < 0.55f) StartActivity(Activity.Hover, bodyLength);
+            else if (roll < 0.2f) StartActivity(Activity.Hover, bodyLength);
+            else if (roll < 0.65f) StartActivity(Activity.Potter, bodyLength);
+            else if (roll < 0.9f) StartActivity(Activity.Inspect, bodyLength);
+            else StartActivity(Activity.Cruise, bodyLength);
+        }
+
+        void StartActivity(Activity next, float bodyLength)
+        {
+            activity = next;
+            var tank = Owner.Tank;
+            var position = transform.position;
+            float margin = Mathf.Max(bodyLength, 0.05f);
+            switch (next)
+            {
+                case Activity.Hover:
+                    // Hang in place, drifting forward a touch and slowly turning to look around.
+                    activitySpeed = 0.06f;
+                    activityTimeLeft = GameRandom.Range(1.5f, 5f);
+                    var look = Quaternion.Euler(0f, GameRandom.Range(-70f, 70f), 0f) * Flat(transform.forward);
+                    target = tank.Clamp(position + look * bodyLength * 3f + Vector3.up * GameRandom.Range(-0.3f, 0.3f) * bodyLength, margin);
+                    break;
+
+                case Activity.Potter:
+                    activitySpeed = potterSpeed * GameRandom.Range(0.8f, 1.2f);
+                    activityTimeLeft = 8f;
+                    target = NearbyPoint(position, bodyLength, 1.5f, 4.5f, margin);
+                    break;
+
+                case Activity.Inspect:
+                    activitySpeed = potterSpeed * 0.8f;
+                    activityTimeLeft = 10f;
+                    target = InspectPoint(position, bodyLength, margin);
+                    break;
+
+                default:
+                    activitySpeed = cruiseSpeed;
+                    activityTimeLeft = 12f;
+                    target = tank.RandomFreePoint(margin);
+                    break;
+            }
+        }
+
+        /// <summary>A free spot a few body lengths away, mostly ahead and roughly level.</summary>
+        Vector3 NearbyPoint(Vector3 from, float bodyLength, float minLengths, float maxLengths, float margin)
+        {
+            var tank = Owner.Tank;
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                float spread = attempt < 6 ? 110f : 180f;
+                var direction = Quaternion.Euler(0f, GameRandom.Range(-spread, spread), 0f) * Flat(transform.forward);
+                direction.y = GameRandom.Range(-0.35f, 0.35f);
+                var point = tank.Clamp(from + direction.normalized * GameRandom.Range(minLengths, maxLengths) * bodyLength, margin);
+                if ((point - from).magnitude < minLengths * bodyLength * 0.7f) continue;
+                if (Tank.OverlapsObstacle(point, margin * 0.6f)) continue;
+                return point;
+            }
+            return tank.RandomFreePoint(margin);
+        }
+
+        /// <summary>A spot right next to a decoration, or just above the sand, to nose around.</summary>
+        Vector3 InspectPoint(Vector3 from, float bodyLength, float margin)
+        {
+            var tank = Owner.Tank;
+            var obstacles = TankObstacle.All;
+            if (obstacles.Count > 0 && GameRandom.Chance(0.7f))
+            {
+                for (int attempt = 0; attempt < 8; attempt++)
+                {
+                    var obstacle = obstacles[GameRandom.Range(0, obstacles.Count)];
+                    if (obstacle == null) continue;
+                    var b = obstacle.Bounds;
+                    var around = Quaternion.Euler(0f, GameRandom.Range(0f, 360f), 0f) * Vector3.forward;
+                    var point = b.center + around * (new Vector2(b.extents.x, b.extents.z).magnitude + bodyLength * 0.8f);
+                    point.y = GameRandom.Range(b.min.y + bodyLength * 0.5f, Mathf.Max(b.min.y + bodyLength * 0.5f, b.max.y));
+                    point = tank.Clamp(point, margin);
+                    if (!Tank.OverlapsObstacle(point, margin * 0.5f)) return point;
+                }
+            }
+
+            // Goldfish love picking at the gravel.
+            var sand = NearbyPoint(from, bodyLength, 1.5f, 5f, margin);
+            sand.y = tank.InnerBounds.min.y + bodyLength * 0.6f;
+            return tank.Clamp(sand, bodyLength * 0.5f);
+        }
+
+        static Vector3 Flat(Vector3 v)
+        {
+            v.y = 0f;
+            return v.sqrMagnitude > 1e-6f ? v.normalized : Vector3.forward;
         }
 
         /// <summary>
@@ -182,7 +298,7 @@ namespace FishBreeder
 
         static float Clearance(Vector3 origin, Vector3 direction, float radius, float distance)
         {
-            int count = Physics.SphereCastNonAlloc(origin, radius, direction, hitBuffer, distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            int count = Physics.SphereCastNonAlloc(origin, radius, direction.normalized, hitBuffer, distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             float nearest = distance;
             for (int i = 0; i < count; i++)
             {
@@ -200,7 +316,7 @@ namespace FishBreeder
             var p = transform.position;
             var push = Vector3.zero;
             push.x += Push(p.x - b.min.x, comfort) - Push(b.max.x - p.x, comfort);
-            push.y += Push(p.y - b.min.y, comfort) - Push(b.max.y - p.y, comfort);
+            push.y += Push(p.y - b.min.y, comfort * 0.5f) - Push(b.max.y - p.y, comfort);
             push.z += Push(p.z - b.min.z, comfort) - Push(b.max.z - p.z, comfort);
             return push;
         }
@@ -239,15 +355,9 @@ namespace FishBreeder
                 targetFood = FoodPellet.FindNearest(transform.position, foodSenseRadius);
         }
 
-        void PickWanderTarget(float bodyLength)
-        {
-            target = Owner.Tank.RandomFreePoint(Mathf.Max(bodyLength, 0.05f));
-            retargetIn = GameRandom.Range(3f, 8f);
-        }
-
         void OnEnable()
         {
-            if (Owner != null && Owner.Tank != null) PickWanderTarget(Owner.Phenotype.lengthMeters);
+            if (Owner != null && Owner.Tank != null) StartActivity(Activity.Potter, Owner.Phenotype.lengthMeters);
         }
     }
 }

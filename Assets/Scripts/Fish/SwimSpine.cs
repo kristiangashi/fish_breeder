@@ -34,8 +34,6 @@ namespace FishBreeder
         public readonly Vector4[] Sides = new Vector4[SampleCount];
         public readonly Vector4[] Ups = new Vector4[SampleCount];
 
-        /// <summary>1 = the body follows the head's path exactly, 0 = rigid body.</summary>
-        public float pathFollow = 0.85f;
         /// <summary>Body waves per body length (1 / wavelength).</summary>
         public float wavesPerBody = 1f;
         /// <summary>Peak tail twist in degrees.</summary>
@@ -85,8 +83,11 @@ namespace FishBreeder
         /// <param name="phase">Tail-beat phase in radians (ωt).</param>
         /// <param name="amplitude">Multiplier on the body-wave envelope; 1 = full cruising stroke.</param>
         /// <param name="bankDegrees">Roll into the current turn.</param>
+        /// <param name="follow">How closely the body follows the head's path this frame (0 = straight body).</param>
+        /// <param name="curl">Extra C-bend for turning on the spot: sideways tail offset as a fraction of
+        /// body length, positive towards the fish's right.</param>
         public void Evaluate(Vector3 nose, Vector3 forward, Vector3 up, float length,
-            float phase, float amplitude, float bankDegrees, Transform meshSpace)
+            float phase, float amplitude, float bankDegrees, float follow, float curl, Transform meshSpace)
         {
             // 1. Lay the spine along the recent path, blended with a straight body.
             for (int i = 0; i < SampleCount; i++)
@@ -94,8 +95,8 @@ namespace FishBreeder
                 float distance = i / (SampleCount - 1f) * length;
                 SampleTrail(nose, up, forward, distance, out var pathPoint, out var pathUp);
                 var straight = nose - forward * distance;
-                spinePoints[i] = Vector3.Lerp(straight, pathPoint, pathFollow);
-                spineUps[i] = Vector3.Lerp(up, pathUp, pathFollow).normalized;
+                spinePoints[i] = Vector3.Lerp(straight, pathPoint, follow);
+                spineUps[i] = Vector3.Lerp(up, pathUp, follow).normalized;
             }
 
             // 2. Add the travelling body wave sideways to the spine.
@@ -105,7 +106,7 @@ namespace FishBreeder
                 float s = i / (SampleCount - 1f);
                 var tangent = Tangent(spinePoints, i, forward);
                 var side = Vector3.Cross(spineUps[i], tangent).normalized;
-                float sway = Envelope(s) * length * amplitude * Mathf.Sin(k * s - phase);
+                float sway = Envelope(s) * length * amplitude * Mathf.Sin(k * s - phase) + curl * length * s * s;
                 midline[i] = spinePoints[i] + side * sway;
             }
 

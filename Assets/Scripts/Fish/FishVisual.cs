@@ -129,8 +129,8 @@ namespace FishBreeder
 
             // Scale so the gene-driven length wins, then centre the body on the fish's pivot.
             var bounds = BoundsInModelRoot(filters);
-            float modelLength = Mathf.Max(bounds.size.z, 0.0001f);
-            float scale = p.lengthMeters / modelLength;
+            float restLength = Mathf.Max(bounds.size.z, 0.0001f);
+            float scale = p.lengthMeters / restLength;
             model.localScale *= scale;
             model.localPosition = model.localPosition * scale - bounds.center * scale;
 
@@ -164,7 +164,6 @@ namespace FishBreeder
             modelLength = p.lengthMeters;
             spine = new SwimSpine
             {
-                pathFollow = entry.pathFollow,
                 wavesPerBody = entry.wavesPerBody,
                 tailTwistDegrees = entry.tailTwistDegrees,
             };
@@ -309,30 +308,39 @@ namespace FishBreeder
 
         /// <summary>
         /// Drives the swim cycle each frame.
-        /// <paramref name="effort"/> is speed / cruise speed, <paramref name="thrust"/> (0..1) how hard the
-        /// fish is accelerating, <paramref name="bankDegrees"/> its roll into the current turn.
-        /// Fish beat their tail harder and faster when speeding up or turning, and glide with
-        /// gentle strokes once at speed (burst and coast).
+        /// <paramref name="bodyLengthsPerSecond"/> is the swimming speed, <paramref name="thrust"/> (0..1) how
+        /// hard the fish is accelerating, <paramref name="bankDegrees"/> its roll into the current turn and
+        /// <paramref name="turnDegreesPerSecond"/> how fast it is turning.
+        /// Fish beat their tail harder and faster when speeding up or turning, glide with gentle
+        /// strokes once at speed (burst and coast), and barely scull the tail when hovering.
+        /// At speed the body follows the head's path; when hovering, turning on the spot curls it into a C.
         /// </summary>
-        public void Animate(float effort, float thrust, float bankDegrees, float deltaTime)
+        public void Animate(float bodyLengthsPerSecond, float thrust, float bankDegrees, float turnDegreesPerSecond, float deltaTime)
         {
             if (modelRoot == null || deltaTime <= 0f) return;
-            effort = Mathf.Clamp(effort, 0f, 2f);
+            float effort = Mathf.Clamp(bodyLengthsPerSecond, 0f, 2f);
             thrust = Mathf.Clamp01(thrust);
+            float turning = Mathf.Clamp01(Mathf.Abs(turnDegreesPerSecond) / 90f);
 
             if (spine != null)
             {
-                float targetStroke = Mathf.Clamp(0.3f + 0.35f * effort + 0.6f * thrust + Mathf.Abs(bankDegrees) / 40f, 0.25f, 1.3f);
+                float targetStroke = Mathf.Clamp(0.12f + 0.45f * effort + 0.6f * thrust + 0.3f * turning, 0.1f, 1.3f);
                 stroke = Mathf.MoveTowards(stroke, targetStroke, deltaTime * 1.2f);
-                float beats = modelEntry.tailBeatsPerSecond * Mathf.Lerp(0.5f, 1.4f, Mathf.Clamp01(0.5f * effort + 0.6f * thrust));
+                float beats = modelEntry.tailBeatsPerSecond * Mathf.Lerp(0.35f, 1.4f, Mathf.Clamp01(0.5f * effort + 0.6f * thrust));
                 swimPhase = Mathf.Repeat(swimPhase + deltaTime * Mathf.PI * 2f * beats, Mathf.PI * 2f);
+
+                // Moving: the body trails the head. Slow: it stays straight and bends from the turn instead.
+                float moving = Mathf.Clamp01(effort / 0.6f);
+                float follow = modelEntry.pathFollow * moving;
+                float curl = Mathf.Clamp(turnDegreesPerSecond / 90f, -1f, 1f) * 0.12f * (1f - moving);
 
                 float length = modelLength * transform.lossyScale.x;
                 var nose = transform.position + transform.forward * length * 0.5f;
                 spine.Record(nose, transform.forward, transform.up, length);
                 for (int i = 0; i < swimMaterials.Count; i++)
                 {
-                    spine.Evaluate(nose, transform.forward, transform.up, length, swimPhase, stroke * modelEntry.strokeStrength, bankDegrees, swimMeshes[i]);
+                    spine.Evaluate(nose, transform.forward, transform.up, length, swimPhase, stroke * modelEntry.strokeStrength,
+                        bankDegrees, follow, curl, swimMeshes[i]);
                     var material = swimMaterials[i];
                     material.SetVectorArray(SpinePosId, spine.Positions);
                     material.SetVectorArray(SpineFwdId, spine.Forwards);

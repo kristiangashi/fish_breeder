@@ -58,6 +58,8 @@ namespace FishBreeder.Store
             if (store == null || cam == null) return;
             float dt = Time.unscaledDeltaTime;
 
+            HandleDevKeys();
+
             if (shopDay.LastReport != null && panel != Panel.DayReport)
             {
                 if (focused != null) ExitTank();
@@ -224,7 +226,16 @@ namespace FishBreeder.Store
                 bool on = Mathf.Approximately(shopDay.SpeedMultiplier, speed);
                 if (GUILayout.Toggle(on, $"{speed:0}x", GUI.skin.button, GUILayout.Width(36f)) && !on) shopDay.SetSpeed(speed);
             }
-            if (GUILayout.Button("Skip day (dev)", GUILayout.Width(110f))) shopDay.SkipRestOfDay();
+            if (GUILayout.Button("Skip day (K)", GUILayout.Width(110f))) shopDay.SkipRestOfDay();
+        }
+
+        /// <summary>Keyboard versions of the dev controls: 1/2/3 set 1x/5x/20x and K skips the rest of the day.</summary>
+        void HandleDevKeys()
+        {
+            if (!shopDay.IsOpen) return;
+            for (int i = 0; i < Speeds.Length && i < 9; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i)) shopDay.SetSpeed(Speeds[i]);
+            if (Input.GetKeyDown(KeyCode.K)) shopDay.SkipRestOfDay();
         }
 
         static string Clock(float seconds)

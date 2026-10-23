@@ -317,23 +317,41 @@ namespace FishBreeder.Core
             // IMGUI coordinates are top-left based and scaled; convert back to screen pixels.
             var guiToScreen = GUI.matrix.MultiplyPoint3x4(m);
             var ray = cam.ScreenPointToRay(new Vector3(guiToScreen.x, Screen.height - guiToScreen.y, 0f));
-            if (Physics.Raycast(ray, out var hit, 50f))
+            Fish fish = null;
+            if (Physics.Raycast(ray, out var hit, 50f)) fish = hit.collider.GetComponentInParent<Fish>();
+            if (fish == null || fish.Tank != tank) fish = NearestFishOnScreen(new Vector2(guiToScreen.x, Screen.height - guiToScreen.y));
+            if (fish != null)
             {
-                var fish = hit.collider.GetComponentInParent<Fish>();
-                if (fish != null && fish.Tank == tank)
+                if (selected.Contains(fish)) selected.Remove(fish);
+                else
                 {
-                    if (selected.Contains(fish)) selected.Remove(fish);
-                    else
-                    {
-                        if (selected.Count == 2 || fish.IsDead || (selected.Count == 1 && selected[0].IsDead)) selected.Clear();
-                        selected.Add(fish);
-                    }
-                    e.Use();
-                    return;
+                    if (selected.Count == 2 || fish.IsDead || (selected.Count == 1 && selected[0].IsDead)) selected.Clear();
+                    selected.Add(fish);
                 }
+                e.Use();
+                return;
             }
             selected.Clear();
             e.Use();
+        }
+
+        /// <summary>Small fish and fry are hard to hit with a ray, so a click near one on screen also selects it.</summary>
+        Fish NearestFishOnScreen(Vector2 screenPoint)
+        {
+            float best = Mathf.Max(28f, Screen.height * 0.04f);
+            Fish nearest = null;
+            foreach (var list in new[] { tank.Residents, tank.Corpses })
+            {
+                foreach (var f in list)
+                {
+                    if (f == null) continue;
+                    var p = cam.WorldToScreenPoint(f.transform.position);
+                    if (p.z <= 0f) continue;
+                    float d = Vector2.Distance(screenPoint, new Vector2(p.x, p.y));
+                    if (d < best) { best = d; nearest = f; }
+                }
+            }
+            return nearest;
         }
 
         static GUIStyle richLabel, centeredLabel;

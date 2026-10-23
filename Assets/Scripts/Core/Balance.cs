@@ -457,6 +457,8 @@ namespace FishBreeder.Core
     [Serializable]
     public class BalanceData
     {
+        /// <summary>Which round of default changes this file has been through (see <see cref="Balance.Upgrade"/>).</summary>
+        public int dataVersion = Balance.CurrentDataVersion;
         public List<Species> species = Species.CreateDefaults();
         public List<RelationshipBalance> relationships = Relationships.CreateDefaults();
         public List<DiseaseDefinition> diseases = DiseaseDefinition.CreateDefaults();
@@ -479,6 +481,8 @@ namespace FishBreeder.Core
     public static class Balance
     {
         public const string ResourcePath = "Balance/balance";
+        /// <summary>2: real-world species data (names, families, temperature and pH ranges, schools).</summary>
+        public const int CurrentDataVersion = 2;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -511,6 +515,7 @@ namespace FishBreeder.Core
                 if (parsed == null) return null;
                 if (parsed.species == null) parsed.species = new List<Species>();
                 AddMissingSpecies(parsed.species);
+                Upgrade(parsed, ReadDataVersion(json));
                 return parsed;
             }
             catch (Exception e)
@@ -530,6 +535,45 @@ namespace FishBreeder.Core
             foreach (var s in species) if (s != null && !string.IsNullOrEmpty(s.id)) known.Add(s.id);
             foreach (var s in Species.CreateDefaults())
                 if (!known.Contains(s.id)) species.Add(s);
+        }
+
+        static int ReadDataVersion(string json)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(json, "\"dataVersion\"\\s*:\\s*(\\d+)");
+            return match.Success ? int.Parse(match.Groups[1].Value) : 1;
+        }
+
+        /// <summary>
+        /// Brings a file saved before a change to the defaults up to date, once: version 2 replaces
+        /// the made-up species data with real-world names, families, categories, temperature, pH
+        /// and salt ranges and school sizes, and sets the new fry box prices.
+        /// </summary>
+        static void Upgrade(BalanceData data, int fromVersion)
+        {
+            if (fromVersion < 2)
+            {
+                var defaults = new Dictionary<string, Species>();
+                foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
+                foreach (var s in data.species)
+                {
+                    if (s == null || s.id == null || !defaults.TryGetValue(s.id, out var d)) continue;
+                    if (s.id == "FancyGoldfish" && s.displayName == "Fancy Goldfish") s.displayName = d.displayName;
+                    s.scientificName = d.scientificName;
+                    s.family = d.family;
+                    s.category = d.category;
+                    s.tempMin = d.tempMin; s.tempMax = d.tempMax;
+                    s.phMin = d.phMin; s.phMax = d.phMax;
+                    s.salinityMin = d.salinityMin; s.salinityMax = d.salinityMax;
+                    s.schoolSize = d.schoolSize;
+                    s.likesPlants = d.likesPlants;
+                }
+                var tiers = new SupplierBalance().eggTiers;
+                if (data.supplier != null && data.supplier.eggTiers != null)
+                    foreach (var tier in data.supplier.eggTiers)
+                        foreach (var d in tiers)
+                            if (tier != null && tier.id == d.id) tier.fryPrice = d.fryPrice;
+            }
+            data.dataVersion = CurrentDataVersion;
         }
 
         /// <summary>Applies new balance JSON right away (the console calls this while playing).</summary>

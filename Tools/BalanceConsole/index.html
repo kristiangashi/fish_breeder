@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balance Console</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #1d232b; --muted: #66707c; --line: #dde1e6;
+    --accent: #1f7a8c; --accent-ink: #ffffff; --warn: #b5541c; --ok: #2e7d4f; --chip: #eef2f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15191e; --panel: #1d232a; --ink: #e6e9ed; --muted: #9aa4af; --line: #2e3640; --accent: #3fa7bb; --accent-ink: #0d1115; --warn: #e08a5a; --ok: #6cc690; --chip: #262e37; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  #status { color: var(--muted); font-size: 13px; flex: 1; min-width: 200px; }
+  #status.dirty { color: var(--warn); }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  nav { display: flex; gap: 2px; padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 12px; white-space: nowrap; background: none; }
+  nav button.active { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+  main { padding: 18px; max-width: 1400px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 16px; }
+  label.field { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+  label.field span { display: flex; justify-content: space-between; gap: 6px; }
+  label.field.check { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); }
+  input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; width: 100%; }
+  input[type=checkbox] { width: auto; }
+  input[type=color] { padding: 0; height: 30px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .split { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+  .list { display: flex; flex-direction: column; gap: 2px; }
+  .list button { text-align: left; display: flex; justify-content: space-between; border-color: transparent; }
+  .list button.active { border-color: var(--accent); background: var(--chip); }
+  .chip { font-size: 11px; padding: 1px 6px; border-radius: 9px; background: var(--chip); color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td input, td select { padding: 3px 5px; min-width: 64px; }
+  td select { min-width: 130px; }
+  table.matrix th.rot { height: 120px; vertical-align: bottom; }
+  table.matrix th.rot div { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+  table.matrix td { text-align: center; }
+  table.matrix td.self { background: var(--chip); }
+  textarea.raw { min-height: 60vh; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  #toast { position: fixed; right: 18px; bottom: 18px; background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 420px; }
+  #toast.show { opacity: 0.95; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fish Breeder · Balance Console</h1>
+  <div id="status">Loading…</div>
+  <button id="reload" title="Throw away unsaved edits and load the saved file">Reload</button>
+  <button id="defaults" title="Load the defaults from the game code (not saved until you press Save)">Load defaults</button>
+  <button id="save" class="primary">Save</button>
+</header>
+<nav id="tabs"></nav>
+<main id="view"></main>
+<div id="toast"></div>
+
+<script>
+// Balance console for Fish Breeder. Served by the Unity editor (BalanceConsoleServer.cs).
+// Edits Assets/Resources/Balance/balance.json; Save writes it and applies it to a running game.
+
+const ENUMS = {
+  category: ["FreshwaterCold", "FreshwaterTropical", "SaltwaterCold", "SaltwaterTropical", "BottomFeeder", "Shellfish"],
+  reproduction: ["EggLayer", "Livebearer"],
+  rarity: ["Common", "Uncommon", "Rare", "Exotic", "Legendary"],
+  style: ["Midwater", "Bottom"],
+  type: ["Flakes", "Premium"],
+  cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
+};
+
+// Friendly labels and help text. Anything missing gets a label made from its name.
+const META = {
+  id: ["Id", "Used in save data and the compatibility list. Change with care."],
+  displayName: ["Name", ""],
+  category: ["Category", "Only fish in the same category can ever cross-breed."],
+  reproduction: ["Reproduction", "Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step."],
+  rarity: ["Rarity", "How rare the species is. Customers and prices respond to it."],
+  unlockLevel: ["Fishkeeping level to unlock", "Not used yet: levels come later."],
+  baseValue: ["Value of a healthy adult ($)", "Fry are worth 30%, juveniles 60%. Rare looks multiply it (x1.5 to x4)."],
+  clutchPrice: ["Supplier: clutch price ($)", ""],
+  clutchSize: ["Supplier: eggs per clutch", ""],
+  fryPrice: ["Supplier: fry price ($)", ""],
+  minLength: ["Adult length min (m)", ""], maxLength: ["Adult length max (m)", ""],
+  speed: ["Swim speed", "Relative to a goldfish, in body lengths per second."],
+  depthMin: ["Depth band low (0 sand)", ""], depthMax: ["Depth band high (1 surface)", ""],
+  style: ["Swimming style", "Bottom = hops and sifts along the sand."],
+  tempMin: ["Temperature min (C)", ""], tempMax: ["Temperature max (C)", ""],
+  phMin: ["pH min", ""], phMax: ["pH max", ""],
+  salinityMin: ["Salt min (ppt)", "0 is fresh water, about 35 is sea water."], salinityMax: ["Salt max (ppt)", ""],
+  hungerToleranceDays: ["Days before starving", "One day is two time steps (shop open + close)."],
+  needsPremiumFood: ["Needs premium food", "Flakes only half fill it."],
+  likesPlants: ["Likes plants", "Comfort bonus in planted tanks."],
+  schoolSize: ["School size", "Stressed with fewer of its own kind than this (0 = fine alone)."],
+  daysToAdult: ["Days to adult", ""], lifespanDays: ["Lifespan (days)", "After this, old age slowly lowers health."],
+  litterMin: ["Litter / clutch min", ""], litterMax: ["Litter / clutch max", ""],
+  weight: ["Relative chance", "How often this is the disease that strikes."],
+  progressionPerStep: ["Worsens per step", "Severity gained each time step (0..1)."],
+  lethality: ["Lethality", "Share of the illness health weight taken at full severity."],
+  recoveryChancePerStep: ["Heals on its own (chance per step)", ""],
+  contagionChancePerStep: ["Spreads (chance per tank mate per step)", "0 = not contagious."],
+  swimSpeedMultiplier: ["Swim speed when sick", ""],
+  symptomTint: ["Symptom tint", "Body tint at full severity."],
+  cure: ["Cured by", ""],
+};
+
+const TABS = [
+  ["species", "Species"],
+  ["compat", "Compatibility"],
+  ["diseases", "Diseases"],
+  ["shop", "Shop & customers"],
+  ["timeStep", "Time steps"],
+  ["health", "Health"],
+  ["store", "Store & supplier"],
+  ["rules", "Rules"],
+  ["raw", "Raw JSON"],
+];
+
+const SPECIES_GROUPS = [
+  ["Identity", ["id", "displayName", "category", "reproduction", "rarity", "unlockLevel"]],
+  ["Money", ["baseValue", "clutchPrice", "clutchSize", "fryPrice"]],
+  ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "hungerToleranceDays", "needsPremiumFood", "likesPlants", "schoolSize"]],
+  ["Life", ["daysToAdult", "lifespanDays", "litterMin", "litterMax"]],
+  ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style"]],
+];
+
+let data = null;
+let tab = "species";
+let selectedSpecies = 0;
+let selectedDisease = 0;
+let dirty = false;
+
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs = {}, ...children) => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null) node.setAttribute(k, v);
+  }
+  for (const child of children.flat()) if (child != null) node.append(child.nodeType ? child : document.createTextNode(child));
+  return node;
+};
+const nice = (key) => (META[key] && META[key][0]) || key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+const help = (key) => (META[key] && META[key][1]) || "";
+
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function markDirty() {
+  dirty = true;
+  $("#status").textContent = "Unsaved changes";
+  $("#status").classList.add("dirty");
+}
+
+async function refreshStatus(text) {
+  try {
+    const status = await (await fetch("/api/status")).json();
+    $("#status").classList.remove("dirty");
+    $("#status").textContent = (text ? text + " · " : "") + (status.playing ? "Game is playing: Save applies instantly" : "Game not playing: values apply next Play") + (status.saved ? "" : " · no balance file yet (showing code defaults)");
+  } catch {
+    $("#status").textContent = "Can't reach Unity. Is the editor open?";
+  }
+}
+
+async function load(url) {
+  const res = await fetch(url);
+  data = await res.json();
+  dirty = url !== "/api/balance";
+  render();
+  if (dirty) markDirty(); else refreshStatus("Loaded");
+}
+
+async function save() {
+  const res = await fetch("/api/balance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data, null, 2) });
+  const reply = await res.json().catch(() => ({ ok: false }));
+  if (!reply.ok) { toast("Save failed: " + (reply.error || res.status)); return; }
+  dirty = false;
+  refreshStatus("Saved");
+  toast(reply.applied ? "Saved and applied to the running game." : "Saved. The game uses it next time you press Play.");
+}
+
+// ---------------------------------------------------------------- inputs
+
+function input(obj, key, onChange) {
+  const value = obj[key];
+  const changed = (v) => { obj[key] = v; markDirty(); if (onChange) onChange(); };
+  if (ENUMS[key]) {
+    const select = el("select", { onchange: (e) => changed(parseInt(e.target.value, 10)) },
+      ENUMS[key].map((name, i) => el("option", { value: i }, name)));
+    select.value = value;
+    return select;
+  }
+  if (typeof value === "boolean") {
+    const box = el("input", { type: "checkbox", onchange: (e) => changed(e.target.checked) });
+    box.checked = value;
+    return box;
+  }
+  if (typeof value === "number") {
+    return el("input", { type: "number", step: "any", value, oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) changed(n); } });
+  }
+  if (value && typeof value === "object" && "r" in value && "g" in value) {
+    const hex = "#" + ["r", "g", "b"].map((c) => Math.round(Math.min(1, Math.max(0, value[c])) * 255).toString(16).padStart(2, "0")).join("");
+    return el("input", { type: "color", value: hex, oninput: (e) => {
+      const h = e.target.value;
+      obj[key] = { r: parseInt(h.slice(1, 3), 16) / 255, g: parseInt(h.slice(3, 5), 16) / 255, b: parseInt(h.slice(5, 7), 16) / 255, a: value.a ?? 1 };
+      markDirty();
+    } });
+  }
+  return el("input", { type: "text", value: value ?? "", oninput: (e) => changed(e.target.value) });
+}
+
+function field(obj, key, onChange) {
+  const control = input(obj, key, onChange);
+  if (control.type === "checkbox") return el("label", { class: "field check", title: help(key) }, control, nice(key));
+  return el("label", { class: "field", title: help(key) }, el("span", {}, nice(key)), control);
+}
+
+/** Every simple field of an object as a form; lists of objects become small tables. */
+function objectForm(obj, skip = []) {
+  const grid = el("div", { class: "grid" });
+  const extras = [];
+  for (const key of Object.keys(obj)) {
+    if (skip.includes(key)) continue;
+    const value = obj[key];
+    if (Array.isArray(value) && value.length && typeof value[0] === "object") extras.push(listTable(nice(key), value));
+    else if (!Array.isArray(value)) grid.append(field(obj, key));
+  }
+  return [grid, ...extras];
+}
+
+function listTable(title, list) {
+  const keys = Object.keys(list[0]);
+  const wrap = el("div", { class: "scroll" });
+  const body = el("tbody");
+  const draw = () => {
+    body.replaceChildren(...list.map((item, i) => el("tr", {},
+      keys.map((k) => el("td", {}, input(item, k))),
+      el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { list.splice(i, 1); markDirty(); draw(); } }, "×")))));
+  };
+  draw();
+  wrap.append(el("table", {}, el("thead", {}, el("tr", {}, keys.map((k) => el("th", { title: help(k) }, nice(k))), el("th"))), body));
+  return el("div", {}, el("h2", { style: "margin-top:14px" }, title), wrap,
+    el("button", { class: "small", style: "margin-top:6px", onclick: () => { list.push(JSON.parse(JSON.stringify(list[list.length - 1]))); markDirty(); draw(); } }, "+ Add row"));
+}
+
+// ---------------------------------------------------------------- tabs
+
+function renderSpecies() {
+  const species = data.species;
+  selectedSpecies = Math.min(selectedSpecies, species.length - 1);
+
+  const overviewKeys = ["rarity", "baseValue", "clutchPrice", "clutchSize", "fryPrice", "unlockLevel", "category"];
+  const overview = el("div", { class: "card" },
+    el("h2", {}, "Prices and rarity at a glance"),
+    el("p", { class: "hint" }, "Edit here or in the full form below. Values are what the supplier charges and what a healthy, common-looking adult is worth."),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), overviewKeys.map((k) => el("th", { title: help(k) }, nice(k))))),
+      el("tbody", {}, species.map((s, i) => el("tr", {},
+        el("td", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); selectedSpecies = i; render(); } }, s.displayName)),
+        overviewKeys.map((k) => el("td", {}, input(s, k)))))))));
+
+  const list = el("div", { class: "list" }, species.map((s, i) =>
+    el("button", { class: i === selectedSpecies ? "active" : "", onclick: () => { selectedSpecies = i; render(); } },
+      s.displayName, el("span", { class: "chip" }, ENUMS.rarity[s.rarity]))));
+  const actions = el("div", { class: "row", style: "margin-top:10px" },
+    el("button", { class: "small", onclick: () => {
+      const copy = JSON.parse(JSON.stringify(species[selectedSpecies]));
+      copy.id += "Copy"; copy.displayName += " (copy)";
+      species.push(copy); selectedSpecies = species.length - 1; markDirty(); render();
+    } }, "Duplicate"),
+    el("button", { class: "small", onclick: () => {
+      if (species.length <= 1 || !confirm(`Delete ${species[selectedSpecies].displayName}?`)) return;
+      const gone = species.splice(selectedSpecies, 1)[0];
+      for (const s of species) s.incompatibleWith = (s.incompatibleWith || []).filter((id) => id !== gone.id);
+      selectedSpecies = 0; markDirty(); render();
+    } }, "Delete"));
+
+  const s = species[selectedSpecies];
+  const form = el("div", {}, SPECIES_GROUPS.map(([title, keys]) =>
+    el("div", { class: "card" }, el("h2", {}, title), el("div", { class: "grid" }, keys.filter((k) => k in s).map((k) => field(s, k))))));
+  const note = el("p", { class: "hint" }, "Tank mates it doesn't get on with are set on the Compatibility tab. New species need a Meshy model to look right; without one they use a placeholder body.");
+
+  return [overview, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
+}
+
+function renderCompat() {
+  const species = data.species;
+  const dislikes = (a, b) => (a.incompatibleWith || []).includes(b.id) || (b.incompatibleWith || []).includes(a.id);
+  const toggle = (a, b, on) => {
+    for (const [x, y] of [[a, b], [b, a]]) {
+      x.incompatibleWith = (x.incompatibleWith || []).filter((id) => id !== y.id);
+      if (on) x.incompatibleWith.push(y.id);
+    }
+    markDirty();
+    render();
+  };
+  const table = el("table", { class: "matrix" },
+    el("thead", {}, el("tr", {}, el("th"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
+    el("tbody", {}, species.map((a, i) => el("tr", {},
+      el("th", {}, a.displayName),
+      species.map((b, j) => {
+        if (i === j) return el("td", { class: "self" }, "");
+        const box = el("input", { type: "checkbox", title: `${a.displayName} + ${b.displayName}`, onchange: (e) => toggle(a, b, e.target.checked) });
+        box.checked = dislikes(a, b);
+        return el("td", {}, box);
+      })))));
+  return [el("div", { class: "card" },
+    el("h2", {}, "Who stresses whom"),
+    el("p", { class: "hint" }, "Tick a box when two species shouldn't share a tank (fin nippers, predators, bullies). Both lose comfort, which lowers health. Water needs (temperature, pH, salt) are checked separately from each species' own ranges."),
+    el("div", { class: "scroll" }, table))];
+}
+
+function renderDiseases() {
+  const diseases = data.diseases;
+  selectedDisease = Math.min(selectedDisease, diseases.length - 1);
+  const list = el("div", { class: "list" }, diseases.map((d, i) =>
+    el("button", { class: i === selectedDisease ? "active" : "", onclick: () => { selectedDisease = i; render(); } }, d.displayName)));
+  const actions = el("div", { class: "row", style: "margin-top:10px" },
+    el("button", { class: "small", onclick: () => { const c = JSON.parse(JSON.stringify(diseases[selectedDisease])); c.id += "_copy"; c.displayName += " (copy)"; diseases.push(c); selectedDisease = diseases.length - 1; markDirty(); render(); } }, "Duplicate"),
+    el("button", { class: "small", onclick: () => { if (diseases.length > 1 && confirm("Delete this disease?")) { diseases.splice(selectedDisease, 1); selectedDisease = 0; markDirty(); render(); } } }, "Delete"));
+  const d = diseases[selectedDisease];
+  return [el("p", { class: "hint" }, "All rates are per time step (one when the shop opens, one when it closes). Fish only die from the time-step death roll, which gets likelier as health drops."),
+    el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", { class: "card" }, el("h2", {}, d.displayName), objectForm(d)))];
+}
+
+const SECTION_HINTS = {
+  shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank) × reputation.",
+  timeStep: "What happens at each time step: once when the shop opens and once when it closes. Nothing changes while the shop stays closed.",
+  health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step.",
+  store: "Starting money, tank and section prices, and what the supplier sells.",
+  rules: "General rules: feeding and disease from meals, water basics, breeding.",
+};
+
+function renderSection(key) {
+  const cards = [el("p", { class: "hint" }, SECTION_HINTS[key] || "")];
+  if (key === "store") {
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier)));
+  } else {
+    cards.push(el("div", { class: "card" }, objectForm(data[key])));
+  }
+  return cards;
+}
+
+function renderRaw() {
+  const area = el("textarea", { class: "raw" });
+  area.value = JSON.stringify(data, null, 2);
+  return [el("div", { class: "card" },
+    el("p", { class: "hint" }, "The whole balance file. Edit and press Apply, then Save."),
+    area,
+    el("div", { class: "row", style: "margin-top:10px" }, el("button", { onclick: () => {
+      try { data = JSON.parse(area.value); markDirty(); toast("Applied. Press Save to keep it."); }
+      catch (e) { toast("That isn't valid JSON: " + e.message); }
+    } }, "Apply")))];
+}
+
+function render() {
+  $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
+    el("button", { class: key === tab ? "active" : "", onclick: () => { tab = key; render(); } }, name)));
+  let content;
+  switch (tab) {
+    case "species": content = renderSpecies(); break;
+    case "compat": content = renderCompat(); break;
+    case "diseases": content = renderDiseases(); break;
+    case "raw": content = renderRaw(); break;
+    default: content = renderSection(tab);
+  }
+  $("#view").replaceChildren(...content);
+}
+
+$("#save").onclick = save;
+$("#reload").onclick = () => { if (!dirty || confirm("Throw away unsaved changes?")) load("/api/balance"); };
+$("#defaults").onclick = () => { if (confirm("Load the game's built-in defaults? Nothing is saved until you press Save.")) load("/api/defaults"); };
+window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); } });
+load("/api/balance").catch(() => { $("#status").textContent = "Can't reach Unity. Open the project, then use Fish Breeder > Balance Console."; });
+setInterval(() => { if (!dirty) refreshStatus(""); }, 5000);
+</script>
+</body>
+</html>

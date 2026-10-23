@@ -9,11 +9,18 @@ namespace FishBreeder.Store
     /// <summary>A tank placed in the store: what it's for, and the systems that act on it.</summary>
     public class StoreTank : MonoBehaviour
     {
-        public TankRole Role { get; private set; }
-        public int Number { get; private set; }
-        public Tank Tank { get; private set; }
-        public FeedingSystem Feeding { get; private set; }
-        public BreedingSystem Breeding { get; private set; }
+        // Serialized so the references survive a script reload while playing.
+        [SerializeField] TankRole role;
+        [SerializeField] int number;
+        [SerializeField] Tank tank;
+        [SerializeField] FeedingSystem feeding;
+        [SerializeField] BreedingSystem breeding;
+
+        public TankRole Role => role;
+        public int Number => number;
+        public Tank Tank => tank;
+        public FeedingSystem Feeding => feeding;
+        public BreedingSystem Breeding => breeding;
 
         public string Title => Role == TankRole.Quarantine ? "Quarantine tank" : $"{RoleName(Role)} tank {Number}";
 
@@ -27,14 +34,15 @@ namespace FishBreeder.Store
             go.transform.position = position;
 
             var storeTank = go.AddComponent<StoreTank>();
-            storeTank.Role = role;
-            storeTank.Number = number;
-            storeTank.Tank = go.AddComponent<Tank>();
-            storeTank.Tank.BuildPlaceholderVisuals();
-            storeTank.Feeding = go.AddComponent<FeedingSystem>();
-            storeTank.Feeding.Initialize(storeTank.Tank);
-            storeTank.Breeding = go.AddComponent<BreedingSystem>();
-            storeTank.Breeding.Initialize(storeTank.Tank);
+            storeTank.role = role;
+            storeTank.number = number;
+            storeTank.tank = go.AddComponent<Tank>();
+            storeTank.tank.BuildPlaceholderVisuals();
+            storeTank.tank.PricesNewFish = role == TankRole.ForSale;
+            storeTank.feeding = go.AddComponent<FeedingSystem>();
+            storeTank.feeding.Initialize(storeTank.tank);
+            storeTank.breeding = go.AddComponent<BreedingSystem>();
+            storeTank.breeding.Initialize(storeTank.tank);
             return storeTank;
         }
     }

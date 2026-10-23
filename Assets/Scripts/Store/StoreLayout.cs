@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using FishBreeder.Core;
+using FishBreeder.Shop;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace FishBreeder.Store
 {
@@ -59,6 +61,22 @@ namespace FishBreeder.Store
         public Vector3 RegisterPoint { get; private set; }
         public Vector3 ComputerPoint { get; private set; }
         public Vector3 EntrancePoint => new Vector3(0f, 0.1f, -SectionDepth * 0.5f - 0.6f);
+        /// <summary>Where customers appear and disappear, out on the pavement.</summary>
+        public Vector3 DoorOutside => new Vector3(0f, 0f, -SectionDepth * 0.5f - 2.6f);
+        public Vector3 DoorInside => new Vector3(0f, 0f, -SectionDepth * 0.5f + 0.8f);
+        public Vector3 ShopkeeperHand { get; private set; }
+
+        /// <summary>Where a customer stands to look into a tank.</summary>
+        public static Vector3 ViewingSpot(StoreTank tank)
+        {
+            var p = tank.transform.position;
+            return new Vector3(p.x, 0f, p.z - 0.95f);
+        }
+
+        /// <summary>The register queue runs left along the front of the counter; place 0 is being served.</summary>
+        public Vector3 RegisterQueueSpot(int place) => registerFront + Vector3.left * (0.75f * place);
+
+        Vector3 registerFront;
 
         public int UnlockedCount
         {
@@ -72,10 +90,9 @@ namespace FishBreeder.Store
 
         public void Build()
         {
-            AddSection("Main floor", 0, true);
-            AddSection("East wing", 2500, false);
-            AddSection("Garden room", 6000, false);
-            AddSection("Grand hall", 12000, false);
+            var sectionBalance = Balance.Data.store.sections;
+            for (int i = 0; i < sectionBalance.Count; i++)
+                AddSection(sectionBalance[i].name, sectionBalance[i].price, i == 0);
 
             tankRoot = new GameObject("Tanks").transform;
             tankRoot.SetParent(transform, false);
@@ -276,6 +293,17 @@ namespace FishBreeder.Store
             var display = Wall(root, "TillDisplay", counter + new Vector3(0.45f, 1.38f, 0.12f), new Vector3(0.3f, 0.16f, 0.03f), new Color(0.3f, 0.75f, 0.45f));
             display.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
             RegisterPoint = counter + new Vector3(0.45f, 1.6f, 0f);
+            registerFront = new Vector3(counter.x + 0.45f, 0f, counter.z + 0.75f);
+
+            // The shopkeeper (you) behind the counter.
+            var keeper = new GameObject("Shopkeeper").transform;
+            keeper.SetParent(root, false);
+            keeper.position = new Vector3(counter.x + 0.45f, 0f, counter.z - 0.62f);
+            var apron = new Color(0.2f, 0.45f, 0.6f);
+            MaterialFactory.Decor(PrimitiveType.Cube, "Legs", keeper, new Vector3(0f, 0.42f, 0f), new Vector3(0.32f, 0.84f, 0.2f), new Color(0.25f, 0.25f, 0.3f));
+            MaterialFactory.Decor(PrimitiveType.Capsule, "Torso", keeper, new Vector3(0f, 1.17f, 0f), new Vector3(0.44f, 0.36f, 0.28f), apron);
+            MaterialFactory.Decor(PrimitiveType.Sphere, "Head", keeper, new Vector3(0f, 1.62f, 0f), new Vector3(0.24f, 0.27f, 0.24f), new Color(0.9f, 0.75f, 0.6f));
+            ShopkeeperHand = keeper.position + new Vector3(0f, 1.1f, 0.3f);
             StoreClickable.Add(root, "Register", counter + new Vector3(0f, 0.75f, 0f), new Vector3(2.1f, 1.5f, 0.7f), StoreClickable.Kind.Register);
         }
 
@@ -294,6 +322,33 @@ namespace FishBreeder.Store
             Wall(root, "Chair", desk + new Vector3(0f, 0.25f, -0.65f), new Vector3(0.5f, 0.5f, 0.5f), WallColor);
             ComputerPoint = desk + new Vector3(0f, 1.45f, 0.18f);
             StoreClickable.Add(root, "Supplier computer", desk + new Vector3(0f, 0.7f, -0.1f), new Vector3(1.45f, 1.4f, 1.3f), StoreClickable.Kind.Computer);
+        }
+
+        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble" };
+
+        /// <summary>
+        /// Bakes where customers can walk: the open sections' floors and the pavement outside,
+        /// minus every wall, stand, counter and desk (taken from their renderer bounds).
+        /// </summary>
+        public void BuildNavMesh()
+        {
+            var sources = new List<NavMeshBuildSource>();
+            foreach (var section in sections)
+                if (section.unlocked)
+                    sources.Add(StoreNavMesh.Box(new Vector3(section.CenterX, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), true));
+            sources.Add(StoreNavMesh.Box(new Vector3(0f, -0.05f, -SectionDepth * 0.5f - 1.6f), new Vector3(5f, 0.1f, 3.4f), true));
+
+            foreach (var renderer in GetComponentsInChildren<Renderer>())
+            {
+                if (NotObstacles.Contains(renderer.gameObject.name)) continue;
+                var b = renderer.bounds;
+                if (b.max.y < 0.02f) continue;
+                sources.Add(StoreNavMesh.Box(b.center, b.size + new Vector3(0.02f, 0f, 0.02f), false));
+            }
+
+            float width = sections.Count * SectionWidth + 4f;
+            var bounds = new Bounds(new Vector3((sections.Count - 1) * SectionWidth * 0.5f, 1f, -2f), new Vector3(width, 4f, SectionDepth + 10f));
+            StoreNavMesh.Build(sources, bounds);
         }
 
         static GameObject Wall(Transform parent, string name, Vector3 position, Vector3 size, Color color)

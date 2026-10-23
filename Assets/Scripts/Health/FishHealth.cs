@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FishBreeder.Core;
 using FishBreeder.Feeding;
 using UnityEngine;
@@ -5,8 +6,37 @@ using UnityEngine;
 namespace FishBreeder.Health
 {
     /// <summary>
-    /// Illness for one fish. Every meal is a dice roll for infection; once sick, each second
-    /// rolls for recovery, death (more likely as severity rises) and spreading to tank mates.
+    /// What is pulling a fish's health down. Each value is how much health that factor takes
+    /// (0 = none); <see cref="total"/> is what is left, 0..1.
+    /// </summary>
+    public struct HealthReport
+    {
+        public float hunger, illness, comfort, environment, oldAge, deadTankmates;
+        /// <summary>0..1 comfort level (not a penalty): tank mates, plants, decor, pests, crowding.</summary>
+        public float comfortLevel;
+        /// <summary>0..1 how far the water is from what the species needs.</summary>
+        public float environmentMismatch;
+        public float total;
+
+        /// <summary>The factor hurting most, as a cause of death.</summary>
+        public string WorstCause(DiseaseDefinition disease)
+        {
+            float worst = hunger;
+            string cause = "starvation";
+            if (illness > worst) { worst = illness; cause = disease != null ? disease.displayName : "illness"; }
+            if (environment > worst) { worst = environment; cause = "poor water"; }
+            if (comfort > worst) { worst = comfort; cause = "stress"; }
+            if (oldAge > worst) { worst = oldAge; cause = "old age"; }
+            if (deadTankmates > worst) cause = "rot from dead tank mates";
+            return cause;
+        }
+    }
+
+    /// <summary>
+    /// A fish's health and illness. Health is worked out from hunger, illness, comfort, the water
+    /// (temperature, pH, salt, quality, oxygen), old age and dead tank mates. Illness progresses,
+    /// spreads and heals only at time steps; a fish dies only from the time step's death roll,
+    /// which gets likelier the lower its health.
     /// </summary>
     [RequireComponent(typeof(Fish))]
     public class FishHealth : MonoBehaviour
@@ -37,16 +67,15 @@ namespace FishBreeder.Health
         {
             if (IsSick || Owner.IsDead) return;
             if (!GameRandom.Chance(InfectionChanceForMeal(pellet, wasStarving))) return;
-
-            var disease = DiseaseDefinition.PickWeighted(GameConfig.Active.diseases, GameRandom.Value);
-            Infect(disease, pellet.IsSpoiled ? "spoiled food" : "its food");
+            Infect(DiseaseDefinition.PickWeighted(Balance.Data.diseases, GameRandom.Value), pellet.IsSpoiled ? "spoiled food" : "its food");
         }
 
         public bool Infect(DiseaseDefinition disease, string source)
         {
             if (disease == null || IsSick || Owner.IsDead) return false;
             Disease = disease;
-            Severity = 0.05f;
+            Severity = 0.1f;
+            Owner.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
             GameLog.Add($"{Owner.FishName} caught {disease.displayName} from {source}.");
             return true;
         }
@@ -71,46 +100,118 @@ namespace FishBreeder.Health
             Owner.Visual.SetTint(Color.white);
         }
 
-        void Update()
+        /// <summary>
+        /// Time step: illness gets worse, may heal or spread; a healthy fish may catch something.
+        /// Returns true if the fish fell ill this step.
+        /// </summary>
+        public bool OnTimeStep(List<Fish> newlyInfected)
         {
-            if (!IsSick || Owner.IsDead) return;
-
-            float dt = Time.deltaTime;
+            if (Owner.IsDead) return false;
+            var config = GameConfig.Active;
             float hardiness = Owner.Phenotype.hardiness;
 
-            Severity = Mathf.Clamp01(Severity + Disease.progressionPerSecond * (1f - 0.5f * hardiness) * dt);
-            Owner.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
-
-            if (GameRandom.ChancePerSecond(Disease.recoveryPerSecond * (0.5f + hardiness), dt))
+            if (IsSick)
             {
-                GameLog.Add($"{Owner.FishName} recovered from {Disease.displayName}.");
-                Cure();
-                return;
+                Severity = Mathf.Clamp01(Severity + Disease.progressionPerStep * (1f - 0.5f * hardiness));
+                Owner.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
+                if (GameRandom.Chance(Disease.recoveryChancePerStep * (0.5f + hardiness)))
+                {
+                    GameLog.Add($"{Owner.FishName} recovered from {Disease.displayName}.");
+                    Cure();
+                    return false;
+                }
+                if (Disease.contagionChancePerStep > 0f && Owner.Tank != null)
+                {
+                    foreach (var other in Owner.Tank.Residents)
+                    {
+                        if (other == Owner || other.IsDead || other.Health.IsSick || newlyInfected.Contains(other)) continue;
+                        float resistance = 1f - other.Phenotype.hardiness * config.hardinessProtection;
+                        if (GameRandom.Chance(Disease.contagionChancePerStep * resistance) && other.Health.Infect(Disease, Owner.FishName))
+                            newlyInfected.Add(other);
+                    }
+                }
+                return false;
             }
 
-            if (GameRandom.ChancePerSecond(Disease.lethalityPerSecond * Severity * Severity, dt))
-            {
-                Owner.Die(Disease.displayName);
-                return;
-            }
-
-            if (Disease.contagionPerSecond > 0f && Owner.Tank != null)
-                SpreadToTankMates(dt);
+            if (newlyInfected.Contains(Owner)) return false;
+            float stress = 1f + (1f - Report().total);
+            float chance = Balance.Data.timeStep.diseaseChance * stress * (1f - hardiness * config.hardinessProtection);
+            if (Owner.Tank != null) chance *= Owner.Tank.InfectionMultiplier;
+            if (!GameRandom.Chance(chance)) return false;
+            return Infect(DiseaseDefinition.PickWeighted(Balance.Data.diseases, GameRandom.Value), Owner.Tank != null && Owner.Tank.WaterQuality < 0.5f ? "the dirty water" : "a passing bug");
         }
 
-        void SpreadToTankMates(float dt)
+        public HealthReport Report()
         {
-            var config = GameConfig.Active;
-            float radiusSqr = Disease.contagionRadius * Disease.contagionRadius;
-            foreach (var other in Owner.Tank.Residents)
-            {
-                if (other == Owner || other.IsDead || other.Health.IsSick) continue;
-                if ((other.transform.position - transform.position).sqrMagnitude > radiusSqr) continue;
+            var report = new HealthReport();
+            var fish = Owner;
+            var species = fish.Species;
+            var tank = fish.Tank;
+            var weights = Balance.Data.health;
 
-                float resistance = 1f - other.Phenotype.hardiness * config.hardinessProtection;
-                if (GameRandom.ChancePerSecond(Disease.contagionPerSecond * resistance, dt))
-                    other.Health.Infect(Disease, Owner.FishName);
+            if (fish.Hunger > 0.5f) report.hunger = (fish.Hunger - 0.5f) / 0.5f * weights.hungerWeight;
+            if (IsSick) report.illness = (0.25f + 0.75f * Severity) * Disease.lethality * weights.illnessWeight;
+            if (fish.AgeDays > species.lifespanDays)
+                report.oldAge = Mathf.Clamp01((fish.AgeDays - species.lifespanDays) / Mathf.Max(1f, species.lifespanDays * 0.5f)) * weights.oldAgeWeight;
+
+            report.comfortLevel = 1f;
+            if (tank != null)
+            {
+                report.deadTankmates = tank.Corpses.Count * weights.perDeadTankmate;
+                report.comfortLevel = Comfort(fish, tank, weights);
+                report.environmentMismatch = EnvironmentMismatch(species, tank);
             }
+            report.comfort = (1f - report.comfortLevel) * weights.comfortWeight;
+            report.environment = report.environmentMismatch * weights.environmentWeight;
+
+            report.total = Mathf.Clamp01(1f - report.hunger - report.illness - report.comfort - report.environment - report.oldAge - report.deadTankmates);
+            return report;
+        }
+
+        static float Comfort(Fish fish, Tank tank, HealthBalance weights)
+        {
+            var species = fish.Species;
+            float comfort = 0.75f;
+            if (species.likesPlants && tank.HasPlants) comfort += weights.plantsBonus;
+
+            int sameKind = 0;
+            var disliked = new HashSet<string>();
+            foreach (var other in tank.Residents)
+            {
+                if (other.IsDead) continue;
+                var otherSpecies = other.Species;
+                if (otherSpecies.id == species.id) sameKind++;
+                else if (species.Dislikes(otherSpecies) || otherSpecies.Dislikes(species)) disliked.Add(otherSpecies.id);
+            }
+            comfort -= disliked.Count * weights.perIncompatibleTankmateSpecies;
+            if (species.schoolSize > 0 && sameKind < species.schoolSize) comfort -= weights.tooFewSchoolmates;
+
+            if (tank.DecorCount > weights.idealDecorMax) comfort -= 0.15f;
+            else if (tank.DecorCount < weights.idealDecorMin) comfort -= 0.1f;
+            else comfort += 0.1f;
+
+            if (tank.HasPests) comfort -= weights.pestsComfortLoss;
+            if (tank.Residents.Count > GameConfig.Active.maxFishPerTank * 0.75f) comfort -= 0.15f;
+            return Mathf.Clamp01(comfort);
+        }
+
+        /// <summary>0 when the water suits the species perfectly, 1 when it's hopeless.</summary>
+        public static float EnvironmentMismatch(Genetics.Species species, Tank tank)
+        {
+            float temp = OutsideBy(tank.Temperature, species.tempMin, species.tempMax) / 4f;
+            float ph = OutsideBy(tank.Ph, species.phMin, species.phMax) / 1f;
+            float salt = OutsideBy(tank.Salinity, species.salinityMin, species.salinityMax) / 10f;
+            float mismatch = temp * 0.5f + ph * 0.35f + salt * 0.8f
+                             + (1f - tank.WaterQuality) * 0.5f
+                             + (1f - tank.Oxygen) * 0.4f;
+            return Mathf.Clamp01(mismatch);
+        }
+
+        static float OutsideBy(float value, float min, float max)
+        {
+            if (value < min) return min - value;
+            if (value > max) return value - max;
+            return 0f;
         }
     }
 }

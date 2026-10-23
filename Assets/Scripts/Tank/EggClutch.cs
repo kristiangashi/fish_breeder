@@ -13,12 +13,27 @@ namespace FishBreeder
     {
         static readonly List<EggClutch> all = new List<EggClutch>();
 
+        readonly List<Genome> genomes = new List<Genome>();
+        int generation = 1;
+        string parents;
+
         public Tank Tank { get; private set; }
         public Species Species { get; private set; }
-        public int Count { get; private set; }
+        public int Count => genomes.Count;
 
+        /// <summary>Eggs from the supplier: wild genes.</summary>
         public static EggClutch Lay(Tank tank, Species species, int count)
         {
+            var wild = new List<Genome>();
+            for (int i = 0; i < count; i++) wild.Add(Genome.CreateRandom(species));
+            return LayFrom(tank, wild, 1, null);
+        }
+
+        /// <summary>Eggs laid by a pair in the tank, one genome per egg.</summary>
+        public static EggClutch LayFrom(Tank tank, List<Genome> eggs, int generation, string parents)
+        {
+            var species = eggs[0].Species;
+            int count = eggs.Count;
             var bounds = tank.InnerBounds;
             var spot = tank.RandomFreePoint(0.12f);
             spot.y = bounds.min.y;
@@ -28,7 +43,9 @@ namespace FishBreeder
             clutch.transform.SetParent(tank.transform, true);
             clutch.Tank = tank;
             clutch.Species = species;
-            clutch.Count = count;
+            clutch.genomes.AddRange(eggs);
+            clutch.generation = generation;
+            clutch.parents = parents;
 
             var material = MaterialFactory.Create(new Color(1f, 0.93f, 0.75f), 0.8f);
             for (int i = 0; i < count; i++)
@@ -63,10 +80,11 @@ namespace FishBreeder
             int born = 0;
             if (Tank != null)
             {
-                for (int i = 0; i < Count && !Tank.IsFull; i++)
+                foreach (var genome in genomes)
                 {
+                    if (Tank.IsFull) break;
                     var position = Tank.Clamp(transform.position + new Vector3(GameRandom.Range(-0.05f, 0.05f), 0.05f, GameRandom.Range(-0.05f, 0.05f)), 0.05f);
-                    FishFactory.Spawn(Genome.CreateRandom(Species), 1, 0.05f, Tank, position);
+                    FishFactory.Spawn(genome, generation, 0.05f, Tank, position, parents);
                     born++;
                 }
             }

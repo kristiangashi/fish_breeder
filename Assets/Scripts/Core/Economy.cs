@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using FishBreeder.Feeding;
+using UnityEngine;
 
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// The shop's money, food stock and in-game day. Money is whole dollars.
-    /// The day only moves on when the shop opens or closes (or the dev skip button is used).
+    /// The shop's money, stock, reputation and in-game day. Money is whole dollars.
+    /// The day only moves on when the shop closes; nothing changes while it stays closed.
     /// </summary>
     public static class Economy
     {
@@ -14,15 +15,21 @@ namespace FishBreeder.Core
 
         public static int Money { get; private set; }
         public static int Day { get; private set; } = 1;
+        /// <summary>0..1, from customer reviews. Brings in more (or fewer) customers.</summary>
+        public static float Reputation { get; set; } = 0.5f;
+        public static int WaterConditionerDoses { get; set; }
         public static IReadOnlyList<string> Ledger => ledger;
 
-        public static void Reset(int money, int starterFlakes)
+        public static void Reset()
         {
-            Money = money;
+            var store = Balance.Data.store;
+            Money = store.startingMoney;
             Day = 1;
+            Reputation = Balance.Data.shop.startingReputation;
+            WaterConditionerDoses = 0;
             food.Clear();
             ledger.Clear();
-            if (starterFlakes > 0) AddFood(FoodType.Flakes, starterFlakes);
+            if (store.starterFlakeFeedings > 0) AddFood(FoodType.Flakes, store.starterFlakeFeedings);
         }
 
         public static string Format(int dollars) => $"${dollars:N0}";
@@ -63,12 +70,18 @@ namespace FishBreeder.Core
             return true;
         }
 
-        /// <summary>One time step: everything that happens between days. Shop open/close will call this.</summary>
-        public static void AdvanceDay()
+        /// <summary>Called when the shop closes: the next day starts, and a broke player gets bailed out.</summary>
+        public static void NextDay()
         {
             Day++;
-            int hatched = EggClutch.HatchAll();
-            GameLog.Add(hatched > 0 ? $"Day {Day}. {hatched} eggs hatched overnight!" : $"Day {Day}.");
+            int allowance = Balance.Data.store.dailyAllowance;
+            if (Money < allowance)
+            {
+                Earn(allowance - Money, "daily allowance");
+                GameLog.Add($"Money was tight, so you got the daily allowance: you now have {Format(Money)}.");
+            }
         }
+
+        public static void ChangeReputation(float delta) => Reputation = Mathf.Clamp01(Reputation + delta);
     }
 }

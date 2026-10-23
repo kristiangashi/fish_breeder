@@ -1,3 +1,4 @@
+using FishBreeder.Shop;
 using FishBreeder.Store;
 using UnityEngine;
 
@@ -10,7 +11,6 @@ namespace FishBreeder.Core
     /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
-        [SerializeField] GameConfig config;
         [SerializeField] FishModelLibrary modelLibrary;
         [Tooltip("0 = random every run.")]
         [SerializeField] int randomSeed;
@@ -26,10 +26,10 @@ namespace FishBreeder.Core
         void Start()
         {
             if (randomSeed != 0) GameRandom.Seed(randomSeed);
-            GameConfig.Active = config != null ? config : ScriptableObject.CreateInstance<GameConfig>();
+            Balance.Load();
             FishVisual.DefaultLibrary = modelLibrary != null ? modelLibrary : FishModelLibrary.LoadBuiltIn();
             GameLog.Clear();
-            Economy.Reset(GameConfig.Active.startingMoney, GameConfig.Active.starterFlakeFeedings);
+            Economy.Reset();
             Tank.Focused = null;
 
             // The tanks start empty: the first fish come from the supplier computer.
@@ -39,8 +39,10 @@ namespace FishBreeder.Core
             var cam = SetupCamera();
             SetupLight();
 
+            var shopDay = gameObject.AddComponent<ShopDay>();
+            shopDay.Initialize(store);
             var hud = gameObject.AddComponent<FishTankHUD>();
-            gameObject.AddComponent<StoreView>().Initialize(store, hud, cam);
+            gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
             GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first eggs or fry at the supplier computer.");
         }
 

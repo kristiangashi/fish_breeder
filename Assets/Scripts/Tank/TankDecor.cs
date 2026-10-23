@@ -52,8 +52,10 @@ namespace FishBreeder
         public static bool Available => Resources.Load<GameObject>(Folder + "Rock") != null;
 
         /// <summary>Places the decorations under <paramref name="root"/>, sitting on the sand.</summary>
-        public static void Build(Transform root, Vector3 tankSize)
+        /// <summary>Returns how many pieces were placed.</summary>
+        public static int Build(Transform root, Vector3 tankSize)
         {
+            int placed = 0;
             var material = CreateMaterial();
             foreach (var placement in Layout)
             {
@@ -64,7 +66,9 @@ namespace FishBreeder
                     continue;
                 }
                 Place(prefab, placement, root, tankSize, material);
+                placed++;
             }
+            return placed;
         }
 
         static void Place(GameObject prefab, Placement placement, Transform root, Vector3 tankSize, Material material)

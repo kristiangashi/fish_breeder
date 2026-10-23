@@ -1,26 +1,22 @@
-using System.Collections.Generic;
-using FishBreeder.Health;
+using System;
 using UnityEngine;
 
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// All tuning numbers in one asset. Create one via Assets > Create > Fish Breeder > Game Config
-    /// and assign it to GameBootstrap; otherwise a default instance is used.
+    /// General game rules. Lives in the balance file under "rules" (see <see cref="Balance"/>),
+    /// so it is edited in the balance console like everything else.
+    /// Time-based numbers are per time step: one step happens when the shop opens and one when it closes.
     /// </summary>
-    [CreateAssetMenu(menuName = "Fish Breeder/Game Config", fileName = "GameConfig")]
-    public class GameConfig : ScriptableObject
+    [Serializable]
+    public class GameConfig
     {
-        [Header("Hunger and growth (age never kills a fish)")]
-        [Tooltip("Hunger gained per second. 1 = completely starving.")]
-        public float hungerPerSecond = 1f / 120f;
-        [Tooltip("Seconds of being fed for a fry to become an adult.")]
-        public float secondsToAdult = 180f;
+        [Header("Hunger and growth")]
         [Range(0f, 1f)] public float starvingThreshold = 0.8f;
 
         [Header("Feeding and disease")]
         [Tooltip("Base chance that a single meal makes a fish sick.")]
-        [Range(0f, 1f)] public float baseInfectionChancePerMeal = 0.04f;
+        [Range(0f, 1f)] public float baseInfectionChancePerMeal = 0.02f;
         [Tooltip("How much a fully hardy fish (hardiness gene = 1) reduces infection chance.")]
         [Range(0f, 1f)] public float hardinessProtection = 0.6f;
         [Tooltip("Infection chance multiplier for a meal eaten while starving.")]
@@ -30,38 +26,21 @@ namespace FishBreeder.Core
 
         [Header("Water")]
         public float pelletRotSeconds = 20f;
-        public float waterQualityLossPerRottenPellet = 0.03f;
-        [Tooltip("Water quality lost per fish per second (waste).")]
-        public float bioloadPerFishPerSecond = 0.0002f;
+        public float waterQualityLossPerRottenPellet = 0.01f;
+        [Tooltip("Room temperature in C: tank temperature without a heater.")]
+        public float roomTemperature = 22f;
+        public float startingPh = 7.2f;
+        [Tooltip("Fish a tank holds comfortably without a bubbler before oxygen runs low.")]
+        public int fishPerTankWithoutBubbler = 8;
 
         [Header("Breeding")]
-        public float breedingCooldownSeconds = 60f;
+        [Tooltip("Time steps a fish rests after breeding.")]
+        public int breedingCooldownSteps = 2;
         [Range(0f, 1f)] public float mutationChance = 0.05f;
         [Range(0f, 1f)] public float mutationStrength = 0.15f;
-        public int minFryPerBreeding = 1;
-        public int maxFryPerBreeding = 3;
         public int maxFishPerTank = 24;
 
-        [Header("Shop")]
-        public int startingMoney = 1000;
-        [Tooltip("Feedings of flakes in the cupboard on day one.")]
-        public int starterFlakeFeedings = 10;
-        [Tooltip("Waste build-up in a tank with a filter, relative to one without.")]
-        [Range(0f, 1f)] public float filterBioloadMultiplier = 0.4f;
-
-        [Header("Diseases")]
-        public List<DiseaseDefinition> diseases = DiseaseDefinition.CreateDefaults();
-
-        static GameConfig active;
-
-        public static GameConfig Active
-        {
-            get
-            {
-                if (active == null) active = CreateInstance<GameConfig>();
-                return active;
-            }
-            set => active = value;
-        }
+        /// <summary>The rules from the loaded balance file.</summary>
+        public static GameConfig Active => Balance.Data.rules;
     }
 }

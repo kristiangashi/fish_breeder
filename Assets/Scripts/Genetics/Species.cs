@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using FishBreeder.Core;
 
 namespace FishBreeder.Genetics
 {
@@ -10,61 +12,136 @@ namespace FishBreeder.Genetics
         Bottom,
     }
 
+    /// <summary>Breeding groups: only fish in the same category can ever cross-breed.</summary>
+    public enum FishCategory { FreshwaterCold, FreshwaterTropical, SaltwaterCold, SaltwaterTropical, BottomFeeder, Shellfish }
+
+    /// <summary>Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step. The two never cross.</summary>
+    public enum Reproduction { EggLayer, Livebearer }
+
+    public enum SpeciesRarity { Common, Uncommon, Rare, Exotic, Legendary }
+
     /// <summary>
-    /// A kind of fish. Species is fixed for life and passed from mother to fry; only fish of the
-    /// same species can breed. Genes then vary the individual within the species' ranges.
+    /// A kind of fish and all its balancing numbers. Species is fixed for life and passed from
+    /// mother to fry. Genes then vary the individual within the species' ranges.
+    /// The list lives in the balance file (see <see cref="Balance"/>), editable in the balance console.
     /// Small species are drawn a little larger than life so they are easy to see in the tank.
     /// </summary>
-    public sealed class Species
+    [Serializable]
+    public class Species
     {
-        public readonly string id;
-        public readonly string displayName;
-        /// <summary>Adult length range in metres, nose to tail tip.</summary>
-        public readonly float minLength, maxLength;
-        /// <summary>Swimming speed relative to a goldfish, in body lengths per second.</summary>
-        public readonly float speed;
-        /// <summary>Preferred depth band: 0 = the sand, 1 = the surface.</summary>
-        public readonly float depthMin, depthMax;
-        public readonly SwimStyle style;
+        public string id;
+        public string displayName;
+        public FishCategory category;
+        public Reproduction reproduction;
+        public SpeciesRarity rarity;
+        /// <summary>Fishkeeping level needed to buy it (levels are not in the game yet).</summary>
+        public int unlockLevel;
 
-        Species(string id, string displayName, float minLength, float maxLength, float speed,
-            float depthMin, float depthMax, SwimStyle style = SwimStyle.Midwater)
+        // Money
+        /// <summary>What a healthy, common-looking adult is worth. Fry and juveniles are worth less.</summary>
+        public int baseValue = 20;
+        public int clutchPrice = 20;
+        public int clutchSize = 4;
+        public int fryPrice = 12;
+
+        // Body and swimming
+        /// <summary>Adult length range in metres, nose to tail tip.</summary>
+        public float minLength = 0.08f, maxLength = 0.12f;
+        /// <summary>Swimming speed relative to a goldfish, in body lengths per second.</summary>
+        public float speed = 1f;
+        /// <summary>Preferred depth band: 0 = the sand, 1 = the surface.</summary>
+        public float depthMin = 0.2f, depthMax = 0.8f;
+        public SwimStyle style;
+
+        // Needs
+        public float tempMin = 20f, tempMax = 26f;
+        public float phMin = 6.5f, phMax = 7.5f;
+        /// <summary>Parts per thousand: 0 is fresh water, about 35 is sea water.</summary>
+        public float salinityMin, salinityMax = 2f;
+        /// <summary>Days without food before it is starving.</summary>
+        public float hungerToleranceDays = 3f;
+        /// <summary>Flakes only half fill it; it needs premium food to thrive.</summary>
+        public bool needsPremiumFood;
+        public bool likesPlants = true;
+        /// <summary>Feels unsafe with fewer than this many of its own kind in the tank (0 = happy alone).</summary>
+        public int schoolSize;
+        /// <summary>Species ids that stress it when they share a tank (fin nippers, predators, bullies).</summary>
+        public string[] incompatibleWith = new string[0];
+
+        // Life
+        public float daysToAdult = 4f;
+        /// <summary>After this many days old age slowly lowers health.</summary>
+        public float lifespanDays = 90f;
+        public int litterMin = 3, litterMax = 5;
+
+        public bool IsSaltwater => category == FishCategory.SaltwaterCold || category == FishCategory.SaltwaterTropical;
+
+        public bool Dislikes(Species other)
         {
-            this.id = id;
-            this.displayName = displayName;
-            this.minLength = minLength;
-            this.maxLength = maxLength;
-            this.speed = speed;
-            this.depthMin = depthMin;
-            this.depthMax = depthMax;
-            this.style = style;
+            if (other == null || incompatibleWith == null) return false;
+            foreach (var id in incompatibleWith)
+                if (id == other.id) return true;
+            return false;
         }
 
-        public static readonly Species CometGoldfish = new Species("CometGoldfish", "Comet Goldfish", 0.1f, 0.2f, 1f, 0.15f, 0.85f);
+        public static IReadOnlyList<Species> All => Balance.Data.species;
 
-        public static readonly IReadOnlyList<Species> All = new[]
-        {
-            CometGoldfish,
-            new Species("FancyGoldfish", "Fancy Goldfish", 0.1f, 0.14f, 0.7f, 0.15f, 0.8f),
-            new Species("Angelfish", "Angelfish", 0.12f, 0.15f, 0.6f, 0.35f, 0.85f),
-            new Species("Betta", "Betta", 0.08f, 0.095f, 0.6f, 0.45f, 0.95f),
-            new Species("Clownfish", "Clownfish", 0.08f, 0.1f, 0.9f, 0.25f, 0.75f),
-            new Species("Guppy", "Guppy", 0.06f, 0.075f, 1.1f, 0.45f, 0.95f),
-            new Species("TigerBarb", "Tiger Barb", 0.07f, 0.085f, 1.3f, 0.2f, 0.7f),
-            new Species("NeonTetra", "Neon Tetra", 0.055f, 0.065f, 1.2f, 0.3f, 0.7f),
-            new Species("ZebraDanio", "Zebra Danio", 0.06f, 0.07f, 1.5f, 0.6f, 0.95f),
-            new Species("Corydoras", "Corydoras Catfish", 0.065f, 0.08f, 1f, 0f, 0.1f, SwimStyle.Bottom),
-        };
+        public static Species CometGoldfish => Get("CometGoldfish");
 
-        /// <summary>The species with this id; Comet Goldfish for unknown or empty ids (older saves).</summary>
+        /// <summary>The species with this id; the first species for unknown or empty ids (older saves).</summary>
         public static Species Get(string id)
         {
+            var all = All;
             if (!string.IsNullOrEmpty(id))
-                foreach (var species in All)
+                foreach (var species in all)
                     if (species.id == id) return species;
-            return CometGoldfish;
+            return all.Count > 0 ? all[0] : null;
         }
 
         public override string ToString() => displayName;
+
+        static Species Make(string id, string name, FishCategory category, SpeciesRarity rarity, int value, int clutchPrice, int clutchSize, int fryPrice,
+            float minLength, float maxLength, float speed, float depthMin, float depthMax,
+            float tempMin, float tempMax, float phMin, float phMax, float hungerDays, int school, params string[] incompatible)
+        {
+            return new Species
+            {
+                id = id, displayName = name, category = category, rarity = rarity,
+                baseValue = value, clutchPrice = clutchPrice, clutchSize = clutchSize, fryPrice = fryPrice,
+                minLength = minLength, maxLength = maxLength, speed = speed, depthMin = depthMin, depthMax = depthMax,
+                tempMin = tempMin, tempMax = tempMax, phMin = phMin, phMax = phMax,
+                hungerToleranceDays = hungerDays, schoolSize = school, incompatibleWith = incompatible,
+            };
+        }
+
+        /// <summary>Defaults used when there is no balance file yet. Roughly true to the real fish.</summary>
+        public static List<Species> CreateDefaults()
+        {
+            var list = new List<Species>
+            {
+                Make("CometGoldfish", "Comet Goldfish", FishCategory.FreshwaterCold, SpeciesRarity.Common, 20, 20, 4, 12, 0.1f, 0.2f, 1f, 0.15f, 0.85f, 10f, 24f, 7f, 8f, 3f, 0),
+                Make("FancyGoldfish", "Fancy Goldfish", FishCategory.FreshwaterCold, SpeciesRarity.Uncommon, 45, 40, 3, 25, 0.1f, 0.14f, 0.7f, 0.15f, 0.8f, 18f, 24f, 7f, 8f, 3f, 0, "TigerBarb"),
+                Make("Angelfish", "Angelfish", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 70, 60, 3, 35, 0.12f, 0.15f, 0.6f, 0.35f, 0.85f, 24f, 30f, 6f, 7.5f, 3f, 0, "TigerBarb", "NeonTetra"),
+                Make("Betta", "Betta", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 55, 50, 3, 30, 0.08f, 0.095f, 0.6f, 0.45f, 0.95f, 24f, 30f, 6.5f, 7.5f, 4f, 0, "TigerBarb", "Guppy"),
+                Make("Clownfish", "Clownfish", FishCategory.SaltwaterTropical, SpeciesRarity.Exotic, 110, 90, 3, 55, 0.08f, 0.1f, 0.9f, 0.25f, 0.75f, 24f, 28f, 7.8f, 8.4f, 3f, 0),
+                Make("Guppy", "Guppy", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 12, 15, 5, 8, 0.06f, 0.075f, 1.1f, 0.45f, 0.95f, 22f, 28f, 7f, 8f, 2f, 0, "Betta"),
+                Make("TigerBarb", "Tiger Barb", FishCategory.FreshwaterTropical, SpeciesRarity.Uncommon, 25, 25, 4, 14, 0.07f, 0.085f, 1.3f, 0.2f, 0.7f, 22f, 27f, 6f, 7.5f, 2f, 4, "Angelfish", "Betta", "FancyGoldfish"),
+                Make("NeonTetra", "Neon Tetra", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 14, 20, 5, 10, 0.055f, 0.065f, 1.2f, 0.3f, 0.7f, 21f, 27f, 5.5f, 7f, 2f, 5, "Angelfish"),
+                Make("ZebraDanio", "Zebra Danio", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 12, 15, 5, 8, 0.06f, 0.07f, 1.5f, 0.6f, 0.95f, 18f, 26f, 6.5f, 7.5f, 2f, 4),
+                Make("Corydoras", "Corydoras Catfish", FishCategory.BottomFeeder, SpeciesRarity.Uncommon, 35, 35, 4, 20, 0.065f, 0.08f, 1f, 0f, 0.1f, 22f, 26f, 6f, 7.5f, 3f, 3),
+            };
+
+            foreach (var s in list)
+            {
+                if (s.category == FishCategory.SaltwaterTropical) { s.salinityMin = 30f; s.salinityMax = 36f; }
+                if (s.id == "Corydoras") s.style = SwimStyle.Bottom;
+                if (s.id == "Guppy") { s.reproduction = Reproduction.Livebearer; s.litterMin = 3; s.litterMax = 6; }
+                if (s.id == "Betta" || s.id == "Angelfish" || s.id == "Clownfish") s.needsPremiumFood = true;
+                if (s.id == "Clownfish" || s.id == "Betta") s.likesPlants = false;
+                if (s.category == FishCategory.FreshwaterCold) { s.lifespanDays = 120f; s.daysToAdult = 5f; }
+                if (s.rarity >= SpeciesRarity.Rare) s.daysToAdult = 6f;
+            }
+            return list;
+        }
     }
 }

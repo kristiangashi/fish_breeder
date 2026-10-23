@@ -303,6 +303,14 @@ namespace FishBreeder
             return null;
         }
 
+        /// <summary>Straightens the body along the current heading, e.g. after the fish is moved to another tank.</summary>
+        public void ResetSpine()
+        {
+            if (spine == null) return;
+            float length = modelLength * transform.lossyScale.x;
+            spine.Reset(transform.position + transform.forward * length * 0.5f, transform.forward, transform.up, length);
+        }
+
         /// <summary>Multiplies all fish materials, used for disease symptoms.</summary>
         public void SetTint(Color tint)
         {

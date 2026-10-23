@@ -14,25 +14,27 @@ A Fish Tycoon–style breeding game in Unity with fully 3D fish.
 
 If Hub refuses to open the folder, create a new **3D (Built-In Render Pipeline)** project called FishBreeder and copy the `Assets` folder from here into it.
 
-## Playing (closed shop, placeholder HUD)
+## Playing (placeholder HUD)
 
-You start with $1,000, a tub of flakes and three empty tanks: a breeder, a display and a for-sale tank.
+The game alternates between **closed** and **open**. Time only moves when you open or close the shop, so nothing changes while it stays closed.
+
+**Shop closed** (you start here with $1,000, a tub of flakes and three empty tanks):
 
 - **Store view**: A/D, arrow keys or right-drag to pan, scroll to zoom. Everything clickable has a label.
-- **Supplier computer** (desk by the door): order eggs or fry of any species into a tank, buy food, or install a filter. Eggs are cheaper but hatch only when the next day starts; fry arrive right away.
-- **Register**: balance, recent transactions and day. Opening the shop comes later; the dev buttons add $1,000 or skip to the next day (which hatches eggs).
-- **Click a tank** to fly into it. Feeding uses one feeding from your food stock. Esc or **Back to store** returns.
-- **Empty tank spots**: click to buy a breeder, for-sale, display or quarantine tank.
-- **Locked sections** (darker floor to the right): click to unlock with money; each adds six tank spots.
+- **Supplier computer**: eggs or fry of any species, food, filters, heaters, bubblers and water conditioner.
+- **Click a tank** to look inside: water quality, algae, oxygen, temperature, pH, salt, pests and equipment, plus feeding, wiping (3 wipes per closed session), treating the water and removing dead fish.
+- **Click a fish** for its status window: health and what is pulling it down (hunger, illness, comfort, water, old age, dead tank mates), its needs, appraised value, price (For Sale tanks), medicine and moving it to another tank.
+- **Breeding**: pick a male and a female of the same species in a breeder tank. Livebearers give birth straight away; eggs hatch at the next time step.
+- **Empty tank spots** and **locked sections**: buy more tanks and floor space.
 
-Inside a tank:
+**Open Shop** (top bar or register): a time step runs, then customers come in for one real hour. They wander between tanks, react with thought bubbles (happy, grossed out by bad water, sad about dead fish, angry about prices), sometimes buy a fish from a For Sale tank, pay at the register and go home. The shop closes on its own, another time step runs, and you get the day's report and reviews, which move your reputation and next day's traffic. Developer buttons in the top bar speed the day up (5x, 20x) or skip the rest of it.
 
-- **Feed flakes / Feed premium**: flakes are cheap but sometimes spoiled; premium is much safer.
-- **Clean tank**: water gets dirtier from fish waste and rotting food; dirty water triples illness odds.
-- **Click a fish** to inspect it (traits, hunger, hardiness, illness). Sick fish show medicine buttons; the wrong medicine does nothing.
-- **Click a second adult** and press **Breed these two**. Fry inherit a mix of both parents' genes and grow up over about 3 minutes.
+Each time step: eggs hatch; water quality drops with waste, algae grows (faster with more decorations), pH drifts and pests may appear; fish age and get hungrier; illness progresses, spreads or strikes; pairs may breed by chance (likelier in breeder tanks); and fish in poor health roll for death.
 
-All tuning numbers live in `GameConfig` (Assets > Create > Fish Breeder > Game Config, then drag it onto the GameBootstrap object).
+## Balance console
+
+All balancing numbers (species rarity, prices, needs, compatibilities, diseases, customers, time-step chances, health weights, store and supplier prices) live in one file, `Assets/Resources/Balance/balance.json`. Edit them in the browser: with the project open in Unity, choose **Fish Breeder > Balance Console** (or go to http://localhost:8642). **Save** writes the file and, if the game is playing, applies the new values straight away. The console is an editor-only tool (`Tools/BalanceConsole/index.html`, served by `Assets/Scripts/Editor/BalanceConsoleServer.cs`) and is not part of a build; the JSON file is, so the game ships with whatever you saved. Until you first save, the defaults in code are used.
+
 
 ## Code layout
 
@@ -44,8 +46,9 @@ All tuning numbers live in `GameConfig` (Assets > Create > Fish Breeder > Game C
 | `Scripts/Health` | `DiseaseDefinition` (the illness catalogue), `FishHealth` (infection per meal, progression, recovery/death rolls, contagion, medicine) |
 | `Scripts/Fish` | `Fish` (hunger, growth, death), `FishSwimmer` (wander + chase food), `FishVisual` (Meshy model or procedural placeholder), `PlaceholderFishMesh` and `FishPatternTexture` (gene-driven 3D placeholder), `FishModelLibrary` (Meshy model lookup) |
 | `Scripts/Tank` | `Tank` (bounds, residents, water quality, filter, placeholder glass tank), `EggClutch` (eggs that hatch at the next day) |
-| `Scripts/Store` | `StoreLayout` (rooms, sections, tank spots, register, computer), `StoreView` (store camera and closed-shop windows), `StoreTank` (tank roles), `SupplierCatalog` (prices) |
-| `Scripts/Core` | `GameBootstrap`, `Economy` (money, food stock, day), `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
+| `Scripts/Store` | `StoreLayout` (rooms, sections, tank spots, register, computer, walkable area), `StoreView` (store camera and windows), `StoreTank` (tank roles), `SupplierCatalog` (prices) |
+| `Scripts/Shop` | `ShopDay` (open-shop day, sales, reviews), `TimeStep` (everything that happens at open and close), `Customer` and `ShopperBrain` (shoppers and their reactions), `MoodIcons`, `StoreNavMesh` |
+| `Scripts/Core` | `GameBootstrap`, `Balance` (all balancing numbers, loaded from the balance file), `Economy` (money, stock, day, reputation), `UnderwaterFilter`, `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
 | `Art/Fish/Meshy` | Imported Meshy models go here (see `Docs/MeshyPipeline.md`) |
 
 ## Fish models

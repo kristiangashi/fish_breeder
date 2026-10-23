@@ -121,6 +121,41 @@ namespace FishBreeder.Breeding
             return started;
         }
 
+        /// <summary>
+        /// One short line per species in the tank on how close it is to breeding, for the tank panel.
+        /// </summary>
+        public static List<string> Readiness(Tank tank)
+        {
+            var lines = new List<string>();
+            var order = new List<string>();
+            var bySpecies = new Dictionary<string, Couples>();
+            var reasons = new Dictionary<string, string>();
+            foreach (var fish in tank.Residents)
+            {
+                if (fish.IsDead) continue;
+                string id = fish.Species.id;
+                if (!bySpecies.TryGetValue(id, out var group))
+                {
+                    bySpecies[id] = group = new Couples();
+                    order.Add(id);
+                }
+                string reason = WhyNotReady(fish, tank);
+                if (reason == null) (fish.Sex == Sex.Female ? group.females : group.males).Add(fish);
+                else if (!reasons.ContainsKey(id)) reasons[id] = reason.Replace(fish.FishName + " ", "");
+            }
+            foreach (var id in order)
+            {
+                var group = bySpecies[id];
+                string name = Species.Get(id).displayName;
+                int pairs = Mathf.Min(group.females.Count, group.males.Count);
+                if (pairs > 0) lines.Add($"{name}: {(pairs == 1 ? "1 pair" : pairs + " pairs")} ready to breed");
+                else if (group.females.Count > 0) lines.Add($"{name}: ready, but no ready male");
+                else if (group.males.Count > 0) lines.Add($"{name}: ready, but no ready female");
+                else lines.Add($"{name}: not ready ({reasons[id].TrimEnd('.')})");
+            }
+            return lines;
+        }
+
         /// <summary>Time step for every pregnant fish: count down, and give birth when due. Returns fry born.</summary>
         public static int AdvancePregnancies(IEnumerable<Fish> fishes)
         {

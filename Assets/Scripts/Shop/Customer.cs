@@ -191,7 +191,8 @@ namespace FishBreeder.Shop
                     timeout -= Time.deltaTime;
                     yield return null;
                 }
-                agent.isStopped = true;
+                // The shop can close (or the day be skipped) mid-walk and take the agent off the walkable area.
+                if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh) agent.isStopped = true;
                 yield break;
             }
 

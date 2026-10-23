@@ -78,6 +78,9 @@ namespace FishBreeder.Core
                 if (fish.IsPregnant)
                     GUILayout.Label($"<color=#ffb3d9>Pregnant: {fish.FishName} ({fish.Species}), due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", Rich());
 
+            foreach (var line in BreedingSystem.Readiness(tank))
+                GUILayout.Label($"<color=#c9d7e8>{line}</color>", Rich());
+
             Bar("Water quality", tank.WaterQuality, true);
             Bar("Algae", tank.Algae, false);
             Bar("Oxygen", tank.Oxygen, true);

@@ -18,6 +18,8 @@ namespace FishBreeder.Core
         /// <summary>0..1, from customer reviews. Brings in more (or fewer) customers.</summary>
         public static float Reputation { get; set; } = 0.5f;
         public static int WaterConditionerDoses { get; set; }
+        /// <summary>Each fixes one broken filter, heater or bubbler.</summary>
+        public static int RepairKits { get; set; }
         public static IReadOnlyList<string> Ledger => ledger;
 
         public static void Reset()
@@ -27,6 +29,7 @@ namespace FishBreeder.Core
             Day = 1;
             Reputation = Balance.Data.shop.startingReputation;
             WaterConditionerDoses = 0;
+            RepairKits = 0;
             food.Clear();
             ledger.Clear();
             if (store.starterFlakeFeedings > 0) AddFood(FoodType.Flakes, store.starterFlakeFeedings);

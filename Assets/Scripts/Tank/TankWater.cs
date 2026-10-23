@@ -85,6 +85,16 @@ namespace FishBreeder
             }
         }
 
+        // A broken bubbler (disabled) shows no bubbles.
+        void OnEnable() => ShowBubbles(true);
+        void OnDisable() => ShowBubbles(false);
+
+        void ShowBubbles(bool show)
+        {
+            if (bubbles == null) return;
+            foreach (var bubble in bubbles) if (bubble != null) bubble.gameObject.SetActive(show);
+        }
+
         void Update()
         {
             if (bubbles == null) return;

@@ -12,8 +12,9 @@ namespace FishBreeder.Core
     /// <summary>
     /// Placeholder IMGUI for looking into one tank: the tank's water, equipment, heater, decorations
     /// and size on the left, a status window next to the selected fish (the camera follows it), and
-    /// the breeding bar when two fish are picked. Left/right arrows or the little buttons beside the
-    /// fish step through the fish in the tank. While the shop is open everything is view-only.
+    /// the breeding bar when two fish are picked. With a fish selected, left/right arrows or the
+    /// little buttons beside it step through the fish in the tank; with none selected they move to
+    /// the next tank, as do the buttons at the bottom. While the shop is open everything is view-only.
     /// Replace with a real UI later.
     /// </summary>
     public class FishTankHUD : MonoBehaviour
@@ -25,12 +26,14 @@ namespace FishBreeder.Core
         Action onBack;
         Func<bool> shopIsOpen;
         readonly List<Fish> selected = new List<Fish>();
-        Rect leftPanel, fishWindow, breedBar, logPanel, stepLeft, stepRight;
+        Rect leftPanel, fishWindow, breedBar, logPanel, stepLeft, stepRight, tankBar;
         string priceText = "";
         Fish priceTextFor;
         Vector2 panelScroll;
         bool showDecorations;
         Func<StoreTank, int, bool> upgradeTank;
+        Action<int> switchTank;
+        Func<int, StoreTank> neighbourTank;
 
         /// <summary>The fish the camera follows: the last one selected.</summary>
         public Fish Focus => selected.Count > 0 ? selected[selected.Count - 1] : null;
@@ -59,6 +62,13 @@ namespace FishBreeder.Core
 
         bool ReadOnly => shopIsOpen != null && shopIsOpen();
 
+        /// <summary>Lets the arrow keys and the buttons at the bottom move to the previous (-1) or next (+1) tank.</summary>
+        public void SetTankNavigation(Action<int> switchTo, Func<int, StoreTank> neighbour)
+        {
+            switchTank = switchTo;
+            neighbourTank = neighbour;
+        }
+
         public void Initialize(StoreTank current, IReadOnlyList<StoreTank> tanks, Camera camera, Action back, Func<bool> isShopOpen, Func<StoreTank, int, bool> upgrade)
         {
             upgradeTank = upgrade;
@@ -75,8 +85,10 @@ namespace FishBreeder.Core
         {
             selected.RemoveAll(f => f == null || f.Tank != tank);
             if (tank == null) return;
-            if (Input.GetKeyDown(KeyCode.RightArrow)) Cycle(1);
-            if (Input.GetKeyDown(KeyCode.LeftArrow)) Cycle(-1);
+            int step = Input.GetKeyDown(KeyCode.RightArrow) ? 1 : Input.GetKeyDown(KeyCode.LeftArrow) ? -1 : 0;
+            if (step == 0) return;
+            if (HasSelection) Cycle(step);
+            else switchTank?.Invoke(step);
         }
 
         void OnGUI()
@@ -90,7 +102,8 @@ namespace FishBreeder.Core
             // Runs down to the log, so eggs, pregnancies and breeding lines never push the buttons off the bottom.
             leftPanel = new Rect(10f, 10f, 270f, Mathf.Max(520f, height - 170f));
             logPanel = new Rect(10f, height - 150f, 460f, 140f);
-            breedBar = selected.Count == 2 ? new Rect(width * 0.5f - 210f, height - 70f, 420f, 60f) : Rect.zero;
+            breedBar = selected.Count == 2 ? new Rect(width * 0.5f - 210f, height - 120f, 420f, 60f) : Rect.zero;
+            tankBar = new Rect(Mathf.Max(logPanel.xMax + 10f, width * 0.5f - 230f), height - 50f, 460f, 40f);
             fishWindow = Rect.zero;
             stepLeft = stepRight = Rect.zero;
 
@@ -101,6 +114,7 @@ namespace FishBreeder.Core
                 DrawFishWindow(Focus, scale, width, height);
             }
             if (selected.Count == 2) DrawBreedBar();
+            DrawTankBar();
             DrawLog();
             DrawSelectionMarkers(scale, height);
             HandleClick();
@@ -129,16 +143,11 @@ namespace FishBreeder.Core
             Bar("Water quality", tank.WaterQuality, true);
             Bar("Algae", tank.Algae, false);
             Bar("Oxygen", tank.Oxygen, true);
-            GUILayout.Label($"Temperature: {tank.Temperature:0.#} C" + (tank.HasHeater ? "  (heater)" : "  (room temperature)"));
+            GUILayout.Label($"Temperature: {tank.Temperature:0.#} C" + (tank.HeaterWorking ? "  (heater)" : tank.HasHeater ? "  <color=#ff8080>(heater broken)</color>" : "  (room temperature)"), Rich());
             GUILayout.Label($"pH: {tank.Ph:0.0}    Water: {(tank.IsSaltwater ? "salt" : "fresh")} ({tank.Salinity:0} ppt)");
             if (tank.HasPests) GUILayout.Label("<color=#ff8080>Pests! Treat the water.</color>", Rich());
-            var equipment = new List<string>();
-            if (tank.HasFilter) equipment.Add("filter");
-            if (tank.HasHeater) equipment.Add("heater");
-            if (tank.HasBubbler) equipment.Add("bubbler");
-            GUILayout.Label("Equipment: " + (equipment.Count > 0 ? string.Join(", ", equipment) : "none (buy at the supplier computer)"));
-
             GUI.enabled = !ReadOnly;
+            DrawEquipment();
             if (tank.HasHeater) DrawHeater();
             if (GUILayout.Button($"Feed flakes ({Economy.FoodPortions(FoodType.Flakes)} left)") && Economy.TryUseFood(FoodType.Flakes)) storeTank.Feeding.Feed(FoodType.Flakes, 8);
             if (Economy.FoodPortions(FoodType.Premium) > 0 && GUILayout.Button($"Feed premium ({Economy.FoodPortions(FoodType.Premium)} left)") && Economy.TryUseFood(FoodType.Premium)) storeTank.Feeding.Feed(FoodType.Premium, 8);
@@ -152,6 +161,7 @@ namespace FishBreeder.Core
                 }
                 else GameLog.Add("No water conditioner. Order some at the supplier computer.");
             }
+            DrawMedicine();
             if (tank.Corpses.Count > 0 && GUILayout.Button($"Remove dead fish ({tank.Corpses.Count})"))
             {
                 int count = tank.Corpses.Count;
@@ -178,6 +188,74 @@ namespace FishBreeder.Core
 #endif
             GUILayout.EndScrollView();
             if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
+            GUILayout.EndArea();
+        }
+
+        /// <summary>Each piece of equipment: its model, how worn it is, and a repair button when it's broken.</summary>
+        void DrawEquipment()
+        {
+            bool any = false;
+            foreach (var kind in Equipment.Kinds)
+            {
+                var item = tank.GetEquipment(kind);
+                if (item == null) continue;
+                any = true;
+                if (item.broken)
+                {
+                    GUILayout.Label($"<color=#ff8080><b>{item.Name}: broken!</b></color>", Rich());
+                    if (GUILayout.Button($"Repair ({Economy.RepairKits} repair kits)")) tank.Repair(kind);
+                }
+                else GUILayout.Label($"{item.Name}: <size=11>{item.BreakChance * 100f:0}% chance to break per step</size>", Rich());
+            }
+            if (!any) GUILayout.Label("Equipment: none (buy at the supplier computer)");
+        }
+
+        /// <summary>
+        /// Medicine goes into the whole tank: it cures every fish with the illness it treats, but
+        /// stresses the rest, and too many doses close together damage fish for good.
+        /// </summary>
+        void DrawMedicine()
+        {
+            var supplier = Balance.Data.supplier;
+            if (tank.Residents.Count == 0) return;
+            if (!Progression.IsUnlocked(XpTrack.Fishkeeping, supplier.medicineLevel))
+            {
+                GUILayout.Label($"<i>Medicine: {Progression.LockText(XpTrack.Fishkeeping, supplier.medicineLevel)}</i>", Rich());
+                return;
+            }
+            int sick = 0;
+            foreach (var fish in tank.Residents) if (fish.Health.IsSick) sick++;
+            GUILayout.Label($"Medicine for the whole tank ({Economy.Format(supplier.medicinePrice)} a dose)" + (sick > 0 ? $": <color=#ff8080>{sick} sick</color>" : ": no one is sick"), Rich());
+            GUILayout.BeginHorizontal();
+            foreach (Medicine medicine in new[] { Medicine.Antiviral, Medicine.Antibacterial, Medicine.Antiparasitic })
+                if (GUILayout.Button(medicine.ToString(), GUILayout.MinWidth(70f))) DoseTank(medicine);
+            GUILayout.EndHorizontal();
+        }
+
+        void DoseTank(Medicine medicine)
+        {
+            int price = Balance.Data.supplier.medicinePrice;
+            if (!Economy.TrySpend(price, $"{medicine.ToString().ToLower()} for {storeTank.Title}")) return;
+            int cured = 0, stressed = 0;
+            foreach (var fish in new List<Fish>(tank.Residents))
+                if (fish.Health.ReceiveMedicine(medicine) == FishHealth.MedicineResult.Cured) cured++;
+                else stressed++;
+            GameLog.Add($"{medicine} went into {storeTank.Title}: " + (cured > 0 ? $"{cured} cured" : "nobody cured") + (stressed > 0 ? $", {stressed} fish stressed by medicine they didn't need." : "."));
+        }
+
+        /// <summary>Buttons to step to the previous and next tank (the arrow keys do the same when no fish is picked).</summary>
+        void DrawTankBar()
+        {
+            if (neighbourTank == null || switchTank == null) return;
+            var previous = neighbourTank(-1);
+            var next = neighbourTank(1);
+            if (previous == null && next == null) return;
+            GUILayout.BeginArea(tankBar);
+            GUILayout.BeginHorizontal();
+            if (previous != null && GUILayout.Button($"< {previous.Title}", GUILayout.Height(30f))) switchTank(-1);
+            GUILayout.FlexibleSpace();
+            if (next != null && GUILayout.Button($"{next.Title} >", GUILayout.Height(30f))) switchTank(1);
+            GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
 
@@ -281,7 +359,12 @@ namespace FishBreeder.Core
             var p = fish.Phenotype;
             string sex = fish.Sex == Sex.Male ? "male" : "female";
             GUILayout.Label($"<size=15><b>{fish.FishName}</b></size>  <i>{sex}</i>", Rich());
-            GUILayout.Label($"{species.displayName}  ({species.rarity} species, {p.RarityLabel} looks)");
+            if (fish.IdentityHidden) GUILayout.Label("<b>Mystery fry</b>: too small to tell what it is yet. It shows its colours when it grows into a juvenile.", Rich());
+            else
+            {
+                GUILayout.Label($"{species.displayName}  ({species.rarity} species, {p.RarityLabel} looks)");
+                if (!string.IsNullOrEmpty(species.family)) GUILayout.Label($"<size=11><i>{species.scientificName}</i>, {species.family}</size>", Rich());
+            }
             GUILayout.Label($"{fish.Stage}, {fish.AgeDays:0.#} days old, generation {fish.Generation}");
             if (!string.IsNullOrEmpty(fish.ParentNames)) GUILayout.Label($"Parents: {fish.ParentNames}");
             if (fish.IsPregnant)
@@ -308,14 +391,19 @@ namespace FishBreeder.Core
             Bar("<b>Health</b>", report.total, true);
             Penalty("Hunger", report.hunger, $"{fish.Hunger * 100f:0}% hungry" + (species.needsPremiumFood ? ", needs premium food" : ""));
             Penalty("Illness", report.illness, fish.Health.IsSick ? $"{fish.Health.Disease.displayName} ({fish.Health.Severity * 100f:0}%)" : "healthy");
-            Penalty("Comfort", report.comfort, $"comfort {report.comfortLevel * 100f:0}%");
+            var notes = fish.Health.ComfortNotes();
+            Penalty("Comfort", report.comfort, $"comfort {report.comfortLevel * 100f:0}%" + (notes.Count > 0 ? $"\n<size=11>{string.Join(", ", notes)}</size>" : ""));
             Penalty("Water", report.environment, report.environmentMismatch < 0.05f ? "suits it" : "not right for it");
+            if (report.injury > 0f) Penalty("Wounds", report.injury, string.IsNullOrEmpty(fish.Health.InjuryCause) ? "healing" : fish.Health.InjuryCause);
+            if (report.medicineDamage > 0f) Penalty("Medicine", report.medicineDamage, $"overdosed {fish.Health.MedicineDamage}x" + (fish.Health.Infertile ? ", can't breed" : ""));
+            if (report.companionship > 0f) GUILayout.Label($"<color=#9fe39f>Good company  +{report.companionship * 100f:0}</color>", Rich());
             if (report.oldAge > 0f) Penalty("Old age", report.oldAge, $"past {species.lifespanDays:0} days");
             if (report.deadTankmates > 0f) Penalty("Dead fish", report.deadTankmates, $"{tank.Corpses.Count} in the tank");
 
-            GUILayout.Label($"Needs: {species.tempMin:0}-{species.tempMax:0} C, pH {species.phMin:0.0}-{species.phMax:0.0}, {(species.IsSaltwater ? "salt" : "fresh")} water" +
-                            (species.schoolSize > 0 ? $", {species.schoolSize}+ of its kind" : ""));
-            if (!fish.IsPregnant)
+            if (!fish.IdentityHidden)
+                GUILayout.Label($"Needs: {species.tempMin:0}-{species.tempMax:0} C, pH {species.phMin:0.0}-{species.phMax:0.0}, {(species.IsSaltwater ? "salt" : "fresh")} water" +
+                                (species.schoolSize > 0 ? $", {species.schoolSize}+ of its kind" : ""));
+            if (!fish.IsPregnant && !fish.IdentityHidden)
             {
                 string notReady = BreedingSystem.WhyNotReady(fish, tank);
                 string how = species.reproduction == Reproduction.Livebearer ? "livebearer" : "egg-layer";
@@ -329,16 +417,9 @@ namespace FishBreeder.Core
             if (storeTank.Role == TankRole.ForSale) DrawPrice(fish);
 
             GUI.enabled = !ReadOnly;
-            if (fish.Health.IsSick && !Progression.IsUnlocked(XpTrack.Fishkeeping, Balance.Data.supplier.medicineLevel))
-                GUILayout.Label($"<i>Medicine: {Progression.LockText(XpTrack.Fishkeeping, Balance.Data.supplier.medicineLevel)}</i>", Rich());
-            else if (fish.Health.IsSick)
+            if (fish.Health.IsSick)
             {
-                int cost = Balance.Data.supplier.medicinePrice;
-                GUILayout.Label($"Medicine ({Economy.Format(cost)} a dose):");
-                GUILayout.BeginHorizontal();
-                foreach (Medicine medicine in new[] { Medicine.Antiviral, Medicine.Antibacterial, Medicine.Antiparasitic })
-                    if (GUILayout.Button(medicine.ToString()) && Economy.TrySpend(cost, $"{medicine.ToString().ToLower()} for {fish.FishName}")) fish.Health.Treat(medicine);
-                GUILayout.EndHorizontal();
+                GUILayout.Label($"<size=11>Treat the tank with the right medicine for {fish.Health.Disease.displayName} (left panel). It goes to every fish in the water.</size>", Rich());
             }
 
             GUILayout.Label("Move to:");

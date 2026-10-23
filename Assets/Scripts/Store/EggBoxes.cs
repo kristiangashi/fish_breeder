@@ -6,7 +6,8 @@ using UnityEngine;
 namespace FishBreeder.Store
 {
     /// <summary>
-    /// The supplier's egg boxes. A box holds a few eggs of mixed species. Each egg comes from the
+    /// The supplier's egg and fry boxes. A box holds a few eggs (egg-laying fish only) or fry (any
+    /// fish) of mixed species. Each egg comes from the
     /// tier's normal pool, or from its rare pool with a chance that is multiplied by the tier's
     /// falloff for every rare egg already rolled, so each extra rare fish in a box is harder to get
     /// than the one before. Only species unlocked at the player's Fishkeeping level can hatch.
@@ -15,10 +16,17 @@ namespace FishBreeder.Store
     {
         public static List<EggTierBalance> Tiers => Balance.Data.supplier.eggTiers;
 
-        public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel)
+        /// <summary>"Simple fry" for "Simple eggs": the same tier sold as fry.</summary>
+        public static string FryName(EggTierBalance tier)
         {
-            var normal = Pool(tier.normalMin, tier.normalMax, fishkeepingLevel);
-            var rare = Pool(tier.rarePool, tier.rarePool, fishkeepingLevel);
+            string name = tier.name ?? "";
+            return name.EndsWith(" eggs") ? name.Substring(0, name.Length - 5) + " fry" : name + " (fry)";
+        }
+
+        public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly)
+        {
+            var normal = Pool(tier.normalMin, tier.normalMax, fishkeepingLevel, eggLayersOnly);
+            var rare = Pool(tier.rarePool, tier.rarePool, fishkeepingLevel, eggLayersOnly);
             var eggs = new List<Genome>();
             int rares = 0;
             for (int i = 0; i < tier.eggs; i++)
@@ -31,18 +39,20 @@ namespace FishBreeder.Store
                     rares++;
                 }
                 else species = PickWeighted(normal, tier.normalMin, tier.normalRarityFalloff);
+                if (species == null && normal.Count == 0 && rare.Count == 0) break;
                 if (species == null) species = Species.Get(null);
                 eggs.Add(Genome.CreateRandom(species));
             }
             return eggs;
         }
 
-        /// <summary>Species of these rarities that can hatch at this level.</summary>
-        public static List<Species> Pool(SpeciesRarity min, SpeciesRarity max, int fishkeepingLevel)
+        /// <summary>Species of these rarities that can come in a box at this level (only egg-layers for egg boxes).</summary>
+        public static List<Species> Pool(SpeciesRarity min, SpeciesRarity max, int fishkeepingLevel, bool eggLayersOnly = false)
         {
             var pool = new List<Species>();
             foreach (var species in Species.All)
-                if (species.rarity >= min && species.rarity <= max && species.unlockLevel <= fishkeepingLevel) pool.Add(species);
+                if (species.rarity >= min && species.rarity <= max && species.unlockLevel <= fishkeepingLevel
+                    && (!eggLayersOnly || species.reproduction == Reproduction.EggLayer)) pool.Add(species);
             return pool;
         }
 

@@ -23,11 +23,11 @@ namespace FishBreeder.Store
         static readonly Vector3 StoreViewDirection = new Vector3(0f, 0.62f, -0.78f).normalized;
         static readonly Color StoreBackground = new Color(0.17f, 0.19f, 0.23f);
 #if UNITY_EDITOR
-        static readonly string[] SupplierTabs = { "Eggs", "Decorations", "Food", "Equipment and care", "Fry (dev)" };
+        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment and care", "Any fish (dev)" };
 #else
-        static readonly string[] SupplierTabs = { "Eggs", "Decorations", "Food", "Equipment and care" };
+        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment and care" };
 #endif
-        const int EggsTab = 0, DecorTab = 1, FoodTab = 2, EquipmentTab = 3, DevFryTab = 4;
+        const int EggsTab = 0, FryTab = 1, DecorTab = 2, FoodTab = 3, EquipmentTab = 4, DevFryTab = 5;
         static readonly float[] Speeds = { 1f, 5f, 20f };
 
         StoreLayout store;
@@ -153,7 +153,41 @@ namespace FishBreeder.Store
             focused = tank;
             Tank.Focused = tank.Tank;
             hud.Initialize(tank, store.Tanks, cam, ExitTank, () => shopDay.IsOpen, UpgradeTank);
+            hud.SetTankNavigation(SwitchTank, NeighbourTank);
             hud.enabled = true;
+        }
+
+        /// <summary>Tanks in walking order: back room first, then the shop floor west to east, back row before front.</summary>
+        List<StoreTank> TanksInOrder()
+        {
+            var list = new List<StoreTank>(store.Tanks);
+            list.Sort((a, b) =>
+            {
+                var pa = a.transform.position;
+                var pb = b.transform.position;
+                if (a.InBackRoom != b.InBackRoom) return a.InBackRoom ? -1 : 1;
+                int bySection = Mathf.FloorToInt((pa.x + 6f) / StoreLayout.SectionWidth).CompareTo(Mathf.FloorToInt((pb.x + 6f) / StoreLayout.SectionWidth));
+                if (bySection != 0) return bySection;
+                if (!Mathf.Approximately(pa.z, pb.z)) return pb.z.CompareTo(pa.z);
+                return pa.x.CompareTo(pb.x);
+            });
+            return list;
+        }
+
+        /// <summary>The tank before (-1) or after (+1) the one being looked at, wrapping round.</summary>
+        StoreTank NeighbourTank(int direction)
+        {
+            if (focused == null) return null;
+            var list = TanksInOrder();
+            if (list.Count < 2) return null;
+            int index = list.IndexOf(focused);
+            return list[((index + direction) % list.Count + list.Count) % list.Count];
+        }
+
+        void SwitchTank(int direction)
+        {
+            var next = NeighbourTank(direction);
+            if (next != null) EnterTank(next);
         }
 
         bool UpgradeTank(StoreTank tank, int size) => !shopDay.IsOpen && store.TryUpgradeTank(tank, size);
@@ -612,7 +646,8 @@ namespace FishBreeder.Store
             supplierScroll = GUILayout.BeginScrollView(supplierScroll);
             switch (supplierTab)
             {
-                case EggsTab: DrawEggOffers(); break;
+                case EggsTab: DrawEggOffers(false); break;
+                case FryTab: DrawEggOffers(true); break;
                 case DecorTab: DrawDecorationOffers(); break;
                 case FoodTab: DrawFoodOffers(); break;
                 case EquipmentTab: DrawEquipmentOffers(); break;
@@ -627,14 +662,15 @@ namespace FishBreeder.Store
         void DrawDeliverTo()
         {
             if (orderTarget == null && store.Tanks.Count > 0) orderTarget = store.Tanks[0];
-            GUILayout.Label(supplierTab == EggsTab || supplierTab == DevFryTab ? "Deliver to:" : supplierTab == DecorTab ? "Put in:" : "Install in:");
+            bool fish = supplierTab == EggsTab || supplierTab == FryTab || supplierTab == DevFryTab;
+            GUILayout.Label(fish ? "Deliver to:" : supplierTab == DecorTab ? "Put in:" : "Install in:");
             var tanks = store.Tanks;
             var names = new string[tanks.Count];
             int current = 0;
             for (int i = 0; i < tanks.Count; i++)
             {
                 var tank = tanks[i].Tank;
-                names[i] = supplierTab == EggsTab || supplierTab == DevFryTab ? $"{tanks[i].Title} ({FreeSpace(tanks[i])} free)"
+                names[i] = fish ? $"{tanks[i].Title} ({FreeSpace(tanks[i])} free)"
                     : supplierTab == DecorTab ? $"{tanks[i].Title} ({tank.DecorCount}/{tank.Decor.Capacity})"
                     : tanks[i].Title;
                 if (tanks[i] == orderTarget) current = i;
@@ -681,15 +717,23 @@ namespace FishBreeder.Store
             return bought && unlocked;
         }
 
-        void DrawEggOffers()
+        /// <summary>
+        /// Egg boxes or fry boxes. Both roll their fish the same way; eggs hatch at the next time
+        /// step and only egg-laying fish come as eggs, while fry arrive straight away and can be any
+        /// fish. Either way, the fry are tiny grey fish until they grow enough to tell what they are.
+        /// </summary>
+        void DrawEggOffers(bool fry)
         {
-            GUILayout.Label("<i>Boxes of mixed eggs. They hatch at the next time step (when the shop opens or closes). Rarer boxes and a higher Fishkeeping level bring rarer fish; each extra rare fish in one box is harder to get than the last.</i>", Rich());
+            GUILayout.Label(fry
+                ? "<i>Boxes of mixed fry, delivered right away. Any kind of fish can come as fry, but they're all tiny grey fish: you find out what each one is when it grows into a juvenile. Each extra rare fish in one box is harder to get than the last.</i>"
+                : "<i>Boxes of mixed eggs. They hatch at the next time step (when the shop opens or closes). Only egg-laying fish come as eggs: livebearers like guppies and mollies come as fry. Each extra rare fish in one box is harder to get than the last.</i>", Rich());
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
             int level = Progression.Fishkeeping;
+            bool eggLayersOnly = !fry;
             foreach (var tier in EggBoxes.Tiers)
             {
-                var normal = EggBoxes.Pool(tier.normalMin, tier.normalMax, level);
-                var rare = EggBoxes.Pool(tier.rarePool, tier.rarePool, level);
+                var normal = EggBoxes.Pool(tier.normalMin, tier.normalMax, level, eggLayersOnly);
+                var rare = EggBoxes.Pool(tier.rarePool, tier.rarePool, level, eggLayersOnly);
                 bool unlocked = Progression.IsUnlocked(XpTrack.Fishkeeping, tier.unlockLevel);
                 bool anyFish = normal.Count + rare.Count > 0 || !unlocked;
                 string details = tier.blurb;
@@ -699,12 +743,18 @@ namespace FishBreeder.Store
                     var odds = EggBoxes.AtLeastRareOdds(tier);
                     var oddsText = new List<string>();
                     for (int k = 0; k < odds.Length && k < 3; k++) oddsText.Add($"{k + 1}+ {Percent(odds[k])}");
-                    details += $"\n{tier.eggs} eggs. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText) : RareUnlockText(tier));
+                    details += $"\n{tier.eggs} {(fry ? "fry" : "eggs")}. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText) : RareUnlockText(tier, eggLayersOnly));
                 }
-                string label = free >= tier.eggs ? $"Buy {tier.eggs} eggs  {Economy.Format(tier.price)}" : $"Needs {tier.eggs} free spaces";
-                bool canBuy = anyFish && free >= tier.eggs && Economy.CanAfford(tier.price) && orderTarget != null;
-                if (OfferRow(ItemPreviews.EggBox(tier.color, tier.speckled), tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
-                    OrderEggs(tier);
+                int price = fry ? tier.fryPrice : tier.price;
+                string what = fry ? "fry" : "eggs";
+                string label = free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
+                bool canBuy = anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
+                var picture = fry ? ItemPreviews.FryBox(tier.color) : ItemPreviews.EggBox(tier.color, tier.speckled);
+                if (OfferRow(picture, fry ? EggBoxes.FryName(tier) : tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
+                {
+                    if (fry) OrderFryBox(tier);
+                    else OrderEggs(tier);
+                }
                 if (unlocked && normal.Count + rare.Count > 0) DrawPoolPictures(normal, rare);
             }
         }
@@ -712,11 +762,11 @@ namespace FishBreeder.Store
         static string Percent(float chance) => chance < 0.01f ? "<1%" : $"{chance * 100f:0}%";
 
         /// <summary>When the first species of the tier's rare pool unlocks, for boxes that can't hatch one yet.</summary>
-        static string RareUnlockText(EggTierBalance tier)
+        static string RareUnlockText(EggTierBalance tier, bool eggLayersOnly)
         {
             int first = int.MaxValue;
             foreach (var species in Species.All)
-                if (species.rarity == tier.rarePool) first = Mathf.Min(first, species.unlockLevel);
+                if (species.rarity == tier.rarePool && (!eggLayersOnly || species.reproduction == Reproduction.EggLayer)) first = Mathf.Min(first, species.unlockLevel);
             return first == int.MaxValue ? "none in the game yet" : $"from Fishkeeping level {first}";
         }
 
@@ -746,9 +796,18 @@ namespace FishBreeder.Store
         void OrderEggs(EggTierBalance tier)
         {
             if (!Economy.TrySpend(tier.price, tier.name.ToLower())) return;
-            var eggs = EggBoxes.Roll(tier, Progression.Fishkeeping);
+            var eggs = EggBoxes.Roll(tier, Progression.Fishkeeping, true);
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
             GameLog.Add($"{tier.eggs} {tier.name.ToLower()} delivered to {orderTarget.Title}. They hatch at the next time step.");
+        }
+
+        void OrderFryBox(EggTierBalance tier)
+        {
+            if (!Economy.TrySpend(tier.fryPrice, EggBoxes.FryName(tier).ToLower())) return;
+            var tank = orderTarget.Tank;
+            foreach (var genome in EggBoxes.Roll(tier, Progression.Fishkeeping, false))
+                FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
+            GameLog.Add($"{tier.eggs} {EggBoxes.FryName(tier).ToLower()} delivered to {orderTarget.Title}. You'll see what they are when they grow.");
         }
 
         void DrawDecorationOffers()
@@ -794,31 +853,61 @@ namespace FishBreeder.Store
 
         void DrawEquipmentOffers()
         {
-            var prices = SupplierCatalog.Equipment;
+            var supplier = SupplierCatalog.Equipment;
             var tank = orderTarget != null ? orderTarget.Tank : null;
             string where = orderTarget != null ? orderTarget.Title : "a tank";
+            GUILayout.Label("<i>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you fix it with a repair kit. Better models work better and break less.</i>", Rich());
 
-            EquipmentRow(ItemPreviews.Icon.Filter, "Filter", "Cuts how fast waste dirties the water, so the tank needs wiping less often.", prices.filterPrice, prices.filterLevel, tank != null && tank.HasFilter, where, () => tank.InstallFilter());
-            EquipmentRow(ItemPreviews.Icon.Heater, "Heater", $"Holds the water at a temperature you set in the tank view (tropical fish need 24 C or more). Room temperature is {GameConfig.Active.roomTemperature:0} C.", prices.heaterPrice, prices.heaterLevel, tank != null && tank.HasHeater, where, () => tank.InstallHeater());
-            EquipmentRow(ItemPreviews.Icon.Bubbler, "Bubbler", $"Adds oxygen, so the tank can hold more than {GameConfig.Active.fishPerTankWithoutBubbler} fish comfortably.", prices.bubblerPrice, prices.bubblerLevel, tank != null && tank.HasBubbler, where, () => tank.InstallBubbler());
+            EquipmentSection(EquipmentKind.Filter, ItemPreviews.Icon.Filter, "Filters", "Cuts how fast waste dirties the water.", tank, where,
+                info => $"Leaves {info.effect * 100f:0}% of the waste");
+            EquipmentSection(EquipmentKind.Heater, ItemPreviews.Icon.Heater, "Heaters", $"Holds the water at the temperature you set in the tank view. Without one the water is room temperature ({GameConfig.Active.roomTemperature:0} C).", tank, where,
+                info => info.effect > 0.05f ? $"Holds the setting within {info.effect:0.#} C" : "Holds the exact setting");
+            EquipmentSection(EquipmentKind.Bubbler, ItemPreviews.Icon.Bubbler, "Bubblers", $"Air for the fish. Without one, a tank has air for {GameConfig.Active.fishPerTankWithoutBubbler} fish.", tank, where,
+                info => $"Air for {info.effect:0} fish");
+
+            GUILayout.Label("<b>Care</b>", Rich());
+            string repairDetails = $"One kit fixes one broken filter, heater or bubbler. Repairs take off only a little wear, so old equipment keeps breaking more often.\nYou have {Economy.RepairKits} kits.";
+            if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Repair, new Color(0.85f, 0.6f, 0.25f)), "Repair kits", repairDetails, XpTrack.Fishkeeping, supplier.repairKitLevel,
+                    $"{supplier.repairKitsPerPack} kits  {Economy.Format(supplier.repairKitPrice)}", Economy.CanAfford(supplier.repairKitPrice))
+                && Economy.TrySpend(supplier.repairKitPrice, "repair kits"))
+                Economy.RepairKits += supplier.repairKitsPerPack;
 
             string details = $"Resets the pH and gets rid of snails and worms. Use it from the tank view.\nYou have {Economy.WaterConditionerDoses} doses.";
-            if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Conditioner, new Color(0.35f, 0.65f, 0.85f)), "Water conditioner", details, XpTrack.Fishkeeping, prices.waterConditionerLevel,
-                    $"{prices.waterConditionerDoses} doses  {Economy.Format(prices.waterConditionerPrice)}", Economy.CanAfford(prices.waterConditionerPrice))
-                && Economy.TrySpend(prices.waterConditionerPrice, "water conditioner"))
-                Economy.WaterConditionerDoses += prices.waterConditionerDoses;
+            if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Conditioner, new Color(0.35f, 0.65f, 0.85f)), "Water conditioner", details, XpTrack.Fishkeeping, supplier.waterConditionerLevel,
+                    $"{supplier.waterConditionerDoses} doses  {Economy.Format(supplier.waterConditionerPrice)}", Economy.CanAfford(supplier.waterConditionerPrice))
+                && Economy.TrySpend(supplier.waterConditionerPrice, "water conditioner"))
+                Economy.WaterConditionerDoses += supplier.waterConditionerDoses;
         }
 
-        void EquipmentRow(ItemPreviews.Icon icon, string name, string blurb, int price, int level, bool installed, string where, System.Action install)
+        /// <summary>All the models of one kind of equipment, and what the chosen tank has now.</summary>
+        void EquipmentSection(EquipmentKind kind, ItemPreviews.Icon icon, string title, string blurb, Tank tank, string where, System.Func<EquipmentTierBalance, string> effect)
         {
-            string label = installed ? "Already has one" : $"Install  {Economy.Format(price)}";
-            if (OfferRow(ItemPreviews.Filler(icon, new Color(0.55f, 0.6f, 0.68f)), name, blurb, XpTrack.Fishkeeping, level, label, orderTarget != null && !installed && Economy.CanAfford(price))
-                && Economy.TrySpend(price, $"a {name.ToLower()} for {where}"))
+            var installed = tank != null ? tank.GetEquipment(kind) : null;
+            string now = installed == null ? "none"
+                : installed.broken ? $"{installed.Name} <color=#ff8080>(broken)</color>"
+                : $"{installed.Name} ({installed.BreakChance * 100f:0}% chance of breaking per time step)";
+            GUILayout.Label($"<b>{title}</b>  <size=11>{blurb} {where}: {now}</size>", Rich());
+            var tiers = Equipment.Tiers(kind);
+            for (int i = 0; i < tiers.Count; i++)
             {
-                install();
-                Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyEquipment);
-                GameLog.Add($"{name} installed in {where}.");
+                var info = tiers[i];
+                int tier = i;
+                bool same = installed != null && installed.tier == i;
+                string label = installed == null ? $"Install  {Economy.Format(info.price)}"
+                    : same ? $"Replace with new  {Economy.Format(info.price)}"
+                    : $"Swap to this  {Economy.Format(info.price)}";
+                string details = $"{info.blurb} {effect(info)}. Breaks {info.breakChance * 100f:0.#}% of time steps when new, up to {info.maxBreakChance * 100f:0}% when old.";
+                var tint = Color.Lerp(new Color(0.55f, 0.6f, 0.68f), new Color(0.95f, 0.8f, 0.35f), tiers.Count > 1 ? i / (float)(tiers.Count - 1) : 0f);
+                if (OfferRow(ItemPreviews.Filler(icon, tint), info.name, details, XpTrack.Fishkeeping, info.unlockLevel, label,
+                        tank != null && Economy.CanAfford(info.price), 56f)
+                    && Economy.TrySpend(info.price, $"a {info.name.ToLower()} for {where}"))
+                {
+                    tank.Install(kind, tier);
+                    Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyEquipment);
+                    GameLog.Add($"{info.name} installed in {where}.");
+                }
             }
+            GUILayout.Space(6f);
         }
 
         /// <summary>Developer list: any species as a single fry, ignoring levels, for testing.</summary>

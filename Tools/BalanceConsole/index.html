@@ -53,6 +53,13 @@
   table.matrix th.rot div { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
   table.matrix td { text-align: center; }
   table.matrix td.self { background: var(--chip); }
+  table.matrix td select.rel { min-width: 0; width: 34px; padding: 2px; text-align: center; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; }
+  select.rel.r0 { color: var(--muted); }
+  select.rel.r1 { background: #c0392b; color: #fff; border-color: #c0392b; }
+  select.rel.r2 { background: #d68910; color: #fff; border-color: #d68910; }
+  select.rel.r3 { background: #229954; color: #fff; border-color: #229954; }
+  .legend span { display: inline-block; margin-right: 14px; }
+  .legend b { display: inline-block; width: 22px; text-align: center; border-radius: 4px; color: #fff; margin-right: 4px; }
   textarea.raw { min-height: 60vh; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
   #toast { position: fixed; right: 18px; bottom: 18px; background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 420px; }
@@ -83,6 +90,7 @@ const ENUMS = {
   normalMax: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
   rarePool: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
   track: ["Fishkeeping", "Shopkeeping"],
+  relation: ["Neutral", "Predator", "Competitive", "Preferred"],
   kind: ["BreedFish", "HatchEggs", "FeedTanks", "CleanTanks", "SellFish", "HappyCustomers", "EarnMoney", "BuyDecorations"],
   style: ["Midwater", "Bottom"],
   type: ["Flakes", "Premium"],
@@ -96,9 +104,11 @@ const META = {
   category: ["Category", "Only fish in the same category can ever cross-breed."],
   reproduction: ["Reproduction", "Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step."],
   rarity: ["Rarity", "How rare the species is. Customers and prices respond to it."],
+  family: ["Family", "The real fish's family."],
+  scientificName: ["Latin name", ""],
   unlockLevel: ["Level to unlock", "Fishkeeping level for fish, food, equipment, eggs and tank sizes; Shopkeeping level for decorations and store sections."],
   baseValue: ["Value of a healthy adult ($)", "Fry are worth 30%, juveniles 60%. Rare looks multiply it (x1.5 to x4)."],
-  fryPrice: ["Dev fry price ($)", "Only used by the editor's dev fry list; players buy egg boxes."],
+  fryPrice: ["Fry price ($)", "Species: price in the editor's dev fry list. Egg tiers: price of the same tier sold as a box of fry (any fish; egg boxes only hold egg-layers)."],
   minLength: ["Adult length min (m)", ""], maxLength: ["Adult length max (m)", ""],
   speed: ["Swim speed", "Relative to a goldfish, in body lengths per second."],
   depthMin: ["Depth band low (0 sand)", ""], depthMax: ["Depth band high (1 surface)", ""],
@@ -138,6 +148,11 @@ const META = {
   back: ["Goes at the back", "Tall pieces fill the back row first."],
   capacity: ["Fish capacity", ""], upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
   decorationSlots: ["Decoration spots", ""],
+  // Equipment
+  effect: ["Effect", "Filter: share of waste left (lower is better). Heater: how far the water drifts from the setting (C). Bubbler: fish kept in full oxygen."],
+  breakChance: ["Break chance when new", "Per time step."],
+  breakChancePerStep: ["Extra break chance per step of wear", ""],
+  maxBreakChance: ["Highest break chance", ""],
   // Progression
   baseTarget: ["Target at level 1", ""],
   text: ["Text ({0} = target)", ""],
@@ -145,7 +160,7 @@ const META = {
 
 const TABS = [
   ["species", "Species"],
-  ["compat", "Compatibility"],
+  ["compat", "Relationships"],
   ["diseases", "Diseases"],
   ["shop", "Shop & customers"],
   ["timeStep", "Time steps"],
@@ -158,7 +173,7 @@ const TABS = [
 ];
 
 const SPECIES_GROUPS = [
-  ["Identity", ["id", "displayName", "category", "reproduction", "rarity", "unlockLevel"]],
+  ["Identity", ["id", "displayName", "scientificName", "family", "category", "reproduction", "rarity", "unlockLevel"]],
   ["Money", ["baseValue", "fryPrice"]],
   ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "hungerToleranceDays", "needsPremiumFood", "likesPlants", "schoolSize"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps", "eatsAlgae"]],
@@ -374,7 +389,7 @@ function renderSpecies() {
     el("button", { class: "small", onclick: () => {
       if (species.length <= 1 || !confirm(`Delete ${species[selectedSpecies].displayName}?`)) return;
       const gone = species.splice(selectedSpecies, 1)[0];
-      for (const s of species) s.incompatibleWith = (s.incompatibleWith || []).filter((id) => id !== gone.id);
+      data.relationships = (data.relationships || []).filter((r) => r.a !== gone.id && r.b !== gone.id);
       selectedSpecies = 0; markDirty(); render();
     } }, "Delete"));
 
@@ -386,30 +401,52 @@ function renderSpecies() {
   return [overview, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
 }
 
+const REL_LETTER = ["·", "P", "C", "+"];
+const SYMMETRIC = [0, 2, 3];
+
+function relationOf(a, b) {
+  const entry = (data.relationships || []).find((r) => r.a === a.id && r.b === b.id);
+  return entry ? entry.relation : 0;
+}
+
+function setRelation(a, b, relation) {
+  data.relationships = (data.relationships || []).filter((r) => !(r.a === a.id && r.b === b.id));
+  if (relation !== 0) data.relationships.push({ a: a.id, b: b.id, relation });
+}
+
 function renderCompat() {
   const species = data.species;
-  const dislikes = (a, b) => (a.incompatibleWith || []).includes(b.id) || (b.incompatibleWith || []).includes(a.id);
-  const toggle = (a, b, on) => {
-    for (const [x, y] of [[a, b], [b, a]]) {
-      x.incompatibleWith = (x.incompatibleWith || []).filter((id) => id !== y.id);
-      if (on) x.incompatibleWith.push(y.id);
+  data.relationships = data.relationships || [];
+  const change = (a, b, relation) => {
+    setRelation(a, b, relation);
+    if (a !== b) {
+      const back = relationOf(b, a);
+      // Nipping, liking and getting along go both ways; prey of a predator doesn't like it back.
+      if (SYMMETRIC.includes(relation) && back !== 1) setRelation(b, a, relation);
+      if (relation === 1 && (back === 2 || back === 3)) setRelation(b, a, 0);
     }
     markDirty();
     render();
   };
+  const cell = (a, b) => {
+    const value = relationOf(a, b);
+    const select = el("select", { class: `rel r${value}`, title: `${a.displayName} → ${b.displayName}: ${ENUMS.relation[value]}`, onchange: (e) => change(a, b, parseInt(e.target.value, 10)) },
+      ENUMS.relation.map((name, i) => el("option", { value: i }, `${REL_LETTER[i]}  ${name}`)));
+    select.value = value;
+    return el("td", { class: a === b ? "self" : "" }, select);
+  };
   const table = el("table", { class: "matrix" },
-    el("thead", {}, el("tr", {}, el("th"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
-    el("tbody", {}, species.map((a, i) => el("tr", {},
-      el("th", {}, a.displayName),
-      species.map((b, j) => {
-        if (i === j) return el("td", { class: "self" }, "");
-        const box = el("input", { type: "checkbox", title: `${a.displayName} + ${b.displayName}`, onchange: (e) => toggle(a, b, e.target.checked) });
-        box.checked = dislikes(a, b);
-        return el("td", {}, box);
-      })))));
+    el("thead", {}, el("tr", {}, el("th", {}, "This fish ↓ treats →"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
+    el("tbody", {}, species.map((a) => el("tr", {}, el("th", {}, a.displayName), species.map((b) => cell(a, b))))));
+  const legend = el("p", { class: "legend" },
+    el("span", {}, el("b", { style: "background:#c0392b" }, "P"), "Predator: the row fish attacks the column fish and eats it if it fits in its mouth"),
+    el("span", {}, el("b", { style: "background:#d68910" }, "C"), "Competitive: they nip each other; injuries when the tank is crowded"),
+    el("span", {}, el("b", { style: "background:#229954" }, "+"), "Preferred: the row fish is happier and healthier with the column fish"),
+    el("span", {}, el("b", { style: "background:var(--chip);color:var(--muted)" }, "·"), "Neutral"));
   return [el("div", { class: "card" },
-    el("h2", {}, "Who stresses whom"),
-    el("p", { class: "hint" }, "Tick a box when two species shouldn't share a tank (fin nippers, predators, bullies). Both lose comfort, which lowers health. Water needs (temperature, pH, salt) are checked separately from each species' own ranges."),
+    el("h2", {}, "How each fish treats the others"),
+    el("p", { class: "hint" }, "Read across: the fish on the left (row) treats the fish at the top (column) this way. Setting Competitive, Preferred or Neutral also sets it the other way round; Predator is one way only. The diagonal is a fish with its own kind (male bettas fight, schooling fish like company). What each relationship does is set on the Health tab."),
+    legend,
     el("div", { class: "scroll" }, table))];
 }
 
@@ -429,20 +466,27 @@ function renderDiseases() {
 const SECTION_HINTS = {
   shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank) × reputation.",
   timeStep: "What happens at each time step: once when the shop opens and once when it closes. Nothing changes while the shop stays closed.",
-  health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step.",
+  health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step. Below: what tank mate relationships do, and how medicine works (it goes into the whole tank).",
   store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
-  stock: "Egg boxes, decorations and tank sizes. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box. Decorations bring customers (Shop tab) but too many speed up algae.",
+  stock: "Egg and fry boxes, equipment models, decorations and tank sizes. Equipment breaks at a time step with its break chance, which grows with wear up to the highest break chance. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box. Decorations bring customers (Shop tab) but too many speed up algae.",
   progression: "Two tracks, each up to the max level. XP to reach level n+1 = XP for level 2 × growth^(n-1). Daily goals: one per track each day; the target grows per level and finishing it gives the goal XP. Closing notifications are at the bottom.",
   rules: "General rules: feeding and disease from meals, water basics, breeding.",
 };
 
 function renderSection(key) {
   const cards = [el("p", { class: "hint" }, SECTION_HINTS[key] || "")];
-  if (key === "store") {
+  if (key === "health") {
+    cards.push(el("div", { class: "card" }, objectForm(data.health)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Tank mates"), objectForm(data.tankMates)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Medicine"), objectForm(data.medicine)));
+  } else if (key === "store") {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, ["tankSizes"])));
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations"])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers"])));
   } else if (key === "stock") {
-    cards.push(el("div", { class: "card" }, listTable("Egg boxes", data.supplier.eggTiers)));
+    cards.push(el("div", { class: "card" }, listTable("Egg and fry boxes", data.supplier.eggTiers)));
+    cards.push(el("div", { class: "card" }, listTable("Filters", data.supplier.filters)));
+    cards.push(el("div", { class: "card" }, listTable("Heaters", data.supplier.heaters)));
+    cards.push(el("div", { class: "card" }, listTable("Bubblers", data.supplier.bubblers)));
     cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
     cards.push(el("div", { class: "card" }, listTable("Tank sizes", data.store.tankSizes)));
   } else if (key === "progression") {

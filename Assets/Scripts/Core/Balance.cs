@@ -74,6 +74,33 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float rareFalloff = 0.35f;
         public Color color = new Color(1f, 0.93f, 0.75f);
         public bool speckled;
+        [Tooltip("Price of the same tier as a box of fry (as many fry as eggs). Fry boxes can hold any fish, egg boxes only egg-layers.")]
+        public int fryPrice = 45;
+    }
+
+    public enum EquipmentKind { Filter, Heater, Bubbler }
+
+    /// <summary>
+    /// One model of filter, heater or bubbler. Equipment wears with age: the chance of breaking at
+    /// a time step starts at <see cref="breakChance"/> and grows by <see cref="breakChancePerStep"/>
+    /// for every time step it has run, up to <see cref="maxBreakChance"/>. Better models do their
+    /// job better and break less.
+    /// </summary>
+    [Serializable]
+    public class EquipmentTierBalance
+    {
+        public string name;
+        public string blurb;
+        public int price = 100;
+        [Tooltip("Fishkeeping level needed to buy it.")]
+        public int unlockLevel = 1;
+        [Tooltip("Filter: share of the waste left in the water (lower is better). Heater: how far the water can drift from the setting each time step (C). Bubbler: fish it keeps in full oxygen.")]
+        public float effect = 1f;
+        [Tooltip("Chance of breaking down at a time step when new.")]
+        [Range(0f, 1f)] public float breakChance = 0.02f;
+        [Tooltip("Added to the chance for every time step it has been running.")]
+        public float breakChancePerStep = 0.004f;
+        [Range(0f, 1f)] public float maxBreakChance = 0.3f;
     }
 
     /// <summary>A decoration the supplier sells. The id is the model's name in Resources/Decor.</summary>
@@ -133,19 +160,19 @@ namespace FishBreeder.Core
         };
         public List<EggTierBalance> eggTiers = new List<EggTierBalance>
         {
-            new EggTierBalance { id = "Simple", name = "Simple eggs", blurb = "Everyday fish, mostly common ones.", price = 30, eggs = 5, unlockLevel = 1,
+            new EggTierBalance { id = "Simple", name = "Simple eggs", blurb = "Everyday fish, mostly common ones.", price = 30, fryPrice = 45, eggs = 5, unlockLevel = 1,
                 normalMin = SpeciesRarity.Common, normalMax = SpeciesRarity.Uncommon, normalRarityFalloff = 0.4f, rarePool = SpeciesRarity.Rare, rareChance = 0.05f, rareFalloff = 0.3f,
                 color = new Color(1f, 0.93f, 0.75f) },
-            new EggTierBalance { id = "Rare", name = "Rare eggs", blurb = "A mix of everyday and rare fish. Rare ones are much likelier than in simple eggs.", price = 120, eggs = 5, unlockLevel = 5,
+            new EggTierBalance { id = "Rare", name = "Rare eggs", blurb = "A mix of everyday and rare fish. Rare ones are much likelier than in simple eggs.", price = 120, fryPrice = 170, eggs = 5, unlockLevel = 5,
                 normalMin = SpeciesRarity.Common, normalMax = SpeciesRarity.Uncommon, normalRarityFalloff = 0.7f, rarePool = SpeciesRarity.Rare, rareChance = 0.6f, rareFalloff = 0.45f,
                 color = new Color(0.55f, 0.8f, 1f), speckled = true },
-            new EggTierBalance { id = "UltraRare", name = "Ultra rare eggs", blurb = "Rare fish, with a chance of something exotic.", price = 400, eggs = 4, unlockLevel = 15,
+            new EggTierBalance { id = "UltraRare", name = "Ultra rare eggs", blurb = "Rare fish, with a chance of something exotic.", price = 400, fryPrice = 560, eggs = 4, unlockLevel = 15,
                 normalMin = SpeciesRarity.Uncommon, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.5f, rareFalloff = 0.4f,
                 color = new Color(0.75f, 0.55f, 1f), speckled = true },
-            new EggTierBalance { id = "Legendary", name = "Legendary eggs", blurb = "Coming later.", price = 1500, eggs = 3, unlockLevel = 30,
+            new EggTierBalance { id = "Legendary", name = "Legendary eggs", blurb = "Coming later.", price = 1500, fryPrice = 2100, eggs = 3, unlockLevel = 30,
                 normalMin = SpeciesRarity.Rare, normalMax = SpeciesRarity.Exotic, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Legendary, rareChance = 0.45f, rareFalloff = 0.35f,
                 color = new Color(1f, 0.78f, 0.25f), speckled = true },
-            new EggTierBalance { id = "Ancient", name = "Ancient eggs", blurb = "Coming later.", price = 5000, eggs = 3, unlockLevel = 45,
+            new EggTierBalance { id = "Ancient", name = "Ancient eggs", blurb = "Coming later.", price = 5000, fryPrice = 7000, eggs = 3, unlockLevel = 45,
                 normalMin = SpeciesRarity.Exotic, normalMax = SpeciesRarity.Legendary, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Ancient, rareChance = 0.4f, rareFalloff = 0.3f,
                 color = new Color(0.45f, 0.75f, 0.55f), speckled = true },
         };
@@ -163,13 +190,36 @@ namespace FishBreeder.Core
         };
         [Tooltip("Share of a decoration's price you get back when you take it out of a tank.")]
         [Range(0f, 1f)] public float decorationSellBack = 0.5f;
-        [Tooltip("Fishkeeping level needed for each piece of equipment and care.")]
-        public int filterLevel = 2, heaterLevel = 1, bubblerLevel = 1, waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
-        public int filterPrice = 150;
-        [Tooltip("Waste build-up in a tank with a filter, relative to one without.")]
-        [Range(0f, 1f)] public float filterWasteMultiplier = 0.4f;
-        public int heaterPrice = 120;
-        public int bubblerPrice = 80;
+        [Tooltip("Fishkeeping level needed for care products.")]
+        public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10, repairKitLevel = 1;
+        public List<EquipmentTierBalance> filters = new List<EquipmentTierBalance>
+        {
+            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f },
+            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f },
+            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f },
+            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f },
+        };
+        public List<EquipmentTierBalance> heaters = new List<EquipmentTierBalance>
+        {
+            new EquipmentTierBalance { name = "Basic heater", blurb = "The water drifts a little either side of the setting.", price = 120, unlockLevel = 1, effect = 1.5f, breakChance = 0.025f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f },
+            new EquipmentTierBalance { name = "Adjustable heater", blurb = "Steadier, and it lasts longer.", price = 280, unlockLevel = 6, effect = 1f, breakChance = 0.015f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f },
+            new EquipmentTierBalance { name = "Titanium heater", blurb = "Very steady, rarely breaks.", price = 650, unlockLevel = 14, effect = 0.5f, breakChance = 0.008f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f },
+            new EquipmentTierBalance { name = "Smart heater controller", blurb = "Holds the exact temperature.", price = 1500, unlockLevel = 26, effect = 0f, breakChance = 0.004f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f },
+        };
+        public List<EquipmentTierBalance> bubblers = new List<EquipmentTierBalance>
+        {
+            new EquipmentTierBalance { name = "Air stone", blurb = "Enough air for a small group.", price = 80, unlockLevel = 1, effect = 14f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f },
+            new EquipmentTierBalance { name = "Twin-outlet air pump", blurb = "Air for a busy tank.", price = 220, unlockLevel = 5, effect = 22f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f },
+            new EquipmentTierBalance { name = "Silent air pump", blurb = "Air for a crowded tank, rarely breaks.", price = 520, unlockLevel = 12, effect = 34f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f },
+            new EquipmentTierBalance { name = "Oxygen reactor", blurb = "Air for any tank.", price = 1300, unlockLevel = 24, effect = 60f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f },
+        };
+        [Tooltip("A pack of repair kits; one kit fixes one broken piece of equipment.")]
+        public int repairKitPrice = 30;
+        public int repairKitsPerPack = 3;
+        [Tooltip("Share of the equipment's wear (age) a repair takes off. Old equipment keeps breaking more often until replaced.")]
+        [Range(0f, 1f)] public float repairWearRemoved = 0.25f;
+        [Tooltip("What a bought fry is worth while it's still too small to tell what it is.")]
+        public int unknownFryValue = 4;
         public int waterConditionerPrice = 20;
         public int waterConditionerDoses = 5;
         [Tooltip("Cost to turn a tank to salt water (or back).")]
@@ -245,9 +295,14 @@ namespace FishBreeder.Core
         public float illnessWeight = 0.7f;
         public float comfortWeight = 0.35f;
         public float environmentWeight = 0.6f;
+        [Tooltip("Water stress per degree outside a fish's temperature range (1 = as bad as it gets).")]
+        public float tempPenaltyPerDegree = 0.2f;
+        [Tooltip("Water stress per pH unit outside the fish's range.")]
+        public float phPenaltyPerUnit = 0.5f;
+        [Tooltip("Water stress per ppt of salt outside the fish's range.")]
+        public float saltPenaltyPerPpt = 0.08f;
         public float oldAgeWeight = 0.5f;
         public float perDeadTankmate = 0.08f;
-        public float perIncompatibleTankmateSpecies = 0.25f;
         public float tooFewSchoolmates = 0.2f;
         public float plantsBonus = 0.15f;
         public int idealDecorMin = 3, idealDecorMax = 10;
@@ -271,6 +326,7 @@ namespace FishBreeder.Core
         public int xpFeedTank = 2;
         public int xpWipeTank = 1;
         public int xpTreatWater = 2;
+        public int xpRepairEquipment = 2;
         public int xpRemoveDeadFish = 1;
         public int xpCureFish = 10;
         public int xpEggHatched = 3;
@@ -342,10 +398,67 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float hungryAbove = 0.35f;
     }
 
+    /// <summary>What the relationships between tank mates do (the table itself is <see cref="BalanceData.relationships"/>).</summary>
+    [Serializable]
+    public class TankMateBalance
+    {
+        [Tooltip("A predator hunts at every time step; chance it catches and eats prey that fits in its mouth.")]
+        [Range(0f, 1f)] public float eatChance = 0.35f;
+        [Tooltip("Prey up to this share of the predator's length fits in its mouth.")]
+        [Range(0f, 1f)] public float preyMaxSizeRatio = 0.6f;
+        [Tooltip("Chance a hunt that doesn't end in a meal still wounds the prey.")]
+        [Range(0f, 1f)] public float biteChance = 0.5f;
+        public float biteInjury = 0.3f;
+        [Tooltip("Comfort lost by prey living with a predator of theirs.")]
+        public float predatorFear = 0.2f;
+        [Tooltip("Comfort lost for each kind of fish that nips it or that it fights.")]
+        public float competitiveStress = 0.12f;
+        [Tooltip("Nipping only draws blood when the tank holds more than this share of its capacity.")]
+        [Range(0f, 1f)] public float crowdedAbove = 0.7f;
+        [Tooltip("Chance per time step that a fish with a competitive tank mate gets nipped in a crowded tank.")]
+        [Range(0f, 1f)] public float nipChance = 0.35f;
+        public float nipInjury = 0.15f;
+        [Tooltip("Comfort gained for each kind of preferred tank mate (counted up to 2 kinds).")]
+        public float preferredComfort = 0.1f;
+        [Tooltip("Health gained for each kind of preferred tank mate (counted up to 2 kinds).")]
+        public float preferredHealth = 0.04f;
+        [Tooltip("Wounds heal by this much per time step (wounds run 0..1).")]
+        public float injuryHealPerStep = 0.1f;
+        [Tooltip("Health a fish loses at full wounds.")]
+        public float injuryWeight = 0.8f;
+    }
+
+    /// <summary>
+    /// Medicine goes into the whole tank. It cures fish with the illness it treats; every other fish
+    /// in the water is stressed by it, and too many doses close together damage a fish for life.
+    /// </summary>
+    [Serializable]
+    public class MedicineBalance
+    {
+        [Tooltip("Comfort lost by a fish that got medicine it didn't need (0..1).")]
+        public float stressPerDose = 0.3f;
+        public float stressRecoveryPerStep = 0.15f;
+        [Tooltip("Medicine build-up from one dose in a fish that didn't need it.")]
+        public float loadPerDose = 1f;
+        [Tooltip("Build-up in a fish the dose was meant for.")]
+        public float loadPerNeededDose = 0.5f;
+        public float loadClearedPerStep = 0.35f;
+        [Tooltip("At this much build-up the fish is overdosed and damaged for life.")]
+        public float overdoseLoad = 3f;
+        [Tooltip("Health lost for good per overdose.")]
+        public float damageHealth = 0.08f;
+        [Tooltip("Value lost per overdose (0.2 = 20%).")]
+        [Range(0f, 1f)] public float damageValue = 0.2f;
+        public int maxDamage = 3;
+        [Tooltip("After this many overdoses the fish can't breed any more.")]
+        public int infertileAtDamage = 2;
+    }
+
     [Serializable]
     public class BalanceData
     {
         public List<Species> species = Species.CreateDefaults();
+        public List<RelationshipBalance> relationships = Relationships.CreateDefaults();
         public List<DiseaseDefinition> diseases = DiseaseDefinition.CreateDefaults();
         public GameConfig rules = new GameConfig();
         public TimeStepBalance timeStep = new TimeStepBalance();
@@ -355,6 +468,8 @@ namespace FishBreeder.Core
         public SupplierBalance supplier = new SupplierBalance();
         public ProgressionBalance progression = new ProgressionBalance();
         public NotificationBalance notifications = new NotificationBalance();
+        public TankMateBalance tankMates = new TankMateBalance();
+        public MedicineBalance medicine = new MedicineBalance();
     }
 
     /// <summary>

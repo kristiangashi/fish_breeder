@@ -42,6 +42,17 @@ namespace FishBreeder
         public float Growth => growth;
         public float AgeDays => ageDays;
         public LifeStage Stage => growth >= 1f ? LifeStage.Adult : growth >= 0.4f ? LifeStage.Juvenile : LifeStage.Fry;
+
+        /// <summary>
+        /// Bought fry (and fry from bought eggs) are tiny grey fish: nobody can tell what they'll be
+        /// until they grow into juveniles. Bred fry are known from their parents.
+        /// </summary>
+        public bool IdentityHidden => Stage == LifeStage.Fry && generation <= 1;
+        /// <summary>The species name, or "mystery fry" while that can't be told yet.</summary>
+        public string SpeciesLabel => IdentityHidden ? "mystery fry" : Species.displayName;
+
+        /// <summary>Length in the water right now (fry are about 3 cm whatever they grow into), for who can eat whom.</summary>
+        public float BodyLength => Stage == LifeStage.Fry ? FishVisual.FryLength * transform.localScale.x : Phenotype.lengthMeters * transform.localScale.x;
         public bool IsDead { get; private set; }
         public string CauseOfDeath { get; private set; }
         public bool IsStarving => hunger >= GameConfig.Active.starvingThreshold;
@@ -89,7 +100,7 @@ namespace FishBreeder
             gameObject.name = $"Fish - {fishName}";
             Tank = tank;
 
-            Visual.Build(Phenotype);
+            Visual.Build(Phenotype, Stage == LifeStage.Fry);
             ApplyGrowthScale();
             tank.Add(this);
         }
@@ -104,20 +115,35 @@ namespace FishBreeder
             hunger = Mathf.Clamp01(hunger + daysPerStep / Mathf.Max(0.5f, species.hungerToleranceDays) * GameConfig.Active.starvingThreshold);
             if (growth < 1f && !IsStarving)
             {
+                bool wasFry = Stage == LifeStage.Fry;
+                bool wasHidden = IdentityHidden;
                 growth = Mathf.Min(1f, growth + daysPerStep / Mathf.Max(0.5f, species.daysToAdult));
                 ApplyGrowthScale();
+                if (wasFry && Stage != LifeStage.Fry) GrowOutOfFry(wasHidden);
             }
             if (BreedCooldown > 0) BreedCooldown--;
+        }
+
+        /// <summary>A grey fry has grown enough to show what it really is: swap in its own model and colours.</summary>
+        void GrowOutOfFry(bool wasHidden)
+        {
+            Visual.Build(Phenotype, false);
+            Visual.ResetSpine();
+            Health.RefreshTint();
+            if (wasHidden) GameLog.Add($"{fishName} has grown enough to tell: it's a {Species.displayName}!");
         }
 
         /// <summary>Developer shortcut: makes the fish an adult right away (for testing looks and breeding).</summary>
         public void DevGrowUp()
         {
             if (IsDead || growth >= 1f) return;
+            bool wasFry = Stage == LifeStage.Fry;
+            bool wasHidden = IdentityHidden;
             growth = 1f;
             ageDays = Mathf.Max(ageDays, Species.daysToAdult);
             hunger = 0f;
             ApplyGrowthScale();
+            if (wasFry) GrowOutOfFry(wasHidden);
         }
 
         void ApplyGrowthScale()
@@ -143,6 +169,7 @@ namespace FishBreeder
             get
             {
                 var species = Species;
+                if (IdentityHidden) return Mathf.Max(1, Balance.Data.supplier.unknownFryValue);
                 float looks = 1f;
                 switch (Phenotype.RarityLabel)
                 {
@@ -152,7 +179,8 @@ namespace FishBreeder
                 }
                 float stage = Stage == LifeStage.Adult ? 1f : Stage == LifeStage.Juvenile ? 0.6f : 0.3f;
                 float health = Mathf.Lerp(0.4f, 1f, Health.Report().total);
-                return Mathf.Max(1, Mathf.RoundToInt(species.baseValue * looks * stage * health));
+                float damage = Mathf.Clamp01(1f - Health.MedicineDamage * Balance.Data.medicine.damageValue);
+                return Mathf.Max(1, Mathf.RoundToInt(species.baseValue * looks * stage * health * damage));
             }
         }
 
@@ -219,10 +247,22 @@ namespace FishBreeder
             CauseOfDeath = cause;
             Reserved = false;
             if (Tank != null) Tank.AddCorpse(this);
-            GameLog.Add($"{fishName} the {Species} died of {cause}.");
+            GameLog.Add($"{fishName} the {SpeciesLabel} died of {cause}.");
             Swimmer.enabled = false;
             Visual.SetTint(new Color(0.75f, 0.75f, 0.7f));
             StartCoroutine(FloatUp());
+        }
+
+        /// <summary>Caught and eaten by a predator in its tank: gone without a trace.</summary>
+        public void Eaten(Fish predator)
+        {
+            if (IsDead) return;
+            if (IsPregnant) unborn.Clear();
+            IsDead = true;
+            CauseOfDeath = $"eaten by {predator.FishName}";
+            Reserved = false;
+            GameLog.Add($"{predator.FishName} the {predator.Species} ate {fishName} the {SpeciesLabel}!");
+            RemoveFromTank();
         }
 
         /// <summary>Takes a dead fish (or a sold one) out of its tank for good.</summary>

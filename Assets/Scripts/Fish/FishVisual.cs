@@ -46,7 +46,14 @@ namespace FishBreeder
         static readonly int NoseOffsetId = Shader.PropertyToID("_NoseOffset");
         static readonly int BodyLengthId = Shader.PropertyToID("_BodyLength");
 
-        public void Build(Phenotype phenotype)
+        /// <summary>Length of the model every fry wears: a tiny grey fish, whatever it grows into.</summary>
+        public const float FryLength = 0.045f;
+        /// <summary>Species whose model is used, plain grey, for all fry.</summary>
+        const string FryModelSpecies = "ZebraDanio";
+        static readonly Color FryGrey = new Color(0.62f, 0.64f, 0.66f);
+
+        /// <summary>Builds the fish's model. <paramref name="fryLook"/> gives it the plain grey fry body instead.</summary>
+        public void Build(Phenotype phenotype, bool fryLook = false)
         {
             if (modelRoot != null) Destroy(modelRoot.gameObject);
             bodyMaterials.Clear();
@@ -61,15 +68,21 @@ namespace FishBreeder
             modelRoot.SetParent(transform, false);
 
             var library = modelLibrary != null ? modelLibrary : DefaultLibrary;
-            var entry = library != null ? library.Find(phenotype.species.id, phenotype.finShape, phenotype.tailShape) : null;
-            if (entry != null) BuildFromModel(entry, phenotype);
-            else BuildPlaceholder(phenotype);
+            string speciesId = fryLook ? FryModelSpecies : phenotype.species.id;
+            var entry = library != null ? library.Find(speciesId, phenotype.finShape, phenotype.tailShape) : null;
+            float length = fryLook ? FryLength : phenotype.lengthMeters;
+            if (entry != null) BuildFromModel(entry, length, fryLook ? FryGrey : Color.Lerp(Color.white, phenotype.bodyColor, entry.geneTintStrength), !fryLook);
+            else
+            {
+                BuildPlaceholder(phenotype);
+                if (fryLook) modelRoot.localScale = Vector3.one * (FryLength / Mathf.Max(0.01f, phenotype.lengthMeters));
+            }
 
             var body = gameObject.GetComponent<CapsuleCollider>();
             if (body == null) body = gameObject.AddComponent<CapsuleCollider>();
             body.direction = 2; // Z
-            body.height = phenotype.lengthMeters * 1.2f;
-            body.radius = phenotype.lengthMeters * phenotype.heightRatio * 0.5f;
+            body.height = length * 1.2f;
+            body.radius = length * phenotype.heightRatio * 0.5f;
         }
 
         void BuildPlaceholder(Phenotype p)
@@ -116,7 +129,8 @@ namespace FishBreeder
             MaterialFactory.Decor(PrimitiveType.Sphere, "EyeR", modelRoot, new Vector3(eyeX, height * 0.1f, eyeZ), Vector3.one * eyeSize, eyeColor);
         }
 
-        void BuildFromModel(FishModelLibrary.Entry entry, Phenotype p)
+        /// <summary>A Meshy model at this length and tint; without <paramref name="textured"/> it's a plain colour (fry).</summary>
+        void BuildFromModel(FishModelLibrary.Entry entry, float lengthMeters, Color tint, bool textured)
         {
             modelEntry = entry;
             var instance = Instantiate(entry.model, modelRoot, false);
@@ -133,21 +147,20 @@ namespace FishBreeder
             // Scale so the gene-driven length wins, then centre the body on the fish's pivot.
             var bounds = BoundsInModelRoot(filters);
             float restLength = Mathf.Max(bounds.size.z, 0.0001f);
-            float scale = p.lengthMeters / restLength;
+            float scale = lengthMeters / restLength;
             model.localScale *= scale;
             model.localPosition = model.localPosition * scale - bounds.center * scale;
 
             var shader = SwimShader;
-            var tint = Color.Lerp(Color.white, p.bodyColor, entry.geneTintStrength);
             foreach (var filter in filters)
             {
                 var renderer = filter.GetComponent<Renderer>();
                 if (renderer == null || filter.sharedMesh == null) continue;
 
                 var material = new Material(shader) { name = entry.displayName, color = tint };
-                if (entry.albedo != null) material.mainTexture = entry.albedo;
+                if (textured && entry.albedo != null) material.mainTexture = entry.albedo;
                 if (entry.normalMap != null && material.HasProperty("_BumpMap")) material.SetTexture("_BumpMap", entry.normalMap);
-                if (entry.smoothnessMap != null && material.HasProperty("_SmoothnessMap")) material.SetTexture("_SmoothnessMap", entry.smoothnessMap);
+                if (textured && entry.smoothnessMap != null && material.HasProperty("_SmoothnessMap")) material.SetTexture("_SmoothnessMap", entry.smoothnessMap);
                 if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", entry.smoothness);
                 ConfigureSwim(material, filter);
 
@@ -165,7 +178,7 @@ namespace FishBreeder
             }
             tailPivot = null;
 
-            modelLength = p.lengthMeters;
+            modelLength = lengthMeters;
             spine = new SwimSpine
             {
                 wavesPerBody = entry.wavesPerBody,

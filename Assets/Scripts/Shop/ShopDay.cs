@@ -183,7 +183,7 @@ namespace FishBreeder.Shop
         public void Sell(Fish fish, Vector3 registerPoint)
         {
             int price = fish.Price;
-            string name = $"{fish.FishName} the {fish.Species}";
+            string name = $"{fish.FishName} the {fish.SpeciesLabel}";
             fish.RemoveFromTank();
             Economy.Earn(price, $"sold {name}");
             var progression = Balance.Data.progression;

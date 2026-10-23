@@ -217,7 +217,28 @@ namespace FishBreeder.Core
             return cache[key] = canvas.ToTexture();
         }
 
-        public enum Icon { Filter, Heater, Bubbler, Conditioner, Medicine, Food, Tank, Salt }
+        /// <summary>A bag of water with little grey fry in it, the bag's band in the tier colour.</summary>
+        public static Texture2D FryBox(Color color)
+        {
+            string key = $"frybox:{ColorUtility.ToHtmlStringRGB(color)}";
+            if (cache.TryGetValue(key, out var texture)) return texture;
+            var canvas = new Canvas();
+            var water = new Color(0.55f, 0.75f, 0.92f, 0.9f);
+            canvas.Ellipse(64f, 52f, 40f, 38f, Color.Lerp(water, Color.black, 0.2f));
+            canvas.Ellipse(64f, 52f, 37f, 35f, water);
+            canvas.Rect(54f, 86f, 20f, 16f, Color.Lerp(water, Color.white, 0.4f));
+            canvas.Rect(48f, 96f, 32f, 9f, color);
+            var fry = new Color(0.45f, 0.47f, 0.5f);
+            for (int i = 0; i < 5; i++)
+            {
+                float x = 42f + (i * 19f) % 44f, y = 34f + (i * 13f) % 32f;
+                canvas.Ellipse(x, y, 6f, 2.6f, fry);
+                canvas.Ellipse(x - 7f, y, 2.5f, 2.2f, fry);
+            }
+            return cache[key] = canvas.ToTexture();
+        }
+
+        public enum Icon { Filter, Heater, Bubbler, Conditioner, Medicine, Food, Tank, Salt, Repair }
 
         /// <summary>A placeholder drawing for things that don't have a 3D design yet.</summary>
         public static Texture2D Filler(Icon icon, Color tint)
@@ -265,6 +286,15 @@ namespace FishBreeder.Core
                     canvas.Rect(20f, 34f, 88f, 54f, tint);
                     canvas.Rect(20f, 34f, 88f, 10f, Color.Lerp(tint, new Color(0.85f, 0.75f, 0.55f), 0.8f));
                     canvas.Rect(26f, 20f, 76f, 10f, Color.Lerp(dark, Color.white, 0.3f));
+                    break;
+                case Icon.Repair:
+                    // A spanner.
+                    canvas.Circle(40f, 88f, 20f, tint);
+                    canvas.Circle(40f, 88f, 9f, new Color(0.2f, 0.24f, 0.3f));
+                    canvas.Rect(32f, 92f, 16f, 18f, new Color(0.2f, 0.24f, 0.3f));
+                    for (int i = 0; i < 12; i++) canvas.Circle(48f + i * 5f, 80f - i * 5f, 7f, tint);
+                    canvas.Rect(78f, 18f, 30f, 12f, dark);
+                    canvas.Rect(86f, 30f, 14f, 22f, light);
                     break;
                 case Icon.Salt:
                     canvas.Rect(40f, 16f, 48f, 76f, tint);

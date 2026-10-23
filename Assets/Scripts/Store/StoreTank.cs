@@ -43,6 +43,7 @@ namespace FishBreeder.Store
             storeTank.role = role;
             storeTank.number = number;
             storeTank.tank = go.AddComponent<Tank>();
+            storeTank.tank.Title = storeTank.Title;
             storeTank.tank.Build(size, decorations);
             storeTank.tank.PricesNewFish = role == TankRole.ForSale;
             storeTank.feeding = go.AddComponent<FeedingSystem>();

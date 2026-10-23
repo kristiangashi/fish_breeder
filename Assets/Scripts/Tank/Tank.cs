@@ -20,6 +20,7 @@ namespace FishBreeder
         [SerializeField] float salinity;
         [SerializeField] bool pests;
         [SerializeField] float heaterSetting = 25f;
+        [SerializeField] InstalledEquipment filter, heater, bubbler;
 
         readonly List<Fish> residents = new List<Fish>();
         readonly List<Fish> corpses = new List<Fish>();
@@ -27,6 +28,7 @@ namespace FishBreeder
         TankWater water;
         Transform visuals;
         TankDecor decor;
+        TankBubbles bubbles;
         static readonly Color ClearWater = new Color(0.12f, 0.35f, 0.55f);
         static readonly Color MurkyWater = new Color(0.25f, 0.33f, 0.12f);
         static readonly Color AlgaeWater = new Color(0.18f, 0.42f, 0.16f);
@@ -45,9 +47,40 @@ namespace FishBreeder
         public float Salinity => salinity;
         public bool IsSaltwater => salinity > 15f;
         public bool HasPests => pests;
-        public bool HasFilter { get; private set; }
-        public bool HasHeater { get; private set; }
-        public bool HasBubbler { get; private set; }
+        /// <summary>Name the player knows the tank by, for messages ("Breeder tank 1").</summary>
+        public string Title { get; set; } = "a tank";
+        public bool HasFilter => filter != null;
+        public bool HasHeater => heater != null;
+        public bool HasBubbler => bubbler != null;
+        public bool FilterWorking => filter != null && !filter.broken;
+        public bool HeaterWorking => heater != null && !heater.broken;
+        public bool BubblerWorking => bubbler != null && !bubbler.broken;
+
+        /// <summary>The installed filter, heater or bubbler, or null.</summary>
+        public InstalledEquipment GetEquipment(EquipmentKind kind)
+        {
+            switch (kind)
+            {
+                case EquipmentKind.Filter: return filter;
+                case EquipmentKind.Heater: return heater;
+                default: return bubbler;
+            }
+        }
+
+        /// <summary>Equipment that has broken down and needs a repair kit.</summary>
+        public List<InstalledEquipment> BrokenEquipment
+        {
+            get
+            {
+                var list = new List<InstalledEquipment>();
+                foreach (var kind in Equipment.Kinds)
+                {
+                    var item = GetEquipment(kind);
+                    if (item != null && item.broken) list.Add(item);
+                }
+                return list;
+            }
+        }
         public float HeaterSetting => heaterSetting;
         public int WipesLeft { get; private set; }
         public TankDecor Decor => decor;
@@ -71,13 +104,15 @@ namespace FishBreeder
         public int Capacity => Mathf.Max(1, SizeInfo.capacity);
         public Vector3 InnerSize => innerSize;
 
-        /// <summary>1 when there's plenty, dropping as more fish share the water without a bubbler.</summary>
+        /// <summary>Fish the tank keeps in full oxygen: more with a (working) bubbler, and more with a better one.</summary>
+        public int OxygenFor => BubblerWorking ? Mathf.Max(1, Mathf.RoundToInt(bubbler.Info.effect)) : Mathf.Max(1, GameConfig.Active.fishPerTankWithoutBubbler);
+
+        /// <summary>1 when there's plenty, dropping as more fish share the water than the air supply covers.</summary>
         public float Oxygen
         {
             get
             {
-                if (HasBubbler) return 1f;
-                int limit = Mathf.Max(1, GameConfig.Active.fishPerTankWithoutBubbler);
+                int limit = OxygenFor;
                 return Mathf.Clamp01(1f - Mathf.Max(0, residents.Count - limit) / (float)limit);
             }
         }
@@ -169,11 +204,11 @@ namespace FishBreeder
             GameLog.Add(salt ? "The tank is now salt water." : "The tank is now fresh water.");
         }
 
-        /// <summary>Sets the heater; the water reaches the new temperature right away.</summary>
+        /// <summary>Sets the heater; the water reaches the new temperature right away if the heater works.</summary>
         public void SetHeater(float celsius)
         {
             heaterSetting = Mathf.Clamp(Mathf.Round(celsius), 18f, 32f);
-            if (HasHeater) temperature = heaterSetting;
+            if (HeaterWorking) temperature = heaterSetting;
         }
 
         /// <summary>
@@ -217,12 +252,11 @@ namespace FishBreeder
         public void OnTimeStep()
         {
             var balance = Balance.Data.timeStep;
-            var supplier = Balance.Data.supplier;
-            float filter = HasFilter ? supplier.filterWasteMultiplier : 1f;
+            float waste = FilterWorking ? filter.Info.effect : 1f;
 
             waterQuality = Mathf.Clamp01(waterQuality
-                - balance.waterQualityLossPerStep * filter
-                - residents.Count * balance.wasteQualityLossPerFish * filter
+                - balance.waterQualityLossPerStep * waste
+                - residents.Count * balance.wasteQualityLossPerFish * waste
                 - corpses.Count * balance.corpseQualityLoss);
             float algaeGrowth = balance.algaePerStep + DecorCount * balance.algaePerDecoration;
             int grazers = 0;
@@ -235,7 +269,14 @@ namespace FishBreeder
                 pests = true;
                 GameLog.Add($"Snails and worms have got into a tank. Treat the water to get rid of them.");
             }
-            temperature = HasHeater ? heaterSetting : GameConfig.Active.roomTemperature;
+            WearEquipment();
+            // A heater holds the water near its setting; cheaper ones let it drift a little.
+            if (HeaterWorking)
+            {
+                float drift = heater.Info.effect;
+                temperature = Mathf.Round((heaterSetting + GameRandom.Range(-drift, drift)) * 10f) / 10f;
+            }
+            else temperature = GameConfig.Active.roomTemperature;
             WipesLeft = balance.wipesPerSession;
             FedSinceTimeStep = false;
         }
@@ -300,26 +341,70 @@ namespace FishBreeder
             if (water != null) water.SetLook(color, waterQuality, algae);
         }
 
-        public void InstallFilter()
+        /// <summary>Puts in new equipment of this model, replacing any old one of the same kind.</summary>
+        public void Install(EquipmentKind kind, int tier)
         {
-            if (HasFilter) return;
-            HasFilter = true;
-            BuildFilter();
+            bool had = GetEquipment(kind) != null;
+            var item = new InstalledEquipment { kind = kind, tier = tier };
+            switch (kind)
+            {
+                case EquipmentKind.Filter:
+                    filter = item;
+                    if (!had) BuildFilter();
+                    break;
+                case EquipmentKind.Heater:
+                    heater = item;
+                    if (!had) BuildHeater();
+                    SetHeater(had ? heaterSetting : SuggestedTemperature);
+                    break;
+                default:
+                    bubbler = item;
+                    if (!had) BuildBubbler();
+                    break;
+            }
+            UpdateEquipmentLook();
         }
 
-        public void InstallHeater()
+        /// <summary>Fixes broken equipment with one repair kit. It keeps most of its wear.</summary>
+        public bool Repair(EquipmentKind kind)
         {
-            if (HasHeater) return;
-            HasHeater = true;
-            BuildHeater();
-            SetHeater(SuggestedTemperature);
+            var item = GetEquipment(kind);
+            if (item == null || !item.broken) return false;
+            if (Economy.RepairKits <= 0)
+            {
+                GameLog.Add("No repair kits. Order some at the supplier computer.");
+                return false;
+            }
+            Economy.RepairKits--;
+            item.broken = false;
+            item.wear *= 1f - Balance.Data.supplier.repairWearRemoved;
+            if (kind == EquipmentKind.Heater) temperature = heaterSetting;
+            UpdateEquipmentLook();
+            Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpRepairEquipment);
+            GameLog.Add($"Repaired the {item.Name.ToLower()} in {Title}. {Economy.RepairKits} repair kits left.");
+            return true;
         }
 
-        public void InstallBubbler()
+        /// <summary>Time step: running equipment wears, and worn equipment may break down.</summary>
+        void WearEquipment()
         {
-            if (HasBubbler) return;
-            HasBubbler = true;
-            BuildBubbler();
+            foreach (var kind in Equipment.Kinds)
+            {
+                var item = GetEquipment(kind);
+                if (item == null || item.broken) continue;
+                item.ageSteps++;
+                item.wear += 1f;
+                if (!GameRandom.Chance(item.BreakChance)) continue;
+                item.broken = true;
+                GameLog.Add($"The {item.Name.ToLower()} in {Title} broke down! Fix it with a repair kit.");
+            }
+            UpdateEquipmentLook();
+        }
+
+        /// <summary>A broken bubbler stops bubbling.</summary>
+        void UpdateEquipmentLook()
+        {
+            if (bubbles != null) bubbles.enabled = BubblerWorking;
         }
 
         void BuildFilter()
@@ -340,7 +425,7 @@ namespace FishBreeder
         {
             var b = innerSize;
             MaterialFactory.Decor(PrimitiveType.Cylinder, "Bubbler", visuals, new Vector3(-b.x * 0.2f, 0.01f, b.z * 0.38f), new Vector3(0.1f, 0.01f, 0.1f), new Color(0.3f, 0.32f, 0.35f));
-            var bubbles = visuals.gameObject.AddComponent<TankBubbles>();
+            bubbles = visuals.gameObject.AddComponent<TankBubbles>();
             bubbles.Initialize(this, new Vector3(-b.x * 0.2f, 0.02f, b.z * 0.38f), b.y);
         }
 
@@ -397,6 +482,7 @@ namespace FishBreeder
             if (HasFilter) BuildFilter();
             if (HasHeater) BuildHeater();
             if (HasBubbler) BuildBubbler();
+            UpdateEquipmentLook();
             decor.Rebuild(root, b, SizeInfo.decorationSlots);
             BuildPebbles(root, b);
             water = TankWater.Build(root, b);

@@ -41,6 +41,7 @@ namespace FishBreeder.Breeding
             if (fish.Stage != LifeStage.Adult) return $"{fish.FishName} isn't an adult yet.";
             if (fish.IsPregnant) return $"{fish.FishName} is already pregnant.";
             if (fish.Health.IsSick) return $"{fish.FishName} is sick.";
+            if (fish.Health.Infertile) return $"{fish.FishName} can't breed: too much medicine damaged it.";
             if (fish.IsStarving) return $"{fish.FishName} is too hungry.";
             if (fish.BreedCooldown > 0) return $"{fish.FishName} needs to rest ({fish.BreedCooldown} more time steps).";
             if (FishHealth.EnvironmentMismatch(fish.Species, tank) > Balance.Data.timeStep.maxStressToBreed)
@@ -131,9 +132,15 @@ namespace FishBreeder.Breeding
             var order = new List<string>();
             var bySpecies = new Dictionary<string, Couples>();
             var reasons = new Dictionary<string, string>();
+            int mystery = 0;
             foreach (var fish in tank.Residents)
             {
                 if (fish.IsDead) continue;
+                if (fish.IdentityHidden)
+                {
+                    mystery++;
+                    continue;
+                }
                 string id = fish.Species.id;
                 if (!bySpecies.TryGetValue(id, out var group))
                 {
@@ -154,6 +161,7 @@ namespace FishBreeder.Breeding
                 else if (group.males.Count > 0) lines.Add($"{name}: ready, but no ready female");
                 else lines.Add($"{name}: not ready ({reasons[id].TrimEnd('.')})");
             }
+            if (mystery > 0) lines.Add(mystery == 1 ? "1 mystery fry, too small to tell what it is" : $"{mystery} mystery fry, too small to tell what they are");
             return lines;
         }
 

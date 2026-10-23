@@ -8,7 +8,8 @@ namespace FishBreeder.Shop
     /// <summary>One problem waiting after closing: a tank (and maybe a fish) that needs seeing to.</summary>
     public class ToDo
     {
-        public enum Kind { DeadFish, SickFish, DirtyWater, HungryFish }
+        /// <summary>In the order the list goes through them: feeding first, then sickness, then cleanliness, then repairs.</summary>
+        public enum Kind { HungryFish, SickFish, DeadFish, DirtyWater, BrokenEquipment }
 
         public Kind kind;
         public StoreTank tank;
@@ -32,6 +33,7 @@ namespace FishBreeder.Shop
                         // Out of wipes (and nothing left to treat pests with) is as far as it can go today.
                         bool doneAllYouCan = t.WipesLeft == 0 && (!t.HasPests || Economy.WaterConditionerDoses == 0);
                         return clean || doneAllYouCan;
+                    case Kind.BrokenEquipment: return t.BrokenEquipment.Count == 0;
                     default: return t.FedSinceTimeStep || t.Residents.Count == 0;
                 }
             }
@@ -39,9 +41,10 @@ namespace FishBreeder.Shop
     }
 
     /// <summary>
-    /// The list of problems to sort through after closing the shop: dead fish, sick fish, dirty
-    /// tanks and hungry fish, tank by tank. The store view takes the player to each one in turn and
-    /// moves on by itself once it's dealt with.
+    /// The list of problems to sort through after closing the shop: always feeding first, then sick
+    /// fish, then cleanliness (dead fish, dirty water), then broken equipment; tank by tank within
+    /// each. The store view takes the player to each one in turn and moves on by itself once it's
+    /// dealt with.
     /// </summary>
     public class ToDoList
     {
@@ -71,6 +74,23 @@ namespace FishBreeder.Shop
             Index = -1;
             ResolvedFor = 0f;
             var settings = Balance.Data.notifications;
+
+            foreach (var storeTank in tanks)
+            {
+                var tank = storeTank.Tank;
+                bool hungry = false;
+                foreach (var fish in tank.Residents)
+                    if (fish.Hunger >= settings.hungryAbove) hungry = true;
+                if (hungry)
+                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The fish in {storeTank.Title} are hungry.", "Feed them flakes or premium pellets.");
+            }
+
+            foreach (var storeTank in tanks)
+                foreach (var fish in storeTank.Tank.Residents)
+                    if (fish.Health.IsSick)
+                        Add(ToDo.Kind.SickFish, storeTank, fish, $"{fish.FishName} the {fish.SpeciesLabel} has {fish.Health.Disease.displayName}.",
+                            "Dose the tank with the right medicine (it reaches every fish in the water, so don't overdo it), or move the fish to a quarantine tank first.");
+
             foreach (var storeTank in tanks)
             {
                 var tank = storeTank.Tank;
@@ -78,22 +98,25 @@ namespace FishBreeder.Shop
                     Add(ToDo.Kind.DeadFish, storeTank, null,
                         tank.Corpses.Count == 1 ? $"A fish died in {storeTank.Title}." : $"{tank.Corpses.Count} fish died in {storeTank.Title}.",
                         "Net them out with \"Remove dead fish\" on the left. Dead fish make the others ill and upset customers.");
+            }
 
-                foreach (var fish in tank.Residents)
-                    if (fish.Health.IsSick)
-                        Add(ToDo.Kind.SickFish, storeTank, fish, $"{fish.FishName} the {fish.Species} has {fish.Health.Disease.displayName}.",
-                            "Give it the right medicine in its window, or move it to a quarantine tank.");
-
+            foreach (var storeTank in tanks)
+            {
+                var tank = storeTank.Tank;
                 bool dirty = tank.WaterHealth < settings.dirtyWaterBelow || tank.Algae > settings.algaeAbove || tank.HasPests;
                 if (dirty && (tank.Residents.Count > 0 || tank.Algae > settings.algaeAbove))
                     Add(ToDo.Kind.DirtyWater, storeTank, null, $"{storeTank.Title} is dirty" + (tank.HasPests ? " and has pests." : "."),
                         tank.HasPests ? "Treat the water to get rid of the pests, then wipe the tank." : "Wipe the tank (and treat the water if the pH is off).");
+            }
 
-                bool hungry = false;
-                foreach (var fish in tank.Residents)
-                    if (fish.Hunger >= settings.hungryAbove) hungry = true;
-                if (hungry)
-                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The fish in {storeTank.Title} are hungry.", "Feed them flakes or premium pellets.");
+            foreach (var storeTank in tanks)
+            {
+                var broken = storeTank.Tank.BrokenEquipment;
+                if (broken.Count == 0) continue;
+                var names = new List<string>();
+                foreach (var item in broken) names.Add(item.Name.ToLower());
+                Add(ToDo.Kind.BrokenEquipment, storeTank, null, $"The {string.Join(" and ", names)} in {storeTank.Title} broke down.",
+                    "Repair it on the left with a repair kit (buy kits at the supplier computer), or replace it.");
             }
             return items.Count;
         }

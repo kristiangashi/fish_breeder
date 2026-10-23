@@ -12,7 +12,8 @@ namespace FishBreeder.Shop
     /// and once when it closes; nothing else moves time on.
     /// Order: eggs develop (and hatch when due), pregnant fish give birth when due, water changes
     /// (waste, algae, pH, pests, temperature), fish age and get hungrier, illness progresses,
-    /// spreads or strikes, compatible pairs may breed, then each fish in poor health rolls for death.
+    /// spreads or strikes, compatible pairs may breed, each fish in poor health rolls for death, and
+    /// finally predators hunt and rivals in crowded tanks nip each other.
     /// </summary>
     public static class TimeStep
     {
@@ -60,9 +61,14 @@ namespace FishBreeder.Shop
                 if (report.total >= balance.deathHealthThreshold) continue;
                 float danger = (balance.deathHealthThreshold - report.total) / Mathf.Max(0.01f, balance.deathHealthThreshold);
                 if (!GameRandom.Chance(balance.deathChanceAtZeroHealth * Mathf.Pow(danger, 1.5f))) continue;
-                fish.Die(report.WorstCause(fish.Health.Disease));
+                fish.Die(report.WorstCause(fish.Health.Disease, fish.Health.InjuryCause));
                 died++;
             }
+
+            // Predators hunt and crowded rivals nip, after the death rolls so an eaten fish
+            // isn't judged as well.
+            int eaten = 0, wounded = 0;
+            foreach (var storeTank in tanks) TankMates.Run(storeTank.Tank, ref eaten, ref wounded);
 
             var parts = new List<string>();
             if (hatched > 0) parts.Add($"{hatched} eggs hatched");
@@ -70,6 +76,8 @@ namespace FishBreeder.Shop
             if (conceived > 0) parts.Add(conceived == 1 ? "a new pregnancy or clutch of eggs" : $"{conceived} new pregnancies or clutches of eggs");
             if (fellIll > 0) parts.Add($"{fellIll} fish fell ill");
             if (died > 0) parts.Add($"{died} died");
+            if (eaten > 0) parts.Add(eaten == 1 ? "a fish was eaten by a tank mate" : $"{eaten} fish were eaten by tank mates");
+            if (wounded > 0) parts.Add(wounded == 1 ? "a fish was bitten or nipped" : $"{wounded} fish were bitten or nipped");
             string summary = parts.Count > 0 ? string.Join(", ", parts) + "." : "A quiet time in the tanks.";
             GameLog.Add(summary);
             return summary;

@@ -28,13 +28,16 @@ namespace FishBreeder
             [Range(0f, 1f)] public float geneTintStrength;
 
             [Header("Swimming")]
-            [Tooltip("Side-to-side bend at the tail tip, as a fraction of body length.")]
-            public float swimAmplitude = 0.12f;
-            [Tooltip("How many waves run along the body. Below 1 looks like a goldfish, above 1 like an eel.")]
-            public float swimWaves = 0.9f;
-            [Range(0f, 0.9f)] public float headStiffness = 0.3f;
+            [Tooltip("Multiplier on the body wave. 1 = a typical carangiform fish (tail tip sweeps 10% of body length).")]
+            public float strokeStrength = 1f;
+            [Tooltip("Body waves per body length. About 1 for goldfish and most fish, 2+ for eels.")]
+            public float wavesPerBody = 1f;
+            [Tooltip("How closely the body follows the head's path through turns (0 = rigid).")]
+            [Range(0f, 1f)] public float pathFollow = 0.85f;
+            [Tooltip("Peak roll of the tail during each beat, in degrees.")]
+            public float tailTwistDegrees = 8f;
             [Tooltip("Tail beats per second at cruising speed.")]
-            public float tailBeatsPerSecond = 2.2f;
+            public float tailBeatsPerSecond = 2.4f;
         }
 
         public Entry defaultModel = new Entry();

@@ -1,7 +1,9 @@
 // Swimming fish for the Built-in Render Pipeline.
-// Bends the body side to side with a travelling sine wave that grows towards the tail,
-// so any static fish mesh (e.g. from Meshy) swims without a skeleton.
-// FishVisual sets the axis/length values from the mesh and drives _SwimPhase from speed.
+// The mesh is bent along a procedural spine computed every frame by SwimSpine (C#):
+// the spine follows the path the head has travelled, so the body curves through turns,
+// and carries a carangiform body wave (small head sway, large tail sweep) and a tail twist.
+// Each vertex is mapped from its rest position onto the spine, normals included, so any
+// static fish mesh (e.g. from Meshy) swims without a skeleton.
 Shader "FishBreeder/FishSwim"
 {
     Properties
@@ -10,14 +12,13 @@ Shader "FishBreeder/FishSwim"
         _MainTex ("Albedo", 2D) = "white" {}
         [Normal] _BumpMap ("Normal Map", 2D) = "bump" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.6
-        _SwimPhase ("Swim Phase", Float) = 0
-        _SwimAmplitude ("Swim Amplitude (fraction of length)", Float) = 0.12
-        _SwimWaves ("Waves Along Body", Float) = 0.9
-        _HeadStiffness ("Head Stiffness", Range(0,0.9)) = 0.3
-        _BodyAxis ("Body Axis (object space, towards nose)", Vector) = (0,0,1,0)
-        _SideAxis ("Side Axis (object space)", Vector) = (1,0,0,0)
-        _NoseOffset ("Nose Position Along Axis", Float) = 0.5
-        _BodyLength ("Body Length Along Axis", Float) = 1
+        [HideInInspector] _SpineEnabled ("Spine Enabled", Float) = 0
+        [HideInInspector] _BodyAxis ("Body Axis (towards nose)", Vector) = (0,0,1,0)
+        [HideInInspector] _SideAxis ("Side Axis", Vector) = (1,0,0,0)
+        [HideInInspector] _UpAxis ("Up Axis", Vector) = (0,1,0,0)
+        [HideInInspector] _RestCenter ("Rest Centre", Vector) = (0,0,0,0)
+        [HideInInspector] _NoseOffset ("Nose Position Along Axis", Float) = 0.5
+        [HideInInspector] _BodyLength ("Body Length Along Axis", Float) = 1
     }
     SubShader
     {
@@ -28,12 +29,20 @@ Shader "FishBreeder/FishSwim"
         #pragma surface surf Standard fullforwardshadows vertex:vert addshadow
         #pragma target 3.0
 
+        // Must match SwimSpine.SampleCount.
+        #define SPINE_SAMPLES 16
+
         sampler2D _MainTex;
         sampler2D _BumpMap;
         fixed4 _Color;
         half _Glossiness;
-        float _SwimPhase, _SwimAmplitude, _SwimWaves, _HeadStiffness, _NoseOffset, _BodyLength;
-        float4 _BodyAxis, _SideAxis;
+
+        float _SpineEnabled, _NoseOffset, _BodyLength;
+        float4 _BodyAxis, _SideAxis, _UpAxis, _RestCenter;
+        float4 _SpinePos[SPINE_SAMPLES];
+        float4 _SpineFwd[SPINE_SAMPLES];
+        float4 _SpineSide[SPINE_SAMPLES];
+        float4 _SpineUp[SPINE_SAMPLES];
 
         struct Input
         {
@@ -42,12 +51,34 @@ Shader "FishBreeder/FishSwim"
 
         void vert(inout appdata_full v)
         {
-            float along = dot(v.vertex.xyz, _BodyAxis.xyz);
-            float t = saturate((_NoseOffset - along) / max(_BodyLength, 1e-4)); // 0 at nose, 1 at tail tip
-            float bend = saturate((t - _HeadStiffness) / (1.0 - _HeadStiffness));
-            bend *= bend;
-            float wave = sin(_SwimPhase - t * _SwimWaves * 6.2831853);
-            v.vertex.xyz += _SideAxis.xyz * (wave * bend * _SwimAmplitude * _BodyLength);
+            if (_SpineEnabled < 0.5) return;
+
+            float3 axis = _BodyAxis.xyz;
+            float3 side = _SideAxis.xyz;
+            float3 up = _UpAxis.xyz;
+
+            // Rest coordinates: distance along the body, and offset across it.
+            float3 c = v.vertex.xyz - _RestCenter.xyz;
+            float along = dot(c, axis);
+            float acrossSide = dot(c, side);
+            float acrossUp = dot(c, up);
+
+            float t = saturate((_NoseOffset - along) / max(_BodyLength, 1e-5)); // 0 nose, 1 tail tip
+            float f = t * (SPINE_SAMPLES - 1);
+            int i0 = (int)min(floor(f), SPINE_SAMPLES - 2);
+            float w = f - i0;
+
+            float3 P = lerp(_SpinePos[i0].xyz, _SpinePos[i0 + 1].xyz, w);
+            float3 F = normalize(lerp(_SpineFwd[i0].xyz, _SpineFwd[i0 + 1].xyz, w));
+            float3 S = normalize(lerp(_SpineSide[i0].xyz, _SpineSide[i0 + 1].xyz, w));
+            float3 U = normalize(lerp(_SpineUp[i0].xyz, _SpineUp[i0 + 1].xyz, w));
+
+            v.vertex.xyz = P + S * acrossSide + U * acrossUp;
+
+            float3 n = v.normal;
+            v.normal = normalize(S * dot(n, side) + U * dot(n, up) + F * dot(n, axis));
+            float3 tg = v.tangent.xyz;
+            v.tangent.xyz = S * dot(tg, side) + U * dot(tg, up) + F * dot(tg, axis);
         }
 
         void surf(Input IN, inout SurfaceOutputStandard o)

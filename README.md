@@ -38,7 +38,7 @@ All tuning numbers live in `GameConfig` (Assets > Create > Fish Breeder > Game C
 
 ## Fish models
 
-The first real fish is the **Comet Goldfish** in `Assets/Resources/Fish/CometGoldfish` (Meshy model cut from 33,936 to 3,000 triangles, 1024 textures). Every fish uses it for now. It swims with the `FishBreeder/FishSwim` shader, which bends the body in a travelling wave that grows toward the tail and speeds up with the fish; the head end is detected automatically, so any Meshy fish exported with Y up works. Fish steer around decorations (rocks, the rock arch, driftwood, plants), keep off the glass, and pick wander targets in open water. Anything with a collider and a `TankObstacle` component counts as an obstacle.
+The first real fish is the **Comet Goldfish** in `Assets/Resources/Fish/CometGoldfish` (Meshy model cut from 33,936 to 3,000 triangles, 1024 textures). Every fish uses it for now. It swims with the `FishBreeder/FishSwim` shader driven by `SwimSpine`: the body is laid along the path the head has just travelled (so turns curve the whole fish), carries a carangiform body wave using the measured mackerel amplitude envelope (about 2% of body length at the nose, 10% at the tail tip, one wave per body), and rolls into turns with a small tail twist. Tail beats speed up when the fish accelerates or turns and relax into gentle strokes while gliding, and headings ease in and out with a damped spring. The head end is detected automatically, so any Meshy fish exported with Y up works. Fish steer around decorations (rocks, the rock arch, driftwood, plants), keep off the glass, and pick wander targets in open water. Anything with a collider and a `TankObstacle` component counts as an obstacle.
 
 To add another Meshy fish, see `Docs/MeshyPipeline.md`.
 

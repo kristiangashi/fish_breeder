@@ -12,9 +12,12 @@ namespace FishBreeder
     [RequireComponent(typeof(Fish))]
     public class FishSwimmer : MonoBehaviour
     {
-        [SerializeField] float turnDegreesPerSecond = 110f;
+        [Tooltip("Top turning speed. Turns ease in and out up to this rate.")]
+        [SerializeField] float turnDegreesPerSecond = 90f;
+        [Tooltip("Seconds to settle onto a new heading when relaxed; halved when dodging.")]
+        [SerializeField] float turnSmoothTime = 0.55f;
         [SerializeField] float acceleration = 0.4f;
-        [SerializeField] float maxPitch = 35f;
+        [SerializeField] float maxPitch = 25f;
         [SerializeField] float foodSenseRadius = 1.5f;
         [Tooltip("How far ahead to look for obstacles, in body lengths (plus a little per unit of speed).")]
         [SerializeField] float lookAheadBodyLengths = 2.5f;
@@ -44,6 +47,8 @@ namespace FishBreeder
         float currentSpeed;
         float blockedTime;
         float bank;
+        float yaw, pitch, yawVelocity, pitchVelocity;
+        bool headingInitialised;
         FoodPellet targetFood;
 
         void Update()
@@ -103,32 +108,46 @@ namespace FishBreeder
                 blockedTime = 0f;
             }
 
-            Turn(desired, pitchLimit, 1f + danger * 1.5f, dt);
+            Turn(desired, pitchLimit, danger, dt);
 
             // Slow down when something is close ahead, or when turning hard.
             float alignment = Mathf.Clamp01(Vector3.Dot(transform.forward, desired));
             desiredSpeed *= Mathf.Lerp(0.45f, 1f, alignment) * Mathf.Lerp(1f, 0.5f, danger);
+            float thrust = Mathf.Clamp01((desiredSpeed - currentSpeed) / Mathf.Max(cruiseSpeed * 0.3f, 0.01f));
             currentSpeed = Mathf.MoveTowards(currentSpeed, desiredSpeed, acceleration * dt);
 
             var next = transform.position + transform.forward * currentSpeed * dt;
             transform.position = Owner.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f);
 
-            Owner.Visual.Animate(currentSpeed / Mathf.Max(cruiseSpeed, 0.01f), bank, dt);
+            Owner.Visual.Animate(currentSpeed / Mathf.Max(cruiseSpeed, 0.01f), thrust, bank, dt);
         }
 
-        void Turn(Vector3 desired, float pitchLimit, float turnBoost, float dt)
+        /// <summary>
+        /// Eases the heading towards <paramref name="desired"/> with a critically damped spring,
+        /// so turns build up and settle smoothly instead of snapping. Danger (an obstacle ahead)
+        /// makes the fish react faster.
+        /// </summary>
+        void Turn(Vector3 desired, float pitchLimit, float danger, float dt)
         {
-            var look = Quaternion.LookRotation(desired, Vector3.up);
-            var euler = look.eulerAngles;
-            float pitch = Mathf.Clamp(Mathf.DeltaAngle(0f, euler.x), -pitchLimit, pitchLimit);
-            look = Quaternion.Euler(pitch, euler.y, 0f);
+            if (!headingInitialised)
+            {
+                var e = transform.eulerAngles;
+                yaw = e.y;
+                pitch = Mathf.DeltaAngle(0f, e.x);
+                headingInitialised = true;
+            }
 
-            float yawBefore = transform.eulerAngles.y;
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, look, turnDegreesPerSecond * turnBoost * dt);
-            float yawRate = Mathf.DeltaAngle(yawBefore, transform.eulerAngles.y) / dt;
+            float targetYaw = Mathf.Atan2(desired.x, desired.z) * Mathf.Rad2Deg;
+            float targetPitch = Mathf.Clamp(-Mathf.Asin(Mathf.Clamp(desired.y, -1f, 1f)) * Mathf.Rad2Deg, -pitchLimit, pitchLimit);
+
+            float smooth = turnSmoothTime * Mathf.Lerp(1f, 0.5f, danger);
+            float maxRate = turnDegreesPerSecond * (1f + danger);
+            yaw = Mathf.SmoothDampAngle(yaw, targetYaw, ref yawVelocity, smooth, maxRate, dt);
+            pitch = Mathf.SmoothDampAngle(pitch, targetPitch, ref pitchVelocity, smooth * 1.6f, maxRate * 0.5f, dt);
+            transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
 
             // Lean into the turn a little, like a real fish.
-            bank = Mathf.Lerp(bank, Mathf.Clamp(-yawRate * 0.15f, -25f, 25f), dt * 4f);
+            bank = Mathf.Lerp(bank, Mathf.Clamp(-yawVelocity * 0.12f, -20f, 20f), dt * 3f);
         }
 
         /// <summary>

@@ -393,7 +393,7 @@ namespace FishBreeder.Core
             Penalty("Illness", report.illness, fish.Health.IsSick ? $"{fish.Health.Disease.displayName} ({fish.Health.Severity * 100f:0}%)" : "healthy");
             var notes = fish.Health.ComfortNotes();
             Penalty("Comfort", report.comfort, $"comfort {report.comfortLevel * 100f:0}%" + (notes.Count > 0 ? $"\n<size=11>{string.Join(", ", notes)}</size>" : ""));
-            Penalty("Water", report.environment, report.environmentMismatch < 0.05f ? "suits it" : "not right for it");
+            Penalty("Water", report.environment, report.environmentMismatch < 0.01f ? "suits it" : FishHealth.EnvironmentNote(species, fish.Tank));
             if (report.injury > 0f) Penalty("Wounds", report.injury, string.IsNullOrEmpty(fish.Health.InjuryCause) ? "healing" : fish.Health.InjuryCause);
             if (report.medicineDamage > 0f) Penalty("Medicine", report.medicineDamage, $"overdosed {fish.Health.MedicineDamage}x" + (fish.Health.Infertile ? ", can't breed" : ""));
             if (report.companionship > 0f) GUILayout.Label($"<color=#9fe39f>Good company  +{report.companionship * 100f:0}</color>", Rich());

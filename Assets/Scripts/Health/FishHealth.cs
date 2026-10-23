@@ -299,6 +299,21 @@ namespace FishBreeder.Health
             return Mathf.Clamp01(mismatch);
         }
 
+        /// <summary>What about the water bothers this species, for its status window.</summary>
+        public static string EnvironmentNote(Genetics.Species species, Tank tank)
+        {
+            var parts = new List<string>();
+            if (tank.Temperature < species.tempMin) parts.Add($"too cold ({tank.Temperature:0.#} C)");
+            else if (tank.Temperature > species.tempMax) parts.Add($"too warm ({tank.Temperature:0.#} C)");
+            if (tank.Ph < species.phMin) parts.Add("too acidic");
+            else if (tank.Ph > species.phMax) parts.Add("too alkaline");
+            if (tank.Salinity < species.salinityMin) parts.Add("not salty enough");
+            else if (tank.Salinity > species.salinityMax) parts.Add("too salty");
+            if (tank.WaterQuality < 0.9f) parts.Add("dirty");
+            if (tank.Oxygen < 0.9f) parts.Add("short of oxygen");
+            return parts.Count > 0 ? string.Join(", ", parts) : "suits it";
+        }
+
         static float OutsideBy(float value, float min, float max)
         {
             if (value < min) return min - value;

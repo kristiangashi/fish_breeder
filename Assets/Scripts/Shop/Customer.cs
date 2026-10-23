@@ -160,15 +160,34 @@ namespace FishBreeder.Shop
             MoodTimeLeft = 3.5f;
         }
 
+        static float FlatDistance(Vector3 a, Vector3 b)
+        {
+            a.y = 0f;
+            b.y = 0f;
+            return Vector3.Distance(a, b);
+        }
+
         IEnumerator WalkTo(Vector3 target)
         {
             float timeout = 40f;
             if (agent != null && agent.isOnNavMesh)
             {
                 agent.isStopped = false;
-                agent.SetDestination(target);
-                while (timeout > 0f && (agent.pathPending || agent.remainingDistance > 0.12f))
+                if (!agent.SetDestination(target)) yield break;
+                while (timeout > 0f && agent.pathPending)
                 {
+                    timeout -= Time.deltaTime;
+                    yield return null;
+                }
+                // remainingDistance can still hold the previous walk's value on the first frames of a
+                // new path, so measure to the path's end (the target, or the nearest reachable point).
+                // Someone standing on the spot can block it; close enough and stuck counts as arrived.
+                float stuck = 0f;
+                while (timeout > 0f && FlatDistance(transform.position, agent.pathEndPosition) > 0.15f)
+                {
+                    bool blocked = agent.velocity.sqrMagnitude < 0.01f && FlatDistance(transform.position, agent.pathEndPosition) < 0.8f;
+                    stuck = blocked ? stuck + Time.deltaTime : 0f;
+                    if (stuck > 1.5f) break;
                     timeout -= Time.deltaTime;
                     yield return null;
                 }

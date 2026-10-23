@@ -141,7 +141,7 @@ namespace FishBreeder.Breeding
                 }
                 string reason = WhyNotReady(fish, tank);
                 if (reason == null) (fish.Sex == Sex.Female ? group.females : group.males).Add(fish);
-                else if (!reasons.ContainsKey(id)) reasons[id] = reason.Replace(fish.FishName + " ", "");
+                else if (!reasons.ContainsKey(id)) reasons[id] = reason.Replace(fish.FishName + " is ", "").Replace(fish.FishName + " ", "");
             }
             foreach (var id in order)
             {

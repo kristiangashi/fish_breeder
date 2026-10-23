@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FishBreeder.Breeding;
 using FishBreeder.Core;
+using FishBreeder.Health;
 using FishBreeder.Store;
 using UnityEngine;
 
@@ -45,11 +46,17 @@ namespace FishBreeder.Shop
                 conceived += BreedingSystem.ChanceBreeding(storeTank.Tank, chance);
             }
 
+            // Every fish's health is judged before anyone dies, so one death can't set off a chain of
+            // "rot from dead tank mates" deaths within the same time step.
+            var reports = new List<HealthReport>();
+            foreach (var fish in fishes) reports.Add(fish.IsDead ? default : fish.Health.Report());
+
             int died = 0;
-            foreach (var fish in fishes)
+            for (int i = 0; i < fishes.Count; i++)
             {
+                var fish = fishes[i];
                 if (fish.IsDead) continue;
-                var report = fish.Health.Report();
+                var report = reports[i];
                 if (report.total >= balance.deathHealthThreshold) continue;
                 float danger = (balance.deathHealthThreshold - report.total) / Mathf.Max(0.01f, balance.deathHealthThreshold);
                 if (!GameRandom.Chance(balance.deathChanceAtZeroHealth * Mathf.Pow(danger, 1.5f))) continue;

@@ -262,8 +262,10 @@ namespace FishBreeder.Store
             var size = tank.Tank.InnerSize;
             var stand = new GameObject("Stand and click");
             stand.transform.SetParent(tank.transform, false);
-            MaterialFactory.Decor(PrimitiveType.Cube, "Stand", stand.transform, new Vector3(0f, -StandHeight * 0.5f, 0f),
-                new Vector3(size.x + 0.12f, StandHeight, size.z + 0.12f), RoleColor(tank.Role));
+            // The stand stops just under the tank's base, so the two never share a surface (which flickers).
+            float top = -Tank.BaseDepth;
+            MaterialFactory.Decor(PrimitiveType.Cube, "Stand", stand.transform, new Vector3(0f, (top - StandHeight) * 0.5f, 0f),
+                new Vector3(size.x + 0.12f, StandHeight + top, size.z + 0.12f), RoleColor(tank.Role));
             var click = StoreClickable.Add(stand.transform, tank.Title, tank.transform.position + new Vector3(0f, size.y * 0.5f - StandHeight * 0.5f, 0f),
                 new Vector3(size.x + 0.16f, size.y + StandHeight + 0.1f, size.z + 0.16f), StoreClickable.Kind.Tank);
             click.tank = tank;

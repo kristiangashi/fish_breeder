@@ -17,6 +17,8 @@ namespace FishBreeder.Health
         public float injury, medicineDamage;
         /// <summary>Health gained from tank mates it likes.</summary>
         public float companionship;
+        /// <summary>Health lost because the tank holds more fish than its limit.</summary>
+        public float overcrowding;
         /// <summary>0..1 comfort level (not a penalty): tank mates, plants, decor, pests, crowding.</summary>
         public float comfortLevel;
         /// <summary>0..1 how far the water is from what the species needs.</summary>
@@ -34,16 +36,32 @@ namespace FishBreeder.Health
             if (oldAge > worst) { worst = oldAge; cause = "old age"; }
             if (injury > worst) { worst = injury; cause = string.IsNullOrEmpty(injuryCause) ? "its wounds" : $"wounds ({injuryCause})"; }
             if (medicineDamage > worst) { worst = medicineDamage; cause = "medicine poisoning"; }
+            if (overcrowding > worst) { worst = overcrowding; cause = "an overcrowded tank"; }
             if (deadTankmates > worst) cause = "rot from dead tank mates";
             return cause;
         }
     }
 
+    /// <summary>One thing that makes a fish more (positive) or less (negative) comfortable.</summary>
+    public class ComfortNote
+    {
+        public string text;
+        public float delta;
+
+        public ComfortNote(string text, float delta)
+        {
+            this.text = text;
+            this.delta = delta;
+        }
+    }
+
     /// <summary>
-    /// A fish's health and illness. Health is worked out from hunger, illness, comfort, the water
-    /// (temperature, pH, salt, quality, oxygen), old age and dead tank mates. Illness progresses,
-    /// spreads and heals only at time steps; a fish dies only from the time step's death roll,
-    /// which gets likelier the lower its health.
+    /// A fish's health and illness. What its health should be is worked out from hunger, illness,
+    /// comfort, the water (temperature, pH, salt, quality, oxygen), crowding, old age and dead tank
+    /// mates (<see cref="Report"/>). Its actual health (<see cref="Current"/>) only moves towards that
+    /// at time steps, like everything else, so nothing changes while the shop stays closed.
+    /// Illness progresses, spreads and heals only at time steps; a fish dies only from the time
+    /// step's death roll, which gets likelier the lower its health.
     /// </summary>
     [RequireComponent(typeof(Fish))]
     public class FishHealth : MonoBehaviour
@@ -53,6 +71,18 @@ namespace FishBreeder.Health
         // Looked up lazily: when Fish is added, Unity adds this required component
         // (and runs its Awake) before the Fish component itself exists.
         Fish Owner => owner != null ? owner : owner = GetComponent<Fish>();
+
+        [SerializeField, Range(0f, 1f)] float current = 1f;
+
+        /// <summary>The fish's health right now (0..1). Changes only at time steps.</summary>
+        public float Current => current;
+
+        /// <summary>Time step: health moves towards what the fish's conditions call for.</summary>
+        public void Settle()
+        {
+            if (Owner.IsDead) return;
+            current = Mathf.MoveTowards(current, Report().total, Balance.Data.health.healthChangePerStep);
+        }
 
         public DiseaseDefinition Disease { get; private set; }
         public float Severity { get; private set; }
@@ -188,7 +218,7 @@ namespace FishBreeder.Health
             }
 
             if (newlyInfected.Contains(Owner)) return false;
-            float stress = 1f + (1f - Report().total);
+            float stress = 1f + (1f - current);
             float chance = Balance.Data.timeStep.diseaseChance * stress * (1f - hardiness * config.hardinessProtection);
             if (Owner.Tank != null) chance *= Owner.Tank.InfectionMultiplier;
             if (!GameRandom.Chance(chance)) return false;
@@ -213,6 +243,7 @@ namespace FishBreeder.Health
             if (tank != null)
             {
                 report.deadTankmates = tank.Corpses.Count * weights.perDeadTankmate;
+                report.overcrowding = Mathf.Min(weights.overcrowdedMaxPenalty, tank.OverLimit * weights.overcrowdedHealthPerFish);
                 report.comfortLevel = Comfort(fish, tank, weights, null, out int liked);
                 report.companionship = liked * mates.preferredHealth;
                 report.environmentMismatch = EnvironmentMismatch(species, tank);
@@ -223,25 +254,43 @@ namespace FishBreeder.Health
             report.medicineDamage = MedicineDamage * Balance.Data.medicine.damageHealth;
 
             report.total = Mathf.Clamp01(1f - report.hunger - report.illness - report.comfort - report.environment - report.oldAge - report.deadTankmates
-                                         - report.injury - report.medicineDamage + report.companionship);
+                                         - report.injury - report.medicineDamage - report.overcrowding + report.companionship);
             return report;
         }
 
-        /// <summary>What is making this fish more or less comfortable, for its status window.</summary>
-        public List<string> ComfortNotes()
+        /// <summary>What is making this fish more or less comfortable, one line each, for its status window.</summary>
+        public List<ComfortNote> ComfortNotes()
         {
-            var notes = new List<string>();
+            var notes = new List<ComfortNote>();
             if (Owner.Tank != null) Comfort(Owner, Owner.Tank, Balance.Data.health, notes, out _);
             return notes;
         }
 
-        float Comfort(Fish fish, Tank tank, HealthBalance weights, List<string> notes, out int likedKinds)
+        static void Note(List<ComfortNote> notes, string text, float delta)
+        {
+            if (notes != null) notes.Add(new ComfortNote(text, delta));
+        }
+
+        /// <summary>
+        /// Comfort from tank mates, plants, decorations, pests, crowding, medicine and food. Notes
+        /// about tank mates only name them once research has shown how the two kinds get on.
+        /// </summary>
+        float Comfort(Fish fish, Tank tank, HealthBalance weights, List<ComfortNote> notes, out int likedKinds)
         {
             var species = fish.Species;
             var mates = Balance.Data.tankMates;
             float comfort = 0.75f;
             likedKinds = 0;
-            if (species.likesPlants && tank.HasPlants) comfort += weights.plantsBonus;
+            if (species.likesPlants && tank.HasPlants)
+            {
+                comfort += weights.plantsBonus;
+                Note(notes, Research.Knows(species, ResearchFact.Plants) ? "Loves the plants" : "Likes something about the decorations", weights.plantsBonus);
+            }
+            if (fish.AteFavouriteRecently)
+            {
+                comfort += weights.favouriteFoodComfort;
+                Note(notes, "Had one of its favourite foods", weights.favouriteFoodComfort);
+            }
 
             // Tank mates, once per kind of fish (its own kind counts too: two male bettas fight).
             int sameKind = 0;
@@ -252,37 +301,38 @@ namespace FishBreeder.Health
                 var otherSpecies = other.Species;
                 if (otherSpecies.id == species.id) sameKind++;
                 if (!seen.Add(otherSpecies.id)) continue;
-                string name = otherSpecies.id == species.id ? $"other {species.displayName}s" : otherSpecies.displayName;
+                string name = otherSpecies.id == species.id ? Research.Plural(species) : $"the {otherSpecies.displayName}";
+                bool known = Research.KnowsRelationship(species, otherSpecies);
                 if (Relationships.Get(otherSpecies, species) == Relationship.Predator)
                 {
                     comfort -= mates.predatorFear;
-                    notes?.Add($"afraid of the {name}");
+                    Note(notes, known ? $"Afraid of {name}" : "Nervous of a tank mate (not researched yet)", -mates.predatorFear);
                 }
                 if (Relationships.AreCompetitive(species, otherSpecies))
                 {
                     comfort -= mates.competitiveStress;
-                    notes?.Add($"fights with {name}");
+                    Note(notes, known ? $"Fights with {(otherSpecies.id == species.id ? "other " + name : name)}" : "Squabbles with a tank mate (not researched yet)", -mates.competitiveStress);
                 }
                 if (Relationships.Get(species, otherSpecies) == Relationship.Preferred && likedKinds < 2)
                 {
                     likedKinds++;
                     comfort += mates.preferredComfort;
-                    notes?.Add($"likes the {name}");
+                    Note(notes, known ? $"Likes {(otherSpecies.id == species.id ? "other " + name : name)}" : "Enjoys a tank mate's company (not researched yet)", mates.preferredComfort);
                 }
             }
             if (species.schoolSize > 0 && sameKind + 1 < species.schoolSize)
             {
                 comfort -= weights.tooFewSchoolmates;
-                notes?.Add($"wants {species.schoolSize}+ of its kind");
+                Note(notes, Research.Knows(species, ResearchFact.School) ? $"Wants {species.schoolSize}+ of its kind (has {sameKind + 1})" : "Seems lonely", -weights.tooFewSchoolmates);
             }
 
-            if (tank.DecorCount > weights.idealDecorMax) { comfort -= 0.15f; notes?.Add("too cluttered"); }
-            else if (tank.DecorCount < weights.idealDecorMin) { comfort -= 0.1f; notes?.Add("too bare"); }
-            else comfort += 0.1f;
+            if (tank.DecorCount > weights.idealDecorMax) { comfort -= 0.15f; Note(notes, "Too cluttered", -0.15f); }
+            else if (tank.DecorCount < weights.idealDecorMin) { comfort -= 0.1f; Note(notes, $"Too bare (likes {weights.idealDecorMin}+ decorations)", -0.1f); }
+            else { comfort += 0.1f; Note(notes, "Nicely decorated", 0.1f); }
 
-            if (tank.HasPests) { comfort -= weights.pestsComfortLoss; notes?.Add("pests"); }
-            if (tank.Residents.Count > tank.Capacity * 0.75f) { comfort -= 0.15f; notes?.Add("crowded"); }
-            if (MedicineStress > 0.01f) { comfort -= MedicineStress; notes?.Add("upset by medicine"); }
+            if (tank.HasPests) { comfort -= weights.pestsComfortLoss; Note(notes, "Pests in the tank", -weights.pestsComfortLoss); }
+            if (tank.Residents.Count > tank.Capacity * 0.75f) { comfort -= 0.15f; Note(notes, tank.IsOvercrowded ? "Overcrowded" : "Crowded", -0.15f); }
+            if (MedicineStress > 0.01f) { comfort -= MedicineStress; Note(notes, "Upset by medicine", -MedicineStress); }
             return Mathf.Clamp01(comfort);
         }
 
@@ -299,19 +349,30 @@ namespace FishBreeder.Health
             return Mathf.Clamp01(mismatch);
         }
 
-        /// <summary>What about the water bothers this species, for its status window.</summary>
-        public static string EnvironmentNote(Genetics.Species species, Tank tank)
+        /// <summary>
+        /// What about the water bothers this species, one line each, for its status window. Ranges
+        /// show once research has found them; pH can't be read at all until the Research level for it.
+        /// </summary>
+        public static List<string> EnvironmentNotes(Genetics.Species species, Tank tank)
         {
-            var parts = new List<string>();
-            if (tank.Temperature < species.tempMin) parts.Add($"too cold ({tank.Temperature:0.#} C)");
-            else if (tank.Temperature > species.tempMax) parts.Add($"too warm ({tank.Temperature:0.#} C)");
-            if (tank.Ph < species.phMin) parts.Add("too acidic");
-            else if (tank.Ph > species.phMax) parts.Add("too alkaline");
-            if (tank.Salinity < species.salinityMin) parts.Add("not salty enough");
-            else if (tank.Salinity > species.salinityMax) parts.Add("too salty");
-            if (tank.WaterQuality < 0.9f) parts.Add("dirty");
-            if (tank.Oxygen < 0.9f) parts.Add("short of oxygen");
-            return parts.Count > 0 ? string.Join(", ", parts) : "suits it";
+            var notes = new List<string>();
+            bool cold = tank.Temperature < species.tempMin, warm = tank.Temperature > species.tempMax;
+            if (cold || warm)
+                notes.Add(Research.Knows(species, ResearchFact.Temperature)
+                    ? $"Too {(cold ? "cold" : "warm")}: {tank.Temperature:0.#} C (likes {species.tempMin:0}-{species.tempMax:0} C)"
+                    : $"Too {(cold ? "cold" : "warm")} at {tank.Temperature:0.#} C (research it to learn its range)");
+            bool acid = tank.Ph < species.phMin, alkaline = tank.Ph > species.phMax;
+            if (acid || alkaline)
+            {
+                if (!Research.CanReadPh) notes.Add($"Something in the water chemistry bothers it (you can measure it at Research level {Balance.Data.research.phReadingLevel})");
+                else if (!Research.Knows(species, ResearchFact.Ph)) notes.Add($"pH {tank.Ph:0.0} is {(acid ? "too acidic (low)" : "too alkaline (high)")} for it (research it to learn its range)");
+                else notes.Add($"pH too {(acid ? "low (acidic)" : "high (alkaline)")}: {tank.Ph:0.0} (likes {species.phMin:0.0}-{species.phMax:0.0})");
+            }
+            if (tank.Salinity < species.salinityMin) notes.Add("Needs salt water");
+            else if (tank.Salinity > species.salinityMax) notes.Add(species.salinityMax > 5f ? "Too salty" : "Needs fresh water");
+            if (tank.WaterQuality < 0.9f) notes.Add($"Dirty water ({tank.WaterQuality * 100f:0}% clean)");
+            if (tank.Oxygen < 0.9f) notes.Add($"Short of oxygen ({tank.Oxygen * 100f:0}%): more air needed");
+            return notes;
         }
 
         static float OutsideBy(float value, float min, float max)

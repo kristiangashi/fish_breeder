@@ -82,7 +82,7 @@ namespace FishBreeder.Shop
                 foreach (var fish in tank.Residents)
                     if (fish.Hunger >= settings.hungryAbove) hungry = true;
                 if (hungry)
-                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The fish in {storeTank.Title} are hungry.", "Feed them flakes or premium pellets.");
+                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The fish in {storeTank.Title} are hungry.", "Feed them: any food works, and each kind has favourites.");
             }
 
             foreach (var storeTank in tanks)

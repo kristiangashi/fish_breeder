@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FishBreeder.Core;
+using FishBreeder.Feeding;
 
 namespace FishBreeder.Genetics
 {
@@ -67,8 +68,8 @@ namespace FishBreeder.Genetics
         public float salinityMin, salinityMax = 2f;
         /// <summary>Days without food before it is starving.</summary>
         public float hungerToleranceDays = 3f;
-        /// <summary>Flakes only half fill it; it needs premium food to thrive.</summary>
-        public bool needsPremiumFood;
+        /// <summary>Foods it loves: more filling, and a meal of one cheers it up. It eats anything, though.</summary>
+        public List<FoodType> favoriteFoods = new List<FoodType>();
         public bool likesPlants = true;
         /// <summary>Feels unsafe with fewer than this many of its own kind in the tank (0 = happy alone).</summary>
         public int schoolSize;
@@ -116,6 +117,34 @@ namespace FishBreeder.Genetics
                 hungerToleranceDays = hungerDays, schoolSize = school,
             };
         }
+
+        /// <summary>
+        /// What each fish is fed in good care sheets: goldfish and big cichlids on sinking pellets
+        /// and bloodworms, small community fish on flakes and brine shrimp, grazers and bottom
+        /// feeders on algae wafers, mbuna on plant food only (meaty food bloats them).
+        /// </summary>
+        static readonly Dictionary<string, FoodType[]> Favourites = new Dictionary<string, FoodType[]>
+        {
+            { "CometGoldfish", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "FancyGoldfish", new[] { FoodType.Premium, FoodType.BrineShrimp } },
+            { "Angelfish", new[] { FoodType.Bloodworms, FoodType.BrineShrimp } },
+            { "Betta", new[] { FoodType.Bloodworms, FoodType.Premium } },
+            { "Clownfish", new[] { FoodType.BrineShrimp, FoodType.Premium } },
+            { "Guppy", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "TigerBarb", new[] { FoodType.Flakes, FoodType.Bloodworms } },
+            { "NeonTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "ZebraDanio", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "Corydoras", new[] { FoodType.AlgaeWafers, FoodType.Bloodworms } },
+            { "RedTailShark", new[] { FoodType.AlgaeWafers, FoodType.Bloodworms } },
+            { "SiameseAlgaeEater", new[] { FoodType.AlgaeWafers } },
+            { "SilverDollar", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+            { "BlackMolly", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+            { "Platy", new[] { FoodType.Flakes, FoodType.AlgaeWafers } },
+            { "Oscar", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "GreenTerror", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "BlueAcara", new[] { FoodType.Bloodworms, FoodType.Premium } },
+            { "GoldenMbuna", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+        };
 
         const string Carps = "Carps and minnows (Cyprinidae)";
         const string Danios = "Danios (Danionidae)";
@@ -166,12 +195,11 @@ namespace FishBreeder.Genetics
                 if (s.id == "Platy") { s.reproduction = Reproduction.Livebearer; s.litterMin = 3; s.litterMax = 6; }
                 if (s.id == "BlackMolly") { s.reproduction = Reproduction.Livebearer; s.litterMin = 4; s.litterMax = 8; s.gestationSteps = 5; s.salinityMax = 10f; }
                 if (s.id == "SiameseAlgaeEater") s.eatsAlgae = true;
-                if (s.id == "Oscar") s.needsPremiumFood = true;
                 if (s.id == "SilverDollar" || s.id == "Oscar" || s.id == "GoldenMbuna" || s.id == "GreenTerror") s.likesPlants = false;
-                if (s.id == "Betta" || s.id == "Angelfish" || s.id == "Clownfish") s.needsPremiumFood = true;
                 if (s.id == "Clownfish") s.likesPlants = false;
                 if (s.category == FishCategory.FreshwaterCold) { s.lifespanDays = 120f; s.daysToAdult = 5f; }
                 if (s.rarity >= SpeciesRarity.Rare) s.daysToAdult = 6f;
+                if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
             }
             return list;
         }

@@ -4,8 +4,11 @@ using UnityEngine;
 
 namespace FishBreeder.Core
 {
-    /// <summary>The two experience tracks. Fishkeeping comes from caring for fish, Shopkeeping from running the shop.</summary>
-    public enum XpTrack { Fishkeeping, Shopkeeping }
+    /// <summary>
+    /// The experience tracks. Fishkeeping comes from caring for fish, Shopkeeping from running the
+    /// shop, Research from studying the fish you keep (it speeds up research).
+    /// </summary>
+    public enum XpTrack { Fishkeeping, Shopkeeping, Research }
 
     /// <summary>Things a daily goal can ask for.</summary>
     public enum GoalKind { BreedFish, HatchEggs, FeedTanks, CleanTanks, SellFish, HappyCustomers, EarnMoney, BuyDecorations }
@@ -40,8 +43,8 @@ namespace FishBreeder.Core
     /// </summary>
     public static class Progression
     {
-        static readonly int[] xp = new int[2];
-        static readonly int[] level = { 1, 1 };
+        static readonly int[] xp = new int[3];
+        static readonly int[] level = { 1, 1, 1 };
         static readonly List<DailyGoal> goals = new List<DailyGoal>();
         static readonly List<LevelUp> levelUps = new List<LevelUp>();
         static GoalKind? lastFishGoal, lastShopGoal;
@@ -59,8 +62,11 @@ namespace FishBreeder.Core
 
         public static void Reset()
         {
-            xp[0] = xp[1] = 0;
-            level[0] = level[1] = 1;
+            for (int i = 0; i < xp.Length; i++)
+            {
+                xp[i] = 0;
+                level[i] = 1;
+            }
             levelUps.Clear();
             lastFishGoal = lastShopGoal = null;
             NewDailyGoals();
@@ -169,6 +175,12 @@ namespace FishBreeder.Core
                 var fish = new List<string>();
                 foreach (var species in balance.species) if (species.unlockLevel == lvl && lvl > 1) fish.Add(species.displayName);
                 if (fish.Count > 0) list.Add("new fish in egg boxes (" + string.Join(", ", fish) + ")");
+            }
+            else if (track == XpTrack.Research)
+            {
+                var research = balance.research;
+                list.Add($"research speed x{1f + research.speedPerLevel * (lvl - 1):0.##}");
+                if (research.phReadingLevel == lvl) list.Add("measuring pH");
             }
             else
             {

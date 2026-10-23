@@ -183,6 +183,7 @@ namespace FishBreeder
             {
                 wavesPerBody = entry.wavesPerBody,
                 tailTwistDegrees = entry.tailTwistDegrees,
+                stiffness = entry.bodyStiffness,
             };
             float length = modelLength * transform.lossyScale.x;
             spine.Reset(transform.position + transform.forward * length * 0.5f, transform.forward, transform.up, length);
@@ -349,23 +350,31 @@ namespace FishBreeder
 
             if (spine != null)
             {
-                float targetStroke = Mathf.Clamp(IdleStroke + 0.45f * effort + 0.6f * thrust + 0.3f * turning, 0.02f, 1.3f);
+                // Moving: the body trails the head. Slow: it stays straight and bends from the turn instead.
+                float moving = Mathf.Clamp01(effort / 0.6f);
+                // Setting off or turning from still is where a stiff, deep body must not snake: it gets a
+                // smaller kick and keeps its front straight. Cruising is left alone.
+                float stiffness = modelEntry.bodyStiffness;
+                float startle = 1f - moving;
+                float kick = (0.6f * thrust + 0.3f * turning) * Mathf.Lerp(1f, 0.55f, stiffness * startle);
+                float targetStroke = Mathf.Clamp(IdleStroke + 0.45f * effort + kick, 0.02f, 1.3f);
                 stroke = Mathf.MoveTowards(stroke, targetStroke, deltaTime * 1.2f);
                 float beats = modelEntry.tailBeatsPerSecond * Mathf.Lerp(0.35f, 1.4f, Mathf.Clamp01(0.5f * effort + 0.6f * thrust));
                 swimPhase = Mathf.Repeat(swimPhase + deltaTime * Mathf.PI * 2f * beats, Mathf.PI * 2f);
 
-                // Moving: the body trails the head. Slow: it stays straight and bends from the turn instead.
-                float moving = Mathf.Clamp01(effort / 0.6f);
-                float follow = modelEntry.pathFollow * moving;
-                float curl = Mathf.Clamp(turnDegreesPerSecond / 90f, -1f, 1f) * 0.12f * (1f - moving);
+                float follow = modelEntry.pathFollow * moving * Mathf.Lerp(1f, 0.6f, stiffness * startle);
+                float curl = Mathf.Clamp(turnDegreesPerSecond / 90f, -1f, 1f) * Mathf.Lerp(0.12f, 0.08f, stiffness) * startle;
+                float stiffen = Mathf.Lerp(0.35f, 1f, startle);
 
                 float length = modelLength * transform.lossyScale.x;
                 var nose = transform.position + transform.forward * length * 0.5f;
                 spine.Record(nose, transform.forward, transform.up, length);
+                // While hanging about, forget the arc the nose drew, more so for stiff fish.
+                spine.Relax(nose, transform.forward, deltaTime * Mathf.Lerp(1.5f, 4f, stiffness) * startle * startle);
                 for (int i = 0; i < swimMaterials.Count; i++)
                 {
                     spine.Evaluate(nose, transform.forward, transform.up, length, swimPhase, stroke * modelEntry.strokeStrength,
-                        bankDegrees, follow, curl, swimMeshes[i]);
+                        bankDegrees, follow, curl, stiffen, swimMeshes[i]);
                     var material = swimMaterials[i];
                     material.SetVectorArray(SpinePosId, spine.Positions);
                     material.SetVectorArray(SpineFwdId, spine.Forwards);

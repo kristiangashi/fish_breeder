@@ -58,6 +58,10 @@ namespace FishBreeder
         public bool IsStarving => hunger >= GameConfig.Active.starvingThreshold;
         public bool WantsFood => hunger > 0.25f;
         public int BreedCooldown { get; set; }
+        /// <summary>Time steps since it last ate one of its favourite foods (large = not lately).</summary>
+        int stepsSinceFavourite = 99;
+        /// <summary>Ate a favourite food since the last time step or the one before: it's content.</summary>
+        public bool AteFavouriteRecently => stepsSinceFavourite <= 1;
 
         // Pregnancy (livebearer females): the fry's genes are fixed when she gets pregnant.
         readonly List<Genome> unborn = new List<Genome>();
@@ -122,6 +126,7 @@ namespace FishBreeder
                 if (wasFry && Stage != LifeStage.Fry) GrowOutOfFry(wasHidden);
             }
             if (BreedCooldown > 0) BreedCooldown--;
+            if (stepsSinceFavourite < 99) stepsSinceFavourite++;
         }
 
         /// <summary>A grey fry has grown enough to show what it really is: swap in its own model and colours.</summary>
@@ -157,10 +162,16 @@ namespace FishBreeder
             bool wasStarving = IsStarving;
             if (!pellet.TryConsume()) return;
 
+            // Fish eat anything, but a favourite food fills them up more and cheers them up.
             float nutrition = pellet.Nutrition;
-            if (Species.needsPremiumFood && pellet.Type != FoodType.Premium) nutrition *= 0.5f;
+            if (Species.favoriteFoods.Contains(pellet.Type))
+            {
+                nutrition *= Balance.Data.health.favouriteFoodNutrition;
+                stepsSinceFavourite = 0;
+            }
             hunger = Mathf.Max(0f, hunger - nutrition);
             Health.OnAte(pellet, wasStarving);
+            Research.OnAte(this, pellet.Type);
         }
 
         /// <summary>Market value of a typical fish like this one: species, looks, age and health. Shown to the player.</summary>
@@ -178,7 +189,7 @@ namespace FishBreeder
                     case "Exotic": looks = 4f; break;
                 }
                 float stage = Stage == LifeStage.Adult ? 1f : Stage == LifeStage.Juvenile ? 0.6f : 0.3f;
-                float health = Mathf.Lerp(0.4f, 1f, Health.Report().total);
+                float health = Mathf.Lerp(0.4f, 1f, Health.Current);
                 float damage = Mathf.Clamp01(1f - Health.MedicineDamage * Balance.Data.medicine.damageValue);
                 return Mathf.Max(1, Mathf.RoundToInt(species.baseValue * looks * stage * health * damage));
             }

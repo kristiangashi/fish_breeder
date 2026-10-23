@@ -82,6 +82,11 @@ namespace FishBreeder.Store
             Quaternion targetRotation;
             // Esc steps back one level: from a fish to its tank, from the tank to the store.
             bool escape = Input.GetKeyDown(KeyCode.Escape);
+            if (escape && ResearchNotesView.IsOpen)
+            {
+                ResearchNotesView.Close();
+                escape = false;
+            }
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && escape)
             {
@@ -95,7 +100,7 @@ namespace FishBreeder.Store
             }
             else
             {
-                if (panel == Panel.None) HandleStoreCameraInput(dt);
+                if (panel == Panel.None && !ResearchNotesView.IsOpen) HandleStoreCameraInput(dt);
                 GetStorePose(out targetPosition, out targetRotation);
             }
 
@@ -269,7 +274,7 @@ namespace FishBreeder.Store
             GUILayout.Label($"<b>{Economy.Format(Economy.Money)}</b>", Rich(), GUILayout.Width(90f));
             GUILayout.Label($"Day {Economy.Day}", GUILayout.Width(55f));
             GUILayout.Label($"Reputation {Economy.Reputation * 100f:0}%", GUILayout.Width(115f));
-            GUILayout.Label($"Flakes {Economy.FoodPortions(FoodType.Flakes)}  Premium {Economy.FoodPortions(FoodType.Premium)}", GUILayout.Width(170f));
+            GUILayout.Label(FoodSummary(), Rich(), GUILayout.Width(150f));
             if (shopDay.IsOpen)
             {
                 var today = shopDay.Today;
@@ -296,6 +301,9 @@ namespace FishBreeder.Store
             GUILayout.Space(14f);
             LevelMeter(XpTrack.Shopkeeping);
             GUILayout.Space(14f);
+            LevelMeter(XpTrack.Research);
+            if (GUILayout.Button("Notes (R)", GUILayout.Width(76f))) ResearchNotesView.Toggle();
+            GUILayout.Space(14f);
             var goals = new List<string>();
             foreach (var goal in Progression.Goals)
                 goals.Add(goal.Done ? $"<color=#9fe39f>{goal.Describe()} (done)</color>" : $"{goal.Describe()} <b>{goal.progress}/{goal.target}</b>");
@@ -307,14 +315,22 @@ namespace FishBreeder.Store
         static void LevelMeter(XpTrack track)
         {
             int level = Progression.Level(track);
-            GUILayout.Label($"<b>{Progression.TrackName(track)} {level}</b>", Rich(), GUILayout.Width(track == XpTrack.Fishkeeping ? 105f : 110f));
-            var rect = GUILayoutUtility.GetRect(110f, 12f, GUILayout.Width(110f));
+            GUILayout.Label($"<b>{Progression.TrackName(track)} {level}</b>", Rich(), GUILayout.Width(108f));
+            var rect = GUILayoutUtility.GetRect(90f, 12f, GUILayout.Width(90f));
             rect.y += 5f;
             float fill = Progression.IsMaxLevel(track) ? 1f : Progression.Xp(track) / (float)Progression.XpToNext(level);
             GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0f, 0f, 0f, 0.4f), 0f, 0f);
-            var color = track == XpTrack.Fishkeeping ? new Color(0.35f, 0.7f, 0.95f) : new Color(0.95f, 0.75f, 0.3f);
+            var color = track == XpTrack.Fishkeeping ? new Color(0.35f, 0.7f, 0.95f) : track == XpTrack.Shopkeeping ? new Color(0.95f, 0.75f, 0.3f) : new Color(0.6f, 0.45f, 0.9f);
             GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(fill), rect.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 0f);
             GUILayout.Label(Progression.IsMaxLevel(track) ? "max" : $"{Progression.Xp(track)}/{Progression.XpToNext(level)}", GUILayout.Width(70f));
+        }
+
+        /// <summary>"Food 40": feedings in stock across every food, red when you've run out.</summary>
+        static string FoodSummary()
+        {
+            int total = 0;
+            foreach (FoodType food in System.Enum.GetValues(typeof(FoodType))) total += Economy.FoodPortions(food);
+            return total > 0 ? $"Food: {total} feedings" : "<color=#ff8080>Food: none!</color>";
         }
 
         void DrawLevelUps(float width, float y)
@@ -477,8 +493,9 @@ namespace FishBreeder.Store
             {
                 var t = tank.Tank;
                 int eggs = EggClutch.EggsIn(t);
-                string contents = $"{t.Residents.Count} fish" + (eggs > 0 ? $", {eggs} eggs" : "");
-                string warning = t.Corpses.Count > 0 ? "\n<color=#ff8080>dead fish!</color>" : t.WaterHealth < Balance.Data.shop.grossWaterQuality ? "\n<color=#ffd27f>dirty water</color>" : "";
+                string count = $"{t.Residents.Count}/{t.Capacity} fish";
+                string contents = (t.IsOvercrowded ? $"<color=#ff8080>{count}</color>" : count) + (eggs > 0 ? $", {eggs} eggs" : "");
+                string warning = t.IsOvercrowded ? "\n<color=#ff8080>overcrowded!</color>" : t.Corpses.Count > 0 ? "\n<color=#ff8080>dead fish!</color>" : t.WaterHealth < Balance.Data.shop.grossWaterQuality ? "\n<color=#ffd27f>dirty water</color>" : "";
                 WorldLabel(t.InnerBounds.center + Vector3.up * 0.65f, $"<b>{tank.Title}</b>\n{contents}{warning}", scale, height);
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
@@ -680,7 +697,8 @@ namespace FishBreeder.Store
             GUILayout.Space(4f);
         }
 
-        static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpace - EggClutch.EggsIn(tank.Tank));
+        // Orders only fill a tank up to its limit; moving or breeding fish can push it over.
+        static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpaceBeforeLimit - EggClutch.EggsIn(tank.Tank));
 
         /// <summary>
         /// One thing for sale: its picture (a photo of the 3D design, or a drawn filler), name and
@@ -839,7 +857,7 @@ namespace FishBreeder.Store
         {
             foreach (var offer in SupplierCatalog.Food)
             {
-                var tint = offer.type == FoodType.Premium ? new Color(0.9f, 0.5f, 0.2f) : new Color(0.65f, 0.5f, 0.3f);
+                var tint = offer.color;
                 string details = $"{offer.blurb}\nYou have {Economy.FoodPortions(offer.type)} feedings.";
                 if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Food, tint), offer.name, details, XpTrack.Fishkeeping, offer.unlockLevel,
                         $"{offer.feedings} feedings  {Economy.Format(offer.price)}", Economy.CanAfford(offer.price))

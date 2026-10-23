@@ -78,6 +78,31 @@ namespace FishBreeder
         bool headingInitialised;
         FoodPellet targetFood;
 
+        // A short burst: a predator bolting at prey, or prey darting away.
+        float burstLeft, burstDelay;
+        Fish burstPrey;
+        Vector3 burstAway;
+
+        /// <summary>Bolts a little way at <paramref name="prey"/>: a nip that's all show (the real hunting happens at time steps).</summary>
+        public void Lunge(Fish prey)
+        {
+            if (prey == null) return;
+            burstPrey = prey;
+            burstDelay = 0f;
+            burstLeft = 0.45f;
+        }
+
+        /// <summary>Darts away from <paramref name="danger"/> after a split-second <paramref name="reaction"/>.</summary>
+        public void Flee(Vector3 danger, float reaction)
+        {
+            var away = transform.position - danger;
+            away.y *= 0.3f;
+            burstAway = away.sqrMagnitude > 1e-6f ? away.normalized : -transform.forward;
+            burstPrey = null;
+            burstDelay = reaction;
+            burstLeft = 0.6f;
+        }
+
         void Update()
         {
             if (Owner.Tank == null) return;
@@ -98,7 +123,13 @@ namespace FishBreeder
             float desiredSpeed;
 
             UpdateFoodTarget(bottomDweller, bodyLength);
-            if (targetFood != null)
+            bool bursting = Burst(bodyLength, dt);
+            if (bursting)
+            {
+                desiredSpeed = burstPrey != null ? 3.2f : 4f;
+                pitchLimit = 45f;
+            }
+            else if (targetFood != null)
             {
                 target = targetFood.transform.position;
                 desiredSpeed = cruiseSpeed * 1.2f;
@@ -159,14 +190,15 @@ namespace FishBreeder
             }
 
             float turnRate = activity == Activity.Hover && targetFood == null ? turnDegreesPerSecond * 0.5f : turnDegreesPerSecond;
-            Turn(desired, pitchLimit, extraPitch, turnRate, danger, dt);
+            // A burst turns as fast as dodging does.
+            Turn(desired, pitchLimit, extraPitch, bursting ? turnDegreesPerSecond * 2f : turnRate, bursting ? 1f : danger, dt);
 
             // Slow down when something is close ahead, or when turning hard.
             float alignment = Mathf.Clamp01(Vector3.Dot(transform.forward, desired));
             desiredSpeed *= Mathf.Lerp(0.3f, 1f, alignment) * Mathf.Lerp(1f, 0.5f, danger);
             float thrust = Mathf.Max(fidget, Mathf.Clamp01((desiredSpeed - currentSpeed) / 0.3f));
             // Bottom dwellers start and stop sharply: that is what makes their hops read as hops.
-            float accel = bottomDweller ? acceleration * 3f : acceleration;
+            float accel = bursting ? acceleration * 8f : bottomDweller ? acceleration * 3f : acceleration;
             currentSpeed = Mathf.MoveTowards(currentSpeed, desiredSpeed, accel * dt);
 
             var next = transform.position + transform.forward * currentSpeed * bodyLength * dt;
@@ -206,6 +238,34 @@ namespace FishBreeder
             // Lean into the turn a little, more so at speed.
             float lean = Mathf.Clamp(-yawVelocity * 0.12f * Mathf.Clamp01(currentSpeed), -20f, 20f);
             bank = Mathf.Lerp(bank, lean, dt * 3f);
+        }
+
+        /// <summary>Runs a lunge or a dart while one is going; true while it lasts (it sets the target).</summary>
+        bool Burst(float bodyLength, float dt)
+        {
+            if (burstLeft <= 0f) return false;
+            if (burstDelay > 0f)
+            {
+                burstDelay -= dt;
+                return false;
+            }
+            burstLeft -= dt;
+            if (burstPrey != null)
+            {
+                if (burstPrey.IsDead || burstPrey.Tank != Owner.Tank) burstLeft = 0f;
+                else
+                {
+                    target = burstPrey.transform.position;
+                    // Stop just short: a nip, not a collision.
+                    if ((target - transform.position).magnitude < (bodyLength + burstPrey.BodyLength) * 0.5f) burstLeft = 0f;
+                }
+            }
+            else target = Owner.Tank.Clamp(transform.position + burstAway * bodyLength * 4f, bodyLength * 0.5f);
+
+            if (burstLeft > 0f) return true;
+            // Afterwards, a moment to collect itself.
+            StartActivity(Owner.Phenotype.species.style == SwimStyle.Bottom ? Activity.Rest : Activity.Hover, bodyLength);
+            return false;
         }
 
         static bool IsBottomActivity(Activity a) => a >= Activity.Hop;

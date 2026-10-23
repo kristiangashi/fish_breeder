@@ -45,7 +45,8 @@ namespace FishBreeder.Shop
             var tank = storeTank.Tank;
             var reaction = new Reaction();
 
-            if (tank.Corpses.Count > 0 && GameRandom.Chance(0.9f))
+            // Dead fish put some shoppers off, more of them the more there are; the rest carry on.
+            if (tank.Corpses.Count > 0 && GameRandom.Chance(Mathf.Min(shop.maxSadChance, shop.sadChancePerDeadFish * tank.Corpses.Count)))
             {
                 reaction.mood = Mood.Sad;
                 return reaction;
@@ -62,8 +63,9 @@ namespace FishBreeder.Shop
             if (storeTank.Role == TankRole.ForSale)
             {
                 var candidates = new List<Fish>();
+                // Fry are too young to sell: only juveniles and adults go home with customers.
                 foreach (var fish in tank.Residents)
-                    if (!fish.IsDead && !fish.Reserved && fish.Price > 0) candidates.Add(fish);
+                    if (!fish.IsDead && !fish.Reserved && fish.Price > 0 && fish.Stage != LifeStage.Fry) candidates.Add(fish);
                 if (candidates.Count == 0)
                 {
                     if (tank.Residents.Count > 0 && GameRandom.Chance(0.3f)) reaction.mood = Mood.Happy;
@@ -83,7 +85,8 @@ namespace FishBreeder.Shop
 
                 float bargain = Mathf.Clamp(willingToPay / pick.Price, 1f, 1.5f);
                 float chance = shop.purchaseChance * Mathf.Lerp(0.5f, 1f, averageHealth) * bargain
-                               * (pick.Species.id == shopper.favoriteSpecies ? 1.5f : 1f);
+                               * (pick.Species.id == shopper.favoriteSpecies ? 1.5f : 1f)
+                               * (tank.Corpses.Count > 0 ? shop.deadFishPurchaseMultiplier : 1f);
                 if (GameRandom.Chance(chance))
                 {
                     reaction.mood = Mood.Happy;
@@ -104,7 +107,7 @@ namespace FishBreeder.Shop
         {
             if (tank.Residents.Count == 0) return 1f;
             float sum = 0f;
-            foreach (var fish in tank.Residents) sum += fish.Health.Report().total;
+            foreach (var fish in tank.Residents) sum += fish.Health.Current;
             return sum / tank.Residents.Count;
         }
     }

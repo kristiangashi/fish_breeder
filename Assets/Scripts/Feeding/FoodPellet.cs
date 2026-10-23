@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace FishBreeder.Feeding
 {
-    public enum FoodType { Flakes, Premium }
+    /// <summary>Kinds of food. Each species has favourites (see Species.favoriteFoods) but eats them all.</summary>
+    public enum FoodType { Flakes, Premium, AlgaeWafers, Bloodworms, BrineShrimp }
 
     /// <summary>
     /// A piece of food sinking through the tank. Uneaten food rots on the floor and dirties the water.
@@ -30,22 +31,24 @@ namespace FishBreeder.Feeding
         {
             this.tank = tank;
             Type = type;
-            sinkSpeed = GameRandom.Range(0.05f, 0.09f);
-
-            switch (type)
-            {
-                case FoodType.Premium:
-                    Nutrition = 0.5f;
-                    Contamination = 0.25f;
-                    break;
-                default:
-                    Nutrition = 0.35f;
-                    // Cheap flakes are usually fine, but now and then a spoiled one gets through.
-                    IsSpoiled = GameRandom.Chance(0.1f);
-                    Contamination = IsSpoiled ? 4f : 1f;
-                    break;
-            }
+            var info = Info(type);
+            sinkSpeed = info.sinkSpeed * GameRandom.Range(0.75f, 1.25f);
+            Nutrition = info.nutrition;
+            // Food is usually fine, but now and then a spoiled piece gets through.
+            IsSpoiled = GameRandom.Chance(info.spoilChance);
+            Contamination = info.contamination * (IsSpoiled ? 4f : 1f);
         }
+
+        /// <summary>The supplier's numbers for this food (a plain default if the balance file lacks it).</summary>
+        public static FoodBalance Info(FoodType type)
+        {
+            foreach (var food in Balance.Data.supplier.food)
+                if (food != null && food.type == type) return food;
+            return new FoodBalance { type = type, name = type.ToString() };
+        }
+
+        /// <summary>"algae wafers": the food's name for sentences.</summary>
+        public static string Name(FoodType type) => Info(type).name.ToLower();
 
         void OnEnable() => active.Add(this);
 

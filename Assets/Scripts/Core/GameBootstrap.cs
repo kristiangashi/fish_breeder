@@ -31,6 +31,7 @@ namespace FishBreeder.Core
             GameLog.Clear();
             Economy.Reset();
             Progression.Reset();
+            Research.Reset();
             Tank.Focused = null;
 
             // The tanks start empty: the first fish come from the supplier computer.
@@ -44,6 +45,7 @@ namespace FishBreeder.Core
             shopDay.Initialize(store);
             var hud = gameObject.AddComponent<FishTankHUD>();
             gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
+            gameObject.AddComponent<ResearchNotesView>();
             GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first box of eggs at the supplier computer.");
         }
 

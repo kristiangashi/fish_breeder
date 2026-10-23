@@ -17,6 +17,58 @@ namespace FishBreeder.Core
         public int feedings;
         [Tooltip("Fishkeeping level needed to buy it.")]
         public int unlockLevel = 1;
+        [Tooltip("Hunger one bite takes away (hunger runs 0..1).")]
+        public float nutrition = 0.35f;
+        [Tooltip("Multiplier on the chance a meal makes a fish sick.")]
+        public float contamination = 1f;
+        [Tooltip("Chance a piece is spoiled (4x as likely to make a fish sick).")]
+        [Range(0f, 1f)] public float spoilChance;
+        [Tooltip("How fast it sinks, metres per second. Bottom feeders only eat food near the sand.")]
+        public float sinkSpeed = 0.07f;
+        public Color color = new Color(0.55f, 0.4f, 0.25f);
+    }
+
+    /// <summary>One thing research teaches about a species, and the research points it takes.</summary>
+    [Serializable]
+    public class ResearchFactBalance
+    {
+        public ResearchFact fact;
+        public float points = 2f;
+    }
+
+    /// <summary>
+    /// Research: the more time you spend keeping a species, the more you learn about it. Every time
+    /// step each species in your tanks earns research points (times your research speed, which
+    /// grows with the Research level), and facts unlock at their point totals. Adult tank mates may
+    /// reveal how they get on, and feeding may reveal favourite foods.
+    /// </summary>
+    [Serializable]
+    public class ResearchBalance
+    {
+        [Tooltip("Research points each species you keep earns per time step, at research speed 1.")]
+        public float pointsPerStep = 1f;
+        [Tooltip("Research speed = 1 + this x (Research level - 1).")]
+        public float speedPerLevel = 0.2f;
+        public List<ResearchFactBalance> facts = new List<ResearchFactBalance>
+        {
+            new ResearchFactBalance { fact = ResearchFact.Temperature, points = 2f },
+            new ResearchFactBalance { fact = ResearchFact.Plants, points = 3f },
+            new ResearchFactBalance { fact = ResearchFact.School, points = 4f },
+            new ResearchFactBalance { fact = ResearchFact.Ph, points = 6f },
+            new ResearchFactBalance { fact = ResearchFact.Breeding, points = 8f },
+            new ResearchFactBalance { fact = ResearchFact.Lifespan, points = 12f },
+        };
+        [Tooltip("Chance per time step, at research speed 1, that two kinds of adult fish sharing a tank show how they get on.")]
+        [Range(0f, 1f)] public float relationshipChance = 0.08f;
+        [Tooltip("Chance, at research speed 1, that a fish eating one of its favourite foods shows it's a favourite.")]
+        [Range(0f, 1f)] public float favouriteFoodChance = 0.15f;
+        [Tooltip("Research level needed to measure pH at all.")]
+        public int phReadingLevel = 2;
+        [Header("Research XP")]
+        public int xpPerSpeciesPerStep = 2;
+        public int xpFact = 8;
+        public int xpRelationship = 15;
+        public int xpFavouriteFood = 10;
     }
 
     [Serializable]
@@ -147,7 +199,9 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 14, decorationSlots = 20 },
         };
         [Tooltip("Decoration ids the three starting tanks come with.")]
-        public List<string> starterDecorations = new List<string> { "Rock", "Plant", "Driftwood", "Seaweed" };
+        public List<string> starterDecorations = new List<string>();
+        [Tooltip("A tank's fish count is a soft limit: you can go over it (with serious problems for the fish) up to this many times the limit.")]
+        public float tankHardLimitMultiplier = 1.5f;
     }
 
     [Serializable]
@@ -155,8 +209,16 @@ namespace FishBreeder.Core
     {
         public List<FoodBalance> food = new List<FoodBalance>
         {
-            new FoodBalance { type = FoodType.Flakes, name = "Flakes tub", blurb = "Cheap. Now and then a spoiled flake makes a fish sick.", price = 15, feedings = 20 },
-            new FoodBalance { type = FoodType.Premium, name = "Premium pellets", blurb = "More filling and much less likely to cause illness. Some species need it.", price = 45, feedings = 20, unlockLevel = 3 },
+            new FoodBalance { type = FoodType.Flakes, name = "Flakes", blurb = "Cheap everyday food. Now and then a spoiled flake makes a fish sick.", price = 15, feedings = 20,
+                nutrition = 0.35f, contamination = 1f, spoilChance = 0.1f, sinkSpeed = 0.06f, color = new Color(0.62f, 0.45f, 0.25f) },
+            new FoodBalance { type = FoodType.AlgaeWafers, name = "Algae wafers", blurb = "Sinking wafers of algae and greens, for grazers and bottom feeders.", price = 30, feedings = 20, unlockLevel = 2,
+                nutrition = 0.45f, contamination = 0.5f, spoilChance = 0.03f, sinkSpeed = 0.22f, color = new Color(0.3f, 0.48f, 0.2f) },
+            new FoodBalance { type = FoodType.Premium, name = "Premium pellets", blurb = "Filling and much less likely to cause illness.", price = 45, feedings = 20, unlockLevel = 3,
+                nutrition = 0.5f, contamination = 0.25f, spoilChance = 0f, sinkSpeed = 0.09f, color = new Color(0.9f, 0.45f, 0.2f) },
+            new FoodBalance { type = FoodType.BrineShrimp, name = "Frozen brine shrimp", blurb = "Tiny shrimp that drift slowly down. Small fish go mad for them.", price = 35, feedings = 15, unlockLevel = 3,
+                nutrition = 0.45f, contamination = 0.6f, spoilChance = 0.03f, sinkSpeed = 0.045f, color = new Color(0.95f, 0.55f, 0.5f) },
+            new FoodBalance { type = FoodType.Bloodworms, name = "Frozen bloodworms", blurb = "Rich midge larvae, a treat for most fish. Frozen food carries a little more risk.", price = 40, feedings = 15, unlockLevel = 4,
+                nutrition = 0.6f, contamination = 1.4f, spoilChance = 0.05f, sinkSpeed = 0.1f, color = new Color(0.6f, 0.08f, 0.1f) },
         };
         public List<EggTierBalance> eggTiers = new List<EggTierBalance>
         {
@@ -249,6 +311,11 @@ namespace FishBreeder.Core
         [Tooltip("Water quality below this grosses shoppers out.")]
         [Range(0f, 1f)] public float grossWaterQuality = 0.45f;
         [Range(0f, 1f)] public float grossAlgae = 0.6f;
+        [Tooltip("Chance a shopper is put off by a tank, for each dead fish in it (up to the max).")]
+        [Range(0f, 1f)] public float sadChancePerDeadFish = 0.3f;
+        [Range(0f, 1f)] public float maxSadChance = 0.9f;
+        [Tooltip("Purchase chance is multiplied by this in a For Sale tank with dead fish in it.")]
+        [Range(0f, 1f)] public float deadFishPurchaseMultiplier = 0.6f;
         [Tooltip("Reputation (0..1) the shop starts with. Reviews move it up or down each day.")]
         [Range(0f, 1f)] public float startingReputation = 0.5f;
         public float reputationChangePerDay = 0.15f;
@@ -281,8 +348,14 @@ namespace FishBreeder.Core
         [Tooltip("No death roll while health is at or above this.")]
         [Range(0f, 1f)] public float deathHealthThreshold = 0.5f;
         [Range(0f, 1f)] public float deathChanceAtZeroHealth = 0.7f;
-        [Tooltip("Tank wipes allowed per closed-shop session.")]
-        public int wipesPerSession = 3;
+        [Tooltip("Wipes each tank gets per closed-shop session at Fishkeeping level 1.")]
+        public int wipesPerSession = 1;
+        [Tooltip("Each tank gets one more wipe per session every this many Fishkeeping levels (0 = never).")]
+        public int extraWipeEveryFishkeepingLevels = 8;
+        [Tooltip("Extra water quality lost per time step for each fish over the tank's limit.")]
+        public float overcrowdedWastePerFish = 0.02f;
+        [Tooltip("Illness chances go up by this share for each fish over the tank's limit.")]
+        public float overcrowdedIllnessPerFish = 0.1f;
         public float wipeAlgaeRemoved = 0.35f;
         public float wipeQualityRestored = 0.25f;
     }
@@ -307,6 +380,15 @@ namespace FishBreeder.Core
         public float plantsBonus = 0.15f;
         public int idealDecorMin = 3, idealDecorMax = 10;
         public float pestsComfortLoss = 0.25f;
+        [Tooltip("Health every fish in a tank loses for each fish over the tank's limit.")]
+        public float overcrowdedHealthPerFish = 0.05f;
+        [Range(0f, 1f)] public float overcrowdedMaxPenalty = 0.6f;
+        [Tooltip("Health only changes at time steps, moving towards what the fish's conditions call for by at most this much per step.")]
+        [Range(0f, 1f)] public float healthChangePerStep = 0.35f;
+        [Tooltip("A favourite food fills a fish this many times as much.")]
+        public float favouriteFoodNutrition = 1.4f;
+        [Tooltip("Comfort a fish gets for a time step after a meal of one of its favourite foods.")]
+        public float favouriteFoodComfort = 0.1f;
     }
 
     /// <summary>
@@ -472,6 +554,7 @@ namespace FishBreeder.Core
         public NotificationBalance notifications = new NotificationBalance();
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
+        public ResearchBalance research = new ResearchBalance();
     }
 
     /// <summary>
@@ -481,8 +564,11 @@ namespace FishBreeder.Core
     public static class Balance
     {
         public const string ResourcePath = "Balance/balance";
-        /// <summary>2: real-world species data (names, families, temperature and pH ranges, schools).</summary>
-        public const int CurrentDataVersion = 2;
+        /// <summary>
+        /// 2: real-world species data (names, families, temperature and pH ranges, schools).
+        /// 3: favourite foods and new foods, no starting decorations, one wipe per tank.
+        /// </summary>
+        public const int CurrentDataVersion = 3;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -572,6 +658,26 @@ namespace FishBreeder.Core
                     foreach (var tier in data.supplier.eggTiers)
                         foreach (var d in tiers)
                             if (tier != null && tier.id == d.id) tier.fryPrice = d.fryPrice;
+            }
+            if (fromVersion < 3)
+            {
+                var defaults = new Dictionary<string, Species>();
+                foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
+                foreach (var s in data.species)
+                    if (s != null && s.id != null && defaults.TryGetValue(s.id, out var d)) s.favoriteFoods = new List<FoodType>(d.favoriteFoods);
+                var fresh = new SupplierBalance();
+                if (data.supplier != null)
+                {
+                    // The food list gains new foods and per-food numbers; take the new list, keeping prices you set.
+                    var food = new List<FoodBalance>(fresh.food);
+                    if (data.supplier.food != null)
+                        foreach (var old in data.supplier.food)
+                            foreach (var f in food)
+                                if (old != null && old.type == f.type) { f.price = old.price; f.feedings = old.feedings; f.unlockLevel = old.unlockLevel; }
+                    data.supplier.food = food;
+                }
+                if (data.store != null) data.store.starterDecorations = new List<string>();
+                if (data.timeStep != null) data.timeStep.wipesPerSession = 1;
             }
             data.dataVersion = CurrentDataVersion;
         }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FishBreeder.Core;
 using FishBreeder.Genetics;
+using UnityEngine;
 
 namespace FishBreeder.Health
 {
@@ -49,6 +50,54 @@ namespace FishBreeder.Health
                 victim.Health.Injure(rules.nipInjury, $"nipped by {nipper.FishName} the {nipper.Species}");
                 wounded++;
             }
+        }
+    }
+
+    /// <summary>
+    /// What you see of a predator in the tank: every few seconds it bolts a little way at one of its
+    /// prey, which darts away. Only for show; the real hunting happens at time steps.
+    /// </summary>
+    public class TankMateBehaviour : MonoBehaviour
+    {
+        Tank tank;
+        float nextLunge;
+
+        void Awake()
+        {
+            tank = GetComponent<Tank>();
+            nextLunge = Time.time + GameRandom.Range(2f, 6f);
+        }
+
+        void Update()
+        {
+            if (tank == null || Time.time < nextLunge) return;
+            nextLunge = Time.time + GameRandom.Range(3f, 8f);
+
+            var pairs = new List<Fish>();
+            foreach (var hunter in tank.Residents)
+            {
+                if (hunter == null || hunter.IsDead || hunter.Stage == LifeStage.Fry) continue;
+                foreach (var prey in tank.Residents)
+                    if (prey != hunter && !prey.IsDead && Relationships.Get(hunter.Species, prey.Species) == Relationship.Predator)
+                    {
+                        pairs.Add(hunter);
+                        pairs.Add(prey);
+                    }
+            }
+            if (pairs.Count == 0) return;
+
+            // Closer prey gets picked more often: a predator goes for what's near it.
+            int pick = 0;
+            float best = float.MaxValue;
+            for (int i = 0; i < pairs.Count; i += 2)
+            {
+                float score = (pairs[i].transform.position - pairs[i + 1].transform.position).sqrMagnitude * GameRandom.Range(0.3f, 1f);
+                if (score < best) { best = score; pick = i; }
+            }
+            var predator = pairs[pick];
+            var target = pairs[pick + 1];
+            predator.Swimmer.Lunge(target);
+            target.Swimmer.Flee(predator.transform.position, 0.12f);
         }
     }
 }

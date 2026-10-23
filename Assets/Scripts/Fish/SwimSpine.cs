@@ -38,6 +38,8 @@ namespace FishBreeder
         public float wavesPerBody = 1f;
         /// <summary>Peak tail twist in degrees.</summary>
         public float tailTwistDegrees = 8f;
+        /// <summary>0..1: how much of the front of the body stays straight (deep-bodied fish are stiff).</summary>
+        public float stiffness;
 
         public void Reset(Vector3 nose, Vector3 forward, Vector3 up, float length)
         {
@@ -78,6 +80,25 @@ namespace FishBreeder
         }
 
         /// <summary>
+        /// Eases the recorded path towards a straight line behind the nose. While a fish hangs in
+        /// place and turns, its nose draws a tight arc; without this, the body would snake through
+        /// that old arc the moment it sets off.
+        /// </summary>
+        public void Relax(Vector3 nose, Vector3 forward, float amount)
+        {
+            amount = Mathf.Clamp01(amount);
+            if (amount <= 0f) return;
+            float distance = 0f;
+            var previous = nose;
+            for (int i = 0; i < trail.Count; i++)
+            {
+                distance += (trail[i] - previous).magnitude;
+                previous = trail[i];
+                trail[i] = Vector3.Lerp(trail[i], nose - forward * distance, amount);
+            }
+        }
+
+        /// <summary>
         /// Builds the spine for this frame and writes it in <paramref name="meshSpace"/>'s local space.
         /// </summary>
         /// <param name="phase">Tail-beat phase in radians (ωt).</param>
@@ -86,9 +107,11 @@ namespace FishBreeder
         /// <param name="follow">How closely the body follows the head's path this frame (0 = straight body).</param>
         /// <param name="curl">Extra C-bend for turning on the spot: sideways tail offset as a fraction of
         /// body length, positive towards the fish's right.</param>
+        /// <param name="stiffen">0..1: how much of the body's <see cref="stiffness"/> applies right now.</param>
         public void Evaluate(Vector3 nose, Vector3 forward, Vector3 up, float length,
-            float phase, float amplitude, float bankDegrees, float follow, float curl, Transform meshSpace)
+            float phase, float amplitude, float bankDegrees, float follow, float curl, float stiffen, Transform meshSpace)
         {
+            float stiff = Mathf.Clamp01(stiffness * stiffen);
             // 1. Lay the spine along the recent path, blended with a straight body.
             for (int i = 0; i < SampleCount; i++)
             {
@@ -106,7 +129,10 @@ namespace FishBreeder
                 float s = i / (SampleCount - 1f);
                 var tangent = Tangent(spinePoints, i, forward);
                 var side = Vector3.Cross(spineUps[i], tangent).normalized;
-                float sway = Envelope(s) * length * amplitude * Mathf.Sin(k * s - phase) + curl * length * s * s;
+                // A stiff body keeps its front half straight: the wave and the curl live in the tail end.
+                float bend = Mathf.Lerp(1f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.85f, s)), stiff);
+                float curlShape = Mathf.Pow(s, Mathf.Lerp(2f, 3.5f, stiff));
+                float sway = Envelope(s) * length * amplitude * bend * Mathf.Sin(k * s - phase) + curl * length * curlShape;
                 midline[i] = spinePoints[i] + side * sway;
             }
 

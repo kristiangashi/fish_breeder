@@ -100,8 +100,16 @@ namespace FishBreeder
                 return sizes[Mathf.Clamp(sizeIndex, 0, sizes.Count - 1)];
             }
         }
-        /// <summary>Most fish this tank holds.</summary>
+        /// <summary>
+        /// The tank's fish limit. It's a soft limit: you can put more in (up to <see cref="HardCapacity"/>),
+        /// but every fish over it hurts the health of all of them, dirties the water faster and spreads illness.
+        /// </summary>
         public int Capacity => Mathf.Max(1, SizeInfo.capacity);
+        /// <summary>No more fish than this fit at all.</summary>
+        public int HardCapacity => Mathf.Max(Capacity, Mathf.FloorToInt(Capacity * Balance.Data.store.tankHardLimitMultiplier));
+        /// <summary>Fish over the limit (0 when within it).</summary>
+        public int OverLimit => Mathf.Max(0, residents.Count - Capacity);
+        public bool IsOvercrowded => residents.Count > Capacity;
         public Vector3 InnerSize => innerSize;
 
         /// <summary>Fish the tank keeps in full oxygen: more with a (working) bubbler, and more with a better one.</summary>
@@ -121,17 +129,33 @@ namespace FishBreeder
         public float WaterHealth => Mathf.Clamp01(Mathf.Min(waterQuality, 1f - algae * 0.8f) - (pests ? 0.15f : 0f));
 
         public Bounds InnerBounds => new Bounds(transform.position + Vector3.up * innerSize.y * 0.5f, innerSize);
-        public bool IsFull => residents.Count >= Capacity;
-        public int FreeSpace => Mathf.Max(0, Capacity - residents.Count);
+        /// <summary>Not even one more fish fits (the hard limit, well past the soft one).</summary>
+        public bool IsFull => residents.Count >= HardCapacity;
+        /// <summary>Room left before the hard limit.</summary>
+        public int FreeSpace => Mathf.Max(0, HardCapacity - residents.Count);
+        /// <summary>Room left before the tank is overcrowded.</summary>
+        public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - residents.Count);
 
-        /// <summary>1 in clean water, up to GameConfig.dirtyWaterInfectionMultiplier in filthy water.</summary>
-        public float InfectionMultiplier => Mathf.Lerp(GameConfig.Active.dirtyWaterInfectionMultiplier, 1f, waterQuality) * (pests ? 1.3f : 1f);
+        /// <summary>1 in clean water, up to GameConfig.dirtyWaterInfectionMultiplier in filthy water; more again when overcrowded.</summary>
+        public float InfectionMultiplier => Mathf.Lerp(GameConfig.Active.dirtyWaterInfectionMultiplier, 1f, waterQuality) * (pests ? 1.3f : 1f)
+                                            * (1f + OverLimit * Balance.Data.timeStep.overcrowdedIllnessPerFish);
+
+        /// <summary>Wipes every tank gets per closed-shop session: one, and more as your Fishkeeping level grows.</summary>
+        public static int WipesPerSession
+        {
+            get
+            {
+                var balance = Balance.Data.timeStep;
+                int every = balance.extraWipeEveryFishkeepingLevels;
+                return Mathf.Max(1, balance.wipesPerSession + (every > 0 ? (Progression.Fishkeeping - 1) / every : 0));
+            }
+        }
 
         void Awake()
         {
             temperature = GameConfig.Active.roomTemperature;
             ph = GameConfig.Active.startingPh;
-            WipesLeft = Balance.Data.timeStep.wipesPerSession;
+            WipesLeft = WipesPerSession;
         }
 
         /// <summary>For Sale tanks: fish arriving without a price get their appraised value as a starting price.</summary>
@@ -164,7 +188,7 @@ namespace FishBreeder
         {
             if (WipesLeft <= 0)
             {
-                GameLog.Add("No more wipes until the next time the shop opens and closes.");
+                GameLog.Add("This tank has had its wipe. It gets another at the next time step (more per tank as your Fishkeeping level grows).");
                 return false;
             }
             var balance = Balance.Data.timeStep;
@@ -175,7 +199,7 @@ namespace FishBreeder
             waterQuality = Mathf.Clamp01(waterQuality + balance.wipeQualityRestored * skill);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpWipeTank);
             Progression.Count(GoalKind.CleanTanks);
-            GameLog.Add($"You wiped the tank. Water {waterQuality * 100f:0}%, algae {algae * 100f:0}%. {WipesLeft} wipes left.");
+            GameLog.Add($"You wiped the tank. Water {waterQuality * 100f:0}%, algae {algae * 100f:0}%." + (WipesLeft > 0 ? $" {WipesLeft} more wipes here this time." : " That's this tank's wipe until the next time step."));
             return true;
         }
 
@@ -201,6 +225,8 @@ namespace FishBreeder
         {
             salinity = salt ? 35f : 0f;
             ph = salt ? 8.1f : GameConfig.Active.startingPh;
+            // Marine tanks get sand, fresh water tanks gravel.
+            if (visuals != null) BuildSubstrate();
             GameLog.Add(salt ? "The tank is now salt water." : "The tank is now fresh water.");
         }
 
@@ -257,7 +283,8 @@ namespace FishBreeder
             waterQuality = Mathf.Clamp01(waterQuality
                 - balance.waterQualityLossPerStep * waste
                 - residents.Count * balance.wasteQualityLossPerFish * waste
-                - corpses.Count * balance.corpseQualityLoss);
+                - corpses.Count * balance.corpseQualityLoss
+                - OverLimit * balance.overcrowdedWastePerFish);
             float algaeGrowth = balance.algaePerStep + DecorCount * balance.algaePerDecoration;
             int grazers = 0;
             foreach (var fish in residents) if (!fish.IsDead && fish.Species.eatsAlgae) grazers++;
@@ -277,7 +304,7 @@ namespace FishBreeder
                 temperature = Mathf.Round((heaterSetting + GameRandom.Range(-drift, drift)) * 10f) / 10f;
             }
             else temperature = GameConfig.Active.roomTemperature;
-            WipesLeft = balance.wipesPerSession;
+            WipesLeft = WipesPerSession;
             FedSinceTimeStep = false;
         }
 
@@ -435,6 +462,7 @@ namespace FishBreeder
             sizeIndex = size;
             innerSize = SizeInfo.Size;
             if (decor == null) decor = gameObject.AddComponent<TankDecor>();
+            if (GetComponent<Health.TankMateBehaviour>() == null) gameObject.AddComponent<Health.TankMateBehaviour>();
             BuildVisuals();
             if (decorations != null)
                 foreach (var id in decorations) decor.Add(id);
@@ -462,21 +490,24 @@ namespace FishBreeder
             root.SetParent(transform, false);
             visuals = root;
 
-            MaterialFactory.Decor(PrimitiveType.Cube, "Sand", root, new Vector3(0f, -0.025f, 0f), new Vector3(b.x + 0.04f, 0.05f, b.z + 0.04f), new Color(0.85f, 0.75f, 0.55f));
+            // The tank sits on its stand on a dark base rim; the substrate fills the bottom of the glass.
+            var frame = new Color(0.1f, 0.1f, 0.12f);
+            MaterialFactory.Decor(PrimitiveType.Cube, "Base", root, new Vector3(0f, -BaseDepth + 0.01f, 0f), new Vector3(b.x + 0.05f, 0.02f, b.z + 0.05f), frame);
             var wall = MaterialFactory.Decor(PrimitiveType.Cube, "BackWall", root, new Vector3(0f, b.y * 0.5f, b.z * 0.5f + 0.01f), new Vector3(b.x + 0.04f, b.y, 0.02f), ClearWater);
             backWallMaterial = wall.GetComponent<Renderer>().sharedMaterial;
 
-            // Glass frame: the 12 edges of the box.
-            var frame = new Color(0.1f, 0.1f, 0.12f);
+            // Glass frame: the 12 edges of the box, the bottom ones down at the base below the substrate.
             const float t = 0.02f;
+            float bottom = -BaseDepth + 0.02f + t * 0.5f;
             for (int sx = -1; sx <= 1; sx += 2)
             for (int sz = -1; sz <= 1; sz += 2)
-                MaterialFactory.Decor(PrimitiveType.Cube, "FrameV", root, new Vector3(sx * b.x * 0.5f, b.y * 0.5f, sz * b.z * 0.5f), new Vector3(t, b.y, t), frame);
+                MaterialFactory.Decor(PrimitiveType.Cube, "FrameV", root, new Vector3(sx * b.x * 0.5f, (b.y + bottom) * 0.5f, sz * b.z * 0.5f), new Vector3(t, b.y - bottom, t), frame);
             for (int sy = 0; sy <= 1; sy++)
             for (int s = -1; s <= 1; s += 2)
             {
-                MaterialFactory.Decor(PrimitiveType.Cube, "FrameX", root, new Vector3(0f, sy * b.y, s * b.z * 0.5f), new Vector3(b.x, t, t), frame);
-                MaterialFactory.Decor(PrimitiveType.Cube, "FrameZ", root, new Vector3(s * b.x * 0.5f, sy * b.y, 0f), new Vector3(t, t, b.z), frame);
+                float y = sy == 0 ? bottom : b.y;
+                MaterialFactory.Decor(PrimitiveType.Cube, "FrameX", root, new Vector3(0f, y, s * b.z * 0.5f), new Vector3(b.x, t, t), frame);
+                MaterialFactory.Decor(PrimitiveType.Cube, "FrameZ", root, new Vector3(s * b.x * 0.5f, y, 0f), new Vector3(t, t, b.z), frame);
             }
 
             if (HasFilter) BuildFilter();
@@ -484,23 +515,22 @@ namespace FishBreeder
             if (HasBubbler) BuildBubbler();
             UpdateEquipmentLook();
             decor.Rebuild(root, b, SizeInfo.decorationSlots);
-            BuildPebbles(root, b);
+            BuildSubstrate();
             water = TankWater.Build(root, b);
             // New colliders must be in the physics scene before fish pick spawn points.
             Physics.SyncTransforms();
         }
 
-        /// <summary>Pebbles are pure decoration; fish can swim over them.</summary>
-        static void BuildPebbles(Transform root, Vector3 b)
+        /// <summary>How far the tank's base (rim and substrate) reaches below the water's floor.</summary>
+        public const float BaseDepth = 0.07f;
+
+        GameObject substrate;
+
+        /// <summary>Sand for salt water, gravel for fresh water. Pure looks: fish swim over it.</summary>
+        void BuildSubstrate()
         {
-            int pebbles = Mathf.RoundToInt(14f * b.x * b.z / (1.6f * 0.7f));
-            for (int i = 0; i < pebbles; i++)
-            {
-                float size = GameRandom.Range(0.02f, 0.05f);
-                MaterialFactory.Decor(PrimitiveType.Sphere, "Pebble", root,
-                    new Vector3(GameRandom.Range(-b.x * 0.48f, b.x * 0.48f), size * 0.2f, GameRandom.Range(-b.z * 0.45f, b.z * 0.45f)),
-                    new Vector3(size * 1.3f, size * 0.6f, size), new Color(GameRandom.Range(0.5f, 0.8f), GameRandom.Range(0.45f, 0.7f), 0.45f));
-            }
+            if (substrate != null) Destroy(substrate);
+            substrate = TankSubstrate.Build(visuals, innerSize, IsSaltwater ? TankSubstrate.Kind.Sand : TankSubstrate.Kind.Gravel, BaseDepth - 0.02f);
         }
     }
 }

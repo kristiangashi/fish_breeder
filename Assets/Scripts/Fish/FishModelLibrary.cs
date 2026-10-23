@@ -44,7 +44,21 @@ namespace FishBreeder
             public float tailTwistDegrees = 8f;
             [Tooltip("Tail beats per second at cruising speed.")]
             public float tailBeatsPerSecond = 2.4f;
+            [Tooltip("0 = slender fish that bend along most of their body; 1 = deep-bodied fish (goldfish, angelfish) whose front half stays stiff and only the tail end swings.")]
+            [Range(0f, 1f)] public float bodyStiffness = 0.3f;
         }
+
+        /// <summary>
+        /// How stiff each body is. Deep, short bodies (goldfish, angelfish, discus-shaped fish)
+        /// swim mostly with the back third; slim fish (danios, tetras, sharks) bend further forward.
+        /// </summary>
+        static readonly Dictionary<string, float> Stiffness = new Dictionary<string, float>
+        {
+            { "CometGoldfish", 0.75f }, { "FancyGoldfish", 0.9f }, { "Angelfish", 0.9f }, { "SilverDollar", 0.9f },
+            { "Oscar", 0.8f }, { "GreenTerror", 0.7f }, { "BlueAcara", 0.7f }, { "Betta", 0.35f }, { "Clownfish", 0.55f },
+            { "BlackMolly", 0.5f }, { "Platy", 0.5f }, { "GoldenMbuna", 0.45f }, { "Guppy", 0.3f }, { "TigerBarb", 0.45f },
+            { "NeonTetra", 0.25f }, { "ZebraDanio", 0.15f }, { "Corydoras", 0.6f }, { "RedTailShark", 0.2f }, { "SiameseAlgaeEater", 0.15f },
+        };
 
         public Entry defaultModel = new Entry();
         public List<Entry> entries = new List<Entry>();
@@ -86,6 +100,7 @@ namespace FishBreeder
                 model = Resources.Load<GameObject>(comet + "CometGoldfish"),
                 albedo = Resources.Load<Texture2D>(comet + "CometGoldfish_Albedo"),
                 normalMap = Resources.Load<Texture2D>(comet + "CometGoldfish_Normal"),
+                bodyStiffness = Stiffness["CometGoldfish"],
             };
             if (library.defaultModel.model == null)
                 Debug.LogWarning("[FishBreeder] Comet Goldfish model not found in Resources; using placeholder fish.");
@@ -145,6 +160,7 @@ namespace FishBreeder
                 strokeStrength = stroke,
                 pathFollow = follow,
                 tailTwistDegrees = twist,
+                bodyStiffness = Stiffness.TryGetValue(id, out var stiffness) ? stiffness : 0.3f,
             });
         }
     }

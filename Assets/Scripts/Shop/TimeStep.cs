@@ -47,10 +47,14 @@ namespace FishBreeder.Shop
                 conceived += BreedingSystem.ChanceBreeding(storeTank.Tank, chance);
             }
 
-            // Every fish's health is judged before anyone dies, so one death can't set off a chain of
-            // "rot from dead tank mates" deaths within the same time step.
+            // Every fish's health is settled before anyone dies, so one death can't set off a chain of
+            // "rot from dead tank mates" deaths within the same time step. Health only ever moves here.
             var reports = new List<HealthReport>();
-            foreach (var fish in fishes) reports.Add(fish.IsDead ? default : fish.Health.Report());
+            foreach (var fish in fishes)
+            {
+                if (!fish.IsDead) fish.Health.Settle();
+                reports.Add(fish.IsDead ? default : fish.Health.Report());
+            }
 
             int died = 0;
             for (int i = 0; i < fishes.Count; i++)
@@ -58,8 +62,9 @@ namespace FishBreeder.Shop
                 var fish = fishes[i];
                 if (fish.IsDead) continue;
                 var report = reports[i];
-                if (report.total >= balance.deathHealthThreshold) continue;
-                float danger = (balance.deathHealthThreshold - report.total) / Mathf.Max(0.01f, balance.deathHealthThreshold);
+                float health = fish.Health.Current;
+                if (health >= balance.deathHealthThreshold) continue;
+                float danger = (balance.deathHealthThreshold - health) / Mathf.Max(0.01f, balance.deathHealthThreshold);
                 if (!GameRandom.Chance(balance.deathChanceAtZeroHealth * Mathf.Pow(danger, 1.5f))) continue;
                 fish.Die(report.WorstCause(fish.Health.Disease, fish.Health.InjuryCause));
                 died++;
@@ -69,6 +74,10 @@ namespace FishBreeder.Shop
             // isn't judged as well.
             int eaten = 0, wounded = 0;
             foreach (var storeTank in tanks) TankMates.Run(storeTank.Tank, ref eaten, ref wounded);
+
+            var allTanks = new List<Tank>();
+            foreach (var storeTank in tanks) allTanks.Add(storeTank.Tank);
+            Research.OnTimeStep(allTanks);
 
             var parts = new List<string>();
             if (hatched > 0) parts.Add($"{hatched} eggs hatched");

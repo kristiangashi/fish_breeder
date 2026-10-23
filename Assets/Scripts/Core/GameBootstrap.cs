@@ -1,21 +1,17 @@
-using FishBreeder.Breeding;
-using FishBreeder.Feeding;
-using FishBreeder.Genetics;
+using FishBreeder.Store;
 using UnityEngine;
 
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// Builds a playable tank at runtime: camera, light, tank, systems, HUD and starter fish.
-    /// If the open scene has no GameBootstrap, one is created automatically when you press Play,
-    /// so a brand-new empty scene is enough to try the game.
+    /// Builds the game at runtime: the store with its starting tanks, camera, light and the
+    /// closed-shop view. If the open scene has no GameBootstrap, one is created automatically when
+    /// you press Play, so a brand-new empty scene is enough to try the game.
     /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
         [SerializeField] GameConfig config;
         [SerializeField] FishModelLibrary modelLibrary;
-        [Tooltip("Comet Goldfish to start with, so there is a pair to breed. One of every other species joins them.")]
-        [SerializeField] int starterGoldfish = 2;
         [Tooltip("0 = random every run.")]
         [SerializeField] int randomSeed;
 
@@ -33,29 +29,22 @@ namespace FishBreeder.Core
             GameConfig.Active = config != null ? config : ScriptableObject.CreateInstance<GameConfig>();
             FishVisual.DefaultLibrary = modelLibrary != null ? modelLibrary : FishModelLibrary.LoadBuiltIn();
             GameLog.Clear();
+            Economy.Reset(GameConfig.Active.startingMoney, GameConfig.Active.starterFlakeFeedings);
+            Tank.Focused = null;
 
-            var tank = new GameObject("Tank").AddComponent<Tank>();
-            tank.BuildPlaceholderVisuals();
+            // The tanks start empty: the first fish come from the supplier computer.
+            var store = new GameObject("Store").AddComponent<StoreLayout>();
+            store.Build();
 
-            var feeding = gameObject.AddComponent<FeedingSystem>();
-            feeding.Initialize(tank);
-            var breeding = gameObject.AddComponent<BreedingSystem>();
-            breeding.Initialize(tank);
-
-            var cam = SetupCamera(tank);
+            var cam = SetupCamera();
             SetupLight();
 
-            for (int i = 0; i < starterGoldfish; i++)
-                FishFactory.Spawn(Genome.CreateRandom(Species.CometGoldfish), 1, 1f, tank, tank.RandomFreePoint(0.15f));
-            foreach (var species in Species.All)
-                if (species != Species.CometGoldfish)
-                    FishFactory.Spawn(Genome.CreateRandom(species), 1, 1f, tank, tank.RandomFreePoint(0.15f));
-
-            gameObject.AddComponent<FishTankHUD>().Initialize(tank, feeding, breeding, cam);
-            GameLog.Add("Welcome! Feed your fish, keep the water clean and breed for rare traits.");
+            var hud = gameObject.AddComponent<FishTankHUD>();
+            gameObject.AddComponent<StoreView>().Initialize(store, hud, cam);
+            GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first eggs or fry at the supplier computer.");
         }
 
-        static Camera SetupCamera(Tank tank)
+        static Camera SetupCamera()
         {
             var cam = Camera.main;
             if (cam == null)
@@ -63,9 +52,6 @@ namespace FishBreeder.Core
                 cam = new GameObject("Main Camera").AddComponent<Camera>();
                 cam.tag = "MainCamera";
             }
-            var center = tank.InnerBounds.center;
-            cam.transform.position = center + new Vector3(0f, 0.1f, -1.9f);
-            cam.transform.LookAt(center);
             cam.fieldOfView = 45f;
             cam.nearClipPlane = 0.05f;
             cam.clearFlags = CameraClearFlags.SolidColor;

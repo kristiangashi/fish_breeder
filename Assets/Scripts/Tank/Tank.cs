@@ -18,7 +18,11 @@ namespace FishBreeder
         static readonly Color ClearWater = new Color(0.12f, 0.35f, 0.55f);
         static readonly Color MurkyWater = new Color(0.25f, 0.33f, 0.12f);
 
+        /// <summary>The tank the camera is looking into. Only it tints the fog and background; null in the store view.</summary>
+        public static Tank Focused;
+
         public IReadOnlyList<Fish> Residents => residents;
+        public bool HasFilter { get; private set; }
         public float WaterQuality => waterQuality;
         public Bounds InnerBounds => new Bounds(transform.position + Vector3.up * innerSize.y * 0.5f, innerSize);
         public bool IsFull => residents.Count >= GameConfig.Active.maxFishPerTank;
@@ -85,18 +89,32 @@ namespace FishBreeder
 
         void Update()
         {
-            Pollute(residents.Count * GameConfig.Active.bioloadPerFishPerSecond * Time.deltaTime);
+            float filter = HasFilter ? GameConfig.Active.filterBioloadMultiplier : 1f;
+            Pollute(residents.Count * GameConfig.Active.bioloadPerFishPerSecond * filter * Time.deltaTime);
             ApplyWaterLook();
+        }
+
+        /// <summary>A filter box hung on the back glass; it slows how fast waste dirties the water.</summary>
+        public void InstallFilter()
+        {
+            if (HasFilter) return;
+            HasFilter = true;
+            var b = innerSize;
+            var visuals = transform.Find("Visuals");
+            var dark = new Color(0.15f, 0.16f, 0.18f);
+            MaterialFactory.Decor(PrimitiveType.Cube, "Filter", visuals, new Vector3(b.x * 0.36f, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
+            MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", visuals, new Vector3(b.x * 0.36f, b.y * 0.55f, b.z * 0.5f - 0.03f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
         }
 
         void ApplyWaterLook()
         {
             var water = Color.Lerp(MurkyWater, ClearWater, waterQuality);
+            if (backWallMaterial != null) backWallMaterial.color = water * 1.3f;
+            if (Focused != this) return;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Exponential;
             RenderSettings.fogColor = water;
             RenderSettings.fogDensity = Mathf.Lerp(0.6f, 0.08f, waterQuality);
-            if (backWallMaterial != null) backWallMaterial.color = water * 1.3f;
             var cam = Camera.main;
             if (cam != null) cam.backgroundColor = water * 0.5f;
         }

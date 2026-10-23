@@ -42,6 +42,13 @@ namespace FishBreeder.Core
         public int maxFryPerBreeding = 3;
         public int maxFishPerTank = 24;
 
+        [Header("Shop")]
+        public int startingMoney = 1000;
+        [Tooltip("Feedings of flakes in the cupboard on day one.")]
+        public int starterFlakeFeedings = 10;
+        [Tooltip("Waste build-up in a tank with a filter, relative to one without.")]
+        [Range(0f, 1f)] public float filterBioloadMultiplier = 0.4f;
+
         [Header("Diseases")]
         public List<DiseaseDefinition> diseases = DiseaseDefinition.CreateDefaults();
 

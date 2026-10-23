@@ -17,15 +17,20 @@ namespace FishBreeder.Core
         FeedingSystem feeding;
         BreedingSystem breeding;
         Camera cam;
+        string title;
+        System.Action onBack;
         readonly List<Fish> selected = new List<Fish>();
         Rect leftPanel, rightPanel, logPanel;
 
-        public void Initialize(Tank t, FeedingSystem f, BreedingSystem b, Camera c)
+        public void Initialize(Tank t, FeedingSystem f, BreedingSystem b, Camera c, string tankTitle = null, System.Action back = null)
         {
             tank = t;
             feeding = f;
             breeding = b;
             cam = c;
+            title = tankTitle;
+            onBack = back;
+            selected.Clear();
         }
 
         void Update() => selected.RemoveAll(f => f == null || f.IsDead);
@@ -38,7 +43,7 @@ namespace FishBreeder.Core
             float width = Screen.width / scale;
             float height = Screen.height / scale;
 
-            leftPanel = new Rect(10f, 10f, 230f, 250f);
+            leftPanel = new Rect(10f, 10f, 250f, 300f);
             rightPanel = new Rect(width - 330f, 10f, 320f, 420f);
             logPanel = new Rect(10f, height - 190f, 460f, 180f);
 
@@ -52,14 +57,15 @@ namespace FishBreeder.Core
         void DrawTankPanel()
         {
             GUILayout.BeginArea(leftPanel, GUI.skin.box);
-            GUILayout.Label("<b>Fish Breeder</b>", RichLabel());
+            GUILayout.Label($"<b>{title ?? "Fish Breeder"}</b>   {Economy.Format(Economy.Money)}", RichLabel());
             GUILayout.Label($"Fish: {tank.Residents.Count} / {GameConfig.Active.maxFishPerTank}");
-            GUILayout.Label($"Water quality: {tank.WaterQuality * 100f:0}%  (illness x{tank.InfectionMultiplier:0.0})");
-            if (GUILayout.Button("Feed flakes (cheap, risky)")) feeding.Feed(FoodType.Flakes, 8);
-            if (GUILayout.Button("Feed premium (safer)")) feeding.Feed(FoodType.Premium, 8);
+            int eggs = EggClutch.EggsIn(tank);
+            if (eggs > 0) GUILayout.Label($"Eggs: {eggs} (hatch next day)");
+            GUILayout.Label($"Water quality: {tank.WaterQuality * 100f:0}%  (illness x{tank.InfectionMultiplier:0.0})" + (tank.HasFilter ? "\nFilter installed" : ""));
+            if (GUILayout.Button($"Feed flakes ({Economy.FoodPortions(FoodType.Flakes)} left)") && Economy.TryUseFood(FoodType.Flakes)) feeding.Feed(FoodType.Flakes, 8);
+            if (GUILayout.Button($"Feed premium ({Economy.FoodPortions(FoodType.Premium)} left)") && Economy.TryUseFood(FoodType.Premium)) feeding.Feed(FoodType.Premium, 8);
             if (GUILayout.Button("Clean tank")) tank.Clean();
-            if (GUILayout.Button("Add wild fish") && !tank.IsFull)
-                FishFactory.Spawn(Genetics.Genome.CreateRandom(), 1, 1f, tank, tank.RandomFreePoint(0.1f));
+            if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
             GUILayout.EndArea();
         }
 

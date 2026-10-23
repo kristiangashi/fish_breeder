@@ -10,11 +10,22 @@ A Fish Tycoon–style breeding game in Unity with fully 3D fish.
 
 1. Install **Unity 6 (6000.0 LTS)** with Unity Hub. Any 6000.0.x patch is fine; Hub may ask to switch versions, say yes.
 2. In Unity Hub, **Add > Add project from disk** and pick this folder. First import takes a few minutes.
-3. Open any scene (or **File > New Scene**) and press **Play**. `GameBootstrap` builds the tank, camera, light, HUD and six wild fish automatically.
+3. Open any scene (or **File > New Scene**) and press **Play**. `GameBootstrap` builds the store, its three starting tanks, camera, light and HUD automatically.
 
 If Hub refuses to open the folder, create a new **3D (Built-In Render Pipeline)** project called FishBreeder and copy the `Assets` folder from here into it.
 
-## Playing (placeholder HUD)
+## Playing (closed shop, placeholder HUD)
+
+You start with $1,000, a tub of flakes and three empty tanks: a breeder, a display and a for-sale tank.
+
+- **Store view**: A/D, arrow keys or right-drag to pan, scroll to zoom. Everything clickable has a label.
+- **Supplier computer** (desk by the door): order eggs or fry of any species into a tank, buy food, or install a filter. Eggs are cheaper but hatch only when the next day starts; fry arrive right away.
+- **Register**: balance, recent transactions and day. Opening the shop comes later; the dev buttons add $1,000 or skip to the next day (which hatches eggs).
+- **Click a tank** to fly into it. Feeding uses one feeding from your food stock. Esc or **Back to store** returns.
+- **Empty tank spots**: click to buy a breeder, for-sale, display or quarantine tank.
+- **Locked sections** (darker floor to the right): click to unlock with money; each adds six tank spots.
+
+Inside a tank:
 
 - **Feed flakes / Feed premium**: flakes are cheap but sometimes spoiled; premium is much safer.
 - **Clean tank**: water gets dirtier from fish waste and rotting food; dirty water triples illness odds.
@@ -32,8 +43,9 @@ All tuning numbers live in `GameConfig` (Assets > Create > Fish Breeder > Game C
 | `Scripts/Feeding` | `FeedingSystem` drops food; `FoodPellet` sinks, gets eaten or rots |
 | `Scripts/Health` | `DiseaseDefinition` (the illness catalogue), `FishHealth` (infection per meal, progression, recovery/death rolls, contagion, medicine) |
 | `Scripts/Fish` | `Fish` (hunger, growth, death), `FishSwimmer` (wander + chase food), `FishVisual` (Meshy model or procedural placeholder), `PlaceholderFishMesh` and `FishPatternTexture` (gene-driven 3D placeholder), `FishModelLibrary` (Meshy model lookup) |
-| `Scripts/Tank` | `Tank` (bounds, residents, water quality, placeholder glass tank) |
-| `Scripts/Core` | `GameBootstrap`, `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
+| `Scripts/Tank` | `Tank` (bounds, residents, water quality, filter, placeholder glass tank), `EggClutch` (eggs that hatch at the next day) |
+| `Scripts/Store` | `StoreLayout` (rooms, sections, tank spots, register, computer), `StoreView` (store camera and closed-shop windows), `StoreTank` (tank roles), `SupplierCatalog` (prices) |
+| `Scripts/Core` | `GameBootstrap`, `Economy` (money, food stock, day), `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
 | `Art/Fish/Meshy` | Imported Meshy models go here (see `Docs/MeshyPipeline.md`) |
 
 ## Fish models

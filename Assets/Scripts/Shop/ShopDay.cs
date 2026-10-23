@@ -16,12 +16,16 @@ namespace FishBreeder.Shop
         public string review;
         public string overnight;
         public float reputationChange;
+        /// <summary>The shop stayed closed: time passed, but no customers came.</summary>
+        public bool stayedClosed;
     }
 
     /// <summary>
     /// The open-shop phase. Opening runs a time step and starts a day of customers (one real hour by
     /// default); when the time is up the shop closes on its own, runs another time step, starts the
-    /// next day and shows the day's report. Developer controls speed it up or skip it.
+    /// next day and shows the day's report. Developer controls speed it up or skip it. Instead of
+    /// opening, the player can keep the shop closed for the day: both time steps run straight away
+    /// and nobody comes in. For the first few days (the setup days) that's the only choice.
     /// </summary>
     public class ShopDay : MonoBehaviour
     {
@@ -70,6 +74,11 @@ namespace FishBreeder.Shop
         public void Open()
         {
             if (IsOpen) return;
+            if (!Economy.CanOpenShop)
+            {
+                GameLog.Add($"The shop isn't ready to open yet: {Economy.DaysUntilOpening} more days to raise some fish to sell.");
+                return;
+            }
             GameLog.Add("You flip the sign to OPEN. Overnight in the tanks:");
             string overnight = TimeStep.Run(layout.Tanks);
             IsOpen = true;
@@ -77,6 +86,26 @@ namespace FishBreeder.Shop
             spawnTimer = 2f;
             today = new DayReport { day = Economy.Day, overnight = overnight };
             layout.BuildNavMesh();
+            Milestones.Add(MilestoneKind.OpenShop);
+            Fx.Stamp("OPEN!", UiTheme.Leaf);
+        }
+
+        /// <summary>
+        /// Keeps the shop closed today: the day's two time steps run straight away (fish grow, eggs
+        /// hatch, water gets dirtier, and so on), but no customers come and nothing is sold.
+        /// </summary>
+        public void StayClosed()
+        {
+            if (IsOpen) return;
+            var report = new DayReport { day = Economy.Day, stayedClosed = true };
+            GameLog.Add(Economy.CanOpenShop ? "You keep the shop closed today. Morning in the tanks:" : "Another day of getting ready. Morning in the tanks:");
+            string morning = TimeStep.Run(layout.Tanks);
+            GameLog.Add("Evening in the tanks:");
+            string evening = TimeStep.Run(layout.Tanks);
+            report.overnight = $"Morning: {morning}\nEvening: {evening}";
+            Economy.NextDay();
+            Progression.NewDailyGoals();
+            LastReport = report;
         }
 
         public void Close()
@@ -191,6 +220,7 @@ namespace FishBreeder.Shop
             Progression.Count(GoalKind.SellFish);
             Progression.Count(GoalKind.EarnMoney, price);
             popups.Add(new MoneyPopup { position = registerPoint, amount = price });
+            Fx.Burst(registerPoint + Vector3.up * 0.4f, UiTheme.Sun, 16);
             if (today != null)
             {
                 today.fishSold++;

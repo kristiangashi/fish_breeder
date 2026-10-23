@@ -32,6 +32,10 @@ namespace FishBreeder.Core
             Economy.Reset();
             Progression.Reset();
             Research.Reset();
+            Journal.Reset();
+            Milestones.Reset();
+            Fx.Reset();
+            ViewMode.Set(false);
             Tank.Focused = null;
 
             // The tanks start empty: the first fish come from the supplier computer.
@@ -45,8 +49,16 @@ namespace FishBreeder.Core
             shopDay.Initialize(store);
             var hud = gameObject.AddComponent<FishTankHUD>();
             gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
-            gameObject.AddComponent<ResearchNotesView>();
-            GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first box of eggs at the supplier computer.");
+            gameObject.AddComponent<JournalView>();
+            gameObject.AddComponent<FxOverlay>();
+            int setup = Economy.DaysUntilOpening;
+            if (setup > 0)
+            {
+                GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)} and {setup} days before the grand opening to raise some fish to sell.");
+                GameLog.Add("Order your first box of eggs or fry at the supplier computer, then end the day to let time pass.");
+                Fx.Day("Welcome to your fish shop!", $"{setup} days to raise some fish before the grand opening");
+            }
+            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first box of eggs at the supplier computer.");
         }
 
         static Camera SetupCamera()

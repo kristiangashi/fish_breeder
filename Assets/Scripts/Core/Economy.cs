@@ -35,6 +35,16 @@ namespace FishBreeder.Core
             if (store.starterFlakeFeedings > 0) AddFood(FoodType.Flakes, store.starterFlakeFeedings);
         }
 
+        /// <summary>Days still to go before the shop's grand opening (0 once it can open).</summary>
+        public static int DaysUntilOpening => Mathf.Max(0, Balance.Data.shop.setupDays + 1 - Day);
+
+        public static bool CanOpenShop => DaysUntilOpening == 0;
+
+#if UNITY_EDITOR
+        /// <summary>Developer shortcut: jumps the calendar to the grand opening.</summary>
+        public static void DevSkipSetup() => Day = Mathf.Max(Day, Balance.Data.shop.setupDays + 1);
+#endif
+
         public static string Format(int dollars) => $"${dollars:N0}";
 
         public static bool CanAfford(int amount) => Money >= amount;

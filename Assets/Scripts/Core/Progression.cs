@@ -105,6 +105,7 @@ namespace FishBreeder.Core
         public static void Count(GoalKind kind, int amount = 1)
         {
             if (amount <= 0) return;
+            Milestones.FromGoal(kind, amount);
             foreach (var goal in goals)
             {
                 if (goal.kind != kind || goal.Done) continue;
@@ -129,7 +130,7 @@ namespace FishBreeder.Core
         {
             var options = new List<DailyGoalBalance>();
             foreach (var goal in Data.dailyGoals)
-                if (goal != null && goal.track == track) options.Add(goal);
+                if (goal != null && goal.track == track && (Economy.CanOpenShop || !NeedsCustomers(goal.kind))) options.Add(goal);
             if (options.Count > 1 && last.HasValue) options.RemoveAll(g => g.kind == last.Value);
             if (options.Count == 0) return null;
             var pick = options[GameRandom.Range(0, options.Count)];
@@ -143,6 +144,9 @@ namespace FishBreeder.Core
                 xp = Mathf.RoundToInt(Data.dailyGoalXp + Data.dailyGoalXpPerLevel * lvl),
             };
         }
+
+        /// <summary>Goals only customers can help with, so none of these before the grand opening.</summary>
+        static bool NeedsCustomers(GoalKind kind) => kind == GoalKind.SellFish || kind == GoalKind.HappyCustomers || kind == GoalKind.EarnMoney;
 
         /// <summary>XP for a fish bred in the shop: more for rarer species and rarer looks.</summary>
         public static int BredFishXp(int baseXp, Species species, string looks)

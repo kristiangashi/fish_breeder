@@ -129,6 +129,8 @@ namespace FishBreeder
         public float WaterHealth => Mathf.Clamp01(Mathf.Min(waterQuality, 1f - algae * 0.8f) - (pests ? 0.15f : 0f));
 
         public Bounds InnerBounds => new Bounds(transform.position + Vector3.up * innerSize.y * 0.5f, innerSize);
+        /// <summary>Height of the water's surface, where bubbles pop and ripples spread.</summary>
+        public float SurfaceY => InnerBounds.max.y - 0.04f;
         /// <summary>Not even one more fish fits (the hard limit, well past the soft one).</summary>
         public bool IsFull => residents.Count >= HardCapacity;
         /// <summary>Room left before the hard limit.</summary>
@@ -199,6 +201,8 @@ namespace FishBreeder
             waterQuality = Mathf.Clamp01(waterQuality + balance.wipeQualityRestored * skill);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpWipeTank);
             Progression.Count(GoalKind.CleanTanks);
+            Fx.Sparkle(InnerBounds);
+            Fx.Text(InnerBounds.center + Vector3.up * innerSize.y * 0.3f, "Sparkling!", UiTheme.Aqua, 20f);
             GameLog.Add($"You wiped the tank. Water {waterQuality * 100f:0}%, algae {algae * 100f:0}%." + (WipesLeft > 0 ? $" {WipesLeft} more wipes here this time." : " That's this tank's wipe until the next time step."));
             return true;
         }
@@ -210,6 +214,8 @@ namespace FishBreeder
             pests = false;
             waterQuality = Mathf.Clamp01(waterQuality + 0.1f);
             GameLog.Add($"Water treated: pH {ph:0.0}, pests gone.");
+            var inner = InnerBounds;
+            Fx.Bubbles(new Vector3(inner.center.x, inner.min.y + 0.03f, inner.center.z), 14, SurfaceY, inner.extents.x * 0.6f);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpTreatWater);
         }
 

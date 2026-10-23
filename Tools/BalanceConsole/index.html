@@ -97,6 +97,7 @@ const ENUMS = {
   fact: ["Temperature", "Ph", "Plants", "School", "Breeding", "Lifespan"],
   relation: ["Neutral", "Predator", "Competitive", "Preferred"],
   kind: ["BreedFish", "HatchEggs", "FeedTanks", "CleanTanks", "SellFish", "HappyCustomers", "EarnMoney", "BuyDecorations"],
+  goal: ["GetFish", "KeepFish", "DiscoverSpecies", "GrowUp", "FeedFish", "CleanTank", "HatchEggs", "BreedFish", "LearnFact", "BuyEquipment", "BuyDecoration", "OpenShop", "SellFish", "EarnMoney", "HappyCustomers", "FishkeepingLevel"],
   style: ["Midwater", "Bottom"],
   type: ["Flakes", "Premium", "AlgaeWafers", "Bloodworms", "BrineShrimp"],
   cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
@@ -161,6 +162,12 @@ const META = {
   // Progression
   baseTarget: ["Target at level 1", ""],
   text: ["Text ({0} = target)", ""],
+  title: ["Title", ""],
+  goal: ["Goal", "What the player has to do. KeepFish and FishkeepingLevel count what you have now; the rest are running totals."],
+  target: ["Target", "How many times (or how much money for EarnMoney)."],
+  reward: ["Cash reward ($)", ""],
+  xp: ["XP reward", "Goes to the track on the right."],
+  setupDays: ["Setup days", "Days at the start before the shop can open, to raise some fish to sell. The grand opening is the day after."],
   // Food
   feedings: ["Feedings per pack", ""],
   nutrition: ["Nutrition", "How much hunger one pellet takes away."],
@@ -535,7 +542,7 @@ function renderDiseases() {
 
 const SECTION_HINTS = {
   shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank) × reputation.",
-  timeStep: "What happens at each time step: once when the shop opens and once when it closes. Nothing changes while the shop stays closed.",
+  timeStep: "What happens at each time step: once when the shop opens and once when it closes (a day with the shop kept shut runs both). Nothing changes while you work in the closed shop.",
   health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step. Below: what tank mate relationships do, and how medicine works (it goes into the whole tank).",
   store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
   stock: "Egg and fry boxes, decorations and tank sizes. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box. Decorations bring customers (Shop tab) but too many speed up algae.",
@@ -571,6 +578,8 @@ function renderSection(key) {
   } else if (key === "progression") {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Levels and XP"), objectForm(data.progression, ["dailyGoals"])));
     cards.push(el("div", { class: "card" }, listTable("Daily goals", data.progression.dailyGoals)));
+    if (!data.milestones) data.milestones = [];
+    cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, "Milestones are one-off achievements that pay cash and XP, in this order. The next three show on the right of the store screen."), listTable("Milestones", data.milestones)));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Closing notifications"), objectForm(data.notifications)));
   } else {
     cards.push(el("div", { class: "card" }, objectForm(data[key])));

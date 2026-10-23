@@ -10,12 +10,11 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// Placeholder IMGUI for looking into one tank: the tank's water, equipment, heater, decorations
+    /// IMGUI for looking into one tank: the tank's water, equipment, heater, decorations
     /// and size on the left, a status window next to the selected fish (the camera follows it), and
     /// the breeding bar when two fish are picked. With a fish selected, left/right arrows or the
     /// little buttons beside it step through the fish in the tank; with none selected they move to
     /// the next tank, as do the buttons at the bottom. While the shop is open everything is view-only.
-    /// Replace with a real UI later.
     /// </summary>
     public class FishTankHUD : MonoBehaviour
     {
@@ -95,10 +94,20 @@ namespace FishBreeder.Core
         void OnGUI()
         {
             if (tank == null) return;
+            UiTheme.Apply();
             float scale = Mathf.Max(1f, Screen.height / 900f);
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
             float width = Screen.width / scale;
             float height = Screen.height / scale;
+
+            if (ViewMode.Watching)
+            {
+                // No menus: clicking a fish still follows it (the corner is the "Show menus" button).
+                leftPanel = fishWindow = breedBar = logPanel = stepLeft = stepRight = tankBar = Rect.zero;
+                leftPanel = new Rect(width - 170f, 0f, 170f, 60f);
+                HandleClick();
+                return;
+            }
 
             // Runs down to the log, so eggs, pregnancies and breeding lines never push the buttons off the bottom.
             leftPanel = new Rect(10f, 10f, 270f, Mathf.Max(520f, height - 170f));
@@ -125,7 +134,7 @@ namespace FishBreeder.Core
 
         void DrawTankPanel()
         {
-            GUILayout.BeginArea(leftPanel, GUI.skin.box);
+            GUILayout.BeginArea(leftPanel, UiStyles.Window);
             panelScroll = GUILayout.BeginScrollView(panelScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
             var size = tank.SizeInfo;
             GUILayout.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
@@ -191,7 +200,10 @@ namespace FishBreeder.Core
                 foreach (var fish in tank.Residents) fish.DevGrowUp();
 #endif
             GUILayout.EndScrollView();
-            if (GUILayout.Button("Research notes (R)")) ResearchNotesView.Toggle();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Journal (J)")) JournalView.Toggle();
+            if (GUILayout.Button("Watch (V)")) ViewMode.Set(true);
+            GUILayout.EndHorizontal();
             if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
             GUILayout.EndArea();
         }
@@ -567,7 +579,7 @@ namespace FishBreeder.Core
                 if (Research.KnowsFavourite(species, food)) known.Add(FoodPellet.Name(food));
             SubLine(known.Count > 0 ? $"Favourite food: {string.Join(", ", known)}" + (known.Count < species.favoriteFoods.Count ? " (maybe more)" : "")
                 : "Favourite food: feed it different foods to find out", 0f, false);
-            if (GUILayout.Button($"Research notes: {species.displayName}")) ResearchNotesView.Open(species.id);
+            if (GUILayout.Button($"Journal: {species.displayName}")) JournalView.Open(species.id);
         }
 
         void DrawFishBreeding(Fish fish)
@@ -632,7 +644,7 @@ namespace FishBreeder.Core
         static void Section(string title)
         {
             GUILayout.Space(6f);
-            GUILayout.Label($"<b><color=#a9c7e8>{title.ToUpper()}</color></b>", Rich());
+            GUILayout.Label($"<b><color={UiTheme.SunHex}>{title.ToUpper()}</color></b>", Rich());
         }
 
         /// <summary>An indented line under a heading; with a delta it shows the comfort it adds or takes.</summary>
@@ -703,7 +715,7 @@ namespace FishBreeder.Core
 
         void DrawBreedBar()
         {
-            GUILayout.BeginArea(breedBar, GUI.skin.box);
+            GUILayout.BeginArea(breedBar, UiStyles.Window);
             var a = selected[0];
             var b = selected[1];
             if (storeTank.Role != TankRole.Breeder)
@@ -714,7 +726,7 @@ namespace FishBreeder.Core
             {
                 bool ok = storeTank.Breeding.CanBreed(a, b, out var reason) && !ReadOnly;
                 GUI.enabled = ok;
-                if (GUILayout.Button($"Breed {a.FishName} and {b.FishName}")) storeTank.Breeding.Breed(a, b);
+                if (GUILayout.Button($"♥ Breed {a.FishName} and {b.FishName}", UiTheme.Primary)) storeTank.Breeding.Breed(a, b);
                 GUI.enabled = true;
                 if (!string.IsNullOrEmpty(reason)) GUILayout.Label($"<i>{reason}</i>", Rich());
             }
@@ -723,7 +735,7 @@ namespace FishBreeder.Core
 
         void DrawLog()
         {
-            GUILayout.BeginArea(logPanel, GUI.skin.box);
+            GUILayout.BeginArea(logPanel, UiTheme.Bar);
             var entries = GameLog.Entries;
             for (int i = Mathf.Max(0, entries.Count - 6); i < entries.Count; i++)
                 GUILayout.Label(entries[i]);
@@ -738,7 +750,13 @@ namespace FishBreeder.Core
                 var screen = cam.WorldToScreenPoint(fish.transform.position + Vector3.up * 0.08f);
                 if (screen.z < 0f) continue;
                 var gui = new Vector2(screen.x / scale, guiHeight - screen.y / scale);
-                GUI.Label(new Rect(gui.x - 60f, gui.y - 22f, 120f, 22f), $"v {fish.FishName}", CenteredLabel());
+                float bob = Mathf.Sin(Time.unscaledTime * 4f) * 3f;
+                var old = GUI.color;
+                GUI.color = new Color(0f, 0f, 0f, 0.5f);
+                GUI.Label(new Rect(gui.x - 59f, gui.y - 21f + bob, 120f, 22f), $"▼ {fish.FishName}", CenteredLabel());
+                GUI.color = UiTheme.Sun;
+                GUI.Label(new Rect(gui.x - 60f, gui.y - 22f + bob, 120f, 22f), $"▼ {fish.FishName}", CenteredLabel());
+                GUI.color = old;
             }
         }
 

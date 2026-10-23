@@ -2,28 +2,29 @@ using UnityEngine;
 
 namespace FishBreeder.Core
 {
-    /// <summary>Shared styles for the placeholder IMGUI screens.</summary>
+    /// <summary>Shared styles for the placeholder IMGUI screens, in the ocean theme (see <see cref="UiTheme"/>).</summary>
     public static class UiStyles
     {
         static GUIStyle window;
-        static Texture2D windowBackground;
 
-        /// <summary>A near-opaque dark box for pop-up windows, so text stays readable over the store.</summary>
+        /// <summary>A near-opaque lagoon window with an aqua rim, so text stays readable over the store.</summary>
         public static GUIStyle Window
         {
             get
             {
-                if (window == null || windowBackground == null)
+                if (window == null || window.normal.background == null)
                 {
-                    windowBackground = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
-                    windowBackground.SetPixel(0, 0, new Color(0.11f, 0.12f, 0.14f, 0.95f));
-                    windowBackground.Apply();
-                    window = new GUIStyle(GUI.skin.box);
-                    window.normal.background = windowBackground;
-                    window.border = new RectOffset(0, 0, 0, 0);
+                    var skin = UiTheme.Skin;
+                    window = new GUIStyle(skin.box) { richText = true };
+                    window.normal.background = skin.window.normal.background;
+                    window.border = skin.window.border;
+                    window.padding = new RectOffset(14, 14, 12, 12);
                 }
                 return window;
             }
         }
+
+        /// <summary>Forgets cached styles after the theme is rebuilt.</summary>
+        public static void Rebuild() => window = null;
     }
 }

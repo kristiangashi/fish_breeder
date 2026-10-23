@@ -42,6 +42,7 @@ namespace FishBreeder.Feeding
                     bounds.max.y - 0.02f,
                     GameRandom.Range(bounds.min.z + 0.1f, bounds.max.z - 0.1f));
                 pellet.AddComponent<FoodPellet>().Initialize(tank, type);
+                if (i < 3) Fx.Ripple(new Vector3(pellet.transform.position.x, tank.SurfaceY + 0.035f, pellet.transform.position.z), GameRandom.Range(0.08f, 0.14f));
             }
         }
 

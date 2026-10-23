@@ -131,6 +131,11 @@ namespace FishBreeder
                     else Progression.Award(XpTrack.Fishkeeping, progression.xpEggHatched);
                 }
                 Progression.Count(GoalKind.HatchEggs, born);
+                if (born > 0)
+                {
+                    Fx.Text(transform.position + Vector3.up * 0.08f, born == 1 ? "Hatched!" : $"{born} hatched!", UiTheme.Sun, 20f, 2f);
+                    Fx.Bubbles(transform.position + Vector3.up * 0.02f, 8, Tank.SurfaceY, 0.05f);
+                }
                 if (Bred) Progression.Count(GoalKind.BreedFish, born);
             }
             Destroy(gameObject);

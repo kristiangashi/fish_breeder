@@ -7,7 +7,8 @@ using UnityEngine.AI;
 namespace FishBreeder.Store
 {
     /// <summary>
-    /// The shop building: plain gray placeholder rooms in a row. The main floor (with the one
+    /// The shop building: a sunny beach-shack fish shop of rooms in a row (seafoam walls, wooden
+    /// floors, a bamboo counter, palms and surfboards). The main floor (with the one
     /// entrance, the register and the supplier computer) is open from the start; the other
     /// sections are bought with money and each adds room for more display and for sale tanks.
     /// Breeder and quarantine tanks live in the back room to the west, which customers never see.
@@ -33,12 +34,16 @@ namespace FishBreeder.Store
         /// <summary>Centre of the back room, west of the main floor.</summary>
         public static float BackRoomCenterX => -SectionWidth * 0.5f - WallThickness - BackRoomWidth * 0.5f;
 
-        static readonly Color WallColor = new Color(0.62f, 0.62f, 0.64f);
-        static readonly Color FloorColor = new Color(0.74f, 0.74f, 0.75f);
-        static readonly Color LockedFloorColor = new Color(0.36f, 0.36f, 0.38f);
-        static readonly Color BackRoomFloorColor = new Color(0.66f, 0.64f, 0.6f);
-        static readonly Color CounterColor = new Color(0.5f, 0.5f, 0.52f);
-        static readonly Color DarkColor = new Color(0.16f, 0.16f, 0.18f);
+        static readonly Color WallColor = new Color(0.55f, 0.82f, 0.8f);
+        static readonly Color FloorColor = new Color(0.93f, 0.84f, 0.66f);
+        static readonly Color LockedFloorColor = new Color(0.45f, 0.52f, 0.55f);
+        static readonly Color BackRoomFloorColor = new Color(0.8f, 0.72f, 0.58f);
+        static readonly Color CounterColor = new Color(0.72f, 0.52f, 0.32f);
+        static readonly Color CounterTopColor = new Color(0.97f, 0.91f, 0.78f);
+        static readonly Color DarkColor = new Color(0.1f, 0.22f, 0.3f);
+        static readonly Color StripeColor = new Color(1f, 0.5f, 0.4f);
+        static readonly Color StripeColor2 = new Color(0.98f, 0.82f, 0.4f);
+        static readonly Color[] BoardColors = { new Color(1f, 0.55f, 0.42f), new Color(0.3f, 0.75f, 0.78f), new Color(1f, 0.82f, 0.36f), new Color(0.98f, 0.5f, 0.7f) };
 
         public class Section
         {
@@ -294,7 +299,7 @@ namespace FishBreeder.Store
                 {
                     var floorPoint = new Vector3(slot.position.x, 0f, slot.position.z);
                     var marker = MaterialFactory.Decor(PrimitiveType.Cube, "Empty tank spot", transform, floorPoint + Vector3.up * 0.01f,
-                        new Vector3(1.72f, 0.02f, 0.82f), new Color(0.52f, 0.52f, 0.54f));
+                        new Vector3(1.72f, 0.02f, 0.82f), new Color(0.45f, 0.74f, 0.74f));
                     var click = StoreClickable.Add(marker.transform, "Empty spot", floorPoint + Vector3.up * 0.3f, new Vector3(1.72f, 0.6f, 0.82f), StoreClickable.Kind.EmptySlot);
                     click.slot = slot;
                     slot.emptyMarker = marker;
@@ -321,7 +326,8 @@ namespace FishBreeder.Store
                 var root = section.shell;
                 float cx = section.CenterX;
 
-                Wall(root, "Floor", new Vector3(cx, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), section.unlocked ? FloorColor : LockedFloorColor);
+                if (section.unlocked) Floor(root, new Vector3(cx, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), FloorColor);
+                else Wall(root, "Floor", new Vector3(cx, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), LockedFloorColor);
 
                 if (!section.unlocked)
                 {
@@ -336,6 +342,10 @@ namespace FishBreeder.Store
                 }
 
                 Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(SectionWidth + t, WallHeight, t), WallColor);
+                Stripes(root, cx, SectionWidth, halfD);
+                Palm(root, new Vector3(cx + halfW - 0.6f, 0f, halfD - 0.55f));
+                if (section.index == 0) Palm(root, new Vector3(cx - halfW + 0.6f, 0f, halfD - 0.55f));
+                Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
 
                 // The front wall is cut down (dollhouse style) so the overhead camera can see in.
                 if (section.index == 0)
@@ -380,8 +390,9 @@ namespace FishBreeder.Store
             var root = new GameObject("Back room").transform;
             root.SetParent(transform, false);
             float cx = BackRoomCenterX, halfW = BackRoomWidth * 0.5f, halfD = SectionDepth * 0.5f, t = WallThickness;
-            Wall(root, "Floor", new Vector3(cx, -0.05f, 0f), new Vector3(BackRoomWidth + t * 2f, 0.1f, SectionDepth), BackRoomFloorColor);
+            Floor(root, new Vector3(cx, -0.05f, 0f), new Vector3(BackRoomWidth + t * 2f, 0.1f, SectionDepth), BackRoomFloorColor);
             Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(BackRoomWidth + t * 2f, WallHeight, t), WallColor);
+            Stripes(root, cx, BackRoomWidth, halfD);
             Wall(root, "SideWall", new Vector3(cx - halfW - t * 0.5f, WallHeight * 0.5f, 0f), new Vector3(t, WallHeight, SectionDepth + t * 2f), WallColor);
             Wall(root, "FrontWall", new Vector3(cx, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(BackRoomWidth + t * 2f, FrontWallHeight, t), WallColor);
             // A work bench along the front wall, to make it look like a back room.
@@ -397,7 +408,10 @@ namespace FishBreeder.Store
             root.SetParent(transform, false);
             var counter = new Vector3(3.6f, 0f, -3.4f);
             Wall(root, "Counter", counter + new Vector3(0f, 0.5f, 0f), new Vector3(2f, 1f, 0.6f), CounterColor);
-            Wall(root, "CounterTop", counter + new Vector3(0f, 1.02f, 0f), new Vector3(2.08f, 0.04f, 0.66f), WallColor);
+            Wall(root, "CounterTop", counter + new Vector3(0f, 1.02f, 0f), new Vector3(2.08f, 0.04f, 0.66f), CounterTopColor);
+            // Bamboo canes up the front of the counter.
+            for (int i = 0; i < 9; i++)
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "Bamboo", root, counter + new Vector3(-0.88f + i * 0.22f, 0.5f, -0.31f), new Vector3(0.09f, 0.5f, 0.09f), i % 2 == 0 ? new Color(0.8f, 0.64f, 0.38f) : new Color(0.74f, 0.58f, 0.33f));
             Wall(root, "Till", counter + new Vector3(0.45f, 1.16f, 0.05f), new Vector3(0.44f, 0.24f, 0.38f), DarkColor);
             Wall(root, "TillDrawer", counter + new Vector3(0.45f, 1.08f, -0.15f), new Vector3(0.4f, 0.08f, 0.06f), new Color(0.3f, 0.3f, 0.32f));
             var display = Wall(root, "TillDisplay", counter + new Vector3(0.45f, 1.38f, 0.12f), new Vector3(0.3f, 0.16f, 0.03f), new Color(0.3f, 0.75f, 0.45f));
@@ -430,12 +444,13 @@ namespace FishBreeder.Store
             Wall(root, "Monitor", desk + new Vector3(0f, 1.1f, 0.18f), new Vector3(0.62f, 0.4f, 0.05f), DarkColor);
             Wall(root, "Screen", desk + new Vector3(0f, 1.1f, 0.15f), new Vector3(0.56f, 0.34f, 0.01f), new Color(0.35f, 0.6f, 0.9f));
             Wall(root, "Keyboard", desk + new Vector3(0f, 0.76f, -0.12f), new Vector3(0.45f, 0.02f, 0.15f), DarkColor);
-            Wall(root, "Chair", desk + new Vector3(0f, 0.25f, -0.65f), new Vector3(0.5f, 0.5f, 0.5f), WallColor);
+            Wall(root, "Chair", desk + new Vector3(0f, 0.25f, -0.65f), new Vector3(0.5f, 0.5f, 0.5f), StripeColor);
             ComputerPoint = desk + new Vector3(0f, 1.45f, 0.18f);
             StoreClickable.Add(root, "Supplier computer", desk + new Vector3(0f, 0.7f, -0.1f), new Vector3(1.45f, 1.4f, 1.3f), StoreClickable.Kind.Computer);
         }
 
-        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble" };
+        // Wall dressing and palm fronds overhead don't block the walkway (the palm's pot and trunk do).
+        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble", "Stripe", "Frond", "Surfboard" };
 
         /// <summary>
         /// Bakes where customers can walk: the open sections' floors and the pavement outside,
@@ -464,5 +479,82 @@ namespace FishBreeder.Store
 
         static GameObject Wall(Transform parent, string name, Vector3 position, Vector3 size, Color color)
             => MaterialFactory.Decor(PrimitiveType.Cube, name, parent, position, size, color);
+
+        static Texture2D planks;
+
+        /// <summary>A wooden plank floor: the colour tints a procedural plank texture.</summary>
+        static void Floor(Transform parent, Vector3 position, Vector3 size, Color color)
+        {
+            var floor = Wall(parent, "Floor", position, size, color);
+            if (planks == null) planks = MakePlanks();
+            var material = floor.GetComponent<Renderer>().sharedMaterial;
+            material.mainTexture = planks;
+            // Each tile of the texture is four planks 0.3 m wide and 2.4 m long.
+            material.mainTextureScale = new Vector2(size.x / 2.4f, size.z / 1.2f);
+        }
+
+        static Texture2D MakePlanks()
+        {
+            const int w = 128, h = 64, rows = 4;
+            var texture = new Texture2D(w, h, TextureFormat.RGBA32, true) { name = "Planks", wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Bilinear };
+            var random = new System.Random(7);
+            var pixels = new Color[w * h];
+            for (int row = 0; row < rows; row++)
+            {
+                float tone = 0.86f + (float)random.NextDouble() * 0.14f;
+                int seam = (row % 2 == 0 ? 0 : w / 2) + random.Next(-10, 10);
+                for (int y = row * h / rows; y < (row + 1) * h / rows; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    float grain = 0.04f * Mathf.Sin(x * 0.21f + y * 1.7f + row * 3f) + 0.03f * Mathf.Sin(x * 0.05f + row);
+                    float v = tone + grain;
+                    bool edge = y == row * h / rows || ((x - seam + w) % w) == 0;
+                    if (edge) v *= 0.72f;
+                    pixels[y * w + x] = new Color(v, v * 0.98f, v * 0.94f, 1f);
+                }
+            }
+            texture.SetPixels(pixels);
+            texture.Apply(true);
+            return texture;
+        }
+
+        /// <summary>A coral and sunny stripe round the back wall, like a beach hut.</summary>
+        static void Stripes(Transform parent, float centerX, float width, float halfD)
+        {
+            Wall(parent, "Stripe", new Vector3(centerX, 2.35f, halfD - 0.01f), new Vector3(width, 0.22f, 0.02f), StripeColor);
+            Wall(parent, "Stripe", new Vector3(centerX, 2.58f, halfD - 0.01f), new Vector3(width, 0.08f, 0.02f), StripeColor2);
+        }
+
+        /// <summary>A potted palm: terracotta pot, a gently curved trunk and drooping fronds.</summary>
+        static void Palm(Transform parent, Vector3 floorPoint)
+        {
+            var palm = new GameObject("Palm").transform;
+            palm.SetParent(parent, false);
+            palm.position = floorPoint;
+            MaterialFactory.Decor(PrimitiveType.Cylinder, "Pot", palm, new Vector3(0f, 0.25f, 0f), new Vector3(0.55f, 0.25f, 0.55f), new Color(0.82f, 0.45f, 0.3f));
+            MaterialFactory.Decor(PrimitiveType.Cylinder, "Soil", palm, new Vector3(0f, 0.5f, 0f), new Vector3(0.5f, 0.01f, 0.5f), new Color(0.32f, 0.22f, 0.15f));
+            var trunk = new Color(0.55f, 0.4f, 0.26f);
+            var top = new Vector3(0f, 0.5f, 0f);
+            for (int i = 0; i < 6; i++)
+            {
+                var segment = MaterialFactory.Decor(PrimitiveType.Cylinder, "Trunk", palm, top + new Vector3(0.025f * i, 0.16f, 0f), new Vector3(0.14f - i * 0.01f, 0.17f, 0.14f - i * 0.01f), i % 2 == 0 ? trunk : trunk * 0.9f);
+                segment.transform.localRotation = Quaternion.Euler(0f, 0f, -4f * i);
+                top += new Vector3(0.025f * i, 0.32f, 0f);
+            }
+            for (int i = 0; i < 7; i++)
+            {
+                float yaw = i * 360f / 7f + 10f;
+                var frond = MaterialFactory.Decor(PrimitiveType.Sphere, "Frond", palm, top, new Vector3(0.2f, 0.04f, 0.95f), Color.Lerp(new Color(0.2f, 0.62f, 0.3f), new Color(0.42f, 0.8f, 0.35f), i % 3 / 2f));
+                frond.transform.localRotation = Quaternion.Euler(0f, yaw, 0f) * Quaternion.Euler(22f, 0f, 0f);
+                frond.transform.localPosition = top + frond.transform.localRotation * new Vector3(0f, 0f, 0.42f);
+            }
+        }
+
+        /// <summary>A surfboard hung flat on the wall.</summary>
+        static void Surfboard(Transform parent, Vector3 position, Color color)
+        {
+            var board = MaterialFactory.Decor(PrimitiveType.Sphere, "Surfboard", parent, position, new Vector3(2f, 0.42f, 0.06f), color);
+            MaterialFactory.Decor(PrimitiveType.Cube, "Surfboard", board.transform, new Vector3(0f, 0f, -0.55f), new Vector3(0.9f, 0.08f, 0.5f), Color.white);
+        }
     }
 }

@@ -123,6 +123,7 @@ namespace FishBreeder.Core
                     relationships.Add(PairKey(a.id, b.id));
                     GameLog.Add($"Research: {DescribeRelationship(a, b)}");
                     Progression.Award(XpTrack.Research, Data.xpRelationship);
+                    Milestones.Add(MilestoneKind.LearnFact);
                 }
             }
         }
@@ -143,6 +144,7 @@ namespace FishBreeder.Core
                 if (entry.fact == ResearchFact.Ph && !CanReadPh) continue;
                 GameLog.Add($"Research: you've learned the {species.displayName}'s {FactName(entry.fact)}.");
                 Progression.Award(XpTrack.Research, Data.xpFact);
+                Milestones.Add(MilestoneKind.LearnFact);
             }
         }
 
@@ -155,6 +157,8 @@ namespace FishBreeder.Core
             favourites.Add(species.id + "|" + (int)food);
             GameLog.Add($"Research: {species.displayName}s love {FoodPellet.Name(food)}!");
             Progression.Award(XpTrack.Research, Data.xpFavouriteFood);
+            Milestones.Add(MilestoneKind.LearnFact);
+            Fx.Text(fish.transform.position + Vector3.up * 0.07f, "Favourite food!", UiTheme.Sun, 16f, 2f);
         }
 
         /// <summary>One sentence on how two species get on, both ways round.</summary>

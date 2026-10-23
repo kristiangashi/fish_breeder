@@ -292,6 +292,8 @@ namespace FishBreeder.Core
     [Serializable]
     public class ShopBalance
     {
+        [Tooltip("Days at the start of the game before the shop can open, to raise some fish to sell.")]
+        public int setupDays = 10;
         [Tooltip("Real seconds the shop stays open (3600 = one hour).")]
         public float dayLengthSeconds = 3600f;
         public float customersPerHour = 40f;
@@ -555,6 +557,7 @@ namespace FishBreeder.Core
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
         public ResearchBalance research = new ResearchBalance();
+        public List<MilestoneBalance> milestones = MilestoneBalance.CreateDefaults();
     }
 
     /// <summary>

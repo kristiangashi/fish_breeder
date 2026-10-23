@@ -32,6 +32,33 @@ namespace FishBreeder.Core
             return material;
         }
 
+        /// <summary>A see-through material (alpha blended), for bubbles and ripples.</summary>
+        public static Material Transparent(Color color, float smoothness = 0.9f)
+        {
+            var material = Create(color, smoothness);
+            if (material.HasProperty("_Surface"))
+            {
+                // URP Lit
+                material.SetFloat("_Surface", 1f);
+                material.SetFloat("_Blend", 0f);
+                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            }
+            else
+            {
+                // Built-in Standard, "Fade" mode
+                material.SetFloat("_Mode", 2f);
+                material.EnableKeyword("_ALPHABLEND_ON");
+                material.DisableKeyword("_ALPHATEST_ON");
+                material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            }
+            material.SetOverrideTag("RenderType", "Transparent");
+            material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.renderQueue = (int)RenderQueue.Transparent;
+            return material;
+        }
+
         /// <summary>Primitive with its collider removed, for decoration.</summary>
         public static GameObject Decor(PrimitiveType type, string name, Transform parent, Vector3 localPosition, Vector3 localScale, Color color)
         {

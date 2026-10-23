@@ -107,6 +107,10 @@ namespace FishBreeder
             Visual.Build(Phenotype, Stage == LifeStage.Fry);
             ApplyGrowthScale();
             tank.Add(this);
+
+            Milestones.Add(MilestoneKind.GetFish);
+            if (!IdentityHidden) Journal.Discover(Species);
+            Fx.Bubbles(transform.position, 3, tank.SurfaceY, 0.02f);
         }
 
         /// <summary>One time step (half a day): age, hunger and growth. Illness and death are handled by the shop's time step.</summary>
@@ -124,6 +128,7 @@ namespace FishBreeder
                 growth = Mathf.Min(1f, growth + daysPerStep / Mathf.Max(0.5f, species.daysToAdult));
                 ApplyGrowthScale();
                 if (wasFry && Stage != LifeStage.Fry) GrowOutOfFry(wasHidden);
+                if (growth >= 1f) GrewUp();
             }
             if (BreedCooldown > 0) BreedCooldown--;
             if (stepsSinceFavourite < 99) stepsSinceFavourite++;
@@ -135,7 +140,18 @@ namespace FishBreeder
             Visual.Build(Phenotype, false);
             Visual.ResetSpine();
             Health.RefreshTint();
-            if (wasHidden) GameLog.Add($"{fishName} has grown enough to tell: it's a {Species.displayName}!");
+            if (!wasHidden) return;
+            GameLog.Add($"{fishName} has grown enough to tell: it's a {Species.displayName}!");
+            Fx.Text(transform.position + Vector3.up * 0.05f, $"It's a {Species.displayName}!", UiTheme.Aqua, 18f, 2.2f);
+            Journal.Discover(Species);
+        }
+
+        /// <summary>Became an adult: a milestone and a little cheer.</summary>
+        void GrewUp()
+        {
+            Milestones.Add(MilestoneKind.GrowUp);
+            Fx.Text(transform.position + Vector3.up * 0.06f, "All grown up!", UiTheme.Sun, 18f, 2f);
+            if (Tank != null) Fx.Bubbles(transform.position, 5, Tank.SurfaceY, 0.03f);
         }
 
         /// <summary>Developer shortcut: makes the fish an adult right away (for testing looks and breeding).</summary>
@@ -149,6 +165,7 @@ namespace FishBreeder
             hunger = 0f;
             ApplyGrowthScale();
             if (wasFry) GrowOutOfFry(wasHidden);
+            GrewUp();
         }
 
         void ApplyGrowthScale()
@@ -166,6 +183,7 @@ namespace FishBreeder
             float nutrition = pellet.Nutrition;
             if (Species.favoriteFoods.Contains(pellet.Type))
             {
+                if (stepsSinceFavourite > 0 && !IdentityHidden) Fx.Text(transform.position + Vector3.up * 0.04f, "♥", UiTheme.Hibiscus, 18f, 1.2f);
                 nutrition *= Balance.Data.health.favouriteFoodNutrition;
                 stepsSinceFavourite = 0;
             }
@@ -243,6 +261,11 @@ namespace FishBreeder
                     GameLog.Add($"{rarity} fry! {child.FishName}: {child.Phenotype.Describe()}.");
             }
             Progression.Count(GoalKind.BreedFish, born);
+            if (born > 0)
+            {
+                Fx.Text(transform.position + Vector3.up * 0.06f, born == 1 ? "+1 fry!" : $"+{born} fry!", UiTheme.Hibiscus, 20f, 2f);
+                Fx.Bubbles(transform.position, 6, Tank.SurfaceY, 0.04f);
+            }
             int lost = unborn.Count - born;
             unborn.Clear();
             BreedCooldown = GameConfig.Active.breedingCooldownSteps;
@@ -259,6 +282,7 @@ namespace FishBreeder
             Reserved = false;
             if (Tank != null) Tank.AddCorpse(this);
             GameLog.Add($"{fishName} the {SpeciesLabel} died of {cause}.");
+            Fx.Text(transform.position + Vector3.up * 0.05f, "RIP", new Color(0.8f, 0.85f, 0.9f), 16f, 2f);
             Swimmer.enabled = false;
             Visual.SetTint(new Color(0.75f, 0.75f, 0.7f));
             StartCoroutine(FloatUp());

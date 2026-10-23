@@ -78,6 +78,8 @@ namespace FishBreeder.Breeding
                 genomes.Add(BreedingService.Cross(mother.Genome, father.Genome, config.mutationChance, config.mutationStrength));
 
             father.BreedCooldown = config.breedingCooldownSteps;
+            Fx.Text(a.transform.position + Vector3.up * 0.05f, "♥", UiTheme.Hibiscus, 24f, 1.8f);
+            Fx.Text(b.transform.position + Vector3.up * 0.05f, "♥", UiTheme.Hibiscus, 24f, 1.8f);
             Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(Balance.Data.progression.xpBreedingStarted, species, null));
             if (species.reproduction == Reproduction.Livebearer)
             {

@@ -293,8 +293,13 @@ namespace FishBreeder.Health
             }
 
             // Tank mates, once per kind of fish (its own kind counts too: two male bettas fight).
+            // Only grown-up fish hunt or fight; fry are too small to start anything.
             int sameKind = 0;
             var seen = new HashSet<string>();
+            var grownUp = new HashSet<string>();
+            foreach (var other in tank.Residents)
+                if (other != fish && !other.IsDead && other.Stage == LifeStage.Adult) grownUp.Add(other.Species.id);
+            bool canFight = fish.Stage == LifeStage.Adult;
             foreach (var other in tank.Residents)
             {
                 if (other == fish || other.IsDead) continue;
@@ -303,12 +308,13 @@ namespace FishBreeder.Health
                 if (!seen.Add(otherSpecies.id)) continue;
                 string name = otherSpecies.id == species.id ? Research.Plural(species) : $"the {otherSpecies.displayName}";
                 bool known = Research.KnowsRelationship(species, otherSpecies);
-                if (Relationships.Get(otherSpecies, species) == Relationship.Predator)
+                bool otherGrown = grownUp.Contains(otherSpecies.id);
+                if (otherGrown && Relationships.Get(otherSpecies, species) == Relationship.Predator)
                 {
                     comfort -= mates.predatorFear;
                     Note(notes, known ? $"Afraid of {name}" : "Nervous of a tank mate (not researched yet)", -mates.predatorFear);
                 }
-                if (Relationships.AreCompetitive(species, otherSpecies))
+                if (canFight && otherGrown && Relationships.AreCompetitive(species, otherSpecies))
                 {
                     comfort -= mates.competitiveStress;
                     Note(notes, known ? $"Fights with {(otherSpecies.id == species.id ? "other " + name : name)}" : "Squabbles with a tank mate (not researched yet)", -mates.competitiveStress);

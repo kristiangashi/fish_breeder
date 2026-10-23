@@ -18,7 +18,7 @@ namespace FishBreeder.Health
 
             foreach (var hunter in new List<Fish>(tank.Residents))
             {
-                if (hunter == null || hunter.IsDead || hunter.Stage == LifeStage.Fry) continue;
+                if (hunter == null || hunter.IsDead || hunter.Stage != LifeStage.Adult) continue;
                 var prey = new List<Fish>();
                 foreach (var other in tank.Residents)
                     if (other != hunter && !other.IsDead && Relationships.Get(hunter.Species, other.Species) == Relationship.Predator) prey.Add(other);
@@ -28,6 +28,7 @@ namespace FishBreeder.Health
                 bool fits = target.BodyLength <= hunter.BodyLength * rules.preyMaxSizeRatio;
                 if (fits && GameRandom.Chance(rules.eatChance))
                 {
+                    Fx.Text(hunter.transform.position, "CHOMP!", UiTheme.Coral, 20f);
                     target.Eaten(hunter);
                     eaten++;
                 }
@@ -41,10 +42,10 @@ namespace FishBreeder.Health
             if (tank.Residents.Count <= tank.Capacity * rules.crowdedAbove) return;
             foreach (var victim in new List<Fish>(tank.Residents))
             {
-                if (victim == null || victim.IsDead) continue;
+                if (victim == null || victim.IsDead || victim.Stage != LifeStage.Adult) continue;
                 var nippers = new List<Fish>();
                 foreach (var other in tank.Residents)
-                    if (other != victim && !other.IsDead && other.Stage != LifeStage.Fry && Relationships.AreCompetitive(victim.Species, other.Species)) nippers.Add(other);
+                    if (other != victim && !other.IsDead && other.Stage == LifeStage.Adult && Relationships.AreCompetitive(victim.Species, other.Species)) nippers.Add(other);
                 if (nippers.Count == 0 || !GameRandom.Chance(rules.nipChance)) continue;
                 var nipper = nippers[GameRandom.Range(0, nippers.Count)];
                 victim.Health.Injure(rules.nipInjury, $"nipped by {nipper.FishName} the {nipper.Species}");
@@ -76,7 +77,7 @@ namespace FishBreeder.Health
             var pairs = new List<Fish>();
             foreach (var hunter in tank.Residents)
             {
-                if (hunter == null || hunter.IsDead || hunter.Stage == LifeStage.Fry) continue;
+                if (hunter == null || hunter.IsDead || hunter.Stage != LifeStage.Adult) continue;
                 foreach (var prey in tank.Residents)
                     if (prey != hunter && !prey.IsDead && Relationships.Get(hunter.Species, prey.Species) == Relationship.Predator)
                     {
@@ -98,6 +99,7 @@ namespace FishBreeder.Health
             var target = pairs[pick + 1];
             predator.Swimmer.Lunge(target);
             target.Swimmer.Flee(predator.transform.position, 0.12f);
+            Fx.Text(target.transform.position + Vector3.up * 0.04f, "!", UiTheme.Sun, 18f, 0.9f);
         }
     }
 }

@@ -66,15 +66,14 @@ namespace FishBreeder.Store
 
             Vector3 targetPosition;
             Quaternion targetRotation;
-            if (focused != null && focused.Tank == null) ExitTank();
+            if (focused != null && (focused.Tank == null || Input.GetKeyDown(KeyCode.Escape))) ExitTank();
+            else if (focused == null && Input.GetKeyDown(KeyCode.Escape) && panel != Panel.DayReport) panel = Panel.None;
             if (focused != null)
             {
-                if (Input.GetKeyDown(KeyCode.Escape)) ExitTank();
                 GetTankPose(focused, out targetPosition, out targetRotation);
             }
             else
             {
-                if (Input.GetKeyDown(KeyCode.Escape) && panel != Panel.DayReport) panel = Panel.None;
                 if (panel == Panel.None) HandleStoreCameraInput(dt);
                 GetStorePose(out targetPosition, out targetRotation);
             }

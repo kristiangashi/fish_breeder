@@ -227,6 +227,25 @@ namespace FishBreeder.Shop
             float moving = Mathf.Clamp01(speed / 0.5f);
             body.localPosition = new Vector3(0f, Mathf.Abs(Mathf.Sin(walkPhase)) * 0.04f * moving, 0f);
             body.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(walkPhase) * 3f * moving);
+
+            // In a tank close-up, someone standing between the camera and the glass would fill the screen.
+            bool hidden = BlocksCloseUp(Tank.Focused);
+            if (body.gameObject.activeSelf == hidden) body.gameObject.SetActive(!hidden);
+        }
+
+        bool BlocksCloseUp(Tank tank)
+        {
+            var cam = Camera.main;
+            if (tank == null || cam == null) return false;
+            var bounds = tank.InnerBounds;
+            Vector2 from = new Vector2(cam.transform.position.x, cam.transform.position.z);
+            Vector2 to = new Vector2(bounds.center.x, bounds.min.z);
+            Vector2 me = new Vector2(transform.position.x, transform.position.z);
+            Vector2 view = to - from;
+            float along = Vector2.Dot(me - from, view) / Mathf.Max(1e-4f, view.sqrMagnitude);
+            if (along < -0.1f || along > 1f) return false;
+            float side = Mathf.Abs(me.x - Mathf.Lerp(from.x, to.x, along));
+            return side < bounds.extents.x + 0.6f;
         }
     }
 }

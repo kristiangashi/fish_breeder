@@ -29,6 +29,14 @@ Settings:
 
 ## 3. Clean up in Blender (10 minutes per fish)
 
+What was done for the Comet Goldfish: merge duplicate vertices, a Decimate (Collapse) modifier down to about
+3,000 triangles (Meshy exports around 34,000), centre the origin, export FBX with Forward -Z / Up Y /
+Apply Transform, and scale the albedo and normal maps to 1024. Splitting off the tail is no longer needed:
+the swim shader bends the whole body. Below 3,000 triangles the goldfish's thin fins started to smear
+their texture.
+
+Older manual steps, still useful for unusual models:
+
 1. Rotate so the fish **faces +Z** in Unity (in Blender: nose along -Y, then export FBX with "Forward: -Z, Up: Y", or just fix it once in a prefab).
 2. Put the pivot at the **centre of the body**.
 3. **Separate the tail fin into its own object named `Tail`**, with its origin at the tail base. `FishVisual` wags any child called `Tail` (the name is configurable per library entry).
@@ -36,6 +44,12 @@ Settings:
 5. Export FBX to `Assets/Art/Fish/Meshy/<TailShape>_<FinShape>.fbx`, e.g. `Fork_Round.fbx`.
 
 ## 4. Hook up in Unity
+
+Quick way (no prefab needed): put `<Name>.fbx`, `<Name>_Albedo.png` and `<Name>_Normal.png` in
+`Assets/Resources/Fish/<Name>/`. `FishAssetPostprocessor` sets the import options (Read/Write on, no
+materials, normal map type). Then point `FishModelLibrary.LoadBuiltIn` at it, or add a library entry.
+
+Library asset way:
 
 1. Drag the FBX into the scene, check it faces the blue (Z) axis, and save it as a prefab in `Assets/Prefabs/Fish/`.
 2. **Assets > Create > Fish Breeder > Fish Model Library**.

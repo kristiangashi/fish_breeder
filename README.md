@@ -36,13 +36,19 @@ All tuning numbers live in `GameConfig` (Assets > Create > Fish Breeder > Game C
 | `Scripts/Core` | `GameBootstrap`, `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |
 | `Art/Fish/Meshy` | Imported Meshy models go here (see `Docs/MeshyPipeline.md`) |
 
+## Fish models
+
+The first real fish is the **Comet Goldfish** in `Assets/Resources/Fish/CometGoldfish` (Meshy model cut from 33,936 to 3,000 triangles, 1024 textures). Every fish uses it for now. It swims with the `FishBreeder/FishSwim` shader, which bends the body in a travelling wave that grows toward the tail and speeds up with the fish; the head end is detected automatically, so any Meshy fish exported with Y up works. Fish steer around decorations (rocks, the rock arch, driftwood, plants), keep off the glass, and pick wander targets in open water. Anything with a collider and a `TankObstacle` component counts as an obstacle.
+
+To add another Meshy fish, see `Docs/MeshyPipeline.md`.
+
 ## Placeholder fish
 
-Until Meshy models are in, every fish is a real 3D mesh generated from its genes: body length and height, fin shape (Round, Fan, Spiky, Veil, Ribbon), tail shape (Fork, Round, Lyre, Sword, Veil), body/pattern colours and pattern (Solid, Striped, Spotted, Marbled). The tail is a separate part that wags while swimming.
+When no model is available, a fish is a real 3D mesh generated from its genes: body length and height, fin shape (Round, Fan, Spiky, Veil, Ribbon), tail shape (Fork, Round, Lyre, Sword, Veil), body/pattern colours and pattern (Solid, Striped, Spotted, Marbled). The tail is a separate part that wags while swimming.
 
 ## Next steps
 
-1. Generate the first Meshy fish and wire it into a `FishModelLibrary` (see `Docs/MeshyPipeline.md`).
+1. Let genes vary the goldfish's colours (hue shift in the swim shader) and add more Meshy species.
 2. Save/load the tank (genomes are already JSON-serialisable via `Genome.ToJson`).
 3. Economy: sell fish by rarity, buy food, medicine and tank upgrades.
 4. Replace the IMGUI HUD with a real UI.

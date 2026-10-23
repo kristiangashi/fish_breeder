@@ -44,5 +44,29 @@ namespace FishBreeder.Core
             go.GetComponent<Renderer>().sharedMaterial = Create(color, 0.2f);
             return go;
         }
+
+        /// <summary>
+        /// Primitive that fish swim around. Uses a convex mesh collider so squashed or
+        /// stretched shapes are matched exactly instead of by a too-big sphere or capsule.
+        /// </summary>
+        public static GameObject Obstacle(PrimitiveType type, string name, Transform parent, Vector3 localPosition, Vector3 localScale, Quaternion localRotation, Color color)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPosition;
+            go.transform.localRotation = localRotation;
+            go.transform.localScale = localScale;
+            go.GetComponent<Renderer>().sharedMaterial = Create(color, 0.2f);
+            if (type != PrimitiveType.Cube)
+            {
+                Object.DestroyImmediate(go.GetComponent<Collider>());
+                var meshCollider = go.AddComponent<MeshCollider>();
+                meshCollider.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
+                meshCollider.convex = true;
+            }
+            go.AddComponent<FishBreeder.TankObstacle>();
+            return go;
+        }
     }
 }

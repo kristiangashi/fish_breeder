@@ -23,13 +23,27 @@ namespace FishBreeder
         Transform tailPivot;
         readonly List<Material> bodyMaterials = new List<Material>();
         readonly List<Color> bodyBaseColors = new List<Color>();
+        readonly List<Material> swimMaterials = new List<Material>();
+        FishModelLibrary.Entry modelEntry;
         float swimPhase;
+
+        static readonly int SwimPhaseId = Shader.PropertyToID("_SwimPhase");
+        static readonly int SwimAmplitudeId = Shader.PropertyToID("_SwimAmplitude");
+        static readonly int SwimWavesId = Shader.PropertyToID("_SwimWaves");
+        static readonly int HeadStiffnessId = Shader.PropertyToID("_HeadStiffness");
+        static readonly int BodyAxisId = Shader.PropertyToID("_BodyAxis");
+        static readonly int SideAxisId = Shader.PropertyToID("_SideAxis");
+        static readonly int NoseOffsetId = Shader.PropertyToID("_NoseOffset");
+        static readonly int BodyLengthId = Shader.PropertyToID("_BodyLength");
 
         public void Build(Phenotype phenotype)
         {
             if (modelRoot != null) Destroy(modelRoot.gameObject);
             bodyMaterials.Clear();
             bodyBaseColors.Clear();
+            swimMaterials.Clear();
+            modelEntry = null;
+            tailPivot = null;
 
             modelRoot = new GameObject("Model").transform;
             modelRoot.SetParent(transform, false);
@@ -92,31 +106,145 @@ namespace FishBreeder
 
         void BuildFromModel(FishModelLibrary.Entry entry, Phenotype p)
         {
-            var instance = Instantiate(entry.prefab, modelRoot, false);
+            modelEntry = entry;
+            var instance = Instantiate(entry.model, modelRoot, false);
+            instance.name = entry.displayName;
             foreach (var c in instance.GetComponentsInChildren<Collider>()) Destroy(c);
+            var filters = instance.GetComponentsInChildren<MeshFilter>();
+            var model = instance.transform;
 
-            // Normalise size so the gene-driven length wins over whatever scale Meshy exported.
-            var renderers = instance.GetComponentsInChildren<Renderer>();
-            if (renderers.Length > 0)
+            // Turn the model so its head points along the fish's +Z, whatever way it was exported.
+            var turn = Quaternion.Euler(0f, DetectHeadYaw(filters), 0f);
+            model.localRotation = turn * model.localRotation;
+            model.localPosition = turn * model.localPosition;
+
+            // Scale so the gene-driven length wins, then centre the body on the fish's pivot.
+            var bounds = BoundsInModelRoot(filters);
+            float modelLength = Mathf.Max(bounds.size.z, 0.0001f);
+            float scale = p.lengthMeters / modelLength;
+            model.localScale *= scale;
+            model.localPosition = model.localPosition * scale - bounds.center * scale;
+
+            var shader = SwimShader;
+            var tint = Color.Lerp(Color.white, p.bodyColor, entry.geneTintStrength);
+            foreach (var filter in filters)
             {
-                var bounds = renderers[0].bounds;
-                foreach (var r in renderers) bounds.Encapsulate(r.bounds);
-                float modelLength = Mathf.Max(bounds.size.z, 0.0001f);
-                instance.transform.localScale *= p.lengthMeters / modelLength;
+                var renderer = filter.GetComponent<Renderer>();
+                if (renderer == null || filter.sharedMesh == null) continue;
+
+                var material = new Material(shader) { name = entry.displayName, color = tint };
+                if (entry.albedo != null) material.mainTexture = entry.albedo;
+                if (entry.normalMap != null && material.HasProperty("_BumpMap")) material.SetTexture("_BumpMap", entry.normalMap);
+                if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", entry.smoothness);
+                ConfigureSwim(material, filter, entry);
+
+                var slots = new Material[Mathf.Max(1, filter.sharedMesh.subMeshCount)];
+                for (int i = 0; i < slots.Length; i++) slots[i] = material;
+                renderer.sharedMaterials = slots;
+                TrackMaterial(material);
+                swimMaterials.Add(material);
             }
+            tailPivot = null;
+        }
 
-            // Tint: works best when the Meshy texture is white/greyscale. The pattern
-            // texture is not applied here yet (see Docs/MeshyPipeline.md, step 5).
-            foreach (var r in renderers)
+        static Shader swimShader;
+
+        static Shader SwimShader
+        {
+            get
             {
-                foreach (var material in r.materials)
+                if (swimShader == null) swimShader = Resources.Load<Shader>("Shaders/FishSwim");
+                return swimShader != null && swimShader.isSupported ? swimShader : MaterialFactory.Lit;
+            }
+        }
+
+        /// <summary>Tells the swim shader where the nose and tail are in this mesh's own space.</summary>
+        void ConfigureSwim(Material material, MeshFilter filter, FishModelLibrary.Entry entry)
+        {
+            var axis = filter.transform.InverseTransformDirection(modelRoot.forward).normalized;
+            var side = filter.transform.InverseTransformDirection(modelRoot.right).normalized;
+            var b = filter.sharedMesh.bounds;
+            float min = float.MaxValue, max = float.MinValue;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(
+                    (i & 1) == 0 ? b.min.x : b.max.x,
+                    (i & 2) == 0 ? b.min.y : b.max.y,
+                    (i & 4) == 0 ? b.min.z : b.max.z);
+                float along = Vector3.Dot(corner, axis);
+                min = Mathf.Min(min, along);
+                max = Mathf.Max(max, along);
+            }
+            material.SetVector(BodyAxisId, axis);
+            material.SetVector(SideAxisId, side);
+            material.SetFloat(NoseOffsetId, max);
+            material.SetFloat(BodyLengthId, max - min);
+            material.SetFloat(SwimWavesId, entry.swimWaves);
+            material.SetFloat(HeadStiffnessId, entry.headStiffness);
+            material.SetFloat(SwimAmplitudeId, entry.swimAmplitude);
+        }
+
+        /// <summary>
+        /// Finds the yaw that points the head along +Z. The body runs along the longer horizontal
+        /// axis, and the head is the end that is widest side to side (tail fins are flat).
+        /// </summary>
+        float DetectHeadYaw(MeshFilter[] filters)
+        {
+            var points = new List<Vector3>();
+            foreach (var filter in filters)
+            {
+                var mesh = filter.sharedMesh;
+                if (mesh == null) continue;
+                if (!mesh.isReadable)
                 {
-                    material.color = p.bodyColor;
-                    TrackMaterial(material);
+                    Debug.LogWarning($"[FishBreeder] {mesh.name} is not readable, so its head direction can't be detected. Enable Read/Write in its import settings.");
+                    return 0f;
+                }
+                foreach (var v in mesh.vertices)
+                    points.Add(modelRoot.InverseTransformPoint(filter.transform.TransformPoint(v)));
+            }
+            if (points.Count == 0) return 0f;
+
+            var bounds = new Bounds(points[0], Vector3.zero);
+            foreach (var point in points) bounds.Encapsulate(point);
+            bool alongX = bounds.size.x > bounds.size.z;
+
+            float min = alongX ? bounds.min.x : bounds.min.z;
+            float length = alongX ? bounds.size.x : bounds.size.z;
+            float lowMin = float.MaxValue, lowMax = float.MinValue, highMin = float.MaxValue, highMax = float.MinValue;
+            foreach (var point in points)
+            {
+                float t = ((alongX ? point.x : point.z) - min) / length;
+                float lateral = alongX ? point.z : point.x;
+                if (t < 0.2f) { lowMin = Mathf.Min(lowMin, lateral); lowMax = Mathf.Max(lowMax, lateral); }
+                else if (t > 0.8f) { highMin = Mathf.Min(highMin, lateral); highMax = Mathf.Max(highMax, lateral); }
+            }
+            bool headAtHighEnd = (highMax - highMin) > (lowMax - lowMin);
+
+            if (alongX) return headAtHighEnd ? -90f : 90f;
+            return headAtHighEnd ? 0f : 180f;
+        }
+
+        Bounds BoundsInModelRoot(MeshFilter[] filters)
+        {
+            bool any = false;
+            var bounds = new Bounds();
+            foreach (var filter in filters)
+            {
+                if (filter.sharedMesh == null) continue;
+                var b = filter.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = new Vector3(
+                        (i & 1) == 0 ? b.min.x : b.max.x,
+                        (i & 2) == 0 ? b.min.y : b.max.y,
+                        (i & 4) == 0 ? b.min.z : b.max.z);
+                    var p = modelRoot.InverseTransformPoint(filter.transform.TransformPoint(corner));
+                    if (!any) { bounds = new Bounds(p, Vector3.zero); any = true; }
+                    else bounds.Encapsulate(p);
                 }
             }
-
-            tailPivot = string.IsNullOrEmpty(entry.tailTransformName) ? null : FindDeep(instance.transform, entry.tailTransformName);
+            return bounds;
         }
 
         static void Part(string name, Mesh mesh, Material material, Transform parent, Vector3 position, Quaternion rotation)
@@ -153,16 +281,36 @@ namespace FishBreeder
                 bodyMaterials[i].color = bodyBaseColors[i] * tint;
         }
 
-        /// <summary>Tail wag and body sway; <paramref name="effort"/> is roughly speed / cruise speed.</summary>
-        public void Animate(float effort, float deltaTime)
+        /// <summary>
+        /// Drives the swim cycle. <paramref name="effort"/> is roughly speed / cruise speed;
+        /// <paramref name="bankDegrees"/> rolls the body into turns.
+        /// </summary>
+        public void Animate(float effort, float bankDegrees, float deltaTime)
         {
             if (modelRoot == null) return;
-            effort = Mathf.Clamp(effort, 0.2f, 2f);
-            swimPhase += deltaTime * tailWagFrequency * effort;
+            effort = Mathf.Clamp(effort, 0f, 2f);
+            float beats = modelEntry != null ? modelEntry.tailBeatsPerSecond : tailWagFrequency / (Mathf.PI * 2f);
+            swimPhase += deltaTime * Mathf.PI * 2f * beats * Mathf.Lerp(0.35f, 1.4f, effort * 0.6f);
+            swimPhase = Mathf.Repeat(swimPhase, Mathf.PI * 200f);
             float wave = Mathf.Sin(swimPhase);
-            if (tailPivot != null)
-                tailPivot.localRotation = Quaternion.Euler(0f, wave * tailWagDegrees * effort, 0f);
-            modelRoot.localRotation = Quaternion.Euler(0f, -wave * 4f * effort, 0f);
+            float strength = Mathf.Clamp(0.35f + 0.65f * effort, 0.35f, 1.4f);
+
+            if (modelEntry != null)
+            {
+                float amplitude = modelEntry.swimAmplitude * (strength + Mathf.Abs(bankDegrees) / 60f);
+                foreach (var material in swimMaterials)
+                {
+                    material.SetFloat(SwimPhaseId, swimPhase);
+                    material.SetFloat(SwimAmplitudeId, amplitude);
+                }
+            }
+            else if (tailPivot != null)
+            {
+                tailPivot.localRotation = Quaternion.Euler(0f, wave * tailWagDegrees * strength, 0f);
+            }
+
+            // The head swings a little against the tail; the body leans into turns.
+            modelRoot.localRotation = Quaternion.Euler(0f, -Mathf.Cos(swimPhase) * 2.5f * strength, bankDegrees);
         }
     }
 }

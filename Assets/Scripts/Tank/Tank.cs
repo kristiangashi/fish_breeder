@@ -49,6 +49,28 @@ namespace FishBreeder
             return GameRandom.InsideBounds(b);
         }
 
+        /// <summary>Random point in open water, at least <paramref name="clearance"/> away from any decoration.</summary>
+        public Vector3 RandomFreePoint(float clearance)
+        {
+            var point = RandomPoint(clearance);
+            for (int attempt = 0; attempt < 12; attempt++)
+            {
+                if (!OverlapsObstacle(point, clearance)) return point;
+                point = RandomPoint(clearance);
+            }
+            return point;
+        }
+
+        static readonly Collider[] overlapBuffer = new Collider[16];
+
+        public static bool OverlapsObstacle(Vector3 point, float radius)
+        {
+            int count = Physics.OverlapSphereNonAlloc(point, radius, overlapBuffer, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < count; i++)
+                if (TankObstacle.IsObstacle(overlapBuffer[i])) return true;
+            return false;
+        }
+
         public Vector3 Clamp(Vector3 point, float margin)
         {
             var b = InnerBounds;
@@ -100,19 +122,57 @@ namespace FishBreeder
                 MaterialFactory.Decor(PrimitiveType.Cube, "FrameZ", root, new Vector3(s * b.x * 0.5f, sy * b.y, 0f), new Vector3(t, t, b.z), frame);
             }
 
-            for (int i = 0; i < 5; i++)
+            BuildObstacles(root, b);
+            // New colliders must be in the physics scene before fish pick spawn points.
+            Physics.SyncTransforms();
+        }
+
+        /// <summary>
+        /// Rocks, a rock arch, driftwood and plants spread through the tank so fish have to
+        /// swim around (and through) them. All are TankObstacles with colliders.
+        /// </summary>
+        static void BuildObstacles(Transform root, Vector3 b)
+        {
+            var rock = new Color(0.45f, 0.45f, 0.48f);
+            var darkRock = new Color(0.35f, 0.34f, 0.36f);
+            var wood = new Color(0.4f, 0.28f, 0.18f);
+
+            // Big rocks: one front-left, one in the middle, one back-right.
+            MaterialFactory.Obstacle(PrimitiveType.Sphere, "Rock", root, new Vector3(-b.x * 0.3f, 0.08f, -b.z * 0.05f), new Vector3(0.3f, 0.22f, 0.22f), Quaternion.Euler(0f, 20f, 0f), rock);
+            MaterialFactory.Obstacle(PrimitiveType.Sphere, "Rock", root, new Vector3(b.x * 0.05f, 0.1f, b.z * 0.15f), new Vector3(0.24f, 0.32f, 0.2f), Quaternion.Euler(0f, -10f, 8f), darkRock);
+            MaterialFactory.Obstacle(PrimitiveType.Sphere, "Rock", root, new Vector3(b.x * 0.38f, 0.06f, b.z * 0.2f), new Vector3(0.2f, 0.14f, 0.18f), Quaternion.identity, rock);
+
+            // Rock arch the fish can swim through.
+            float archX = b.x * 0.25f, archZ = -b.z * 0.12f, archGap = 0.2f, archHeight = 0.32f;
+            MaterialFactory.Obstacle(PrimitiveType.Cube, "ArchPillar", root, new Vector3(archX - archGap * 0.5f - 0.04f, archHeight * 0.5f, archZ), new Vector3(0.08f, archHeight, 0.12f), Quaternion.identity, darkRock);
+            MaterialFactory.Obstacle(PrimitiveType.Cube, "ArchPillar", root, new Vector3(archX + archGap * 0.5f + 0.04f, archHeight * 0.5f, archZ), new Vector3(0.08f, archHeight, 0.12f), Quaternion.identity, darkRock);
+            MaterialFactory.Obstacle(PrimitiveType.Cube, "ArchTop", root, new Vector3(archX, archHeight + 0.03f, archZ), new Vector3(archGap + 0.2f, 0.06f, 0.14f), Quaternion.Euler(0f, 0f, 3f), darkRock);
+
+            // Driftwood lying diagonally across the back.
+            MaterialFactory.Obstacle(PrimitiveType.Cylinder, "Driftwood", root, new Vector3(-b.x * 0.1f, 0.12f, b.z * 0.32f), new Vector3(0.05f, 0.4f, 0.05f), Quaternion.Euler(0f, 35f, 75f), wood);
+
+            // Plants: tall thin stalks in a few clumps.
+            var clumps = new[] { new Vector2(-b.x * 0.42f, b.z * 0.3f), new Vector2(-b.x * 0.05f, -b.z * 0.25f), new Vector2(b.x * 0.42f, -b.z * 0.25f) };
+            foreach (var clump in clumps)
             {
-                float size = GameRandom.Range(0.06f, 0.16f);
-                MaterialFactory.Decor(PrimitiveType.Sphere, "Rock", root,
-                    new Vector3(GameRandom.Range(-b.x * 0.45f, b.x * 0.45f), size * 0.25f, GameRandom.Range(0f, b.z * 0.4f)),
-                    new Vector3(size * 1.4f, size * 0.7f, size), new Color(0.45f, 0.45f, 0.48f));
+                for (int i = 0; i < 4; i++)
+                {
+                    float h = GameRandom.Range(0.25f, 0.6f);
+                    var offset = new Vector2(GameRandom.Range(-0.06f, 0.06f), GameRandom.Range(-0.05f, 0.05f));
+                    MaterialFactory.Obstacle(PrimitiveType.Capsule, "Plant", root,
+                        new Vector3(clump.x + offset.x, h * 0.5f, clump.y + offset.y), new Vector3(0.025f, h * 0.5f, 0.025f),
+                        Quaternion.Euler(GameRandom.Range(-6f, 6f), 0f, GameRandom.Range(-6f, 6f)),
+                        new Color(0.2f, GameRandom.Range(0.5f, 0.75f), 0.25f));
+                }
             }
-            for (int i = 0; i < 7; i++)
+
+            // Pebbles are pure decoration; fish can swim over them.
+            for (int i = 0; i < 14; i++)
             {
-                float h = GameRandom.Range(0.2f, 0.55f);
-                MaterialFactory.Decor(PrimitiveType.Capsule, "Plant", root,
-                    new Vector3(GameRandom.Range(-b.x * 0.48f, b.x * 0.48f), h * 0.5f, GameRandom.Range(b.z * 0.1f, b.z * 0.45f)),
-                    new Vector3(0.03f, h * 0.5f, 0.03f), new Color(0.2f, GameRandom.Range(0.5f, 0.75f), 0.25f));
+                float size = GameRandom.Range(0.02f, 0.05f);
+                MaterialFactory.Decor(PrimitiveType.Sphere, "Pebble", root,
+                    new Vector3(GameRandom.Range(-b.x * 0.48f, b.x * 0.48f), size * 0.2f, GameRandom.Range(-b.z * 0.45f, b.z * 0.45f)),
+                    new Vector3(size * 1.3f, size * 0.6f, size), new Color(GameRandom.Range(0.5f, 0.8f), GameRandom.Range(0.45f, 0.7f), 0.45f));
             }
         }
     }

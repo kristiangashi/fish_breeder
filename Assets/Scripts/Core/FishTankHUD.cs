@@ -59,7 +59,7 @@ namespace FishBreeder.Core
             if (GUILayout.Button("Feed premium (safer)")) feeding.Feed(FoodType.Premium, 8);
             if (GUILayout.Button("Clean tank")) tank.Clean();
             if (GUILayout.Button("Add wild fish") && !tank.IsFull)
-                FishFactory.Spawn(Genetics.Genome.CreateRandom(), 1, 1f, tank, tank.RandomPoint(0.1f));
+                FishFactory.Spawn(Genetics.Genome.CreateRandom(), 1, 1f, tank, tank.RandomFreePoint(0.1f));
             GUILayout.EndArea();
         }
 

@@ -30,7 +30,7 @@ namespace FishBreeder.Core
         {
             if (randomSeed != 0) GameRandom.Seed(randomSeed);
             GameConfig.Active = config != null ? config : ScriptableObject.CreateInstance<GameConfig>();
-            FishVisual.DefaultLibrary = modelLibrary;
+            FishVisual.DefaultLibrary = modelLibrary != null ? modelLibrary : FishModelLibrary.LoadBuiltIn();
             GameLog.Clear();
 
             var tank = new GameObject("Tank").AddComponent<Tank>();
@@ -45,7 +45,7 @@ namespace FishBreeder.Core
             SetupLight();
 
             for (int i = 0; i < starterFish; i++)
-                FishFactory.Spawn(Genome.CreateRandom(), 1, 1f, tank, tank.RandomPoint(0.15f));
+                FishFactory.Spawn(Genome.CreateRandom(), 1, 1f, tank, tank.RandomFreePoint(0.15f));
 
             gameObject.AddComponent<FishTankHUD>().Initialize(tank, feeding, breeding, cam);
             GameLog.Add("Welcome! Feed your fish, keep the water clean and breed for rare traits.");

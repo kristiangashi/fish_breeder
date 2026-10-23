@@ -110,6 +110,16 @@ namespace FishBreeder
             if (BreedCooldown > 0) BreedCooldown--;
         }
 
+        /// <summary>Developer shortcut: makes the fish an adult right away (for testing looks and breeding).</summary>
+        public void DevGrowUp()
+        {
+            if (IsDead || growth >= 1f) return;
+            growth = 1f;
+            ageDays = Mathf.Max(ageDays, Species.daysToAdult);
+            hunger = 0f;
+            ApplyGrowthScale();
+        }
+
         void ApplyGrowthScale()
         {
             transform.localScale = Vector3.one * Mathf.Lerp(0.5f, 1f, growth);

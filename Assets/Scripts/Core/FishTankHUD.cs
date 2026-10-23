@@ -126,6 +126,8 @@ namespace FishBreeder.Core
             GUI.enabled = true;
 #if UNITY_EDITOR
             if (!ReadOnly && GUILayout.Button("Dirty the water (dev)")) tank.DevMakeDirty();
+            if (!ReadOnly && GUILayout.Button("Grow every fish up (dev)"))
+                foreach (var fish in tank.Residents) fish.DevGrowUp();
 #endif
             if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
             GUILayout.EndArea();

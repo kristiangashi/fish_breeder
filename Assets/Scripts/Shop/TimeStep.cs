@@ -9,16 +9,19 @@ namespace FishBreeder.Shop
     /// <summary>
     /// Everything that happens between one shop phase and the next. Runs once when the shop opens
     /// and once when it closes; nothing else moves time on.
-    /// Order: eggs hatch, water changes (waste, algae, pH, pests, temperature), fish age and get
-    /// hungrier, illness progresses, spreads or strikes, pairs may breed, then each fish in poor
-    /// health rolls for death.
+    /// Order: eggs develop (and hatch when due), pregnant fish give birth when due, water changes
+    /// (waste, algae, pH, pests, temperature), fish age and get hungrier, illness progresses,
+    /// spreads or strikes, compatible pairs may breed, then each fish in poor health rolls for death.
     /// </summary>
     public static class TimeStep
     {
         public static string Run(IReadOnlyList<StoreTank> tanks)
         {
             var balance = Balance.Data.timeStep;
-            int hatched = EggClutch.HatchAll();
+            int hatched = EggClutch.AdvanceAll();
+            var mothers = new List<Fish>();
+            foreach (var storeTank in tanks) mothers.AddRange(storeTank.Tank.Residents);
+            int bornLive = BreedingSystem.AdvancePregnancies(mothers);
 
             var fishes = new List<Fish>();
             foreach (var storeTank in tanks)
@@ -35,11 +38,11 @@ namespace FishBreeder.Shop
                 if (fish.Health.OnTimeStep(newlyInfected)) fellIll++;
             fellIll += newlyInfected.Count;
 
-            int born = 0;
+            int conceived = 0;
             foreach (var storeTank in tanks)
             {
                 float chance = storeTank.Role == TankRole.Breeder ? balance.pregnancyChanceBreederTank : balance.pregnancyChanceOtherTank;
-                born += BreedingSystem.ChancePregnancies(storeTank.Tank, chance);
+                conceived += BreedingSystem.ChanceBreeding(storeTank.Tank, chance);
             }
 
             int died = 0;
@@ -56,7 +59,8 @@ namespace FishBreeder.Shop
 
             var parts = new List<string>();
             if (hatched > 0) parts.Add($"{hatched} eggs hatched");
-            if (born > 0) parts.Add($"{born} new fry or eggs");
+            if (bornLive > 0) parts.Add($"{bornLive} fry born");
+            if (conceived > 0) parts.Add(conceived == 1 ? "a new pregnancy or clutch of eggs" : $"{conceived} new pregnancies or clutches of eggs");
             if (fellIll > 0) parts.Add($"{fellIll} fish fell ill");
             if (died > 0) parts.Add($"{died} died");
             string summary = parts.Count > 0 ? string.Join(", ", parts) + "." : "A quiet time in the tanks.";

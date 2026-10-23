@@ -440,14 +440,18 @@ namespace FishBreeder.Store
 
         static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpace - EggClutch.EggsIn(tank.Tank));
 
+        Vector2 fishOfferScroll;
+
         void DrawFishOffers()
         {
-            GUILayout.Label("<i>Eggs are cheaper but hatch at the next time step (when the shop opens or closes). Fry arrive right away.</i>", Rich());
+            GUILayout.Label("<i>Eggs are cheaper but hatch at the next time step (when the shop opens or closes). Fry arrive right away. Livebearers bred in your tanks give birth to fry instead of laying eggs.</i>", Rich());
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
+            fishOfferScroll = GUILayout.BeginScrollView(fishOfferScroll, GUILayout.Height(400f));
             foreach (var species in SupplierCatalog.Fish)
             {
                 GUILayout.BeginHorizontal();
-                GUILayout.Label($"<b>{species.displayName}</b>\n<size=10>{species.rarity}, {Category(species.category)}, {species.tempMin:0}-{species.tempMax:0} C{(species.IsSaltwater ? ", salt water" : "")}</size>", Rich(), GUILayout.Width(250f));
+                string livebearer = species.reproduction == Reproduction.Livebearer ? ", livebearer" : "";
+                GUILayout.Label($"<b>{species.displayName}</b>\n<size=10>{species.rarity}, {Category(species.category)}{livebearer}, {species.tempMin:0}-{species.tempMax:0} C{(species.IsSaltwater ? ", salt water" : "")}</size>", Rich(), GUILayout.Width(250f));
                 GUI.enabled = free >= species.clutchSize && Economy.CanAfford(species.clutchPrice);
                 if (GUILayout.Button($"{species.clutchSize} eggs  {Economy.Format(species.clutchPrice)}", GUILayout.Width(150f), GUILayout.Height(32f)))
                     OrderEggs(species);
@@ -457,6 +461,7 @@ namespace FishBreeder.Store
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
             }
+            GUILayout.EndScrollView();
         }
 
         static string Category(FishCategory category)

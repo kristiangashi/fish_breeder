@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using FishBreeder.Breeding;
 using FishBreeder.Feeding;
+using FishBreeder.Genetics;
 using FishBreeder.Health;
 using FishBreeder.Store;
 using UnityEngine;
@@ -69,8 +71,12 @@ namespace FishBreeder.Core
             GUILayout.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
             if (ReadOnly) GUILayout.Label("<color=#ffd27f>The shop is open: you can look, but tank work waits until closing.</color>", Rich());
             GUILayout.Label($"Fish: {tank.Residents.Count} / {GameConfig.Active.maxFishPerTank}" + (tank.Corpses.Count > 0 ? $"   <color=#ff8080>Dead: {tank.Corpses.Count}</color>" : ""), Rich());
-            int eggs = EggClutch.EggsIn(tank);
-            if (eggs > 0) GUILayout.Label($"Eggs: {eggs} (hatch at the next time step)");
+            foreach (var clutch in EggClutch.All)
+                if (clutch != null && clutch.Tank == tank)
+                    GUILayout.Label($"<color=#ffe9a8>Eggs: {clutch.Count} {clutch.Species}, hatch in {BreedingSystem.Steps(clutch.StepsToHatch)}</color>", Rich());
+            foreach (var fish in tank.Residents)
+                if (fish.IsPregnant)
+                    GUILayout.Label($"<color=#ffb3d9>Pregnant: {fish.FishName} ({fish.Species}), due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", Rich());
 
             Bar("Water quality", tank.WaterQuality, true);
             Bar("Algae", tank.Algae, false);
@@ -143,7 +149,7 @@ namespace FishBreeder.Core
 
         void DrawFishWindow(Fish fish, float scale, float width, float height)
         {
-            const float w = 300f, h = 470f;
+            const float w = 300f, h = 530f;
             var screen = cam.WorldToScreenPoint(fish.transform.position);
             var anchor = new Vector2(screen.x / scale, height - screen.y / scale);
             float x = anchor.x + 40f;
@@ -160,6 +166,8 @@ namespace FishBreeder.Core
             GUILayout.Label($"{species.displayName}  ({species.rarity} species, {p.RarityLabel} looks)");
             GUILayout.Label($"{fish.Stage}, {fish.AgeDays:0.#} days old, generation {fish.Generation}");
             if (!string.IsNullOrEmpty(fish.ParentNames)) GUILayout.Label($"Parents: {fish.ParentNames}");
+            if (fish.IsPregnant)
+                GUILayout.Label($"<color=#ffb3d9><b>Pregnant</b> by {fish.UnbornFather}: about {fish.UnbornCount} fry due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", Rich());
 
             if (fish.IsDead)
             {
@@ -188,6 +196,14 @@ namespace FishBreeder.Core
 
             GUILayout.Label($"Needs: {species.tempMin:0}-{species.tempMax:0} C, pH {species.phMin:0.0}-{species.phMax:0.0}, {(species.IsSaltwater ? "salt" : "fresh")} water" +
                             (species.schoolSize > 0 ? $", {species.schoolSize}+ of its kind" : ""));
+            if (!fish.IsPregnant)
+            {
+                string notReady = BreedingSystem.WhyNotReady(fish, tank);
+                string how = species.reproduction == Reproduction.Livebearer ? "livebearer" : "egg-layer";
+                GUILayout.Label(notReady == null
+                    ? $"<color=#9fe39f>Ready to breed</color> ({how}): needs a {(fish.Sex == Sex.Male ? "female" : "male")} {species.displayName} in the tank."
+                    : $"Breeding ({how}): {notReady.Replace(fish.FishName + " ", "")}", Rich());
+            }
 
             GUILayout.Space(4f);
             GUILayout.Label($"Appraised value: <b>~{Economy.Format(fish.AppraisedValue)}</b>", Rich());
@@ -276,7 +292,7 @@ namespace FishBreeder.Core
             var b = selected[1];
             if (storeTank.Role != TankRole.Breeder)
             {
-                GUILayout.Label($"{a.FishName} and {b.FishName}: move them to a breeder tank to pair them up. (Pairs in other tanks sometimes breed by chance.)");
+                GUILayout.Label($"{a.FishName} and {b.FishName}: move them to a breeder tank to pair them up. Compatible pairs in other tanks sometimes breed by chance at each time step.");
             }
             else
             {

@@ -69,7 +69,7 @@ namespace FishBreeder
 
         /// <summary>
         /// Library with every built-in Meshy fish: the Comet Goldfish (also the default) and the
-        /// aquarium set in Resources/Fish/AquariumSet, which share one texture atlas.
+        /// aquarium and freshwater sets in Resources/Fish, each sharing one texture atlas.
         /// Swimming values are per species: small fish beat their tails faster, angelfish and
         /// bettas glide on big fins, the armoured corydoras bends less.
         /// </summary>
@@ -105,6 +105,21 @@ namespace FishBreeder
             AddSetFish(library, set, albedo, normal, smoothnessMap, "NeonTetra", 4f, 1f, 0.9f, 8f);
             AddSetFish(library, set, albedo, normal, smoothnessMap, "ZebraDanio", 4.5f, 1.1f, 0.9f, 8f);
             AddSetFish(library, set, albedo, normal, smoothnessMap, "Corydoras", 4f, 1f, 0.5f, 4f);
+
+            // Second Meshy set: livebearers, sharks and cichlids, sharing their own atlas.
+            const string freshwater = "Fish/FreshwaterSet/";
+            var fwAlbedo = Resources.Load<Texture2D>(freshwater + "FreshwaterFish_Albedo");
+            var fwNormal = Resources.Load<Texture2D>(freshwater + "FreshwaterFish_Normal");
+            var fwSmoothness = Resources.Load<Texture2D>(freshwater + "FreshwaterFish_Smoothness");
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "BlackMolly", 3f, 0.9f, 0.8f, 10f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "Platy", 3.4f, 1f, 0.85f, 10f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "RedTailShark", 3f, 1f, 0.8f, 8f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "SiameseAlgaeEater", 3.4f, 1f, 0.85f, 8f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "SilverDollar", 2.2f, 0.8f, 0.7f, 6f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "Oscar", 1.8f, 0.8f, 0.7f, 8f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "GreenTerror", 2.2f, 0.9f, 0.75f, 8f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "BlueAcara", 2.4f, 0.9f, 0.75f, 8f);
+            AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "GoldenMbuna", 3f, 1f, 0.8f, 8f);
             return library;
         }
 

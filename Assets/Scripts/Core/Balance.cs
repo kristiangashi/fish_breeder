@@ -91,15 +91,22 @@ namespace FishBreeder.Core
     [Serializable]
     public class TimeStepBalance
     {
+        [Tooltip("Chance per compatible pair per time step of a pregnancy or a clutch of eggs, in a breeder tank.")]
         [Range(0f, 1f)] public float pregnancyChanceBreederTank = 0.6f;
         [Range(0f, 1f)] public float pregnancyChanceOtherTank = 0.1f;
+        [Tooltip("Fish this stressed by their water (wrong temperature, pH, salt, dirt or low oxygen; 0..1) won't breed.")]
+        [Range(0f, 1f)] public float maxStressToBreed = 0.35f;
+        [Tooltip("Chance per egg per time step of dying in filthy water; falls to nothing at half water quality.")]
+        [Range(0f, 1f)] public float eggLossInFilthyWater = 0.5f;
+        [Tooltip("Algae each algae eater grazes off per time step.")]
+        public float algaeEatenPerGrazer = 0.03f;
         [Tooltip("Chance per fish of catching something, before water, stress and hardiness.")]
         [Range(0f, 1f)] public float diseaseChance = 0.03f;
         public float algaePerStep = 0.06f;
         [Tooltip("Extra algae growth per decoration piece (too many decorations speed algae).")]
-        public float algaePerDecoration = 0.006f;
+        public float algaePerDecoration = 0.01f;
         public float waterQualityLossPerStep = 0.04f;
-        public float wasteQualityLossPerFish = 0.012f;
+        public float wasteQualityLossPerFish = 0.01f;
         public float corpseQualityLoss = 0.05f;
         [Tooltip("pH drift towards acidic per step in dirty water.")]
         public float phDriftPerStep = 0.15f;
@@ -179,7 +186,9 @@ namespace FishBreeder.Core
             try
             {
                 var parsed = JsonUtility.FromJson<BalanceData>(json);
-                if (parsed != null && (parsed.species == null || parsed.species.Count == 0)) parsed.species = Species.CreateDefaults();
+                if (parsed == null) return null;
+                if (parsed.species == null) parsed.species = new List<Species>();
+                AddMissingSpecies(parsed.species);
                 return parsed;
             }
             catch (Exception e)
@@ -187,6 +196,18 @@ namespace FishBreeder.Core
                 Debug.LogWarning($"[FishBreeder] Balance file could not be read, using defaults: {e.Message}");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Species added to the game after the balance file was saved join it with their default
+        /// values, so new fish show up without losing anything edited in the console.
+        /// </summary>
+        static void AddMissingSpecies(List<Species> species)
+        {
+            var known = new HashSet<string>();
+            foreach (var s in species) if (s != null && !string.IsNullOrEmpty(s.id)) known.Add(s.id);
+            foreach (var s in Species.CreateDefaults())
+                if (!known.Contains(s.id)) species.Add(s);
         }
 
         /// <summary>Applies new balance JSON right away (the console calls this while playing).</summary>

@@ -158,7 +158,9 @@ namespace FishBreeder
                 - residents.Count * balance.wasteQualityLossPerFish * filter
                 - corpses.Count * balance.corpseQualityLoss);
             float algaeGrowth = balance.algaePerStep + DecorCount * balance.algaePerDecoration;
-            algae = Mathf.Clamp01(algae + algaeGrowth * (1.5f - waterQuality));
+            int grazers = 0;
+            foreach (var fish in residents) if (!fish.IsDead && fish.Species.eatsAlgae) grazers++;
+            algae = Mathf.Clamp01(algae + algaeGrowth * (1.5f - waterQuality) - grazers * balance.algaeEatenPerGrazer);
             float neutral = IsSaltwater ? 8.1f : 7f;
             ph = Mathf.MoveTowards(ph, neutral - 1.2f, balance.phDriftPerStep * (1f - waterQuality) * 2f);
             if (!pests && waterQuality < 0.5f && GameRandom.Chance(balance.pestChance * (1.5f - waterQuality)))

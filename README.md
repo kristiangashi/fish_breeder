@@ -24,16 +24,16 @@ The game alternates between **closed** and **open**. Time only moves when you op
 - **Supplier computer**: eggs or fry of any species, food, filters, heaters, bubblers and water conditioner.
 - **Click a tank** to look inside: water quality, algae, oxygen, temperature, pH, salt, pests and equipment, plus feeding, wiping (3 wipes per closed session), treating the water and removing dead fish.
 - **Click a fish** for its status window: health and what is pulling it down (hunger, illness, comfort, water, old age, dead tank mates), its needs, appraised value, price (For Sale tanks), medicine and moving it to another tank.
-- **Breeding**: pick a male and a female of the same species in a breeder tank. Livebearers give birth straight away; eggs hatch at the next time step.
+- **Breeding**: any compatible pair (an adult male and female of the same species, healthy, fed, rested, and happy with the water) may breed at each time step, likeliest in a breeder tank; in a breeder tank you can also pair two fish by hand. Livebearers (guppy, platy, black molly) get pregnant and give birth a few time steps later; egg-layers lay a clutch on the sand that hatches a few time steps later. Filthy water kills eggs. The tank panel lists eggs and pregnant fish with how long until they hatch or give birth. Pregnancy length and hatch time are per species in the balance console.
 - **Empty tank spots** and **locked sections**: buy more tanks and floor space.
 
 **Open Shop** (top bar or register): a time step runs, then customers come in for one real hour. They wander between tanks, react with thought bubbles (happy, grossed out by bad water, sad about dead fish, angry about prices), sometimes buy a fish from a For Sale tank, pay at the register and go home. The shop closes on its own, another time step runs, and you get the day's report and reviews, which move your reputation and next day's traffic. Developer buttons in the top bar speed the day up (5x, 20x) or skip the rest of it; the keys 1, 2, 3 and K do the same.
 
-Each time step: eggs hatch; water quality drops with waste, algae grows (faster with more decorations), pH drifts and pests may appear; fish age and get hungrier; illness progresses, spreads or strikes; pairs may breed by chance (likelier in breeder tanks); and fish in poor health roll for death.
+Each time step: eggs develop and hatch when due, pregnant fish give birth when due; water quality drops with waste, algae grows (faster with more decorations), pH drifts and pests may appear; fish age and get hungrier; illness progresses, spreads or strikes; compatible pairs may breed (likelier in breeder tanks); and fish in poor health roll for death.
 
 ## Balance console
 
-All balancing numbers (species rarity, prices, needs, compatibilities, diseases, customers, time-step chances, health weights, store and supplier prices) live in one file, `Assets/Resources/Balance/balance.json`. Edit them in the browser: with the project open in Unity, choose **Fish Breeder > Balance Console** (or go to http://localhost:8642). **Save** writes the file and, if the game is playing, applies the new values straight away. The console is an editor-only tool (`Tools/BalanceConsole/index.html`, served by `Assets/Scripts/Editor/BalanceConsoleServer.cs`) and is not part of a build; the JSON file is, so the game ships with whatever you saved. Until you first save, the defaults in code are used.
+All balancing numbers (species rarity, prices, needs, compatibilities, diseases, customers, time-step chances, health weights, store and supplier prices) live in one file, `Assets/Resources/Balance/balance.json`. Edit them in the browser: with the project open in Unity, choose **Fish Breeder > Balance Console** (or go to http://localhost:8642). **Save** writes the file and, if the game is playing, applies the new values straight away. The console is an editor-only tool (`Tools/BalanceConsole/index.html`, served by `Assets/Scripts/Editor/BalanceConsoleServer.cs`) and is not part of a build; the JSON file is, so the game ships with whatever you saved. Until you first save, the defaults in code are used. Numbers are kept to 2 decimals. If a save can't reach Unity (for example while it recompiles), the console keeps retrying for a minute and keeps your edits in the browser until one gets through. Species added to the game later join your saved file automatically with their default values.
 
 
 ## Code layout
@@ -41,11 +41,11 @@ All balancing numbers (species rarity, prices, needs, compatibilities, diseases,
 | Folder | What's there |
 | --- | --- |
 | `Scripts/Genetics` | `Genes` (allele types and trait enums), `Genome` (a fish's DNA), `Phenotype` (what the DNA looks like in game units, rarity) |
-| `Scripts/Breeding` | `BreedingService` (pure Mendelian crossover + mutation), `BreedingSystem` (in-game rules: adults, healthy, cooldown, tank space) |
+| `Scripts/Breeding` | `BreedingService` (pure Mendelian crossover + mutation), `BreedingSystem` (in-game rules: compatible pairs, chance breeding at time steps, pregnancy and egg timing) |
 | `Scripts/Feeding` | `FeedingSystem` drops food; `FoodPellet` sinks, gets eaten or rots |
 | `Scripts/Health` | `DiseaseDefinition` (the illness catalogue), `FishHealth` (infection per meal, progression, recovery/death rolls, contagion, medicine) |
 | `Scripts/Fish` | `Fish` (hunger, growth, death), `FishSwimmer` (wander + chase food), `FishVisual` (Meshy model or procedural placeholder), `PlaceholderFishMesh` and `FishPatternTexture` (gene-driven 3D placeholder), `FishModelLibrary` (Meshy model lookup) |
-| `Scripts/Tank` | `Tank` (bounds, residents, water quality, filter, placeholder glass tank), `EggClutch` (eggs that hatch at the next day) |
+| `Scripts/Tank` | `Tank` (bounds, residents, water quality, filter, placeholder glass tank), `EggClutch` (eggs that hatch after a few time steps) |
 | `Scripts/Store` | `StoreLayout` (rooms, sections, tank spots, register, computer, walkable area), `StoreView` (store camera and windows), `StoreTank` (tank roles), `SupplierCatalog` (prices) |
 | `Scripts/Shop` | `ShopDay` (open-shop day, sales, reviews), `TimeStep` (everything that happens at open and close), `Customer` and `ShopperBrain` (shoppers and their reactions), `MoodIcons`, `StoreNavMesh` |
 | `Scripts/Core` | `GameBootstrap`, `Balance` (all balancing numbers, loaded from the balance file), `Economy` (money, stock, day, reputation), `GameConfig`, `GameRandom`, `GameLog`, `FishTankHUD`, helpers |

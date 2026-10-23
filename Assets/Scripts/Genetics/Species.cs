@@ -15,7 +15,7 @@ namespace FishBreeder.Genetics
     /// <summary>Breeding groups: only fish in the same category can ever cross-breed.</summary>
     public enum FishCategory { FreshwaterCold, FreshwaterTropical, SaltwaterCold, SaltwaterTropical, BottomFeeder, Shellfish }
 
-    /// <summary>Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step. The two never cross.</summary>
+    /// <summary>Livebearers get pregnant and later give birth to fry; egg-layers lay eggs that hatch a few time steps later. The two never cross.</summary>
     public enum Reproduction { EggLayer, Livebearer }
 
     public enum SpeciesRarity { Common, Uncommon, Rare, Exotic, Legendary }
@@ -73,6 +73,12 @@ namespace FishBreeder.Genetics
         /// <summary>After this many days old age slowly lowers health.</summary>
         public float lifespanDays = 90f;
         public int litterMin = 3, litterMax = 5;
+        /// <summary>Livebearers: time steps (half days) from getting pregnant to giving birth.</summary>
+        public int gestationSteps = 4;
+        /// <summary>Egg-layers: time steps (half days) from laying to hatching.</summary>
+        public int eggHatchSteps = 2;
+        /// <summary>Grazes algae off the glass and decorations at every time step.</summary>
+        public bool eatsAlgae;
 
         public bool IsSaltwater => category == FishCategory.SaltwaterCold || category == FishCategory.SaltwaterTropical;
 
@@ -122,13 +128,22 @@ namespace FishBreeder.Genetics
                 Make("CometGoldfish", "Comet Goldfish", FishCategory.FreshwaterCold, SpeciesRarity.Common, 20, 20, 4, 12, 0.1f, 0.2f, 1f, 0.15f, 0.85f, 10f, 24f, 7f, 8f, 3f, 0),
                 Make("FancyGoldfish", "Fancy Goldfish", FishCategory.FreshwaterCold, SpeciesRarity.Uncommon, 45, 40, 3, 25, 0.1f, 0.14f, 0.7f, 0.15f, 0.8f, 18f, 24f, 7f, 8f, 3f, 0, "TigerBarb"),
                 Make("Angelfish", "Angelfish", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 70, 60, 3, 35, 0.12f, 0.15f, 0.6f, 0.35f, 0.85f, 24f, 30f, 6f, 7.5f, 3f, 0, "TigerBarb", "NeonTetra"),
-                Make("Betta", "Betta", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 55, 50, 3, 30, 0.08f, 0.095f, 0.6f, 0.45f, 0.95f, 24f, 30f, 6.5f, 7.5f, 4f, 0, "TigerBarb", "Guppy"),
+                Make("Betta", "Betta", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 55, 50, 3, 30, 0.08f, 0.1f, 0.6f, 0.45f, 0.95f, 24f, 30f, 6.5f, 7.5f, 4f, 0, "TigerBarb", "Guppy"),
                 Make("Clownfish", "Clownfish", FishCategory.SaltwaterTropical, SpeciesRarity.Exotic, 110, 90, 3, 55, 0.08f, 0.1f, 0.9f, 0.25f, 0.75f, 24f, 28f, 7.8f, 8.4f, 3f, 0),
-                Make("Guppy", "Guppy", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 12, 15, 5, 8, 0.06f, 0.075f, 1.1f, 0.45f, 0.95f, 22f, 28f, 7f, 8f, 2f, 0, "Betta"),
-                Make("TigerBarb", "Tiger Barb", FishCategory.FreshwaterTropical, SpeciesRarity.Uncommon, 25, 25, 4, 14, 0.07f, 0.085f, 1.3f, 0.2f, 0.7f, 22f, 27f, 6f, 7.5f, 2f, 4, "Angelfish", "Betta", "FancyGoldfish"),
-                Make("NeonTetra", "Neon Tetra", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 14, 20, 5, 10, 0.055f, 0.065f, 1.2f, 0.3f, 0.7f, 21f, 27f, 5.5f, 7f, 2f, 5, "Angelfish"),
+                Make("Guppy", "Guppy", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 12, 15, 5, 8, 0.06f, 0.08f, 1.1f, 0.45f, 0.95f, 22f, 28f, 7f, 8f, 2f, 0, "Betta"),
+                Make("TigerBarb", "Tiger Barb", FishCategory.FreshwaterTropical, SpeciesRarity.Uncommon, 25, 25, 4, 14, 0.07f, 0.09f, 1.3f, 0.2f, 0.7f, 22f, 27f, 6f, 7.5f, 2f, 4, "Angelfish", "Betta", "FancyGoldfish"),
+                Make("NeonTetra", "Neon Tetra", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 14, 20, 5, 10, 0.06f, 0.07f, 1.2f, 0.3f, 0.7f, 21f, 27f, 5.5f, 7f, 2f, 5, "Angelfish"),
                 Make("ZebraDanio", "Zebra Danio", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 12, 15, 5, 8, 0.06f, 0.07f, 1.5f, 0.6f, 0.95f, 18f, 26f, 6.5f, 7.5f, 2f, 4),
-                Make("Corydoras", "Corydoras Catfish", FishCategory.BottomFeeder, SpeciesRarity.Uncommon, 35, 35, 4, 20, 0.065f, 0.08f, 1f, 0f, 0.1f, 22f, 26f, 6f, 7.5f, 3f, 3),
+                Make("Corydoras", "Corydoras Catfish", FishCategory.BottomFeeder, SpeciesRarity.Uncommon, 35, 35, 4, 20, 0.07f, 0.08f, 1f, 0f, 0.1f, 22f, 26f, 6f, 7.5f, 3f, 3),
+                Make("RedTailShark", "Red-tailed Black Shark", FishCategory.FreshwaterTropical, SpeciesRarity.Uncommon, 40, 40, 3, 22, 0.1f, 0.12f, 1.1f, 0.05f, 0.45f, 22f, 27f, 6.5f, 7.5f, 3f, 0, "SiameseAlgaeEater", "Corydoras"),
+                Make("SiameseAlgaeEater", "Siamese Algae Eater", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 15, 18, 4, 9, 0.1f, 0.14f, 1.3f, 0.05f, 0.6f, 23f, 27f, 6.5f, 8f, 4f, 0),
+                Make("SilverDollar", "Red Hook Silver Dollar", FishCategory.FreshwaterTropical, SpeciesRarity.Uncommon, 35, 35, 4, 18, 0.12f, 0.15f, 1f, 0.3f, 0.8f, 24f, 28f, 5.5f, 7.5f, 3f, 4),
+                Make("BlackMolly", "Black Molly", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 14, 18, 5, 9, 0.07f, 0.09f, 1f, 0.3f, 0.9f, 22f, 28f, 7.5f, 8.5f, 2f, 0),
+                Make("Platy", "Tuxedo Platy", FishCategory.FreshwaterTropical, SpeciesRarity.Common, 12, 15, 5, 8, 0.05f, 0.07f, 1.1f, 0.3f, 0.9f, 20f, 26f, 7f, 8f, 2f, 0),
+                Make("Oscar", "Oscar", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 90, 80, 3, 45, 0.16f, 0.2f, 0.8f, 0.2f, 0.8f, 23f, 28f, 6f, 7.5f, 3f, 0, "Guppy", "NeonTetra", "ZebraDanio", "Platy", "BlackMolly", "Betta"),
+                Make("GreenTerror", "Green Terror", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 65, 60, 3, 35, 0.12f, 0.16f, 0.9f, 0.2f, 0.7f, 22f, 26f, 6.5f, 8f, 3f, 0, "Angelfish", "NeonTetra", "Guppy", "Platy", "BlueAcara"),
+                Make("BlueAcara", "Electric Blue Acara", FishCategory.FreshwaterTropical, SpeciesRarity.Rare, 60, 55, 3, 32, 0.1f, 0.13f, 0.9f, 0.2f, 0.7f, 23f, 28f, 6f, 7.5f, 3f, 0, "GreenTerror", "GoldenMbuna"),
+                Make("GoldenMbuna", "Golden Mbuna", FishCategory.FreshwaterTropical, SpeciesRarity.Uncommon, 30, 30, 4, 16, 0.08f, 0.1f, 1.2f, 0.1f, 0.6f, 24f, 28f, 7.5f, 8.5f, 2f, 0, "Angelfish", "Betta", "Guppy", "BlueAcara"),
             };
 
             foreach (var s in list)
@@ -136,6 +151,11 @@ namespace FishBreeder.Genetics
                 if (s.category == FishCategory.SaltwaterTropical) { s.salinityMin = 30f; s.salinityMax = 36f; }
                 if (s.id == "Corydoras") s.style = SwimStyle.Bottom;
                 if (s.id == "Guppy") { s.reproduction = Reproduction.Livebearer; s.litterMin = 3; s.litterMax = 6; }
+                if (s.id == "Platy") { s.reproduction = Reproduction.Livebearer; s.litterMin = 3; s.litterMax = 6; }
+                if (s.id == "BlackMolly") { s.reproduction = Reproduction.Livebearer; s.litterMin = 4; s.litterMax = 8; s.gestationSteps = 5; s.salinityMax = 10f; }
+                if (s.id == "SiameseAlgaeEater") s.eatsAlgae = true;
+                if (s.id == "Oscar") s.needsPremiumFood = true;
+                if (s.id == "SilverDollar" || s.id == "Oscar" || s.id == "GoldenMbuna" || s.id == "GreenTerror") s.likesPlants = false;
                 if (s.id == "Betta" || s.id == "Angelfish" || s.id == "Clownfish") s.needsPremiumFood = true;
                 if (s.id == "Clownfish" || s.id == "Betta") s.likesPlants = false;
                 if (s.category == FishCategory.FreshwaterCold) { s.lifespanDays = 120f; s.daysToAdult = 5f; }

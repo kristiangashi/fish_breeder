@@ -111,7 +111,9 @@ namespace FishBreeder.EditorTools
 
             if (path == "/api/balance" && request.HttpMethod == "GET")
             {
-                string json = File.Exists(BalancePath) ? File.ReadAllText(BalancePath) : defaultJson;
+                // Parsed and written back out so species added since the last save are included.
+                var saved = File.Exists(BalancePath) ? Balance.Parse(File.ReadAllText(BalancePath)) : null;
+                string json = saved != null ? JsonUtility.ToJson(saved, true) : defaultJson;
                 Send(context, 200, "application/json", json);
                 return;
             }

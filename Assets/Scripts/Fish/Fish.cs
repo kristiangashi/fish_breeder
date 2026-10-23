@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using FishBreeder.Core;
 using FishBreeder.Feeding;
 using FishBreeder.Genetics;
@@ -46,6 +47,15 @@ namespace FishBreeder
         public bool IsStarving => hunger >= GameConfig.Active.starvingThreshold;
         public bool WantsFood => hunger > 0.25f;
         public int BreedCooldown { get; set; }
+
+        // Pregnancy (livebearer females): the fry's genes are fixed when she gets pregnant.
+        readonly List<Genome> unborn = new List<Genome>();
+        int unbornGeneration;
+        public bool IsPregnant => unborn.Count > 0;
+        /// <summary>Time steps until she gives birth.</summary>
+        public int StepsToBirth { get; private set; }
+        public int UnbornCount => unborn.Count;
+        public string UnbornFather { get; private set; }
         public string ParentNames { get; private set; }
         public Tank Tank { get; private set; }
         /// <summary>Asking price in a For Sale tank. 0 = not for sale.</summary>
@@ -155,9 +165,44 @@ namespace FishBreeder
             return true;
         }
 
+        public void BecomePregnant(List<Genome> fry, int fryGeneration, string father, int steps)
+        {
+            unborn.Clear();
+            unborn.AddRange(fry);
+            unbornGeneration = fryGeneration;
+            UnbornFather = father;
+            StepsToBirth = Mathf.Max(1, steps);
+        }
+
+        /// <summary>Time step for a pregnant fish. Returns how many fry she gave birth to (0 while still pregnant).</summary>
+        public int AdvancePregnancy()
+        {
+            if (!IsPregnant || IsDead || Tank == null) return 0;
+            if (--StepsToBirth > 0) return 0;
+
+            int born = 0;
+            string parents = $"{fishName} x {UnbornFather}";
+            foreach (var genome in unborn)
+            {
+                if (Tank.IsFull) break;
+                var position = Tank.Clamp(transform.position + Random.insideUnitSphere * 0.05f, 0.05f);
+                var child = FishFactory.Spawn(genome, unbornGeneration, 0.05f, Tank, position, parents);
+                born++;
+                var rarity = child.Phenotype.RarityLabel;
+                if (rarity == "Rare" || rarity == "Exotic")
+                    GameLog.Add($"{rarity} fry! {child.FishName}: {child.Phenotype.Describe()}.");
+            }
+            int lost = unborn.Count - born;
+            unborn.Clear();
+            BreedCooldown = GameConfig.Active.breedingCooldownSteps;
+            GameLog.Add($"{fishName} the {Species} gave birth to {born} fry (generation {unbornGeneration})." + (lost > 0 ? $" {lost} didn't make it: the tank is full." : ""));
+            return born;
+        }
+
         public void Die(string cause)
         {
             if (IsDead) return;
+            if (IsPregnant) unborn.Clear();
             IsDead = true;
             CauseOfDeath = cause;
             Reserved = false;

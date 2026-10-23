@@ -74,6 +74,12 @@ below: separate by loose parts, centre each fish, decimate (1.5k–3k tris), exp
 its species id (see `Species.cs`), and keep the shared 2048 atlas (`AquariumFish_Albedo`, `_Normal`, and
 `_Smoothness` = 1 − roughness). `FishModelLibrary.LoadBuiltIn` registers each fish with its swimming values.
 
+`Assets/Resources/Fish/FreshwaterSet/` (black molly, platy, red-tailed black shark, Siamese algae eater, silver
+dollar, oscar, green terror, electric blue acara, golden mbuna) was made the same way with
+`Tools/Meshy/split_fish_kit.py`: about 6,000 triangles per fish cut to 2,000–2,600. Meshy made these fish too flat
+(about 8% as thick as they are long), so the script thickens each body (molly and platy 2.3x, cichlids and oscar
+about 2x, sharks 1.6–1.7x, silver dollar 1.3x) while keeping fins and tails thin. Atlas: `FreshwaterFish_*`.
+
 ## 6. Other assets from Meshy
 
 Same approach for the tank set dressing: rocks, driftwood, plants, a treasure chest, a castle. These don't

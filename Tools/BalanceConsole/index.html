@@ -109,6 +109,9 @@ const META = {
   schoolSize: ["School size", "Stressed with fewer of its own kind than this (0 = fine alone)."],
   daysToAdult: ["Days to adult", ""], lifespanDays: ["Lifespan (days)", "After this, old age slowly lowers health."],
   litterMin: ["Litter / clutch min", ""], litterMax: ["Litter / clutch max", ""],
+  gestationSteps: ["Pregnancy length (time steps)", "Livebearers: half days from getting pregnant to giving birth."],
+  eggHatchSteps: ["Eggs hatch after (time steps)", "Egg-layers: half days from laying to hatching."],
+  eatsAlgae: ["Eats algae", "Grazes algae down at every time step."],
   weight: ["Relative chance", "How often this is the disease that strikes."],
   progressionPerStep: ["Worsens per step", "Severity gained each time step (0..1)."],
   lethality: ["Lethality", "Share of the illness health weight taken at full severity."],
@@ -135,7 +138,7 @@ const SPECIES_GROUPS = [
   ["Identity", ["id", "displayName", "category", "reproduction", "rarity", "unlockLevel"]],
   ["Money", ["baseValue", "clutchPrice", "clutchSize", "fryPrice"]],
   ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "hungerToleranceDays", "needsPremiumFood", "likesPlants", "schoolSize"]],
-  ["Life", ["daysToAdult", "lifespanDays", "litterMin", "litterMax"]],
+  ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps", "eatsAlgae"]],
   ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style"]],
 ];
 
@@ -169,6 +172,7 @@ function toast(text) {
 
 function markDirty() {
   dirty = true;
+  keepDraft();
   $("#status").textContent = "Unsaved changes";
   $("#status").classList.add("dirty");
 }
@@ -183,21 +187,64 @@ async function refreshStatus(text) {
   }
 }
 
+// Every number is kept to 2 decimals. Small non-zero values round up to 0.01 so they never vanish.
+function round2(value) {
+  if (Array.isArray(value)) return value.map(round2);
+  if (value && typeof value === "object") {
+    for (const key of Object.keys(value)) value[key] = round2(value[key]);
+    return value;
+  }
+  if (typeof value !== "number" || Number.isInteger(value)) return value;
+  const rounded = Math.round(value * 100) / 100;
+  if (rounded === 0 && value !== 0) return value > 0 ? 0.01 : -0.01;
+  return rounded;
+}
+
+const DRAFT_KEY = "fishBreederBalanceDraft";
+function keepDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch {} }
+function dropDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
+function readDraft() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch { return null; } }
+
 async function load(url) {
   const res = await fetch(url);
-  data = await res.json();
+  data = round2(await res.json());
   dirty = url !== "/api/balance";
+  const draft = url === "/api/balance" ? readDraft() : null;
+  if (draft && JSON.stringify(round2(draft)) !== JSON.stringify(data) &&
+      confirm("You have unsaved edits from an earlier visit that never reached the game. Bring them back?")) {
+    data = round2(draft);
+    dirty = true;
+  } else if (url === "/api/balance") dropDraft();
   render();
   if (dirty) markDirty(); else refreshStatus("Loaded");
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Unity stops answering for a few seconds while it recompiles, so a failed save is retried
+// for up to a minute, and the edits stay in this browser until one gets through.
 async function save() {
-  const res = await fetch("/api/balance", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data, null, 2) });
-  const reply = await res.json().catch(() => ({ ok: false }));
-  if (!reply.ok) { toast("Save failed: " + (reply.error || res.status)); return; }
-  dirty = false;
-  refreshStatus("Saved");
-  toast(reply.applied ? "Saved and applied to the running game." : "Saved. The game uses it next time you press Play.");
+  round2(data);
+  keepDraft();
+  const body = JSON.stringify(data, null, 2);
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    try {
+      const res = await fetch("/api/balance", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      const reply = await res.json().catch(() => ({ ok: false }));
+      if (!reply.ok) { toast("Save failed: " + (reply.error || res.status) + ". Your edits are kept in this browser."); return; }
+      dirty = false;
+      dropDraft();
+      render();
+      refreshStatus("Saved");
+      toast(reply.applied ? "Saved and applied to the running game." : "Saved. The game uses it next time you press Play.");
+      return;
+    } catch {
+      $("#status").textContent = `Unity isn't answering (it may be recompiling). Retrying save ${attempt}/20...`;
+      $("#status").classList.add("dirty");
+      await sleep(3000);
+    }
+  }
+  toast("Couldn't reach Unity, so nothing was saved. Your edits are kept in this browser; press Save again once Unity is open.");
 }
 
 // ---------------------------------------------------------------- inputs
@@ -217,7 +264,7 @@ function input(obj, key, onChange) {
     return box;
   }
   if (typeof value === "number") {
-    return el("input", { type: "number", step: "any", value, oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) changed(n); } });
+    return el("input", { type: "number", step: "0.01", value, oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) changed(n); } });
   }
   if (value && typeof value === "object" && "r" in value && "g" in value) {
     const hex = "#" + ["r", "g", "b"].map((c) => Math.round(Math.min(1, Math.max(0, value[c])) * 255).toString(16).padStart(2, "0")).join("");

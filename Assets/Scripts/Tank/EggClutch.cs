@@ -6,8 +6,8 @@ using UnityEngine;
 namespace FishBreeder
 {
     /// <summary>
-    /// A clutch of eggs resting on a tank's sand. Eggs hatch into fry at the next time step
-    /// (when the shop opens or closes), not in real time.
+    /// A clutch of eggs resting on a tank's sand. Eggs hatch into fry after a few time steps
+    /// (the shop opening or closing), never in real time. Filthy water kills some eggs on the way.
     /// </summary>
     public class EggClutch : MonoBehaviour
     {
@@ -20,17 +20,20 @@ namespace FishBreeder
         public Tank Tank { get; private set; }
         public Species Species { get; private set; }
         public int Count => genomes.Count;
+        /// <summary>Time steps until the eggs hatch.</summary>
+        public int StepsToHatch { get; private set; }
+        public static IReadOnlyList<EggClutch> All => all;
 
-        /// <summary>Eggs from the supplier: wild genes.</summary>
+        /// <summary>Eggs from the supplier: wild genes, shipped nearly ready, so they hatch at the next time step.</summary>
         public static EggClutch Lay(Tank tank, Species species, int count)
         {
             var wild = new List<Genome>();
             for (int i = 0; i < count; i++) wild.Add(Genome.CreateRandom(species));
-            return LayFrom(tank, wild, 1, null);
+            return LayFrom(tank, wild, 1, null, 1);
         }
 
         /// <summary>Eggs laid by a pair in the tank, one genome per egg.</summary>
-        public static EggClutch LayFrom(Tank tank, List<Genome> eggs, int generation, string parents)
+        public static EggClutch LayFrom(Tank tank, List<Genome> eggs, int generation, string parents, int stepsToHatch)
         {
             var species = eggs[0].Species;
             int count = eggs.Count;
@@ -46,6 +49,7 @@ namespace FishBreeder
             clutch.genomes.AddRange(eggs);
             clutch.generation = generation;
             clutch.parents = parents;
+            clutch.StepsToHatch = Mathf.Max(1, stepsToHatch);
 
             var material = MaterialFactory.Create(new Color(1f, 0.93f, 0.75f), 0.8f);
             for (int i = 0; i < count; i++)
@@ -67,12 +71,38 @@ namespace FishBreeder
             return eggs;
         }
 
-        /// <summary>Hatches every clutch in every tank. Returns how many fry were born.</summary>
-        public static int HatchAll()
+        /// <summary>
+        /// Time step for every clutch in every tank: filthy water may kill eggs, and clutches that
+        /// are due hatch. Returns how many fry were born.
+        /// </summary>
+        public static int AdvanceAll()
         {
             int born = 0;
-            foreach (var clutch in all.ToArray()) born += clutch.Hatch();
+            foreach (var clutch in all.ToArray())
+            {
+                clutch.LoseEggsToDirtyWater();
+                if (clutch.genomes.Count == 0)
+                {
+                    GameLog.Add($"A clutch of {clutch.Species} eggs died in the dirty water.");
+                    Destroy(clutch.gameObject);
+                    continue;
+                }
+                if (--clutch.StepsToHatch <= 0) born += clutch.Hatch();
+            }
             return born;
+        }
+
+        void LoseEggsToDirtyWater()
+        {
+            if (Tank == null) return;
+            float chance = Balance.Data.timeStep.eggLossInFilthyWater * Mathf.Clamp01((0.5f - Tank.WaterQuality) * 2f);
+            if (chance <= 0f) return;
+            for (int i = genomes.Count - 1; i >= 0; i--)
+            {
+                if (!GameRandom.Chance(chance)) continue;
+                genomes.RemoveAt(i);
+                if (i < transform.childCount) Destroy(transform.GetChild(i).gameObject);
+            }
         }
 
         int Hatch()

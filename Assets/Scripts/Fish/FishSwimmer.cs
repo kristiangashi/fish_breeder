@@ -18,7 +18,7 @@ namespace FishBreeder
         [SerializeField] float foodSenseRadius = 1.5f;
         [Tooltip("How far ahead to look for obstacles, in body lengths (plus a little per unit of speed).")]
         [SerializeField] float lookAheadBodyLengths = 2.5f;
-        [Tooltip("How strongly fish keep away from the glass, in body lengths.")]
+        [Tooltip("How strongly Owner keep away from the glass, in body lengths.")]
         [SerializeField] float wallComfortBodyLengths = 1.2f;
 
         static readonly RaycastHit[] hitBuffer = new RaycastHit[16];
@@ -34,7 +34,11 @@ namespace FishBreeder
             new Vector3(-1f, 0f, 0f), new Vector3(1f, 0f, 0f),
         };
 
-        Fish fish;
+        Fish owner;
+
+        // Looked up lazily: when Fish is added, Unity adds this required component
+        // (and runs its Awake) before the Fish component itself exists.
+        Fish Owner => owner != null ? owner : owner = GetComponent<Fish>();
         Vector3 target;
         float retargetIn;
         float currentSpeed;
@@ -42,20 +46,18 @@ namespace FishBreeder
         float bank;
         FoodPellet targetFood;
 
-        void Awake() => fish = GetComponent<Fish>();
-
         void Update()
         {
-            if (fish.Tank == null) return;
+            if (Owner.Tank == null) return;
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
 
-            var phenotype = fish.Phenotype;
+            var phenotype = Owner.Phenotype;
             float bodyLength = phenotype.lengthMeters * transform.localScale.x;
 
             float cruiseSpeed = Mathf.Lerp(0.1f, 0.3f, phenotype.swimSpeed)
-                                * fish.Health.SwimSpeedMultiplier
-                                * Mathf.Lerp(0.6f, 1f, fish.Growth);
+                                * Owner.Health.SwimSpeedMultiplier
+                                * Mathf.Lerp(0.6f, 1f, Owner.Growth);
             float desiredSpeed = cruiseSpeed;
             float pitchLimit = maxPitch;
 
@@ -70,7 +72,7 @@ namespace FishBreeder
                 float reach = bodyLength * 0.3f + 0.03f;
                 if ((target - mouth).sqrMagnitude < reach * reach)
                 {
-                    fish.Eat(targetFood);
+                    Owner.Eat(targetFood);
                     targetFood = null;
                     PickWanderTarget(bodyLength);
                 }
@@ -109,9 +111,9 @@ namespace FishBreeder
             currentSpeed = Mathf.MoveTowards(currentSpeed, desiredSpeed, acceleration * dt);
 
             var next = transform.position + transform.forward * currentSpeed * dt;
-            transform.position = fish.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f);
+            transform.position = Owner.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f);
 
-            fish.Visual.Animate(currentSpeed / Mathf.Max(cruiseSpeed, 0.01f), bank, dt);
+            Owner.Visual.Animate(currentSpeed / Mathf.Max(cruiseSpeed, 0.01f), bank, dt);
         }
 
         void Turn(Vector3 desired, float pitchLimit, float turnBoost, float dt)
@@ -175,7 +177,7 @@ namespace FishBreeder
 
         Vector3 WallPush(float comfort)
         {
-            var b = fish.Tank.InnerBounds;
+            var b = Owner.Tank.InnerBounds;
             var p = transform.position;
             var push = Vector3.zero;
             push.x += Push(p.x - b.min.x, comfort) - Push(b.max.x - p.x, comfort);
@@ -209,7 +211,7 @@ namespace FishBreeder
 
         void UpdateFoodTarget()
         {
-            if (!fish.WantsFood)
+            if (!Owner.WantsFood)
             {
                 targetFood = null;
                 return;
@@ -220,13 +222,13 @@ namespace FishBreeder
 
         void PickWanderTarget(float bodyLength)
         {
-            target = fish.Tank.RandomFreePoint(Mathf.Max(bodyLength, 0.05f));
+            target = Owner.Tank.RandomFreePoint(Mathf.Max(bodyLength, 0.05f));
             retargetIn = GameRandom.Range(3f, 8f);
         }
 
         void OnEnable()
         {
-            if (fish != null && fish.Tank != null) PickWanderTarget(fish.Phenotype.lengthMeters);
+            if (Owner != null && Owner.Tank != null) PickWanderTarget(Owner.Phenotype.lengthMeters);
         }
     }
 }

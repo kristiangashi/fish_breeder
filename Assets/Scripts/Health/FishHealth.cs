@@ -11,7 +11,11 @@ namespace FishBreeder.Health
     [RequireComponent(typeof(Fish))]
     public class FishHealth : MonoBehaviour
     {
-        Fish fish;
+        Fish owner;
+
+        // Looked up lazily: when Fish is added, Unity adds this required component
+        // (and runs its Awake) before the Fish component itself exists.
+        Fish Owner => owner != null ? owner : owner = GetComponent<Fish>();
 
         public DiseaseDefinition Disease { get; private set; }
         public float Severity { get; private set; }
@@ -19,21 +23,19 @@ namespace FishBreeder.Health
 
         public float SwimSpeedMultiplier => IsSick ? Mathf.Lerp(1f, Disease.swimSpeedMultiplier, Mathf.Max(Severity, 0.3f)) : 1f;
 
-        void Awake() => fish = GetComponent<Fish>();
-
         public float InfectionChanceForMeal(FoodPellet pellet, bool wasStarving)
         {
             var config = GameConfig.Active;
             float chance = config.baseInfectionChancePerMeal * pellet.Contamination;
-            if (fish.Tank != null) chance *= fish.Tank.InfectionMultiplier;
+            if (Owner.Tank != null) chance *= Owner.Tank.InfectionMultiplier;
             if (wasStarving) chance *= config.starvingInfectionMultiplier;
-            chance *= 1f - fish.Phenotype.hardiness * config.hardinessProtection;
+            chance *= 1f - Owner.Phenotype.hardiness * config.hardinessProtection;
             return Mathf.Clamp01(chance);
         }
 
         public void OnAte(FoodPellet pellet, bool wasStarving)
         {
-            if (IsSick || fish.IsDead) return;
+            if (IsSick || Owner.IsDead) return;
             if (!GameRandom.Chance(InfectionChanceForMeal(pellet, wasStarving))) return;
 
             var disease = DiseaseDefinition.PickWeighted(GameConfig.Active.diseases, GameRandom.Value);
@@ -42,23 +44,23 @@ namespace FishBreeder.Health
 
         public bool Infect(DiseaseDefinition disease, string source)
         {
-            if (disease == null || IsSick || fish.IsDead) return false;
+            if (disease == null || IsSick || Owner.IsDead) return false;
             Disease = disease;
             Severity = 0.05f;
-            GameLog.Add($"{fish.FishName} caught {disease.displayName} from {source}.");
+            GameLog.Add($"{Owner.FishName} caught {disease.displayName} from {source}.");
             return true;
         }
 
         public bool Treat(Medicine medicine)
         {
-            if (!IsSick || fish.IsDead) return false;
+            if (!IsSick || Owner.IsDead) return false;
             if (medicine != Medicine.None && medicine == Disease.cure)
             {
-                GameLog.Add($"{fish.FishName} was cured of {Disease.displayName}.");
+                GameLog.Add($"{Owner.FishName} was cured of {Disease.displayName}.");
                 Cure();
                 return true;
             }
-            GameLog.Add($"{medicine} did nothing for {fish.FishName}'s {Disease.displayName}.");
+            GameLog.Add($"{medicine} did nothing for {Owner.FishName}'s {Disease.displayName}.");
             return false;
         }
 
@@ -66,33 +68,33 @@ namespace FishBreeder.Health
         {
             Disease = null;
             Severity = 0f;
-            fish.Visual.SetTint(Color.white);
+            Owner.Visual.SetTint(Color.white);
         }
 
         void Update()
         {
-            if (!IsSick || fish.IsDead) return;
+            if (!IsSick || Owner.IsDead) return;
 
             float dt = Time.deltaTime;
-            float hardiness = fish.Phenotype.hardiness;
+            float hardiness = Owner.Phenotype.hardiness;
 
             Severity = Mathf.Clamp01(Severity + Disease.progressionPerSecond * (1f - 0.5f * hardiness) * dt);
-            fish.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
+            Owner.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
 
             if (GameRandom.ChancePerSecond(Disease.recoveryPerSecond * (0.5f + hardiness), dt))
             {
-                GameLog.Add($"{fish.FishName} recovered from {Disease.displayName}.");
+                GameLog.Add($"{Owner.FishName} recovered from {Disease.displayName}.");
                 Cure();
                 return;
             }
 
             if (GameRandom.ChancePerSecond(Disease.lethalityPerSecond * Severity * Severity, dt))
             {
-                fish.Die(Disease.displayName);
+                Owner.Die(Disease.displayName);
                 return;
             }
 
-            if (Disease.contagionPerSecond > 0f && fish.Tank != null)
+            if (Disease.contagionPerSecond > 0f && Owner.Tank != null)
                 SpreadToTankMates(dt);
         }
 
@@ -100,14 +102,14 @@ namespace FishBreeder.Health
         {
             var config = GameConfig.Active;
             float radiusSqr = Disease.contagionRadius * Disease.contagionRadius;
-            foreach (var other in fish.Tank.Residents)
+            foreach (var other in Owner.Tank.Residents)
             {
-                if (other == fish || other.IsDead || other.Health.IsSick) continue;
+                if (other == Owner || other.IsDead || other.Health.IsSick) continue;
                 if ((other.transform.position - transform.position).sqrMagnitude > radiusSqr) continue;
 
                 float resistance = 1f - other.Phenotype.hardiness * config.hardinessProtection;
                 if (GameRandom.ChancePerSecond(Disease.contagionPerSecond * resistance, dt))
-                    other.Health.Infect(Disease, fish.FishName);
+                    other.Health.Infect(Disease, Owner.FishName);
             }
         }
     }

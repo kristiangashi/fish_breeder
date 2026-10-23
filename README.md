@@ -27,7 +27,7 @@ The game alternates between **closed** and **open**. Time only moves when you op
 - **Breeding**: pick a male and a female of the same species in a breeder tank. Livebearers give birth straight away; eggs hatch at the next time step.
 - **Empty tank spots** and **locked sections**: buy more tanks and floor space.
 
-**Open Shop** (top bar or register): a time step runs, then customers come in for one real hour. They wander between tanks, react with thought bubbles (happy, grossed out by bad water, sad about dead fish, angry about prices), sometimes buy a fish from a For Sale tank, pay at the register and go home. The shop closes on its own, another time step runs, and you get the day's report and reviews, which move your reputation and next day's traffic. Developer buttons in the top bar speed the day up (5x, 20x) or skip the rest of it.
+**Open Shop** (top bar or register): a time step runs, then customers come in for one real hour. They wander between tanks, react with thought bubbles (happy, grossed out by bad water, sad about dead fish, angry about prices), sometimes buy a fish from a For Sale tank, pay at the register and go home. The shop closes on its own, another time step runs, and you get the day's report and reviews, which move your reputation and next day's traffic. Developer buttons in the top bar speed the day up (5x, 20x) or skip the rest of it; the keys 1, 2, 3 and K do the same.
 
 Each time step: eggs hatch; water quality drops with waste, algae grows (faster with more decorations), pH drifts and pests may appear; fish age and get hungrier; illness progresses, spreads or strikes; pairs may breed by chance (likelier in breeder tanks); and fish in poor health roll for death.
 

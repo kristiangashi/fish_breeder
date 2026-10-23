@@ -37,7 +37,7 @@ namespace FishBreeder.Core
 
         static void Gauge(Texture2D scale, float min, float max, float value, Vector2? liked, string valueText, string lowWord, string highWord)
         {
-            var rect = GUILayoutUtility.GetRect(200f, 34f, GUILayout.ExpandWidth(true));
+            var rect = GUILayoutUtility.GetRect(140f, 34f, GUILayout.ExpandWidth(true));
             var bar = new Rect(rect.x + 2f, rect.y + 14f, rect.width - 4f, 10f);
             GUI.DrawTexture(bar, scale, ScaleMode.StretchToFill);
 

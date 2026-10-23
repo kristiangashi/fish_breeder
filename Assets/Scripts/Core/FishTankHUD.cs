@@ -294,9 +294,12 @@ namespace FishBreeder.Core
             GUILayout.Label($"Medicine for the whole tank ({Economy.Format(supplier.medicinePrice)} a dose)" + (sick > 0 ? $": <color=#ff8080>{sick} sick</color>" : ": no one is sick"), Rich());
             GUILayout.BeginHorizontal();
             foreach (Medicine medicine in new[] { Medicine.Antiviral, Medicine.Antibacterial, Medicine.Antiparasitic })
-                if (GUILayout.Button(medicine.ToString(), GUILayout.MinWidth(70f))) DoseTank(medicine);
+                if (GUILayout.Button(medicine.ToString(), SmallButton(), GUILayout.MinWidth(50f))) DoseTank(medicine);
             GUILayout.EndHorizontal();
         }
+
+        static GUIStyle smallButton;
+        static GUIStyle SmallButton() => smallButton != null ? smallButton : smallButton = new GUIStyle(GUI.skin.button) { fontSize = 11, padding = new RectOffset(4, 4, 3, 3) };
 
         void DoseTank(Medicine medicine)
         {
@@ -406,7 +409,7 @@ namespace FishBreeder.Core
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(label, Rich(), GUILayout.Width(95f));
-            var rect = GUILayoutUtility.GetRect(120f, 14f, GUILayout.ExpandWidth(true));
+            var rect = GUILayoutUtility.GetRect(60f, 14f, GUILayout.ExpandWidth(true));
             rect.y += 4f;
             GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0f, 0f, 0f, 0.35f), 0f, 0f);
             float good = highIsGood ? value : 1f - value;

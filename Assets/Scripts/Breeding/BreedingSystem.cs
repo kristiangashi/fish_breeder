@@ -77,6 +77,7 @@ namespace FishBreeder.Breeding
                 genomes.Add(BreedingService.Cross(mother.Genome, father.Genome, config.mutationChance, config.mutationStrength));
 
             father.BreedCooldown = config.breedingCooldownSteps;
+            Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(Balance.Data.progression.xpBreedingStarted, species, null));
             if (species.reproduction == Reproduction.Livebearer)
             {
                 mother.BecomePregnant(genomes, generation, father.FishName, species.gestationSteps);

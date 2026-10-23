@@ -13,6 +13,9 @@ namespace FishBreeder.Shop
     /// </summary>
     public class Customer : MonoBehaviour
     {
+        /// <summary>People are drawn a bit smaller than life so the tanks and the store read bigger.</summary>
+        public const float PersonScale = 0.8f;
+
         ShopDay day;
         StoreLayout layout;
         NavMeshAgent agent;
@@ -25,7 +28,7 @@ namespace FishBreeder.Shop
 
         public Mood Mood { get; private set; }
         public float MoodTimeLeft { get; private set; }
-        public Vector3 HeadPoint => transform.position + Vector3.up * 2.05f;
+        public Vector3 HeadPoint => transform.position + Vector3.up * 2.05f * PersonScale;
         public bool IsLeaving { get; private set; }
 
         public static Customer Spawn(ShopDay day, StoreLayout layout)
@@ -46,8 +49,8 @@ namespace FishBreeder.Shop
             {
                 agent = go.AddComponent<NavMeshAgent>();
                 agent.agentTypeID = StoreNavMesh.AgentTypeId;
-                agent.radius = 0.2f;
-                agent.height = 1.7f;
+                agent.radius = 0.2f * PersonScale;
+                agent.height = 1.7f * PersonScale;
                 agent.speed = Balance.Data.shop.walkSpeed * GameRandom.Range(0.85f, 1.15f);
                 agent.angularSpeed = 400f;
                 agent.acceleration = 6f;
@@ -68,6 +71,7 @@ namespace FishBreeder.Shop
         {
             body = new GameObject("Body").transform;
             body.SetParent(transform, false);
+            body.localScale = Vector3.one * PersonScale;
             var shirt = Color.HSVToRGB(GameRandom.Value, GameRandom.Range(0.35f, 0.75f), GameRandom.Range(0.55f, 0.9f));
             var trousers = Color.HSVToRGB(GameRandom.Range(0.55f, 0.7f), GameRandom.Range(0.1f, 0.5f), GameRandom.Range(0.2f, 0.45f));
             var skin = Color.Lerp(new Color(0.98f, 0.82f, 0.68f), new Color(0.45f, 0.3f, 0.2f), GameRandom.Value);
@@ -90,7 +94,7 @@ namespace FishBreeder.Shop
             StoreTank last = null;
             for (int i = 0; i < visits && purchase == null; i++)
             {
-                var tanks = layout.Tanks;
+                var tanks = layout.PublicTanks;
                 if (tanks.Count == 0) break;
                 int index = GameRandom.Range(0, tanks.Count);
                 if (tanks[index] == last && tanks.Count > 1) index = (index + 1) % tanks.Count;
@@ -225,7 +229,7 @@ namespace FishBreeder.Shop
             // A little bob and sway while walking.
             walkPhase += speed * Time.deltaTime * 7f;
             float moving = Mathf.Clamp01(speed / 0.5f);
-            body.localPosition = new Vector3(0f, Mathf.Abs(Mathf.Sin(walkPhase)) * 0.04f * moving, 0f);
+            body.localPosition = new Vector3(0f, Mathf.Abs(Mathf.Sin(walkPhase)) * 0.04f * PersonScale * moving, 0f);
             body.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(walkPhase) * 3f * moving);
 
             // In a tank close-up, someone standing between the camera and the glass would fill the screen.

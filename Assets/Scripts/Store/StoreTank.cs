@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FishBreeder.Breeding;
 using FishBreeder.Feeding;
 using UnityEngine;
@@ -21,13 +22,18 @@ namespace FishBreeder.Store
         public Tank Tank => tank;
         public FeedingSystem Feeding => feeding;
         public BreedingSystem Breeding => breeding;
+        /// <summary>Where it stands in the store.</summary>
+        public StoreLayout.Slot Slot { get; set; }
+        /// <summary>The stand and click volume under the tank, rebuilt when the tank changes size.</summary>
+        public GameObject Stand { get; set; }
+        public bool InBackRoom => Slot != null && Slot.backRoom;
 
         public string Title => Role == TankRole.Quarantine ? "Quarantine tank" : $"{RoleName(Role)} tank {Number}";
 
         public static string RoleName(TankRole role) => role == TankRole.ForSale ? "For Sale" : role.ToString();
 
         /// <summary>Builds a tank with its feeding and breeding systems at <paramref name="position"/> (the sand level).</summary>
-        public static StoreTank Create(TankRole role, int number, Vector3 position, Transform parent)
+        public static StoreTank Create(TankRole role, int number, Vector3 position, Transform parent, int size, IEnumerable<string> decorations)
         {
             var go = new GameObject($"{RoleName(role)} tank {number}");
             go.transform.SetParent(parent, false);
@@ -37,7 +43,7 @@ namespace FishBreeder.Store
             storeTank.role = role;
             storeTank.number = number;
             storeTank.tank = go.AddComponent<Tank>();
-            storeTank.tank.BuildPlaceholderVisuals();
+            storeTank.tank.Build(size, decorations);
             storeTank.tank.PricesNewFish = role == TankRole.ForSale;
             storeTank.feeding = go.AddComponent<FeedingSystem>();
             storeTank.feeding.Initialize(storeTank.tank);

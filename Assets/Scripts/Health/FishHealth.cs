@@ -87,6 +87,7 @@ namespace FishBreeder.Health
             {
                 GameLog.Add($"{Owner.FishName} was cured of {Disease.displayName}.");
                 Cure();
+                Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpCureFish);
                 return true;
             }
             GameLog.Add($"{medicine} did nothing for {Owner.FishName}'s {Disease.displayName}.");
@@ -191,7 +192,7 @@ namespace FishBreeder.Health
             else comfort += 0.1f;
 
             if (tank.HasPests) comfort -= weights.pestsComfortLoss;
-            if (tank.Residents.Count > GameConfig.Active.maxFishPerTank * 0.75f) comfort -= 0.15f;
+            if (tank.Residents.Count > tank.Capacity * 0.75f) comfort -= 0.15f;
             return Mathf.Clamp01(comfort);
         }
 

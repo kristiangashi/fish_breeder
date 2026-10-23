@@ -199,9 +199,11 @@ namespace FishBreeder
                 var child = FishFactory.Spawn(genome, unbornGeneration, 0.05f, Tank, position, parents);
                 born++;
                 var rarity = child.Phenotype.RarityLabel;
+                Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(Balance.Data.progression.xpFryBorn, child.Species, rarity));
                 if (rarity == "Rare" || rarity == "Exotic")
                     GameLog.Add($"{rarity} fry! {child.FishName}: {child.Phenotype.Describe()}.");
             }
+            Progression.Count(GoalKind.BreedFish, born);
             int lost = unborn.Count - born;
             unborn.Clear();
             BreedCooldown = GameConfig.Active.breedingCooldownSteps;

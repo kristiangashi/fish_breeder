@@ -12,6 +12,7 @@ namespace FishBreeder
     public class Tank : MonoBehaviour
     {
         [SerializeField] Vector3 innerSize = new Vector3(1.6f, 0.9f, 0.7f);
+        [SerializeField] int sizeIndex;
         [SerializeField, Range(0f, 1f)] float waterQuality = 1f;
         [SerializeField, Range(0f, 1f)] float algae;
         [SerializeField] float temperature = 22f;
@@ -25,6 +26,7 @@ namespace FishBreeder
         Material backWallMaterial;
         TankWater water;
         Transform visuals;
+        TankDecor decor;
         static readonly Color ClearWater = new Color(0.12f, 0.35f, 0.55f);
         static readonly Color MurkyWater = new Color(0.25f, 0.33f, 0.12f);
         static readonly Color AlgaeWater = new Color(0.18f, 0.42f, 0.16f);
@@ -48,8 +50,26 @@ namespace FishBreeder
         public bool HasBubbler { get; private set; }
         public float HeaterSetting => heaterSetting;
         public int WipesLeft { get; private set; }
-        public int DecorCount { get; private set; }
-        public bool HasPlants { get; private set; }
+        public TankDecor Decor => decor;
+        public int DecorCount => decor != null ? decor.Count : 0;
+        public bool HasPlants => decor != null && decor.HasPlants;
+        /// <summary>Fed since the last time step (the to-do list uses it to know hungry fish were seen to).</summary>
+        public bool FedSinceTimeStep { get; set; }
+
+        /// <summary>Which of the balance's tank sizes this is (0 = the standard size every tank starts as).</summary>
+        public int SizeIndex => sizeIndex;
+        public TankSizeBalance SizeInfo
+        {
+            get
+            {
+                var sizes = Balance.Data.store.tankSizes;
+                if (sizes == null || sizes.Count == 0) return new TankSizeBalance { name = "Standard" };
+                return sizes[Mathf.Clamp(sizeIndex, 0, sizes.Count - 1)];
+            }
+        }
+        /// <summary>Most fish this tank holds.</summary>
+        public int Capacity => Mathf.Max(1, SizeInfo.capacity);
+        public Vector3 InnerSize => innerSize;
 
         /// <summary>1 when there's plenty, dropping as more fish share the water without a bubbler.</summary>
         public float Oxygen
@@ -66,8 +86,8 @@ namespace FishBreeder
         public float WaterHealth => Mathf.Clamp01(Mathf.Min(waterQuality, 1f - algae * 0.8f) - (pests ? 0.15f : 0f));
 
         public Bounds InnerBounds => new Bounds(transform.position + Vector3.up * innerSize.y * 0.5f, innerSize);
-        public bool IsFull => residents.Count >= GameConfig.Active.maxFishPerTank;
-        public int FreeSpace => Mathf.Max(0, GameConfig.Active.maxFishPerTank - residents.Count);
+        public bool IsFull => residents.Count >= Capacity;
+        public int FreeSpace => Mathf.Max(0, Capacity - residents.Count);
 
         /// <summary>1 in clean water, up to GameConfig.dirtyWaterInfectionMultiplier in filthy water.</summary>
         public float InfectionMultiplier => Mathf.Lerp(GameConfig.Active.dirtyWaterInfectionMultiplier, 1f, waterQuality) * (pests ? 1.3f : 1f);
@@ -114,8 +134,12 @@ namespace FishBreeder
             }
             var balance = Balance.Data.timeStep;
             WipesLeft--;
-            algae = Mathf.Clamp01(algae - balance.wipeAlgaeRemoved);
-            waterQuality = Mathf.Clamp01(waterQuality + balance.wipeQualityRestored);
+            // Experienced fishkeepers get more out of every wipe.
+            float skill = 1f + Balance.Data.progression.wipeBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1);
+            algae = Mathf.Clamp01(algae - balance.wipeAlgaeRemoved * skill);
+            waterQuality = Mathf.Clamp01(waterQuality + balance.wipeQualityRestored * skill);
+            Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpWipeTank);
+            Progression.Count(GoalKind.CleanTanks);
             GameLog.Add($"You wiped the tank. Water {waterQuality * 100f:0}%, algae {algae * 100f:0}%. {WipesLeft} wipes left.");
             return true;
         }
@@ -127,6 +151,7 @@ namespace FishBreeder
             pests = false;
             waterQuality = Mathf.Clamp01(waterQuality + 0.1f);
             GameLog.Add($"Water treated: pH {ph:0.0}, pests gone.");
+            Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpTreatWater);
         }
 
         /// <summary>Developer shortcut: makes the water filthy to check how dirty tanks look and how shoppers react.</summary>
@@ -144,7 +169,49 @@ namespace FishBreeder
             GameLog.Add(salt ? "The tank is now salt water." : "The tank is now fresh water.");
         }
 
-        public void SetHeater(float celsius) => heaterSetting = Mathf.Clamp(celsius, 18f, 32f);
+        /// <summary>Sets the heater; the water reaches the new temperature right away.</summary>
+        public void SetHeater(float celsius)
+        {
+            heaterSetting = Mathf.Clamp(Mathf.Round(celsius), 18f, 32f);
+            if (HasHeater) temperature = heaterSetting;
+        }
+
+        /// <summary>
+        /// The temperature that suits the fish in the tank best: the middle of the range they all
+        /// share, or the average of their ideal temperatures when they don't share one.
+        /// </summary>
+        public float SuggestedTemperature
+        {
+            get
+            {
+                if (residents.Count == 0) return 25f;
+                float low = float.MinValue, high = float.MaxValue, sumMid = 0f;
+                foreach (var fish in residents)
+                {
+                    var species = fish.Species;
+                    low = Mathf.Max(low, species.tempMin);
+                    high = Mathf.Min(high, species.tempMax);
+                    sumMid += (species.tempMin + species.tempMax) * 0.5f;
+                }
+                return Mathf.Round(low <= high ? (low + high) * 0.5f : sumMid / residents.Count);
+            }
+        }
+
+        /// <summary>The temperature range every fish in the tank is happy with, or null if they don't share one.</summary>
+        public Vector2? SharedTemperatureRange
+        {
+            get
+            {
+                if (residents.Count == 0) return null;
+                float low = float.MinValue, high = float.MaxValue;
+                foreach (var fish in residents)
+                {
+                    low = Mathf.Max(low, fish.Species.tempMin);
+                    high = Mathf.Min(high, fish.Species.tempMax);
+                }
+                return low <= high ? new Vector2(low, high) : (Vector2?)null;
+            }
+        }
 
         /// <summary>Called by the shop at every time step (opening and closing).</summary>
         public void OnTimeStep()
@@ -170,6 +237,7 @@ namespace FishBreeder
             }
             temperature = HasHeater ? heaterSetting : GameConfig.Active.roomTemperature;
             WipesLeft = balance.wipesPerSession;
+            FedSinceTimeStep = false;
         }
 
         public Vector3 RandomPoint(float margin)
@@ -236,33 +304,74 @@ namespace FishBreeder
         {
             if (HasFilter) return;
             HasFilter = true;
-            var b = innerSize;
-            var dark = new Color(0.15f, 0.16f, 0.18f);
-            MaterialFactory.Decor(PrimitiveType.Cube, "Filter", visuals, new Vector3(b.x * 0.36f, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
-            MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", visuals, new Vector3(b.x * 0.36f, b.y * 0.55f, b.z * 0.5f - 0.03f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
+            BuildFilter();
         }
 
         public void InstallHeater()
         {
             if (HasHeater) return;
             HasHeater = true;
-            var b = innerSize;
-            MaterialFactory.Decor(PrimitiveType.Cylinder, "Heater", visuals, new Vector3(-b.x * 0.45f, b.y * 0.5f, b.z * 0.42f), new Vector3(0.03f, b.y * 0.3f, 0.03f), new Color(0.75f, 0.3f, 0.2f));
+            BuildHeater();
+            SetHeater(SuggestedTemperature);
         }
 
         public void InstallBubbler()
         {
             if (HasBubbler) return;
             HasBubbler = true;
+            BuildBubbler();
+        }
+
+        void BuildFilter()
+        {
+            var b = innerSize;
+            var dark = new Color(0.15f, 0.16f, 0.18f);
+            MaterialFactory.Decor(PrimitiveType.Cube, "Filter", visuals, new Vector3(b.x * 0.36f, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
+            MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", visuals, new Vector3(b.x * 0.36f, b.y * 0.55f, b.z * 0.5f - 0.03f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
+        }
+
+        void BuildHeater()
+        {
+            var b = innerSize;
+            MaterialFactory.Decor(PrimitiveType.Cylinder, "Heater", visuals, new Vector3(-b.x * 0.45f, b.y * 0.5f, b.z * 0.42f), new Vector3(0.03f, b.y * 0.3f, 0.03f), new Color(0.75f, 0.3f, 0.2f));
+        }
+
+        void BuildBubbler()
+        {
             var b = innerSize;
             MaterialFactory.Decor(PrimitiveType.Cylinder, "Bubbler", visuals, new Vector3(-b.x * 0.2f, 0.01f, b.z * 0.38f), new Vector3(0.1f, 0.01f, 0.1f), new Color(0.3f, 0.32f, 0.35f));
             var bubbles = visuals.gameObject.AddComponent<TankBubbles>();
             bubbles.Initialize(this, new Vector3(-b.x * 0.2f, 0.02f, b.z * 0.38f), b.y);
         }
 
-        /// <summary>Simple tank made of primitives. Replace with a Meshy or hand-made tank model later.</summary>
-        public void BuildPlaceholderVisuals()
+        /// <summary>Builds a new tank of the given size with these decorations (ids from the balance file).</summary>
+        public void Build(int size, IEnumerable<string> decorations)
         {
+            sizeIndex = size;
+            innerSize = SizeInfo.Size;
+            if (decor == null) decor = gameObject.AddComponent<TankDecor>();
+            BuildVisuals();
+            if (decorations != null)
+                foreach (var id in decorations) decor.Add(id);
+        }
+
+        /// <summary>
+        /// Swaps the tank for a bigger (or smaller) size in place: same fish, eggs, water, equipment
+        /// and decorations, just more room.
+        /// </summary>
+        public void Resize(int size)
+        {
+            sizeIndex = size;
+            innerSize = SizeInfo.Size;
+            BuildVisuals();
+            foreach (var fish in residents) fish.transform.position = Clamp(fish.transform.position, 0.05f);
+            foreach (var fish in corpses) fish.transform.position = Clamp(fish.transform.position, 0.05f);
+        }
+
+        /// <summary>Simple tank made of primitives. Replace with a Meshy or hand-made tank model later.</summary>
+        void BuildVisuals()
+        {
+            if (visuals != null) Destroy(visuals.gameObject);
             var b = innerSize;
             var root = new GameObject("Visuals").transform;
             root.SetParent(transform, false);
@@ -285,61 +394,21 @@ namespace FishBreeder
                 MaterialFactory.Decor(PrimitiveType.Cube, "FrameZ", root, new Vector3(s * b.x * 0.5f, sy * b.y, 0f), new Vector3(t, t, b.z), frame);
             }
 
-            if (TankDecor.Available) DecorCount = TankDecor.Build(root, b);
-            else DecorCount = BuildPlaceholderObstacles(root, b);
-            HasPlants = DecorCount > 0;
+            if (HasFilter) BuildFilter();
+            if (HasHeater) BuildHeater();
+            if (HasBubbler) BuildBubbler();
+            decor.Rebuild(root, b, SizeInfo.decorationSlots);
             BuildPebbles(root, b);
             water = TankWater.Build(root, b);
             // New colliders must be in the physics scene before fish pick spawn points.
             Physics.SyncTransforms();
         }
 
-        /// <summary>
-        /// Stand-in decor for when the Meshy decorations are missing: rocks, a rock arch, driftwood
-        /// and plants spread through the tank so fish have to swim around (and through) them.
-        /// All are TankObstacles with colliders.
-        /// </summary>
-        static int BuildPlaceholderObstacles(Transform root, Vector3 b)
-        {
-            var rock = new Color(0.45f, 0.45f, 0.48f);
-            var darkRock = new Color(0.35f, 0.34f, 0.36f);
-            var wood = new Color(0.4f, 0.28f, 0.18f);
-
-            // Big rocks: one front-left, one in the middle, one back-right.
-            MaterialFactory.Obstacle(PrimitiveType.Sphere, "Rock", root, new Vector3(-b.x * 0.3f, 0.08f, -b.z * 0.05f), new Vector3(0.3f, 0.22f, 0.22f), Quaternion.Euler(0f, 20f, 0f), rock);
-            MaterialFactory.Obstacle(PrimitiveType.Sphere, "Rock", root, new Vector3(b.x * 0.05f, 0.1f, b.z * 0.15f), new Vector3(0.24f, 0.32f, 0.2f), Quaternion.Euler(0f, -10f, 8f), darkRock);
-            MaterialFactory.Obstacle(PrimitiveType.Sphere, "Rock", root, new Vector3(b.x * 0.38f, 0.06f, b.z * 0.2f), new Vector3(0.2f, 0.14f, 0.18f), Quaternion.identity, rock);
-
-            // Rock arch the fish can swim through.
-            float archX = b.x * 0.25f, archZ = -b.z * 0.12f, archGap = 0.2f, archHeight = 0.32f;
-            MaterialFactory.Obstacle(PrimitiveType.Cube, "ArchPillar", root, new Vector3(archX - archGap * 0.5f - 0.04f, archHeight * 0.5f, archZ), new Vector3(0.08f, archHeight, 0.12f), Quaternion.identity, darkRock);
-            MaterialFactory.Obstacle(PrimitiveType.Cube, "ArchPillar", root, new Vector3(archX + archGap * 0.5f + 0.04f, archHeight * 0.5f, archZ), new Vector3(0.08f, archHeight, 0.12f), Quaternion.identity, darkRock);
-            MaterialFactory.Obstacle(PrimitiveType.Cube, "ArchTop", root, new Vector3(archX, archHeight + 0.03f, archZ), new Vector3(archGap + 0.2f, 0.06f, 0.14f), Quaternion.Euler(0f, 0f, 3f), darkRock);
-
-            // Driftwood lying diagonally across the back.
-            MaterialFactory.Obstacle(PrimitiveType.Cylinder, "Driftwood", root, new Vector3(-b.x * 0.1f, 0.12f, b.z * 0.32f), new Vector3(0.05f, 0.4f, 0.05f), Quaternion.Euler(0f, 35f, 75f), wood);
-
-            // Plants: tall thin stalks in a few clumps.
-            var clumps = new[] { new Vector2(-b.x * 0.42f, b.z * 0.3f), new Vector2(-b.x * 0.05f, -b.z * 0.25f), new Vector2(b.x * 0.42f, -b.z * 0.25f) };
-            foreach (var clump in clumps)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    float h = GameRandom.Range(0.25f, 0.6f);
-                    var offset = new Vector2(GameRandom.Range(-0.06f, 0.06f), GameRandom.Range(-0.05f, 0.05f));
-                    MaterialFactory.Obstacle(PrimitiveType.Capsule, "Plant", root,
-                        new Vector3(clump.x + offset.x, h * 0.5f, clump.y + offset.y), new Vector3(0.025f, h * 0.5f, 0.025f),
-                        Quaternion.Euler(GameRandom.Range(-6f, 6f), 0f, GameRandom.Range(-6f, 6f)),
-                        new Color(0.2f, GameRandom.Range(0.5f, 0.75f), 0.25f));
-                }
-            }
-            return 9;
-        }
-
         /// <summary>Pebbles are pure decoration; fish can swim over them.</summary>
         static void BuildPebbles(Transform root, Vector3 b)
         {
-            for (int i = 0; i < 14; i++)
+            int pebbles = Mathf.RoundToInt(14f * b.x * b.z / (1.6f * 0.7f));
+            for (int i = 0; i < pebbles; i++)
             {
                 float size = GameRandom.Range(0.02f, 0.05f);
                 MaterialFactory.Decor(PrimitiveType.Sphere, "Pebble", root,

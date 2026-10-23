@@ -25,6 +25,21 @@ namespace FishBreeder.Store
             }
         }
 
+        /// <summary>The level that unlocks buying another tank of this kind.</summary>
+        public static void TankLevel(TankRole role, out XpTrack track, out int level)
+        {
+            var store = Balance.Data.store;
+            switch (role)
+            {
+                case TankRole.Breeder: track = XpTrack.Fishkeeping; level = store.breederTankLevel; break;
+                case TankRole.Quarantine: track = XpTrack.Fishkeeping; level = store.quarantineTankLevel; break;
+                case TankRole.Display: track = XpTrack.Shopkeeping; level = store.displayTankLevel; break;
+                default: track = XpTrack.Shopkeeping; level = store.forSaleTankLevel; break;
+            }
+        }
+
+        public static List<DecorationBalance> Decorations => Balance.Data.supplier.decorations;
+
         /// <summary>Most tanks of each kind the store can hold.</summary>
         public static int TankLimit(TankRole role)
         {

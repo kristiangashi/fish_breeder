@@ -18,22 +18,30 @@ namespace FishBreeder
         string parents;
 
         public Tank Tank { get; private set; }
+        /// <summary>The species of the first egg (a supplier box mixes species).</summary>
         public Species Species { get; private set; }
+        /// <summary>What the eggs are called: a species for bred eggs, the box name for supplier eggs.</summary>
+        public string Label { get; private set; }
+        /// <summary>Laid by a pair in the shop (not bought), so hatching counts as breeding.</summary>
+        public bool Bred => parents != null;
         public int Count => genomes.Count;
         /// <summary>Time steps until the eggs hatch.</summary>
         public int StepsToHatch { get; private set; }
         public static IReadOnlyList<EggClutch> All => all;
 
-        /// <summary>Eggs from the supplier: wild genes, shipped nearly ready, so they hatch at the next time step.</summary>
-        public static EggClutch Lay(Tank tank, Species species, int count)
+        /// <summary>A box of eggs from the supplier: wild genes, shipped nearly ready, so they hatch at the next time step.</summary>
+        public static EggClutch Lay(Tank tank, EggTierBalance tier, List<Genome> eggs)
         {
-            var wild = new List<Genome>();
-            for (int i = 0; i < count; i++) wild.Add(Genome.CreateRandom(species));
-            return LayFrom(tank, wild, 1, null, 1);
+            var clutch = LayFrom(tank, eggs, 1, null, 1, tier.color, tier.speckled);
+            clutch.Label = tier.name.ToLower();
+            return clutch;
         }
 
         /// <summary>Eggs laid by a pair in the tank, one genome per egg.</summary>
         public static EggClutch LayFrom(Tank tank, List<Genome> eggs, int generation, string parents, int stepsToHatch)
+            => LayFrom(tank, eggs, generation, parents, stepsToHatch, new Color(1f, 0.93f, 0.75f), false);
+
+        static EggClutch LayFrom(Tank tank, List<Genome> eggs, int generation, string parents, int stepsToHatch, Color color, bool speckled)
         {
             var species = eggs[0].Species;
             int count = eggs.Count;
@@ -46,12 +54,14 @@ namespace FishBreeder
             clutch.transform.SetParent(tank.transform, true);
             clutch.Tank = tank;
             clutch.Species = species;
+            clutch.Label = $"{species} eggs";
             clutch.genomes.AddRange(eggs);
             clutch.generation = generation;
             clutch.parents = parents;
             clutch.StepsToHatch = Mathf.Max(1, stepsToHatch);
 
-            var material = MaterialFactory.Create(new Color(1f, 0.93f, 0.75f), 0.8f);
+            var material = MaterialFactory.Create(color, 0.8f);
+            if (speckled) material.mainTexture = ItemPreviews.Speckles(color);
             for (int i = 0; i < count; i++)
             {
                 var egg = MaterialFactory.Decor(PrimitiveType.Sphere, "Egg", clutch.transform,
@@ -83,7 +93,7 @@ namespace FishBreeder
                 clutch.LoseEggsToDirtyWater();
                 if (clutch.genomes.Count == 0)
                 {
-                    GameLog.Add($"A clutch of {clutch.Species} eggs died in the dirty water.");
+                    GameLog.Add($"A clutch of {clutch.Label} died in the dirty water.");
                     Destroy(clutch.gameObject);
                     continue;
                 }
@@ -114,9 +124,14 @@ namespace FishBreeder
                 {
                     if (Tank.IsFull) break;
                     var position = Tank.Clamp(transform.position + new Vector3(GameRandom.Range(-0.05f, 0.05f), 0.05f, GameRandom.Range(-0.05f, 0.05f)), 0.05f);
-                    FishFactory.Spawn(genome, generation, 0.05f, Tank, position, parents);
+                    var fry = FishFactory.Spawn(genome, generation, 0.05f, Tank, position, parents);
                     born++;
+                    var progression = Balance.Data.progression;
+                    if (Bred) Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(progression.xpFryBorn, fry.Species, fry.Phenotype.RarityLabel));
+                    else Progression.Award(XpTrack.Fishkeeping, progression.xpEggHatched);
                 }
+                Progression.Count(GoalKind.HatchEggs, born);
+                if (Bred) Progression.Count(GoalKind.BreedFish, born);
             }
             Destroy(gameObject);
             return born;

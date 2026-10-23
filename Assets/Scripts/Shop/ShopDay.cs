@@ -57,8 +57,10 @@ namespace FishBreeder.Shop
             {
                 var shop = Balance.Data.shop;
                 int display = layout.CountTanks(TankRole.Display);
-                int other = layout.Tanks.Count - display;
-                float traffic = 1f + display * shop.trafficPerDisplayTank + other * shop.trafficPerOtherTank;
+                int other = layout.PublicTanks.Count - display;
+                int decorations = 0;
+                foreach (var tank in layout.PublicTanks) decorations += tank.Tank.DecorCount;
+                float traffic = 1f + display * shop.trafficPerDisplayTank + other * shop.trafficPerOtherTank + decorations * shop.trafficPerDecoration;
                 return shop.customersPerHour * traffic * Mathf.Lerp(0.5f, 1.5f, Economy.Reputation);
             }
         }
@@ -93,7 +95,9 @@ namespace FishBreeder.Shop
             GameLog.Add($"Closed for the day: {today.visitors} visitors, {today.fishSold} fish sold, {Economy.Format(today.earnings)} earned.");
             GameLog.Add("While you closed up:");
             today.overnight = TimeStep.Run(layout.Tanks);
+            Progression.Award(XpTrack.Shopkeeping, Mathf.RoundToInt(Balance.Data.progression.xpPerReviewStar * today.stars));
             Economy.NextDay();
+            Progression.NewDailyGoals();
             LastReport = today;
             today = null;
         }
@@ -109,9 +113,10 @@ namespace FishBreeder.Shop
                 today.visitors++;
                 var profile = ShopperProfile.Random();
                 int visits = GameRandom.Range(shop.minTankVisits, shop.maxTankVisits + 1);
-                for (int v = 0; v < visits && layout.Tanks.Count > 0; v++)
+                var tanks = layout.PublicTanks;
+                for (int v = 0; v < visits && tanks.Count > 0; v++)
                 {
-                    var reaction = ShopperBrain.Evaluate(profile, layout.Tanks[GameRandom.Range(0, layout.Tanks.Count)]);
+                    var reaction = ShopperBrain.Evaluate(profile, tanks[GameRandom.Range(0, tanks.Count)]);
                     RecordMood(reaction.mood);
                     if (reaction.purchase != null)
                     {
@@ -151,7 +156,7 @@ namespace FishBreeder.Shop
             if (spawnTimer <= 0f)
             {
                 spawnTimer = SpawnInterval * GameRandom.Range(0.6f, 1.4f);
-                if (customers.Count < Balance.Data.shop.maxCustomersInStore && layout.Tanks.Count > 0)
+                if (customers.Count < Balance.Data.shop.maxCustomersInStore && layout.PublicTanks.Count > 0)
                 {
                     customers.Add(Customer.Spawn(this, layout));
                     today.visitors++;
@@ -164,7 +169,11 @@ namespace FishBreeder.Shop
             if (today == null) return;
             switch (mood)
             {
-                case Mood.Happy: today.happy++; break;
+                case Mood.Happy:
+                    today.happy++;
+                    Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpHappyCustomer);
+                    Progression.Count(GoalKind.HappyCustomers);
+                    break;
                 case Mood.Grossed: today.grossed++; break;
                 case Mood.Sad: today.sad++; break;
                 case Mood.Mad: today.mad++; break;
@@ -177,6 +186,10 @@ namespace FishBreeder.Shop
             string name = $"{fish.FishName} the {fish.Species}";
             fish.RemoveFromTank();
             Economy.Earn(price, $"sold {name}");
+            var progression = Balance.Data.progression;
+            Progression.Award(XpTrack.Shopkeeping, progression.xpSaleBase + Mathf.RoundToInt(price * progression.xpPerSaleDollar));
+            Progression.Count(GoalKind.SellFish);
+            Progression.Count(GoalKind.EarnMoney, price);
             popups.Add(new MoneyPopup { position = registerPoint, amount = price });
             if (today != null)
             {

@@ -38,7 +38,6 @@ namespace FishBreeder.Core
         public int breedingCooldownSteps = 2;
         [Range(0f, 1f)] public float mutationChance = 0.05f;
         [Range(0f, 1f)] public float mutationStrength = 0.15f;
-        public int maxFishPerTank = 24;
 
         /// <summary>The rules from the loaded balance file.</summary>
         public static GameConfig Active => Balance.Data.rules;

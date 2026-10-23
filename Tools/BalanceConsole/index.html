@@ -78,7 +78,12 @@
 const ENUMS = {
   category: ["FreshwaterCold", "FreshwaterTropical", "SaltwaterCold", "SaltwaterTropical", "BottomFeeder", "Shellfish"],
   reproduction: ["EggLayer", "Livebearer"],
-  rarity: ["Common", "Uncommon", "Rare", "Exotic", "Legendary"],
+  rarity: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  normalMin: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  normalMax: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  rarePool: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  track: ["Fishkeeping", "Shopkeeping"],
+  kind: ["BreedFish", "HatchEggs", "FeedTanks", "CleanTanks", "SellFish", "HappyCustomers", "EarnMoney", "BuyDecorations"],
   style: ["Midwater", "Bottom"],
   type: ["Flakes", "Premium"],
   cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
@@ -91,11 +96,9 @@ const META = {
   category: ["Category", "Only fish in the same category can ever cross-breed."],
   reproduction: ["Reproduction", "Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step."],
   rarity: ["Rarity", "How rare the species is. Customers and prices respond to it."],
-  unlockLevel: ["Fishkeeping level to unlock", "Not used yet: levels come later."],
+  unlockLevel: ["Level to unlock", "Fishkeeping level for fish, food, equipment, eggs and tank sizes; Shopkeeping level for decorations and store sections."],
   baseValue: ["Value of a healthy adult ($)", "Fry are worth 30%, juveniles 60%. Rare looks multiply it (x1.5 to x4)."],
-  clutchPrice: ["Supplier: clutch price ($)", ""],
-  clutchSize: ["Supplier: eggs per clutch", ""],
-  fryPrice: ["Supplier: fry price ($)", ""],
+  fryPrice: ["Dev fry price ($)", "Only used by the editor's dev fry list; players buy egg boxes."],
   minLength: ["Adult length min (m)", ""], maxLength: ["Adult length max (m)", ""],
   speed: ["Swim speed", "Relative to a goldfish, in body lengths per second."],
   depthMin: ["Depth band low (0 sand)", ""], depthMax: ["Depth band high (1 surface)", ""],
@@ -120,6 +123,24 @@ const META = {
   swimSpeedMultiplier: ["Swim speed when sick", ""],
   symptomTint: ["Symptom tint", "Body tint at full severity."],
   cure: ["Cured by", ""],
+  // Egg boxes
+  eggs: ["Eggs per box", ""],
+  normalMin: ["Normal pool from", "Rarest and commonest species a normal egg can be."], normalMax: ["Normal pool to", ""],
+  normalRarityFalloff: ["Normal pool falloff", "Each rarity step up in the normal pool is this many times as likely (0.3 = rarer kinds are uncommon)."],
+  rarePool: ["Rare egg rarity", "The rarity a 'rare' egg hatches into."],
+  rareChance: ["Rare chance (first egg)", "Chance an egg is rare while the box has no rare eggs yet."],
+  rareFalloff: ["Rare falloff", "The rare chance is multiplied by this for every rare egg already in the box, so 2 rares is much harder than 1."],
+  speckled: ["Speckled", ""],
+  blurb: ["Blurb", "Shown in the supplier."],
+  // Decorations and tanks
+  plant: ["Is a plant", "Fish that like plants are happier with one."],
+  height: ["Height in a standard tank (m)", ""],
+  back: ["Goes at the back", "Tall pieces fill the back row first."],
+  capacity: ["Fish capacity", ""], upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
+  decorationSlots: ["Decoration spots", ""],
+  // Progression
+  baseTarget: ["Target at level 1", ""],
+  text: ["Text ({0} = target)", ""],
 };
 
 const TABS = [
@@ -130,13 +151,15 @@ const TABS = [
   ["timeStep", "Time steps"],
   ["health", "Health"],
   ["store", "Store & supplier"],
+  ["stock", "Eggs, decor & tanks"],
+  ["progression", "Levels & XP"],
   ["rules", "Rules"],
   ["raw", "Raw JSON"],
 ];
 
 const SPECIES_GROUPS = [
   ["Identity", ["id", "displayName", "category", "reproduction", "rarity", "unlockLevel"]],
-  ["Money", ["baseValue", "clutchPrice", "clutchSize", "fryPrice"]],
+  ["Money", ["baseValue", "fryPrice"]],
   ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "hungerToleranceDays", "needsPremiumFood", "likesPlants", "schoolSize"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps", "eatsAlgae"]],
   ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style"]],
@@ -292,8 +315,20 @@ function objectForm(obj, skip = []) {
     const value = obj[key];
     if (Array.isArray(value) && value.length && typeof value[0] === "object") extras.push(listTable(nice(key), value));
     else if (!Array.isArray(value)) grid.append(field(obj, key));
+    else if (!value.length || typeof value[0] !== "object") grid.append(listField(obj, key));
   }
   return [grid, ...extras];
+}
+
+/** A list of plain values (like decoration ids) as comma separated text. */
+function listField(obj, key) {
+  const numbers = obj[key].length && typeof obj[key][0] === "number";
+  const box = el("input", { type: "text", value: obj[key].join(", "), oninput: (e) => {
+    const parts = e.target.value.split(",").map((t) => t.trim()).filter((t) => t);
+    obj[key] = numbers ? parts.map(Number).filter((n) => !isNaN(n)) : parts;
+    markDirty();
+  } });
+  return el("label", { class: "field", title: help(key) }, el("span", {}, nice(key)), box);
 }
 
 function listTable(title, list) {
@@ -317,10 +352,10 @@ function renderSpecies() {
   const species = data.species;
   selectedSpecies = Math.min(selectedSpecies, species.length - 1);
 
-  const overviewKeys = ["rarity", "baseValue", "clutchPrice", "clutchSize", "fryPrice", "unlockLevel", "category"];
+  const overviewKeys = ["rarity", "baseValue", "unlockLevel", "category"];
   const overview = el("div", { class: "card" },
     el("h2", {}, "Prices and rarity at a glance"),
-    el("p", { class: "hint" }, "Edit here or in the full form below. Values are what the supplier charges and what a healthy, common-looking adult is worth."),
+    el("p", { class: "hint" }, "Edit here or in the full form below. Value is what a healthy, common-looking adult is worth. Unlock level is the Fishkeeping level at which the species can hatch from egg boxes."),
     el("div", { class: "scroll" }, el("table", {},
       el("thead", {}, el("tr", {}, el("th", {}, "Species"), overviewKeys.map((k) => el("th", { title: help(k) }, nice(k))))),
       el("tbody", {}, species.map((s, i) => el("tr", {},
@@ -395,15 +430,25 @@ const SECTION_HINTS = {
   shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank) × reputation.",
   timeStep: "What happens at each time step: once when the shop opens and once when it closes. Nothing changes while the shop stays closed.",
   health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step.",
-  store: "Starting money, tank and section prices, and what the supplier sells.",
+  store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
+  stock: "Egg boxes, decorations and tank sizes. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box. Decorations bring customers (Shop tab) but too many speed up algae.",
+  progression: "Two tracks, each up to the max level. XP to reach level n+1 = XP for level 2 × growth^(n-1). Daily goals: one per track each day; the target grows per level and finishing it gives the goal XP. Closing notifications are at the bottom.",
   rules: "General rules: feeding and disease from meals, water basics, breeding.",
 };
 
 function renderSection(key) {
   const cards = [el("p", { class: "hint" }, SECTION_HINTS[key] || "")];
   if (key === "store") {
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store)));
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, ["tankSizes"])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations"])));
+  } else if (key === "stock") {
+    cards.push(el("div", { class: "card" }, listTable("Egg boxes", data.supplier.eggTiers)));
+    cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
+    cards.push(el("div", { class: "card" }, listTable("Tank sizes", data.store.tankSizes)));
+  } else if (key === "progression") {
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Levels and XP"), objectForm(data.progression, ["dailyGoals"])));
+    cards.push(el("div", { class: "card" }, listTable("Daily goals", data.progression.dailyGoals)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Closing notifications"), objectForm(data.notifications)));
   } else {
     cards.push(el("div", { class: "card" }, objectForm(data[key])));
   }

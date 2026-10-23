@@ -30,6 +30,7 @@ namespace FishBreeder.Core
             FishVisual.DefaultLibrary = modelLibrary != null ? modelLibrary : FishModelLibrary.LoadBuiltIn();
             GameLog.Clear();
             Economy.Reset();
+            Progression.Reset();
             Tank.Focused = null;
 
             // The tanks start empty: the first fish come from the supplier computer.

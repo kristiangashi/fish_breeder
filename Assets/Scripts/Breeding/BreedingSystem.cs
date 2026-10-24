@@ -8,7 +8,7 @@ namespace FishBreeder.Breeding
 {
     /// <summary>
     /// Game rules around breeding. A compatible pair is a healthy, fed, unstressed adult male and
-    /// female of the same species, both rested, with the female not already pregnant.
+    /// female of the same species (or of two species that can cross-breed, see CrossBreeding), both rested, with the female not already pregnant.
     /// Livebearer females get pregnant and give birth some time steps later; egg-layers lay a
     /// clutch that hatches some time steps later. At each time step every compatible pair in a
     /// tank has a chance to breed (much higher in a breeder tank), and the player can also pair
@@ -27,7 +27,7 @@ namespace FishBreeder.Breeding
             reason = null;
             if (a == null || b == null) reason = "Select two fish to breed.";
             else if (a == b) reason = "A fish can't breed with itself.";
-            else if (a.Species != b.Species) reason = $"A {a.Species} can only breed with another {a.Species}.";
+            else if (!CrossBreeding.Compatible(a.Species, b.Species)) reason = $"A {a.Species} and a {b.Species} can't breed together.";
             else if (a.Sex == b.Sex) reason = $"Both are {a.Sex.ToString().ToLower()}s. You need a male and a female.";
             else reason = WhyNotReady(a, tank) ?? WhyNotReady(b, tank);
             if (reason == null && tank.FreeSpace - EggClutch.EggsIn(tank) <= 0) reason = "The tank is full.";
@@ -66,9 +66,11 @@ namespace FishBreeder.Breeding
         static int Conceive(Tank tank, Fish a, Fish b)
         {
             var config = GameConfig.Active;
-            var species = a.Species;
             var mother = a.Sex == Sex.Female ? a : b;
             var father = mother == a ? b : a;
+            // The mother's species decides how the young come: live fry or eggs, and how many.
+            var species = mother.Species;
+            bool cross = mother.Species != father.Species;
             int count = Mathf.Min(GameRandom.Range(species.litterMin, species.litterMax + 1), tank.FreeSpace - EggClutch.EggsIn(tank));
             if (count <= 0) return 0;
 
@@ -81,16 +83,18 @@ namespace FishBreeder.Breeding
             Fx.Text(a.transform.position + Vector3.up * 0.05f, "♥", UiTheme.Hibiscus, 24f, 1.8f);
             Fx.Text(b.transform.position + Vector3.up * 0.05f, "♥", UiTheme.Hibiscus, 24f, 1.8f);
             Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(Balance.Data.progression.xpBreedingStarted, species, null));
+            string crossNote = cross ? $" It's a cross with a {father.Species}, so expect some unusual fry!" : "";
             if (species.reproduction == Reproduction.Livebearer)
             {
                 mother.BecomePregnant(genomes, generation, father.FishName, species.gestationSteps);
-                GameLog.Add($"{mother.FishName} the {species} is pregnant by {father.FishName}! About {count} fry due in {Steps(species.gestationSteps)}.");
+                GameLog.Add($"{mother.FishName} the {species} is pregnant by {father.FishName}! About {count} fry due in {Steps(species.gestationSteps)}.{crossNote}");
             }
             else
             {
                 mother.BreedCooldown = config.breedingCooldownSteps;
                 EggClutch.LayFrom(tank, genomes, generation, $"{mother.FishName} x {father.FishName}", species.eggHatchSteps);
-                GameLog.Add($"{mother.FishName} and {father.FishName} laid {count} {species} eggs. They hatch in {Steps(species.eggHatchSteps)}.");
+                string eggs = cross ? $"{species} x {father.Species}" : species.ToString();
+                GameLog.Add($"{mother.FishName} and {father.FishName} laid {count} {eggs} eggs. They hatch in {Steps(species.eggHatchSteps)}.");
             }
             return count;
         }
@@ -99,7 +103,8 @@ namespace FishBreeder.Breeding
 
         /// <summary>
         /// Time step: every compatible pair in the tank may breed. Each fish breeds at most once per step.
-        /// Returns how many pregnancies and clutches started.
+        /// Fish pair up with their own species first; fish left over may then cross with a species
+        /// they can cross-breed with, at a lower chance. Returns how many pregnancies and clutches started.
         /// </summary>
         public static int ChanceBreeding(Tank tank, float chance)
         {
@@ -111,6 +116,8 @@ namespace FishBreeder.Breeding
                 if (!bySpecies.TryGetValue(fish.Species.id, out var group)) bySpecies[fish.Species.id] = group = new Couples();
                 (fish.Sex == Sex.Female ? group.females : group.males).Add(fish);
             }
+            var singleFemales = new List<Fish>();
+            var singleMales = new List<Fish>();
             foreach (var group in bySpecies.Values)
             {
                 Shuffle(group.females);
@@ -120,6 +127,24 @@ namespace FishBreeder.Breeding
                 {
                     if (!GameRandom.Chance(chance)) continue;
                     if (Conceive(tank, group.females[i], group.males[i]) > 0) started++;
+                }
+                for (int i = pairs; i < group.females.Count; i++) singleFemales.Add(group.females[i]);
+                for (int i = pairs; i < group.males.Count; i++) singleMales.Add(group.males[i]);
+            }
+
+            // Fish without a partner of their own kind may cross with a compatible species.
+            float crossChance = chance * CrossBreeding.CrossChanceMultiplier;
+            Shuffle(singleFemales);
+            Shuffle(singleMales);
+            foreach (var female in singleFemales)
+            {
+                for (int i = 0; i < singleMales.Count; i++)
+                {
+                    var male = singleMales[i];
+                    if (!CrossBreeding.Compatible(female.Species, male.Species)) continue;
+                    singleMales.RemoveAt(i);
+                    if (GameRandom.Chance(crossChance) && Conceive(tank, female, male) > 0) started++;
+                    break;
                 }
             }
             return started;
@@ -163,6 +188,16 @@ namespace FishBreeder.Breeding
                 else if (group.males.Count > 0) lines.Add($"{name}: ready, but no ready female");
                 else lines.Add($"{name}: not ready ({reasons[id].TrimEnd('.')})");
             }
+            for (int i = 0; i < order.Count; i++)
+                for (int j = i + 1; j < order.Count; j++)
+                {
+                    if (!CrossBreeding.Compatible(order[i], order[j])) continue;
+                    var x = bySpecies[order[i]];
+                    var y = bySpecies[order[j]];
+                    bool ready = (x.females.Count > 0 && y.males.Count > 0) || (y.females.Count > 0 && x.males.Count > 0);
+                    string pair = $"{Species.Get(order[i]).displayName} x {Species.Get(order[j]).displayName}";
+                    lines.Add(ready ? $"{pair}: can cross-breed" : $"{pair}: could cross-breed when ready");
+                }
             if (mystery > 0) lines.Add(mystery == 1 ? "1 mystery fry, too small to tell what it is" : $"{mystery} mystery fry, too small to tell what they are");
             return lines;
         }

@@ -49,7 +49,7 @@ namespace FishBreeder
         /// </summary>
         public bool IdentityHidden => Stage == LifeStage.Fry && generation <= 1;
         /// <summary>The species name, or "mystery fry" while that can't be told yet.</summary>
-        public string SpeciesLabel => IdentityHidden ? "mystery fry" : Species.displayName;
+        public string SpeciesLabel => IdentityHidden ? "mystery fry" : Phenotype.SpeciesName;
 
         /// <summary>Length in the water right now (fry are about 3 cm whatever they grow into), for who can eat whom.</summary>
         public float BodyLength => Stage == LifeStage.Fry ? FishVisual.FryLength * transform.localScale.x : Phenotype.lengthMeters * transform.localScale.x;
@@ -141,8 +141,8 @@ namespace FishBreeder
             Visual.ResetSpine();
             Health.RefreshTint();
             if (!wasHidden) return;
-            GameLog.Add($"{fishName} has grown enough to tell: it's a {Species.displayName}!");
-            Fx.Text(transform.position + Vector3.up * 0.05f, $"It's a {Species.displayName}!", UiTheme.Aqua, 18f, 2.2f);
+            GameLog.Add($"{fishName} has grown enough to tell: it's a {SpeciesLabel}!");
+            Fx.Text(transform.position + Vector3.up * 0.05f, $"It's a {SpeciesLabel}!", UiTheme.Aqua, 18f, 2.2f);
             Journal.Discover(Species);
         }
 
@@ -197,7 +197,7 @@ namespace FishBreeder
         {
             get
             {
-                var species = Species;
+                var p = Phenotype;
                 if (IdentityHidden) return Mathf.Max(1, Balance.Data.supplier.unknownFryValue);
                 float looks = 1f;
                 switch (Phenotype.RarityLabel)
@@ -209,7 +209,8 @@ namespace FishBreeder
                 float stage = Stage == LifeStage.Adult ? 1f : Stage == LifeStage.Juvenile ? 0.6f : 0.3f;
                 float health = Mathf.Lerp(0.4f, 1f, Health.Current);
                 float damage = Mathf.Clamp01(1f - Health.MedicineDamage * Balance.Data.medicine.damageValue);
-                return Mathf.Max(1, Mathf.RoundToInt(species.baseValue * looks * stage * health * damage));
+                int baseValue = CrossBreeding.BaseValue(p.species, p.finSpecies, p.tailSpecies);
+                return Mathf.Max(1, Mathf.RoundToInt(baseValue * looks * stage * health * damage));
             }
         }
 
@@ -241,6 +242,34 @@ namespace FishBreeder
             StepsToBirth = Mathf.Max(1, steps);
         }
 
+        /// <summary>Logs the cross-bred looks among newborn fry, e.g. "2 Guppy with Black Molly fins".</summary>
+        public static void ReportCrossBred(List<Fish> newborn)
+        {
+            var counts = new Dictionary<string, int>();
+            var order = new List<string>();
+            foreach (var fry in newborn)
+            {
+                if (fry == null || !fry.Phenotype.IsHybrid) continue;
+                string name = fry.Phenotype.SpeciesName;
+                if (!counts.ContainsKey(name))
+                {
+                    counts[name] = 0;
+                    order.Add(name);
+                }
+                counts[name]++;
+            }
+            if (order.Count == 0) return;
+            var parts = new List<string>();
+            foreach (var name in order) parts.Add($"{counts[name]} {name}");
+            GameLog.Add($"Cross-bred fry: {string.Join(", ", parts)}!");
+            foreach (var fry in newborn)
+                if (fry != null && fry.Phenotype.IsHybrid)
+                {
+                    Fx.Text(fry.transform.position + Vector3.up * 0.05f, "Cross-bred!", UiTheme.Sun, 16f, 2.2f);
+                    break;
+                }
+        }
+
         /// <summary>Time step for a pregnant fish. Returns how many fry she gave birth to (0 while still pregnant).</summary>
         public int AdvancePregnancy()
         {
@@ -249,11 +278,13 @@ namespace FishBreeder
 
             int born = 0;
             string parents = $"{fishName} x {UnbornFather}";
+            var children = new List<Fish>();
             foreach (var genome in unborn)
             {
                 if (Tank.IsFull) break;
                 var position = Tank.Clamp(transform.position + Random.insideUnitSphere * 0.05f, 0.05f);
                 var child = FishFactory.Spawn(genome, unbornGeneration, 0.05f, Tank, position, parents);
+                children.Add(child);
                 born++;
                 var rarity = child.Phenotype.RarityLabel;
                 Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(Balance.Data.progression.xpFryBorn, child.Species, rarity));
@@ -261,6 +292,7 @@ namespace FishBreeder
                     GameLog.Add($"{rarity} fry! {child.FishName}: {child.Phenotype.Describe()}.");
             }
             Progression.Count(GoalKind.BreedFish, born);
+            ReportCrossBred(children);
             if (born > 0)
             {
                 Fx.Text(transform.position + Vector3.up * 0.06f, born == 1 ? "+1 fry!" : $"+{born} fry!", UiTheme.Hibiscus, 20f, 2f);

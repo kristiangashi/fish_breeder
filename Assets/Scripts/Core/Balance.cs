@@ -558,6 +558,7 @@ namespace FishBreeder.Core
         public MedicineBalance medicine = new MedicineBalance();
         public ResearchBalance research = new ResearchBalance();
         public List<MilestoneBalance> milestones = MilestoneBalance.CreateDefaults();
+        public CrossBreedingBalance crossBreeding = new CrossBreedingBalance();
     }
 
     /// <summary>
@@ -592,7 +593,7 @@ namespace FishBreeder.Core
         {
             var asset = Resources.Load<TextAsset>(ResourcePath);
             data = asset != null ? Parse(asset.text) : null;
-            if (data == null) data = new BalanceData();
+            if (data == null) data = Defaults();
         }
 
         /// <summary>Parses balance JSON; missing fields keep their defaults. Null if the JSON is broken.</summary>
@@ -605,6 +606,8 @@ namespace FishBreeder.Core
                 if (parsed.species == null) parsed.species = new List<Species>();
                 AddMissingSpecies(parsed.species);
                 Upgrade(parsed, ReadDataVersion(json));
+                if (parsed.crossBreeding == null) parsed.crossBreeding = new CrossBreedingBalance();
+                CrossBreeding.FillCombos(parsed.crossBreeding, parsed.species);
                 return parsed;
             }
             catch (Exception e)
@@ -695,6 +698,13 @@ namespace FishBreeder.Core
             return true;
         }
 
-        public static string DefaultJson() => JsonUtility.ToJson(new BalanceData(), true);
+        public static string DefaultJson() => JsonUtility.ToJson(Defaults(), true);
+
+        static BalanceData Defaults()
+        {
+            var defaults = new BalanceData();
+            CrossBreeding.FillCombos(defaults.crossBreeding, defaults.species);
+            return defaults;
+        }
     }
 }

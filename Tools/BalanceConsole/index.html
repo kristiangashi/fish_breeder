@@ -105,9 +105,12 @@ const ENUMS = {
 
 // Friendly labels and help text. Anything missing gets a label made from its name.
 const META = {
+  crossChanceMultiplier: ["Cross chance multiplier", "At each time step, a fish with no partner of its own species may breed with a compatible species at the normal breeding chance times this (0.5 = half as likely)."],
+  tailWithFins: ["Tail follows fins", "Chance a first-cross fry's tail comes from the same parent as its fins (otherwise it comes from the body's parent)."],
+  chance: ["Chance", "Relative chance a fry of this cross comes out this way round. The two ways round of a pair are compared: 1 and 1 is 50/50, 3 and 1 is 75/25."],
   id: ["Id", "Used in save data and the compatibility list. Change with care."],
   displayName: ["Name", ""],
-  category: ["Category", "Only fish in the same category can ever cross-breed."],
+  category: ["Category", "Water type and group. Which species can cross-breed is set on the Cross-breeding tab."],
   reproduction: ["Reproduction", "Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step."],
   rarity: ["Rarity", "How rare the species is. Customers and prices respond to it."],
   family: ["Family", "The real fish's family."],
@@ -210,6 +213,7 @@ const FOOD_NAMES = ["Flakes", "Premium pellets", "Algae wafers", "Frozen bloodwo
 const TABS = [
   ["species", "Species"],
   ["compat", "Relationships"],
+  ["cross", "Cross-breeding"],
   ["diseases", "Diseases"],
   ["shop", "Shop & customers"],
   ["timeStep", "Time steps"],
@@ -467,13 +471,14 @@ function renderSpecies() {
       if (species.length <= 1 || !confirm(`Delete ${species[selectedSpecies].displayName}?`)) return;
       const gone = species.splice(selectedSpecies, 1)[0];
       data.relationships = (data.relationships || []).filter((r) => r.a !== gone.id && r.b !== gone.id);
+      crossData().pairs = crossData().pairs.filter((p) => p.a !== gone.id && p.b !== gone.id);
       selectedSpecies = 0; markDirty(); render();
     } }, "Delete"));
 
   const s = species[selectedSpecies];
   const form = el("div", {}, SPECIES_GROUPS.map(([title, keys]) =>
     el("div", { class: "card" }, el("h2", {}, title), el("div", { class: "grid" }, keys.filter((k) => k in s).map((k) => field(s, k))))));
-  const note = el("p", { class: "hint" }, "Tank mates it doesn't get on with are set on the Compatibility tab. New species need a Meshy model to look right; without one they use a placeholder body.");
+  const note = el("p", { class: "hint" }, "Tank mates it doesn't get on with are set on the Relationships tab, and which species it can breed with on the Cross-breeding tab. New species need a Meshy model to look right; without one they use a placeholder body.");
 
   return [overview, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
 }
@@ -525,6 +530,99 @@ function renderCompat() {
     el("p", { class: "hint" }, "Read across: the fish on the left (row) treats the fish at the top (column) this way. Setting Competitive, Preferred or Neutral also sets it the other way round; Predator is one way only. The diagonal is a fish with its own kind (male bettas fight, schooling fish like company). What each relationship does is set on the Health tab."),
     legend,
     el("div", { class: "scroll" }, table))];
+}
+
+const crossData = () => {
+  const cross = data.crossBreeding = data.crossBreeding || { crossChanceMultiplier: 0.5, tailWithFins: 0.75, pairs: [], combos: [] };
+  cross.pairs = cross.pairs || [];
+  cross.combos = cross.combos || [];
+  return cross;
+};
+const speciesById = (id) => data.species.find((s) => s.id === id);
+const crossPaired = (a, b) => crossData().pairs.some((p) => (p.a === a && p.b === b) || (p.a === b && p.b === a));
+
+/** The combo for this body and fins, made with the game's default values if missing. */
+function crossCombo(body, fins) {
+  const cross = crossData();
+  let combo = cross.combos.find((c) => c.body === body && c.fins === fins);
+  if (!combo) {
+    const value = (id) => (speciesById(id) || { baseValue: 20 }).baseValue;
+    combo = { body, fins, name: "", chance: 1, value: Math.round((value(body) + value(fins)) * 1.5) };
+    cross.combos.push(combo);
+  }
+  return combo;
+}
+
+function renderCross() {
+  const species = data.species;
+  const cross = crossData();
+  const toggle = (a, b, on) => {
+    cross.pairs = cross.pairs.filter((p) => !((p.a === a && p.b === b) || (p.a === b && p.b === a)));
+    if (on) {
+      cross.pairs.push({ a, b });
+      crossCombo(a, b);
+      crossCombo(b, a);
+    }
+    markDirty();
+    render();
+  };
+  const cell = (a, b) => {
+    if (a === b) return el("td", { class: "self", title: "Every species breeds with its own kind" }, "✓");
+    const box = el("input", { type: "checkbox", title: `${a.displayName} × ${b.displayName}`, onchange: (e) => toggle(a.id, b.id, e.target.checked) });
+    box.checked = crossPaired(a.id, b.id);
+    return el("td", {}, box);
+  };
+  const matrix = el("table", { class: "matrix" },
+    el("thead", {}, el("tr", {}, el("th", {}, "Can cross with →"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
+    el("tbody", {}, species.map((a) => el("tr", {}, el("th", {}, a.displayName), species.map((b) => cell(a, b))))));
+
+  const pairs = cross.pairs.filter((p) => p.a !== p.b && speciesById(p.a) && speciesById(p.b));
+  const rows = [];
+  for (const pair of pairs) {
+    const ways = [crossCombo(pair.a, pair.b), crossCombo(pair.b, pair.a)];
+    const odds = [];
+    const refreshOdds = () => {
+      const total = Math.max(0, ways[0].chance) + Math.max(0, ways[1].chance);
+      ways.forEach((c, i) => { odds[i].textContent = total > 0 ? `${Math.round(Math.max(0, c.chance) / total * 100)}%` : "50%"; });
+    };
+    rows.push(el("tr", {}, el("th", { colspan: 8, style: "padding-top:12px" }, `${speciesById(pair.a).displayName} × ${speciesById(pair.b).displayName}`)));
+    ways.forEach((combo, i) => {
+      const body = speciesById(combo.body), fins = speciesById(combo.fins);
+      odds[i] = el("td", { class: "readout" });
+      rows.push(el("tr", {},
+        el("td", {}, body.displayName),
+        el("td", {}, fins.displayName),
+        el("td", {}, (() => { const box = input(combo, "name"); box.placeholder = `${body.displayName} with ${fins.displayName} fins`; return box; })()),
+        el("td", {}, input(combo, "chance", refreshOdds)),
+        odds[i],
+        el("td", {}, input(combo, "value")),
+        el("td", { class: "readout" }, `$${body.baseValue} / $${fins.baseValue}`)));
+    });
+    refreshOdds();
+  }
+  const combos = el("div", { class: "scroll" }, el("table", {},
+    el("thead", {}, el("tr", {},
+      el("th", {}, "Body"), el("th", {}, "Fins"), el("th", { title: "Shown in game. Empty uses the placeholder name." }, "Name"),
+      el("th", { title: help("chance") }, "Chance"), el("th", {}, "This way round"),
+      el("th", { title: "What a healthy, common-looking adult with this look is worth. Replaces the body species' value." }, "Value ($)"),
+      el("th", { title: "The base values of the body and fins species, for reference" }, "Parents' values"))),
+    el("tbody", {}, rows)));
+
+  return [
+    el("div", { class: "card" },
+      el("h2", {}, "Which species can cross-breed"),
+      el("p", { class: "hint" }, "Tick a box to let a male and female of those two species breed. Their fry get the body of one parent and the fins of the other (the tail usually follows the fins). The body decides everything else: needs, behaviour, and how it's born. Hybrids breeding on mix parts from both parents, but only into looks a ticked pair could make. Any species can be ticked: every fin fits every body."),
+      el("div", { class: "scroll" }, matrix)),
+    el("div", { class: "card" },
+      el("h2", {}, "Cross-breeding rules"),
+      el("div", { class: "grid" }, field(cross, "crossChanceMultiplier"), field(cross, "tailWithFins"))),
+    el("div", { class: "card" },
+      el("h2", {}, "Hybrid looks and prices"),
+      el("p", { class: "hint" }, pairs.length
+        ? "Every look the ticked pairs can make, both ways round. Value replaces the body species' value; looks, age and health still multiply it like any fish. A fish with only another species' tail is worth halfway between its species and that combo. Untick a pair and its prices are kept here in the file in case you tick it again."
+        : "Tick a pair above to set what its hybrids are called and worth."),
+      pairs.length ? combos : null),
+  ];
 }
 
 function renderDiseases() {
@@ -601,9 +699,9 @@ function expectedLife(item) {
 // ---------------------------------------------------------------- search
 
 const TOP_NAMES = Object.fromEntries(TABS.map(([k, n]) => [k, n]));
-Object.assign(TOP_NAMES, { supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships" });
+Object.assign(TOP_NAMES, { crossBreeding: "Cross-breeding", supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships" });
 
-const itemName = (item, i) => (item && (item.displayName || item.name || item.id || (item.fact !== undefined && ENUMS.fact[item.fact]))) || `#${i + 1}`;
+const itemName = (item, i) => (item && (item.displayName || item.name || item.id || (item.body && `${item.body} with ${item.fins} fins`) || (item.fact !== undefined && ENUMS.fact[item.fact]))) || `#${i + 1}`;
 
 /** Every editable setting whose name, help, section or owner matches the search. */
 function searchResults(text) {
@@ -612,6 +710,7 @@ function searchResults(text) {
   const visit = (obj, crumbs) => {
     for (const key of Object.keys(obj)) {
       const value = obj[key];
+      if (key === "pairs") continue;
       if (Array.isArray(value) && value.length && typeof value[0] === "object") {
         value.forEach((item, i) => visit(item, [...crumbs, nice(key), itemName(item, i)]));
         continue;
@@ -673,6 +772,7 @@ function render() {
   switch (tab) {
     case "species": content = renderSpecies(); break;
     case "compat": content = renderCompat(); break;
+    case "cross": content = renderCross(); break;
     case "diseases": content = renderDiseases(); break;
     case "raw": content = renderRaw(); break;
     default: content = renderSection(tab);

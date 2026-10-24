@@ -1137,6 +1137,13 @@ namespace FishBreeder.Store
         {
             GUILayout.Label("<i>Developer only: buy any species as a fry, ignoring levels.</i>", Rich());
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("<b>Random mix</b>  <size=11>A free adult with the body, fins and tail of three random species, to see that any fins fit any body. Only compatible pairs can breed mixes in game.</size>", Rich());
+            GUI.enabled = free >= 1;
+            if (GUILayout.Button("Random mix", GUILayout.Width(120f), GUILayout.Height(32f))) OrderRandomMix();
+            GUI.enabled = true;
+            GUILayout.EndHorizontal();
+            GUILayout.Space(6f);
             foreach (var species in Species.All)
             {
                 string livebearer = species.reproduction == Reproduction.Livebearer ? ", livebearer" : "";
@@ -1145,6 +1152,19 @@ namespace FishBreeder.Store
                         free >= 1 && Economy.CanAfford(species.fryPrice), 48f))
                     OrderFry(species);
             }
+        }
+
+        void OrderRandomMix()
+        {
+            var all = Species.All;
+            var genome = Genome.CreateRandom(all[GameRandom.Range(0, all.Count)]);
+            string fins = all[GameRandom.Range(0, all.Count)].id;
+            string tail = GameRandom.Chance(0.5f) ? fins : all[GameRandom.Range(0, all.Count)].id;
+            genome.finSpecies = fins == genome.species ? "" : fins;
+            genome.tailSpecies = tail == genome.species ? "" : tail;
+            var tank = orderTarget.Tank;
+            var fish = FishFactory.Spawn(genome, 1, 1f, tank, tank.RandomFreePoint(0.1f));
+            GameLog.Add($"{fish.FishName} the {fish.SpeciesLabel} arrived in {orderTarget.Title}.");
         }
 
         static string Category(FishCategory category)

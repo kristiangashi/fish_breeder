@@ -120,17 +120,20 @@ namespace FishBreeder
             int born = 0;
             if (Tank != null)
             {
+                var hatched = new List<Fish>();
                 foreach (var genome in genomes)
                 {
                     if (Tank.IsFull) break;
                     var position = Tank.Clamp(transform.position + new Vector3(GameRandom.Range(-0.05f, 0.05f), 0.05f, GameRandom.Range(-0.05f, 0.05f)), 0.05f);
                     var fry = FishFactory.Spawn(genome, generation, 0.05f, Tank, position, parents);
+                    hatched.Add(fry);
                     born++;
                     var progression = Balance.Data.progression;
                     if (Bred) Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(progression.xpFryBorn, fry.Species, fry.Phenotype.RarityLabel));
                     else Progression.Award(XpTrack.Fishkeeping, progression.xpEggHatched);
                 }
                 Progression.Count(GoalKind.HatchEggs, born);
+                Fish.ReportCrossBred(hatched);
                 if (born > 0)
                 {
                     Fx.Text(transform.position + Vector3.up * 0.08f, born == 1 ? "Hatched!" : $"{born} hatched!", UiTheme.Sun, 20f, 2f);

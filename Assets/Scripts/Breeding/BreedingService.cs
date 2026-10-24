@@ -13,7 +13,7 @@ namespace FishBreeder.Breeding
         public static Genome Cross(Genome mother, Genome father, float mutationChance, float mutationStrength)
         {
             var m = new Mutator(mutationChance, mutationStrength);
-            return new Genome
+            var child = new Genome
             {
                 species = mother.species,
                 bodyHue = m.Inherit(mother.bodyHue, father.bodyHue),
@@ -31,6 +31,9 @@ namespace FishBreeder.Breeding
                 hardiness = m.Inherit(mother.hardiness, father.hardiness),
                 swimSpeed = m.Inherit(mother.swimSpeed, father.swimSpeed),
             };
+            // Which species the body, fins and tail come from (a cross mixes them).
+            CrossBreeding.InheritParts(child, mother, father);
+            return child;
         }
 
         readonly struct Mutator

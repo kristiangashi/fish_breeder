@@ -50,6 +50,7 @@ namespace FishBreeder.Core
                 var entry = library != null ? library.Find(species.id, default, default) : null;
                 if (entry == null || entry.model == null) return null;
                 var model = UnityEngine.Object.Instantiate(entry.model);
+                FishParts.HideFills(model);
                 var material = new Material(MaterialFactory.Lit);
                 if (entry.albedo != null) material.mainTexture = entry.albedo;
                 if (entry.normalMap != null && material.HasProperty("_BumpMap"))

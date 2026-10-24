@@ -7,7 +7,8 @@ namespace FishBreeder
 {
     /// <summary>
     /// Builds and animates the 3D model for a fish: a Meshy model from the library when one
-    /// matches its genes, otherwise the procedural placeholder.
+    /// matches its genes, otherwise the procedural placeholder. Models split into parts are put
+    /// together by <see cref="FishParts"/>, so a cross-bred fish wears the fins and tail of another species.
     /// </summary>
     [RequireComponent(typeof(Fish))]
     public class FishVisual : MonoBehaviour
@@ -71,7 +72,15 @@ namespace FishBreeder
             string speciesId = fryLook ? FryModelSpecies : phenotype.species.id;
             var entry = library != null ? library.Find(speciesId, phenotype.finShape, phenotype.tailShape) : null;
             float length = fryLook ? FryLength : phenotype.lengthMeters;
-            if (entry != null) BuildFromModel(entry, length, fryLook ? FryGrey : Color.Lerp(Color.white, phenotype.bodyColor, entry.geneTintStrength), !fryLook);
+            List<FishParts.Piece> pieces = null;
+            if (entry != null)
+            {
+                var fins = fryLook ? entry : library.Find(phenotype.finSpecies.id, phenotype.finShape, phenotype.tailShape);
+                var tail = fryLook ? entry : library.Find(phenotype.tailSpecies.id, phenotype.finShape, phenotype.tailShape);
+                pieces = FishParts.Assemble(entry, fins, tail);
+            }
+            if (pieces != null) BuildFromParts(entry, pieces, length, phenotype.bodyColor, !fryLook);
+            else if (entry != null) BuildFromModel(entry, length, fryLook ? FryGrey : Color.Lerp(Color.white, phenotype.bodyColor, entry.geneTintStrength), !fryLook);
             else
             {
                 BuildPlaceholder(phenotype);
@@ -129,7 +138,71 @@ namespace FishBreeder
             MaterialFactory.Decor(PrimitiveType.Sphere, "EyeR", modelRoot, new Vector3(eyeX, height * 0.1f, eyeZ), Vector3.one * eyeSize, eyeColor);
         }
 
-        /// <summary>A Meshy model at this length and tint; without <paramref name="textured"/> it's a plain colour (fry).</summary>
+        /// <summary>
+        /// A fish put together from parts (its own, or a cross-bred mix), at this length. Each part
+        /// wears its own model's texture tinted by the body colour gene; without <paramref name="textured"/>
+        /// it's plain fry grey. All parts share one space, so the swim shader bends them as one body.
+        /// </summary>
+        void BuildFromParts(FishModelLibrary.Entry bodyEntry, List<FishParts.Piece> pieces, float lengthMeters, Color bodyColor, bool textured)
+        {
+            modelEntry = bodyEntry;
+            var bounds = pieces[0].mesh.bounds;
+            foreach (var piece in pieces) bounds.Encapsulate(piece.mesh.bounds);
+            float scale = lengthMeters / Mathf.Max(bounds.size.z, 0.0001f);
+
+            var space = new GameObject(bodyEntry.displayName).transform;
+            space.SetParent(modelRoot, false);
+            space.localScale = Vector3.one * scale;
+            space.localPosition = -bounds.center * scale;
+
+            var cullBounds = bounds;
+            cullBounds.Expand(bounds.size.magnitude * 0.5f);
+            var shader = SwimShader;
+            var materials = new Dictionary<FishModelLibrary.Entry, Material>();
+            foreach (var piece in pieces)
+            {
+                if (!materials.TryGetValue(piece.entry, out var material))
+                {
+                    var entry = piece.entry;
+                    var tint = textured ? Color.Lerp(Color.white, bodyColor, entry.geneTintStrength) : FryGrey;
+                    material = new Material(shader) { name = entry.displayName, color = tint };
+                    if (textured && entry.albedo != null) material.mainTexture = entry.albedo;
+                    if (entry.normalMap != null && material.HasProperty("_BumpMap")) material.SetTexture("_BumpMap", entry.normalMap);
+                    if (textured && entry.smoothnessMap != null && material.HasProperty("_SmoothnessMap")) material.SetTexture("_SmoothnessMap", entry.smoothnessMap);
+                    if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", entry.smoothness);
+                    ConfigureSwim(material, space, bounds);
+                    materials[entry] = material;
+                    TrackMaterial(material);
+                    swimMaterials.Add(material);
+                    swimMeshes.Add(space);
+                }
+
+                var go = new GameObject(piece.mesh.name);
+                go.transform.SetParent(space, false);
+                go.AddComponent<MeshFilter>().sharedMesh = piece.mesh;
+                var renderer = go.AddComponent<MeshRenderer>();
+                renderer.sharedMaterial = material;
+                // The bent body can reach a little outside the rest pose; keep it from being culled.
+                renderer.localBounds = cullBounds;
+            }
+            tailPivot = null;
+            StartSpine(bodyEntry, lengthMeters);
+        }
+
+        void StartSpine(FishModelLibrary.Entry entry, float lengthMeters)
+        {
+            modelLength = lengthMeters;
+            spine = new SwimSpine
+            {
+                wavesPerBody = entry.wavesPerBody,
+                tailTwistDegrees = entry.tailTwistDegrees,
+                stiffness = entry.bodyStiffness,
+            };
+            float length = modelLength * transform.lossyScale.x;
+            spine.Reset(transform.position + transform.forward * length * 0.5f, transform.forward, transform.up, length);
+        }
+
+        /// <summary>A Meshy model that isn't split into parts, at this length and tint; without <paramref name="textured"/> it's a plain colour (fry).</summary>
         void BuildFromModel(FishModelLibrary.Entry entry, float lengthMeters, Color tint, bool textured)
         {
             modelEntry = entry;
@@ -140,6 +213,7 @@ namespace FishBreeder
             var model = instance.transform;
 
             // Turn the model so its head points along the fish's +Z, whatever way it was exported.
+            FishParts.HideFills(instance);
             var turn = Quaternion.Euler(0f, DetectHeadYaw(filters), 0f);
             model.localRotation = turn * model.localRotation;
             model.localPosition = turn * model.localPosition;
@@ -162,7 +236,7 @@ namespace FishBreeder
                 if (entry.normalMap != null && material.HasProperty("_BumpMap")) material.SetTexture("_BumpMap", entry.normalMap);
                 if (textured && entry.smoothnessMap != null && material.HasProperty("_SmoothnessMap")) material.SetTexture("_SmoothnessMap", entry.smoothnessMap);
                 if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", entry.smoothness);
-                ConfigureSwim(material, filter);
+                ConfigureSwim(material, filter.transform, filter.sharedMesh.bounds);
 
                 var slots = new Material[Mathf.Max(1, filter.sharedMesh.subMeshCount)];
                 for (int i = 0; i < slots.Length; i++) slots[i] = material;
@@ -177,16 +251,7 @@ namespace FishBreeder
                 renderer.localBounds = cullBounds;
             }
             tailPivot = null;
-
-            modelLength = lengthMeters;
-            spine = new SwimSpine
-            {
-                wavesPerBody = entry.wavesPerBody,
-                tailTwistDegrees = entry.tailTwistDegrees,
-                stiffness = entry.bodyStiffness,
-            };
-            float length = modelLength * transform.lossyScale.x;
-            spine.Reset(transform.position + transform.forward * length * 0.5f, transform.forward, transform.up, length);
+            StartSpine(entry, lengthMeters);
         }
 
         static Shader swimShader;
@@ -200,13 +265,15 @@ namespace FishBreeder
             }
         }
 
-        /// <summary>Tells the swim shader how this mesh lies at rest: its axes, centre and length.</summary>
-        void ConfigureSwim(Material material, MeshFilter filter)
+        /// <summary>
+        /// Tells the swim shader how the fish lies at rest in <paramref name="space"/>'s local space:
+        /// its axes, centre and length (<paramref name="b"/>, the bounds of the whole fish in that space).
+        /// </summary>
+        void ConfigureSwim(Material material, Transform space, Bounds b)
         {
-            var axis = filter.transform.InverseTransformDirection(modelRoot.forward).normalized;
-            var side = filter.transform.InverseTransformDirection(modelRoot.right).normalized;
-            var up = filter.transform.InverseTransformDirection(modelRoot.up).normalized;
-            var b = filter.sharedMesh.bounds;
+            var axis = space.InverseTransformDirection(modelRoot.forward).normalized;
+            var side = space.InverseTransformDirection(modelRoot.right).normalized;
+            var up = space.InverseTransformDirection(modelRoot.up).normalized;
             float min = float.MaxValue, max = float.MinValue;
             for (int i = 0; i < 8; i++)
             {
@@ -227,10 +294,7 @@ namespace FishBreeder
             material.SetFloat(SpineEnabledId, 0f);
         }
 
-        /// <summary>
-        /// Finds the yaw that points the head along +Z. The body runs along the longer horizontal
-        /// axis, and the head is the end that is widest side to side (tail fins are flat).
-        /// </summary>
+        /// <summary>Finds the yaw that points the head along +Z (see <see cref="FishParts.HeadYaw"/>).</summary>
         float DetectHeadYaw(MeshFilter[] filters)
         {
             var points = new List<Vector3>();
@@ -246,26 +310,7 @@ namespace FishBreeder
                 foreach (var v in mesh.vertices)
                     points.Add(modelRoot.InverseTransformPoint(filter.transform.TransformPoint(v)));
             }
-            if (points.Count == 0) return 0f;
-
-            var bounds = new Bounds(points[0], Vector3.zero);
-            foreach (var point in points) bounds.Encapsulate(point);
-            bool alongX = bounds.size.x > bounds.size.z;
-
-            float min = alongX ? bounds.min.x : bounds.min.z;
-            float length = alongX ? bounds.size.x : bounds.size.z;
-            float lowMin = float.MaxValue, lowMax = float.MinValue, highMin = float.MaxValue, highMax = float.MinValue;
-            foreach (var point in points)
-            {
-                float t = ((alongX ? point.x : point.z) - min) / length;
-                float lateral = alongX ? point.z : point.x;
-                if (t < 0.2f) { lowMin = Mathf.Min(lowMin, lateral); lowMax = Mathf.Max(lowMax, lateral); }
-                else if (t > 0.8f) { highMin = Mathf.Min(highMin, lateral); highMax = Mathf.Max(highMax, lateral); }
-            }
-            bool headAtHighEnd = (highMax - highMin) > (lowMax - lowMin);
-
-            if (alongX) return headAtHighEnd ? -90f : 90f;
-            return headAtHighEnd ? 0f : 180f;
+            return FishParts.HeadYaw(points);
         }
 
         Bounds BoundsInModelRoot(MeshFilter[] filters)
@@ -373,8 +418,10 @@ namespace FishBreeder
                 spine.Relax(nose, transform.forward, deltaTime * Mathf.Lerp(1.5f, 4f, stiffness) * startle * startle);
                 for (int i = 0; i < swimMaterials.Count; i++)
                 {
-                    spine.Evaluate(nose, transform.forward, transform.up, length, swimPhase, stroke * modelEntry.strokeStrength,
-                        bankDegrees, follow, curl, stiffen, swimMeshes[i]);
+                    // Parts of one fish share a space: the spine only needs working out once for them.
+                    if (i == 0 || swimMeshes[i] != swimMeshes[i - 1])
+                        spine.Evaluate(nose, transform.forward, transform.up, length, swimPhase, stroke * modelEntry.strokeStrength,
+                            bankDegrees, follow, curl, stiffen, swimMeshes[i]);
                     var material = swimMaterials[i];
                     material.SetVectorArray(SpinePosId, spine.Positions);
                     material.SetVectorArray(SpineFwdId, spine.Forwards);

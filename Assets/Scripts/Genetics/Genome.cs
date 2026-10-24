@@ -13,6 +13,10 @@ namespace FishBreeder.Genetics
     {
         [Tooltip("Species id (see Species). Fixed for life and inherited from the mother.")]
         public string species;
+        [Tooltip("Species id of the fins when they come from a cross-bred ancestor; empty = same as the body.")]
+        public string finSpecies = "";
+        [Tooltip("Species id of the tail when it comes from a cross-bred ancestor; empty = same as the body.")]
+        public string tailSpecies = "";
 
         [Header("Colour")]
         public HueGene bodyHue;
@@ -38,6 +42,10 @@ namespace FishBreeder.Genetics
         public ContinuousGene swimSpeed;
 
         public Species Species => Species.Get(species);
+        public string FinSpecies => string.IsNullOrEmpty(finSpecies) ? species : finSpecies;
+        public string TailSpecies => string.IsNullOrEmpty(tailSpecies) ? species : tailSpecies;
+        /// <summary>True when the fins or tail come from another species (a cross-bred fish).</summary>
+        public bool IsHybrid => FinSpecies != species || TailSpecies != species;
 
         /// <summary>A random wild fish of a random species.</summary>
         public static Genome CreateRandom() => CreateRandom(Species.All[GameRandom.Range(0, Species.All.Count)]);

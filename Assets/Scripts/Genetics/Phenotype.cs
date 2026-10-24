@@ -8,7 +8,11 @@ namespace FishBreeder.Genetics
     /// </summary>
     public readonly struct Phenotype
     {
+        /// <summary>The body's species: it decides needs, behaviour and how the young are born.</summary>
         public readonly Species species;
+        /// <summary>Where the fins and tail come from; the same as <see cref="species"/> unless cross-bred.</summary>
+        public readonly Species finSpecies;
+        public readonly Species tailSpecies;
         public readonly Color bodyColor;
         public readonly Color patternColor;
         public readonly Color finColor;
@@ -28,6 +32,8 @@ namespace FishBreeder.Genetics
         public Phenotype(Genome g)
         {
             species = g.Species;
+            finSpecies = Species.Get(g.FinSpecies) ?? species;
+            tailSpecies = Species.Get(g.TailSpecies) ?? species;
             float saturation = Mathf.Lerp(0.35f, 1f, g.bodySaturation.Expressed);
             float brightness = Mathf.Lerp(0.45f, 1f, g.bodyBrightness.Expressed);
             bodyColor = Color.HSVToRGB(g.bodyHue.Expressed, saturation, brightness);
@@ -49,6 +55,11 @@ namespace FishBreeder.Genetics
             swimSpeed = g.swimSpeed.Expressed;
         }
 
+        public bool IsHybrid => finSpecies != species || tailSpecies != species;
+
+        /// <summary>"Comet Goldfish", or the cross-bred look's name.</summary>
+        public string SpeciesName => CrossBreeding.Name(species, finSpecies, tailSpecies);
+
         /// <summary>Sum of how recessive the visible discrete traits are. Higher is rarer.</summary>
         public int RarityScore => (int)finShape + (int)tailShape + (int)pattern;
 
@@ -66,7 +77,7 @@ namespace FishBreeder.Genetics
 
         public string Describe()
         {
-            return $"{species}, {pattern} body, {finShape} fins, {tailShape} tail, {lengthMeters * 100f:0} cm";
+            return $"{SpeciesName}, {pattern} body, {finShape} fins, {tailShape} tail, {lengthMeters * 100f:0} cm";
         }
     }
 }

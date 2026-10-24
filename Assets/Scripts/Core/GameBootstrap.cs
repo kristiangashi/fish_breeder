@@ -1,0 +1,90 @@
+using FishBreeder.Shop;
+using FishBreeder.Store;
+using UnityEngine;
+
+namespace FishBreeder.Core
+{
+    /// <summary>
+    /// Builds the game at runtime: the store with its starting tanks, camera, light and the
+    /// closed-shop view. If the open scene has no GameBootstrap, one is created automatically when
+    /// you press Play, so a brand-new empty scene is enough to try the game.
+    /// </summary>
+    public class GameBootstrap : MonoBehaviour
+    {
+        [SerializeField] FishModelLibrary modelLibrary;
+        [Tooltip("0 = random every run.")]
+        [SerializeField] int randomSeed;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void AutoCreate()
+        {
+            // Remove this once real scenes contain a GameBootstrap (or a menu scene exists).
+            if (FindAnyObjectByType<GameBootstrap>() == null)
+                new GameObject("Fish Breeder").AddComponent<GameBootstrap>();
+        }
+
+        void Start()
+        {
+            if (randomSeed != 0) GameRandom.Seed(randomSeed);
+            Balance.Load();
+            FishVisual.DefaultLibrary = modelLibrary != null ? modelLibrary : FishModelLibrary.LoadBuiltIn();
+            GameLog.Clear();
+            Economy.Reset();
+            Progression.Reset();
+            Research.Reset();
+            Journal.Reset();
+            Milestones.Reset();
+            Fx.Reset();
+            ViewMode.Set(false);
+            Tank.Focused = null;
+
+            // The tanks start empty: the first fish come from the supplier computer.
+            var store = new GameObject("Store").AddComponent<StoreLayout>();
+            store.Build();
+
+            var cam = SetupCamera();
+            SetupLight();
+
+            var shopDay = gameObject.AddComponent<ShopDay>();
+            shopDay.Initialize(store);
+            var hud = gameObject.AddComponent<FishTankHUD>();
+            gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
+            gameObject.AddComponent<JournalView>();
+            gameObject.AddComponent<FxOverlay>();
+            int setup = Economy.DaysUntilOpening;
+            if (setup > 0)
+            {
+                GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)} and {setup} days before the grand opening to raise some fish to sell.");
+                GameLog.Add("Order your first box of eggs or fry at the supplier computer, then end the day to let time pass.");
+                Fx.Day("Welcome to your fish shop!", $"{setup} days to raise some fish before the grand opening");
+            }
+            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first box of eggs at the supplier computer.");
+        }
+
+        static Camera SetupCamera()
+        {
+            var cam = Camera.main;
+            if (cam == null)
+            {
+                cam = new GameObject("Main Camera").AddComponent<Camera>();
+                cam.tag = "MainCamera";
+            }
+            cam.fieldOfView = 45f;
+            cam.nearClipPlane = 0.05f;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            return cam;
+        }
+
+        static void SetupLight()
+        {
+            foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (light.type == LightType.Directional) return;
+
+            var sun = new GameObject("Light").AddComponent<Light>();
+            sun.type = LightType.Directional;
+            sun.intensity = 1.1f;
+            sun.color = new Color(0.9f, 0.97f, 1f);
+            sun.transform.rotation = Quaternion.Euler(60f, -20f, 0f);
+        }
+    }
+}

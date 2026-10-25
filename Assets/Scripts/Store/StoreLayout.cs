@@ -423,12 +423,13 @@ namespace FishBreeder.Store
             display.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
             RegisterPoint = counter + new Vector3(0.45f, 1.6f, 0f);
             // Customers queue on the entrance side, so the shopkeeper behind the counter faces the camera.
-            registerFront = new Vector3(counter.x + 0.45f, 0f, counter.z - 0.75f);
+            registerFront = new Vector3(counter.x - 0.2f, 0f, counter.z - 0.75f);
 
             // The shopkeeper (you) behind the counter.
             var keeper = new GameObject("Shopkeeper").transform;
             keeper.SetParent(root, false);
-            keeper.position = new Vector3(counter.x + 0.45f, 0f, counter.z + 0.62f);
+            // Beside the till, not hidden behind it.
+            keeper.position = new Vector3(counter.x - 0.2f, 0f, counter.z + 0.62f);
             keeper.rotation = Quaternion.LookRotation(Vector3.back);
             var placeholder = new GameObject("Placeholder").transform;
             placeholder.SetParent(keeper, false);

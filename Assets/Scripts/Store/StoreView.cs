@@ -161,8 +161,8 @@ namespace FishBreeder.Store
                 forward.y = 0f;
                 forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : Vector3.back;
                 var side = Vector3.Cross(Vector3.up, forward);
-                targetPosition = person.position + Vector3.up * 1.35f + forward * 2.3f + side * 0.7f;
-                targetRotation = Quaternion.LookRotation(person.position + Vector3.up * 0.75f - targetPosition);
+                targetPosition = person.position + Vector3.up * 2f + forward * 2.6f + side * 0.8f;
+                targetRotation = Quaternion.LookRotation(person.position + Vector3.up * 0.8f - targetPosition);
             }
             else
             {

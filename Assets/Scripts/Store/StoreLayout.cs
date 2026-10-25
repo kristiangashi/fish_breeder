@@ -504,7 +504,7 @@ namespace FishBreeder.Store
             text.text = "FRESH FISH & EGGS";
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
-            text.characterSize = 0.025f;
+            text.characterSize = 0.011f;
             text.fontSize = 48;
             text.fontStyle = FontStyle.Bold;
             text.color = new Color(0.1f, 0.3f, 0.4f);

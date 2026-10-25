@@ -31,6 +31,8 @@ namespace FishBreeder
         {
             public Mesh mesh;
             public FishModelLibrary.Entry entry;
+            /// <summary>Body (fill patches count as body), Dorsal, Ventral, Pectoral or Tail.</summary>
+            public string role;
         }
 
         class Part
@@ -252,7 +254,7 @@ namespace FishBreeder
             mesh.SetTriangles(triangles, 0);
             mesh.RecalculateBounds();
             if (normals.Length != vertices.Length) mesh.RecalculateNormals();
-            return new Piece { mesh = mesh, entry = material.entry };
+            return new Piece { mesh = mesh, entry = material.entry, role = role };
         }
 
         /// <summary>Moves a part from its own body onto another one (see the class summary).</summary>

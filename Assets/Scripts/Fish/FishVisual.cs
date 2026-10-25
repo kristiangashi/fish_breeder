@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FishBreeder.Core;
 using FishBreeder.Genetics;
+using FishBreeder.Health;
 using UnityEngine;
 
 namespace FishBreeder
@@ -31,6 +32,17 @@ namespace FishBreeder
         float modelLength;
         float swimPhase;
         float stroke = 0.5f;
+
+        // The parts the fish is built from, for the illness overlays.
+        List<FishParts.Piece> partPieces;
+        Transform partSpace;
+        Bounds partBounds;
+        DiseaseDefinition illness;
+        float illnessSeverity;
+        int illnessStage = -1;
+        GameObject illnessRoot;
+        readonly List<Material> illnessMaterials = new List<Material>();
+        float sneezeTimer = 2f;
 
         /// <summary>Tail stroke when not swimming: a gentle scull for hovering fish, near zero for a resting one.</summary>
         public float IdleStroke { get; set; } = 0.12f;
@@ -64,6 +76,11 @@ namespace FishBreeder
             modelEntry = null;
             spine = null;
             tailPivot = null;
+            partPieces = null;
+            partSpace = null;
+            illnessRoot = null;
+            illnessMaterials.Clear();
+            illnessStage = -1;
 
             modelRoot = new GameObject("Model").transform;
             modelRoot.SetParent(transform, false);
@@ -92,6 +109,7 @@ namespace FishBreeder
             body.direction = 2; // Z
             body.height = length * 1.2f;
             body.radius = length * phenotype.heightRatio * 0.5f;
+            ShowIllness(illness, illnessSeverity);
         }
 
         void BuildPlaceholder(Phenotype p)
@@ -146,6 +164,7 @@ namespace FishBreeder
         void BuildFromParts(FishModelLibrary.Entry bodyEntry, List<FishParts.Piece> pieces, float lengthMeters, Color bodyColor, bool textured)
         {
             modelEntry = bodyEntry;
+            partPieces = pieces;
             var bounds = pieces[0].mesh.bounds;
             foreach (var piece in pieces) bounds.Encapsulate(piece.mesh.bounds);
             float scale = lengthMeters / Mathf.Max(bounds.size.z, 0.0001f);
@@ -154,6 +173,8 @@ namespace FishBreeder
             space.SetParent(modelRoot, false);
             space.localScale = Vector3.one * scale;
             space.localPosition = -bounds.center * scale;
+            partSpace = space;
+            partBounds = bounds;
 
             var cullBounds = bounds;
             cullBounds.Expand(bounds.size.magnitude * 0.5f);
@@ -370,6 +391,122 @@ namespace FishBreeder
             spine.Reset(transform.position + transform.forward * length * 0.5f, transform.forward, transform.up, length);
         }
 
+        /// <summary>
+        /// Shows an illness (null for none) at this severity: the disease's body tint, plus a
+        /// cartoony look of what it does to real fish (see <see cref="FishSymptoms"/>):
+        /// white spots, ragged fins, floating over on its side, or a pale feverish shiver with sneezes.
+        /// </summary>
+        public void ShowIllness(DiseaseDefinition disease, float severity)
+        {
+            var previous = illness;
+            illness = disease;
+            illnessSeverity = severity;
+            SetTint(disease != null ? Color.Lerp(Color.white, disease.symptomTint, severity) : Color.white);
+            // Rebuild the overlay only when the illness or its stage changes (spots get more numerous).
+            int stage = disease == null ? -1 : Mathf.Clamp(Mathf.CeilToInt(severity * 4f), 1, 4);
+            if (disease == previous && stage == illnessStage && (illnessRoot != null || stage < 0 || partSpace == null)) return;
+            illnessStage = stage;
+            ClearIllnessOverlay();
+            if (disease == null || partPieces == null || partSpace == null) return;
+
+            float t = stage / 4f;
+            int seed = GetInstanceID();
+            switch (disease.Look)
+            {
+                case SymptomLook.Spots:
+                    AddOverlay(FishSymptoms.Spots(partPieces, Mathf.RoundToInt(Mathf.Lerp(14f, 70f, t)), 0.014f, seed), new Color(1f, 1f, 0.97f), 0.9f);
+                    break;
+                case SymptomLook.FinRot:
+                    FishSymptoms.FinRot(partPieces, Mathf.RoundToInt(Mathf.Lerp(16f, 48f, t)), Mathf.Lerp(0.012f, 0.02f, t), seed, out var edges, out var sores);
+                    AddOverlay(edges, new Color(0.92f, 0.86f, 0.74f), 0.3f);
+                    AddOverlay(sores, new Color(0.9f, 0.32f, 0.3f), 0.6f);
+                    break;
+            }
+        }
+
+        void AddOverlay(Mesh mesh, Color color, float gloss)
+        {
+            if (mesh == null || mesh.vertexCount == 0) return;
+            if (illnessRoot == null)
+            {
+                illnessRoot = new GameObject("Illness");
+                illnessRoot.transform.SetParent(partSpace, false);
+            }
+            var go = new GameObject(mesh.name);
+            go.transform.SetParent(illnessRoot.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var material = new Material(SwimShader) { name = mesh.name, color = color };
+            if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", gloss);
+            ConfigureSwim(material, partSpace, partBounds);
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            var cull = partBounds;
+            cull.Expand(partBounds.size.magnitude * 0.5f);
+            renderer.localBounds = cull;
+            illnessMaterials.Add(material);
+            swimMaterials.Add(material);
+            swimMeshes.Add(partSpace);
+        }
+
+        void ClearIllnessOverlay()
+        {
+            foreach (var material in illnessMaterials)
+            {
+                int i = swimMaterials.IndexOf(material);
+                if (i >= 0)
+                {
+                    swimMaterials.RemoveAt(i);
+                    swimMeshes.RemoveAt(i);
+                }
+                Destroy(material);
+            }
+            illnessMaterials.Clear();
+            if (illnessRoot != null)
+            {
+                foreach (var filter in illnessRoot.GetComponentsInChildren<MeshFilter>()) Destroy(filter.sharedMesh);
+                Destroy(illnessRoot);
+            }
+            illnessRoot = null;
+        }
+
+        /// <summary>
+        /// Extra roll from illness this frame: a fish with swim bladder trouble floats over on its
+        /// side (further the worse it is); itchy or feverish fish shiver now and then.
+        /// </summary>
+        float IllnessRoll(float deltaTime)
+        {
+            if (illness == null) return 0f;
+            float t = Mathf.Max(illnessSeverity, 0.25f);
+            switch (illness.Look)
+            {
+                case SymptomLook.Listing:
+                    return (25f + 65f * t) + Mathf.Sin(Time.time * 1.3f) * 6f;
+                case SymptomLook.Fever:
+                {
+                    sneezeTimer -= deltaTime;
+                    if (sneezeTimer <= 0f)
+                    {
+                        sneezeTimer = Random.Range(2.5f, 5f);
+                        var fish = GetComponent<Fish>();
+                        float length = modelLength * transform.lossyScale.x;
+                        if (fish != null && fish.Tank != null)
+                            Fx.Bubbles(transform.position + transform.forward * length * 0.5f, 3, fish.Tank.SurfaceY, 0.01f);
+                    }
+                    // A feverish shiver in bursts.
+                    float burst = Mathf.Max(0f, Mathf.Sin(Time.time * 0.9f + GetInstanceID()));
+                    return Mathf.Sin(Time.time * 38f) * 7f * t * burst * burst;
+                }
+                case SymptomLook.Spots:
+                {
+                    // White spot itches: every so often the fish twitches as if scratching.
+                    float burst = Mathf.Max(0f, Mathf.Sin(Time.time * 0.6f + GetInstanceID()) - 0.85f) / 0.15f;
+                    return Mathf.Sin(Time.time * 30f) * 12f * burst;
+                }
+                default:
+                    return 0f;
+            }
+        }
+
         /// <summary>Multiplies all fish materials, used for disease symptoms.</summary>
         public void SetTint(Color tint)
         {
@@ -389,6 +526,7 @@ namespace FishBreeder
         public void Animate(float bodyLengthsPerSecond, float thrust, float bankDegrees, float turnDegreesPerSecond, float deltaTime)
         {
             if (modelRoot == null || deltaTime <= 0f) return;
+            bankDegrees += IllnessRoll(deltaTime);
             float effort = Mathf.Clamp(bodyLengthsPerSecond, 0f, 2f);
             thrust = Mathf.Clamp01(thrust);
             float turning = Mathf.Clamp01(Mathf.Abs(turnDegreesPerSecond) / 90f);

@@ -46,6 +46,8 @@ namespace FishBreeder.Store
         float panX;
         float distance = 15f;
         Rect panelRect, topBar, statusBar, todoBar, milestoneRect, watchButton;
+        /// <summary>Height the to-do bar needed last frame (its hint text wraps on narrow screens).</summary>
+        float todoHeight = 110f;
         readonly ToDoList todo = new ToDoList();
         float todoFinishedTime = -1f;
         int lastDay = 1;
@@ -279,7 +281,7 @@ namespace FishBreeder.Store
                 // In the tank view the tank HUD owns the screen; just show the shop clock if open,
                 // the to-do bar and level-ups.
                 if (shopDay.IsOpen) DrawShopClock(new Rect(width - 330f, 10f, 320f, 38f));
-                todoBar = new Rect(Mathf.Max(300f, width * 0.5f - 280f), 10f, Mathf.Min(560f, width - 650f), 96f);
+                todoBar = new Rect(Mathf.Max(300f, width * 0.5f - 280f), 10f, Mathf.Max(420f, Mathf.Min(560f, width - 650f)), todoHeight);
                 DrawToDoBar();
                 DrawLevelUps(width, 140f);
                 return;
@@ -296,7 +298,7 @@ namespace FishBreeder.Store
             }
             DrawMoneyPopups(scale, height);
             DrawLog(height);
-            todoBar = new Rect(width * 0.5f - 280f, 94f, 560f, 96f);
+            todoBar = new Rect(width * 0.5f - 280f, 94f, 560f, todoHeight);
             milestoneRect = Rect.zero;
             if (panel == Panel.None)
             {
@@ -596,18 +598,24 @@ namespace FishBreeder.Store
                 return;
             }
 
-            GUILayout.BeginArea(todoBar, UiStyles.Window);
             bool resolved = item.Resolved;
+            string body = resolved ? $"<color=#9fe39f>{item.title}</color>" : $"<b>{item.title}</b> {item.hint}";
+            // Header, wrapped text and the button row, plus the window's padding.
+            var window = UiStyles.Window;
+            float inner = todoBar.width - window.padding.horizontal;
+            todoHeight = window.padding.vertical + 26f + Rich().CalcHeight(new GUIContent(body), inner) + 40f;
+            todoBar.height = todoHeight;
+            GUILayout.BeginArea(todoBar, window);
             GUILayout.BeginHorizontal();
             GUILayout.Label($"<b>To do {todo.Index + 1} of {todo.Count}</b>   {item.tank.Title}", Rich());
             GUILayout.FlexibleSpace();
             if (resolved) GUILayout.Label("<color=#9fe39f><b>Done!</b></color>", Rich());
             GUILayout.EndHorizontal();
-            GUILayout.Label(resolved ? $"<color=#9fe39f>{item.title}</color>" : $"<b>{item.title}</b> {item.hint}", Rich());
+            GUILayout.Label(body, Rich());
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("< Back", GUILayout.Width(80f)) && todo.Previous()) GoToCurrent();
+            if (GUILayout.Button("< Back", GUILayout.Width(74f)) && todo.Previous()) GoToCurrent();
             if (GUILayout.Button("Take me there", GUILayout.Width(120f))) GoToCurrent();
-            if (GUILayout.Button(resolved ? "Next >" : "Skip >", GUILayout.Width(80f))) NextToDo();
+            if (GUILayout.Button(resolved ? "Next >" : "Skip >", GUILayout.Width(74f))) NextToDo();
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Stop for now", GUILayout.Width(110f))) todo.Pause();
             GUILayout.EndHorizontal();
@@ -668,7 +676,10 @@ namespace FishBreeder.Store
                 int eggs = EggClutch.EggsIn(t);
                 string count = $"{t.Residents.Count}/{t.Capacity} fish";
                 string contents = (t.IsOvercrowded ? $"<color=#ff8080>{count}</color>" : count) + (eggs > 0 ? $", {eggs} eggs" : "");
-                string warning = t.IsOvercrowded ? "\n<color=#ff8080>overcrowded!</color>" : t.Corpses.Count > 0 ? "\n<color=#ff8080>dead fish!</color>" : t.WaterHealth < Balance.Data.shop.grossWaterQuality ? "\n<color=#ffd27f>dirty water</color>" : "";
+                int sick = 0;
+                foreach (var fish in t.Residents) if (!fish.IsDead && fish.Health.IsSick) sick++;
+                string sickLine = sick > 0 ? $"\n<color=#ff6b6b><b>+ {sick} sick</b></color>" : "";
+                string warning = sickLine + (t.IsOvercrowded ? "\n<color=#ff8080>overcrowded!</color>" : t.Corpses.Count > 0 ? "\n<color=#ff8080>dead fish!</color>" : t.WaterHealth < Balance.Data.shop.grossWaterQuality ? "\n<color=#ffd27f>dirty water</color>" : "");
                 WorldLabel(t.InnerBounds.center + Vector3.up * 0.65f, $"<b>{tank.Title}</b>\n{contents}{warning}", scale, height);
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);

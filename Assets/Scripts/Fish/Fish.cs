@@ -316,6 +316,7 @@ namespace FishBreeder
             GameLog.Add($"{fishName} the {SpeciesLabel} died of {cause}.");
             Fx.Text(transform.position + Vector3.up * 0.05f, "RIP", new Color(0.8f, 0.85f, 0.9f), 16f, 2f);
             Swimmer.enabled = false;
+            Visual.ShowIllness(null, 0f);
             Visual.SetTint(new Color(0.75f, 0.75f, 0.7f));
             StartCoroutine(FloatUp());
         }

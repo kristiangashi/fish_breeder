@@ -126,6 +126,7 @@ namespace FishBreeder.Core
             if (selected.Count == 2) DrawBreedBar();
             DrawTankBar();
             DrawLog();
+            DrawSickMarkers(scale, height);
             DrawSelectionMarkers(scale, height);
             HandleClick();
         }
@@ -140,6 +141,7 @@ namespace FishBreeder.Core
             GUILayout.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
             if (ReadOnly) GUILayout.Label("<color=#ffd27f>The shop is open: you can look, but tank work waits until closing.</color>", Rich());
             DrawFishCount(size.name);
+            DrawSickList();
             foreach (var clutch in EggClutch.All)
                 if (clutch != null && clutch.Tank == tank)
                     GUILayout.Label($"<color=#ffe9a8>Eggs: {clutch.Count} {clutch.Label}, hatch in {BreedingSystem.Steps(clutch.StepsToHatch)}</color>", Rich());
@@ -292,6 +294,26 @@ namespace FishBreeder.Core
         /// Medicine goes into the whole tank: it cures every fish with the illness it treats, but
         /// stresses the rest, and too many doses close together damage fish for good.
         /// </summary>
+        /// <summary>A red warning box listing every sick fish, at the top of the tank panel.</summary>
+        void DrawSickList()
+        {
+            var sick = new List<string>();
+            foreach (var fish in tank.Residents)
+                if (!fish.IsDead && fish.Health.IsSick) sick.Add($"{fish.FishName}: {fish.Health.Disease.displayName} ({fish.Health.Severity * 100f:0}%)");
+            if (sick.Count == 0) return;
+            UiGauges.Badge(sick.Count == 1 ? "+ 1 SICK FISH" : $"+ {sick.Count} SICK FISH", SickRed);
+            foreach (var line in sick) GUILayout.Label($"<color=#ff9a9a>{line}</color>", Rich());
+            GUILayout.Label("<size=11>Dose the tank with the right medicine below, or move them to quarantine.</size>", Rich());
+        }
+
+        static readonly Color SickRed = new Color(0.85f, 0.18f, 0.2f);
+
+        /// <summary>The cure a disease needs, in words.</summary>
+        static string CureText(DiseaseDefinition disease)
+        {
+            return disease.cure == Medicine.None ? "no medicine: it usually passes with rest and light feeding" : $"{disease.cure.ToString().ToLower()} medicine";
+        }
+
         void DrawMedicine()
         {
             var supplier = Balance.Data.supplier;
@@ -482,6 +504,9 @@ namespace FishBreeder.Core
             if (storeTank.Role == TankRole.ForSale) DrawPrice(fish);
             if (fish.Health.IsSick)
                 GUILayout.Label($"<size=11>Treat the tank with the right medicine for {fish.Health.Disease.displayName} (left panel). It goes to every fish in the water.</size>", Rich());
+#if UNITY_EDITOR
+            if (!ReadOnly && !fish.IsDead && GUILayout.Button("Next illness (dev)")) fish.Health.DevNextIllness();
+#endif
             GUILayout.EndScrollView();
 
             DrawMoveButtons(fish);
@@ -495,7 +520,7 @@ namespace FishBreeder.Core
             var species = fish.Species;
             GUILayout.Label($"<size=17><b>{fish.FishName}</b></size>", Rich());
             GUILayout.BeginHorizontal();
-            if (fish.Stage == LifeStage.Fry) UiGauges.Badge("? Too young to sex", new Color(0.4f, 0.42f, 0.46f));
+            if (fish.Stage == LifeStage.Fry) UiGauges.Badge("Sex: ?", new Color(0.4f, 0.42f, 0.46f));
             else if (fish.Sex == Sex.Male) UiGauges.Badge("♂ Male", new Color(0.2f, 0.45f, 0.85f));
             else UiGauges.Badge("♀ Female", new Color(0.85f, 0.3f, 0.6f));
             switch (fish.Stage)
@@ -504,8 +529,18 @@ namespace FishBreeder.Core
                 case LifeStage.Juvenile: UiGauges.Badge("JUVENILE", new Color(0.75f, 0.55f, 0.15f)); break;
                 default: UiGauges.Badge("FRY", new Color(0.45f, 0.47f, 0.5f)); break;
             }
+            if (fish.Health.IsSick && !fish.IsDead) UiGauges.Badge("+ SICK", Color.Lerp(SickRed, new Color(1f, 0.45f, 0.4f), Mathf.PingPong(Time.unscaledTime * 1.5f, 1f)));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
+            if (fish.Health.IsSick && !fish.IsDead)
+            {
+                var disease = fish.Health.Disease;
+                GUILayout.BeginVertical(SickBox());
+                GUILayout.Label($"<b>{disease.displayName}</b>  <size=11>({fish.Health.Severity * 100f:0}% bad)</size>", Rich());
+                if (!string.IsNullOrEmpty(disease.description)) GUILayout.Label($"<size=11>{disease.description}</size>", Rich());
+                GUILayout.Label($"<size=11>Cure: {CureText(disease)}.</size>", Rich());
+                GUILayout.EndVertical();
+            }
             if (fish.IdentityHidden) GUILayout.Label("<b>Mystery fry</b>: too small to tell what it is yet. It shows its colours when it grows into a juvenile.", Rich());
             else
             {
@@ -747,6 +782,46 @@ namespace FishBreeder.Core
                 GUILayout.Label(entries[i]);
             GUILayout.EndArea();
         }
+
+        static GUIStyle sickBox;
+
+        /// <summary>Dark red panel behind the illness details in the fish window.</summary>
+        static GUIStyle SickBox()
+        {
+            if (sickBox != null && sickBox.normal.background != null) return sickBox;
+            var background = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
+            background.SetPixel(0, 0, new Color(0.45f, 0.08f, 0.1f, 0.9f));
+            background.Apply();
+            sickBox = new GUIStyle { padding = new RectOffset(8, 8, 6, 6), margin = new RectOffset(0, 0, 4, 4) };
+            sickBox.normal.background = background;
+            return sickBox;
+        }
+
+        /// <summary>A pulsing red "+" bubble over every sick fish in the tank, with what it has.</summary>
+        void DrawSickMarkers(float scale, float guiHeight)
+        {
+            if (cam == null) return;
+            foreach (var fish in tank.Residents)
+            {
+                if (fish.IsDead || !fish.Health.IsSick || selected.Contains(fish)) continue;
+                var screen = cam.WorldToScreenPoint(fish.transform.position + Vector3.up * 0.05f);
+                if (screen.z < 0f) continue;
+                var gui = new Vector2(screen.x / scale, guiHeight - screen.y / scale);
+                float pulse = 1f + 0.12f * Mathf.Sin(Time.unscaledTime * 5f + fish.GetInstanceID());
+                float size = 20f * pulse;
+                var old = GUI.color;
+                GUI.color = SickRed;
+                GUI.DrawTexture(new Rect(gui.x - size * 0.5f, gui.y - size - 6f, size, size), UiTheme.Circle);
+                GUI.color = Color.white;
+                GUI.Label(new Rect(gui.x - 15f, gui.y - size - 7f - (size - 20f) * 0.5f, 30f, 22f), "+", CenteredLabel());
+                GUI.color = new Color(1f, 0.75f, 0.75f);
+                GUI.Label(new Rect(gui.x - 60f, gui.y - 6f, 120f, 18f), $"<size=11>{fish.Health.Disease.displayName}</size>", CenteredRich());
+                GUI.color = old;
+            }
+        }
+
+        static GUIStyle centeredRich;
+        static GUIStyle CenteredRich() => centeredRich != null ? centeredRich : centeredRich = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, richText = true };
 
         void DrawSelectionMarkers(float scale, float guiHeight)
         {

@@ -125,7 +125,7 @@ namespace FishBreeder.Health
             if (disease == null || IsSick || Owner.IsDead) return false;
             Disease = disease;
             Severity = 0.1f;
-            Owner.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
+            Owner.Visual.ShowIllness(Disease, Severity);
             GameLog.Add($"{Owner.FishName} caught {disease.displayName} from {source}.");
             return true;
         }
@@ -169,14 +169,29 @@ namespace FishBreeder.Health
             return result;
         }
 
-        /// <summary>Re-applies the illness tint, e.g. after the model is rebuilt.</summary>
-        public void RefreshTint() => Owner.Visual.SetTint(IsSick ? Color.Lerp(Color.white, Disease.symptomTint, Severity) : Color.white);
+        /// <summary>Re-applies the illness look, e.g. after the model is rebuilt.</summary>
+        public void RefreshTint() => Owner.Visual.ShowIllness(Disease, Severity);
+
+        /// <summary>Editor testing: cycles healthy, then each disease at 60% severity.</summary>
+        public void DevNextIllness()
+        {
+            var all = Balance.Data.diseases;
+            int next = Disease == null ? 0 : all.IndexOf(Disease) + 1;
+            if (next >= all.Count)
+            {
+                Cure();
+                return;
+            }
+            Disease = all[next];
+            Severity = 0.6f;
+            Owner.Visual.ShowIllness(Disease, Severity);
+        }
 
         void Cure()
         {
             Disease = null;
             Severity = 0f;
-            Owner.Visual.SetTint(Color.white);
+            Owner.Visual.ShowIllness(null, 0f);
         }
 
         /// <summary>
@@ -197,7 +212,7 @@ namespace FishBreeder.Health
             if (IsSick)
             {
                 Severity = Mathf.Clamp01(Severity + Disease.progressionPerStep * (1f - 0.5f * hardiness));
-                Owner.Visual.SetTint(Color.Lerp(Color.white, Disease.symptomTint, Severity));
+                Owner.Visual.ShowIllness(Disease, Severity);
                 if (GameRandom.Chance(Disease.recoveryChancePerStep * (0.5f + hardiness)))
                 {
                     GameLog.Add($"{Owner.FishName} recovered from {Disease.displayName}.");

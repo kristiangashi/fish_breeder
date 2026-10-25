@@ -6,6 +6,9 @@ namespace FishBreeder.Health
 {
     public enum Medicine { None, Antiviral, Antibacterial, Antiparasitic }
 
+    /// <summary>How an illness shows on the fish. Auto picks from the disease id.</summary>
+    public enum SymptomLook { Auto, Spots, FinRot, Listing, Fever, None }
+
     /// <summary>
     /// One illness a fish can catch. Illness lowers health; a fish only dies from the death roll at
     /// a time step, which gets likelier as health drops. All rates are per time step.
@@ -31,6 +34,24 @@ namespace FishBreeder.Health
         [Tooltip("Body tint at full severity.")]
         public Color symptomTint = Color.white;
         public Medicine cure = Medicine.None;
+        [Tooltip("How it shows on the fish: white spots, ragged fins, floating on its side, or a pale feverish shiver. Auto picks from the id.")]
+        public SymptomLook look = SymptomLook.Auto;
+
+        public SymptomLook Look
+        {
+            get
+            {
+                if (look != SymptomLook.Auto) return look;
+                switch (id)
+                {
+                    case "ich": return SymptomLook.Spots;
+                    case "fin_rot": return SymptomLook.FinRot;
+                    case "swim_bladder": return SymptomLook.Listing;
+                    case "aqua_flu": return SymptomLook.Fever;
+                    default: return SymptomLook.Spots;
+                }
+            }
+        }
 
         public static List<DiseaseDefinition> CreateDefaults()
         {

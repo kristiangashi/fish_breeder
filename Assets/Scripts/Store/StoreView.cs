@@ -53,6 +53,9 @@ namespace FishBreeder.Store
         bool atFishSeller;
         /// <summary>Who the people camera (C) is following: -1 off, 0 the shopkeeper, 1 the fish seller, then customers.</summary>
         int following = -1;
+#if UNITY_EDITOR
+        int devGesture = -1;
+#endif
         Vector2 supplierScroll;
         float panX;
         float distance = 15f;
@@ -156,6 +159,17 @@ namespace FishBreeder.Store
             }
             else if (person != null)
             {
+#if UNITY_EDITOR
+                // G plays the person's gestures one after another, for checking them.
+                if (Input.GetKeyDown(KeyCode.G) && GUIUtility.keyboardControl == 0)
+                {
+                    var personRig = person.GetComponentInChildren<CrewRig>();
+                    int count = System.Enum.GetValues(typeof(Gesture)).Length;
+                    devGesture = (devGesture + 1) % count;
+                    if (personRig != null) personRig.Play((Gesture)devGesture, cam.transform.position);
+                    GameLog.Add($"Gesture (dev): {(Gesture)devGesture}");
+                }
+#endif
                 // Close up on one of the shop's people, from the store camera's side: the shopkeeper and
                 // the fish seller face it, and customers turn round to it when something wows them.
                 var look = person.position + Vector3.up * 0.85f;

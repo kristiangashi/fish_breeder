@@ -56,10 +56,10 @@ namespace FishBreeder.Core
             if (setup > 0)
             {
                 GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)} and {setup} days before the grand opening to raise some fish to sell.");
-                GameLog.Add("Order your first box of eggs or fry at the supplier computer, then end the day to let time pass.");
+                GameLog.Add("Buy your first box of eggs or fry from the fish seller by the staff door, then end the day to let time pass.");
                 Fx.Day("Welcome to your fish shop!", $"{setup} days to raise some fish before the grand opening");
             }
-            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Order your first box of eggs at the supplier computer.");
+            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Buy your first box of eggs from the fish seller by the staff door.");
         }
 
         static Camera SetupCamera()

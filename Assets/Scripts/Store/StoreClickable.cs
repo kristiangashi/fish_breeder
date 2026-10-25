@@ -8,7 +8,7 @@ namespace FishBreeder.Store
     /// </summary>
     public class StoreClickable : MonoBehaviour
     {
-        public enum Kind { Tank, EmptySlot, LockedSection, Register, Computer }
+        public enum Kind { Tank, EmptySlot, LockedSection, Register, Computer, FishSeller }
 
         public const int Layer = 2; // Ignore Raycast
         public const int Mask = 1 << Layer;

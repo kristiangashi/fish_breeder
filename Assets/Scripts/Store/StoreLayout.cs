@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FishBreeder.Core;
+using FishBreeder.People;
 using FishBreeder.Shop;
 using UnityEngine;
 using UnityEngine.AI;
@@ -9,7 +10,7 @@ namespace FishBreeder.Store
     /// <summary>
     /// The shop building: a sunny beach-shack fish shop of rooms in a row (seafoam walls, wooden
     /// floors, a bamboo counter, palms and surfboards). The main floor (with the one
-    /// entrance, the register and the supplier computer) is open from the start; the other
+    /// entrance, the register, the supplier computer and the fish seller's stall) is open from the start; the other
     /// sections are bought with money and each adds room for more display and for sale tanks.
     /// Breeder and quarantine tanks live in the back room to the west, which customers never see.
     /// Every spot has room for the biggest tank size, so tanks can be upgraded where they stand.
@@ -85,6 +86,7 @@ namespace FishBreeder.Store
         public IReadOnlyList<StoreTank> PublicTanks => publicTanks;
         public Vector3 RegisterPoint { get; private set; }
         public Vector3 ComputerPoint { get; private set; }
+        public Vector3 FishSellerPoint { get; private set; }
         public Vector3 EntrancePoint => new Vector3(0f, 0.1f, -SectionDepth * 0.5f - 0.6f);
         /// <summary>Where customers appear and disappear, out on the pavement.</summary>
         public Vector3 DoorOutside => new Vector3(0f, 0f, -SectionDepth * 0.5f - 3f);
@@ -133,6 +135,7 @@ namespace FishBreeder.Store
             BuildBackRoom();
             BuildRegister();
             BuildComputer();
+            BuildFishStall();
             RefreshEmptySlots();
 
             // One of each to start: a breeder in the back room, and a for sale and a display tank
@@ -419,18 +422,23 @@ namespace FishBreeder.Store
             var display = Wall(root, "TillDisplay", counter + new Vector3(0.45f, 1.38f, 0.12f), new Vector3(0.3f, 0.16f, 0.03f), new Color(0.3f, 0.75f, 0.45f));
             display.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
             RegisterPoint = counter + new Vector3(0.45f, 1.6f, 0f);
-            registerFront = new Vector3(counter.x + 0.45f, 0f, counter.z + 0.75f);
+            // Customers queue on the entrance side, so the shopkeeper behind the counter faces the camera.
+            registerFront = new Vector3(counter.x + 0.45f, 0f, counter.z - 0.75f);
 
             // The shopkeeper (you) behind the counter.
             var keeper = new GameObject("Shopkeeper").transform;
             keeper.SetParent(root, false);
-            keeper.position = new Vector3(counter.x + 0.45f, 0f, counter.z - 0.62f);
-            keeper.localScale = Vector3.one * Customer.PersonScale;
+            keeper.position = new Vector3(counter.x + 0.45f, 0f, counter.z + 0.62f);
+            keeper.rotation = Quaternion.LookRotation(Vector3.back);
+            var placeholder = new GameObject("Placeholder").transform;
+            placeholder.SetParent(keeper, false);
+            placeholder.localScale = Vector3.one * Customer.PersonScale;
             var apron = new Color(0.2f, 0.45f, 0.6f);
-            MaterialFactory.Decor(PrimitiveType.Cube, "Legs", keeper, new Vector3(0f, 0.42f, 0f), new Vector3(0.32f, 0.84f, 0.2f), new Color(0.25f, 0.25f, 0.3f));
-            MaterialFactory.Decor(PrimitiveType.Capsule, "Torso", keeper, new Vector3(0f, 1.17f, 0f), new Vector3(0.44f, 0.36f, 0.28f), apron);
-            MaterialFactory.Decor(PrimitiveType.Sphere, "Head", keeper, new Vector3(0f, 1.62f, 0f), new Vector3(0.24f, 0.27f, 0.24f), new Color(0.9f, 0.75f, 0.6f));
-            ShopkeeperHand = keeper.position + new Vector3(0f, 1.1f * Customer.PersonScale, 0.3f);
+            MaterialFactory.Decor(PrimitiveType.Cube, "Legs", placeholder, new Vector3(0f, 0.42f, 0f), new Vector3(0.32f, 0.84f, 0.2f), new Color(0.25f, 0.25f, 0.3f));
+            MaterialFactory.Decor(PrimitiveType.Capsule, "Torso", placeholder, new Vector3(0f, 1.17f, 0f), new Vector3(0.44f, 0.36f, 0.28f), apron);
+            MaterialFactory.Decor(PrimitiveType.Sphere, "Head", placeholder, new Vector3(0f, 1.62f, 0f), new Vector3(0.24f, 0.27f, 0.24f), new Color(0.9f, 0.75f, 0.6f));
+            keeper.gameObject.AddComponent<Shopkeeper>().Build(placeholder.gameObject);
+            ShopkeeperHand = keeper.position + new Vector3(0f, 1.05f * Customer.PersonScale, -0.35f);
             StoreClickable.Add(root, "Register", counter + new Vector3(0f, 0.75f, 0f), new Vector3(2.1f, 1.5f, 0.7f), StoreClickable.Kind.Register);
         }
 
@@ -451,8 +459,72 @@ namespace FishBreeder.Store
             StoreClickable.Add(root, "Supplier computer", desk + new Vector3(0f, 0.7f, -0.1f), new Vector3(1.45f, 1.4f, 1.3f), StoreClickable.Kind.Computer);
         }
 
+        /// <summary>
+        /// The fish seller's stall by the staff door: a table of egg cartons and bagged fry, an
+        /// awning and a sign. He stands behind it facing the shop floor (and the camera).
+        /// </summary>
+        void BuildFishStall()
+        {
+            var root = new GameObject("Fish seller").transform;
+            root.SetParent(transform, false);
+            var table = new Vector3(-SectionWidth * 0.5f + 0.75f, 0f, -2.15f);
+            var wood = new Color(0.62f, 0.42f, 0.26f);
+            Wall(root, "StallTable", table + new Vector3(0f, 0.78f, 0f), new Vector3(1.3f, 0.05f, 0.62f), CounterTopColor);
+            Wall(root, "StallFront", table + new Vector3(0f, 0.4f, -0.29f), new Vector3(1.3f, 0.76f, 0.04f), wood);
+            for (int sx = -1; sx <= 1; sx += 2)
+            {
+                Wall(root, "StallLeg", table + new Vector3(sx * 0.6f, 0.38f, 0.26f), new Vector3(0.06f, 0.76f, 0.06f), wood);
+                Wall(root, "AwningPole", table + new Vector3(sx * 0.62f, 1.25f, 0.28f), new Vector3(0.05f, 2.5f, 0.05f), wood);
+            }
+            for (int i = 0; i < 6; i++)
+                Wall(root, "Awning", table + new Vector3(-0.55f + i * 0.22f, 2.45f, 0.05f), new Vector3(0.22f, 0.04f, 0.75f), i % 2 == 0 ? StripeColor : Color.white);
+            // Egg cartons, and fry in bags of water.
+            var eggColors = new[] { new Color(0.98f, 0.95f, 0.85f), new Color(0.9f, 0.82f, 0.6f), new Color(0.75f, 0.9f, 0.95f) };
+            for (int c = 0; c < 2; c++)
+            {
+                var carton = table + new Vector3(-0.38f + c * 0.32f, 0.84f, -0.02f);
+                Wall(root, "Carton", carton, new Vector3(0.26f, 0.06f, 0.36f), new Color(0.8f, 0.7f, 0.55f));
+                for (int e = 0; e < 6; e++)
+                    MaterialFactory.Decor(PrimitiveType.Sphere, "Egg", root, carton + new Vector3((e % 2 - 0.5f) * 0.1f, 0.05f, (e / 2 - 1) * 0.1f), new Vector3(0.07f, 0.09f, 0.07f), eggColors[(e + c) % eggColors.Length]);
+            }
+            var fryColors = new[] { new Color(1f, 0.55f, 0.15f), new Color(0.95f, 0.85f, 0.2f), new Color(0.3f, 0.6f, 1f) };
+            for (int b = 0; b < 3; b++)
+            {
+                var bag = table + new Vector3(0.22f + b * 0.16f, 0.9f, -0.05f + (b % 2) * 0.12f);
+                MaterialFactory.Decor(PrimitiveType.Sphere, "FryBag", root, bag, new Vector3(0.13f, 0.17f, 0.13f), new Color(0.65f, 0.85f, 0.95f));
+                MaterialFactory.Decor(PrimitiveType.Capsule, "Fry", root, bag + new Vector3(0f, 0f, -0.06f), new Vector3(0.025f, 0.03f, 0.025f), fryColors[b]);
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "BagKnot", root, bag + new Vector3(0f, 0.1f, 0f), new Vector3(0.03f, 0.03f, 0.03f), new Color(0.9f, 0.9f, 0.9f));
+            }
+            // A sign on the awning.
+            var sign = Wall(root, "StallSign", table + new Vector3(0f, 2.2f, -0.33f), new Vector3(0.9f, 0.26f, 0.04f), new Color(0.98f, 0.92f, 0.72f));
+            var text = new GameObject("StallSignText").AddComponent<TextMesh>();
+            text.transform.SetParent(sign.transform.parent, false);
+            text.transform.position = sign.transform.position + new Vector3(0f, 0f, -0.03f);
+            text.text = "FRESH FISH & EGGS";
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.characterSize = 0.025f;
+            text.fontSize = 48;
+            text.fontStyle = FontStyle.Bold;
+            text.color = new Color(0.1f, 0.3f, 0.4f);
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font != null)
+            {
+                text.font = font;
+                text.GetComponent<MeshRenderer>().sharedMaterial = font.material;
+            }
+
+            var seller = new GameObject("Fish seller (person)").transform;
+            seller.SetParent(root, false);
+            seller.position = table + new Vector3(0f, 0f, 0.62f);
+            seller.rotation = Quaternion.LookRotation(new Vector3(0.3f, 0f, -1f));
+            seller.gameObject.AddComponent<FishSeller>();
+            FishSellerPoint = seller.position + Vector3.up * 1.85f;
+            StoreClickable.Add(root, "Fish seller", table + new Vector3(0f, 0.8f, 0.25f), new Vector3(1.4f, 1.6f, 1.3f), StoreClickable.Kind.FishSeller);
+        }
+
         // Wall dressing and palm fronds overhead don't block the walkway (the palm's pot and trunk do).
-        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble", "Stripe", "Frond", "Surfboard" };
+        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble", "Stripe", "Frond", "Surfboard", "Awning", "StallSign", "StallSignText" };
 
         /// <summary>
         /// Bakes where customers can walk: the open sections' floors and the pavement outside,
@@ -469,6 +541,8 @@ namespace FishBreeder.Store
             foreach (var renderer in GetComponentsInChildren<Renderer>())
             {
                 if (NotObstacles.Contains(renderer.gameObject.name)) continue;
+                // People move and wave their arms about; they're never part of the floor plan.
+                if (renderer is SkinnedMeshRenderer) continue;
                 var b = renderer.bounds;
                 if (b.max.y < 0.02f) continue;
                 sources.Add(StoreNavMesh.Box(b.center, b.size + new Vector3(0.02f, 0f, 0.02f), false));

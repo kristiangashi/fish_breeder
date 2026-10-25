@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using FishBreeder.Core;
+using FishBreeder.People;
 using FishBreeder.Store;
 using UnityEngine;
 using UnityEngine.AI;
@@ -9,18 +11,28 @@ namespace FishBreeder.Shop
     /// <summary>
     /// A shopper: walks in, looks at a few random tanks (showing a thought bubble now and then),
     /// may pick a fish from a For Sale tank, pays at the register and walks home.
-    /// Placeholder body built from primitives, like the rest of the store.
+    /// One of the crew lineup's customer models, acting out what they think of each tank (pointing
+    /// at a fish and going "wow", leaning in, shaking their head at a dead fish, holding their nose
+    /// at dirty water, hands on hips at the prices). Falls back to a primitive body without models.
     /// </summary>
     public class Customer : MonoBehaviour
     {
         /// <summary>People are drawn a bit smaller than life so the tanks and the store read bigger.</summary>
         public const float PersonScale = 0.8f;
 
+        static readonly List<Customer> all = new List<Customer>();
+        /// <summary>Everyone in or around the shop right now.</summary>
+        public static IReadOnlyList<Customer> All => all;
+
         ShopDay day;
         StoreLayout layout;
         NavMeshAgent agent;
         Transform body;
+        CrewRig rig;
         Transform handPoint;
+        Tank watching;
+        Fish glanceFish;
+        float fishGlance;
         ShopperProfile profile;
         Fish purchase;
         float walkPhase;
@@ -28,7 +40,10 @@ namespace FishBreeder.Shop
 
         public Mood Mood { get; private set; }
         public float MoodTimeLeft { get; private set; }
-        public Vector3 HeadPoint => transform.position + Vector3.up * 2.05f * PersonScale;
+        /// <summary>Above the head, where thought bubbles go.</summary>
+        public Vector3 HeadPoint => transform.position + Vector3.up * (rig != null ? rig.Height + 0.35f : 2.05f * PersonScale);
+        /// <summary>The face, for other people to look at.</summary>
+        public Vector3 FacePoint => transform.position + Vector3.up * (rig != null ? rig.Height * 0.9f : 1.62f * PersonScale);
         public bool IsLeaving { get; private set; }
 
         public static Customer Spawn(ShopDay day, StoreLayout layout)
@@ -67,8 +82,18 @@ namespace FishBreeder.Shop
             return customer;
         }
 
+        void OnEnable() => all.Add(this);
+        void OnDisable() => all.Remove(this);
+
         void BuildBody()
         {
+            rig = CrewModels.Spawn(CrewModels.Customers[GameRandom.Range(0, CrewModels.Customers.Length)], transform, PersonScale);
+            if (rig != null)
+            {
+                body = rig.transform;
+                handPoint = rig.RightHand;
+                return;
+            }
             body = new GameObject("Body").transform;
             body.SetParent(transform, false);
             body.localScale = Vector3.one * PersonScale;
@@ -103,14 +128,17 @@ namespace FishBreeder.Shop
 
                 yield return WalkTo(StoreLayout.ViewingSpot(tank) + Vector3.right * GameRandom.Range(-0.55f, 0.55f));
                 faceTarget = Quaternion.LookRotation(Vector3.forward);
+                watching = tank.Tank;
                 yield return new WaitForSeconds(GameRandom.Range(0.8f, 1.6f));
 
                 var reaction = ShopperBrain.Evaluate(profile, tank);
                 day.RecordMood(reaction.mood);
                 if (reaction.mood != Mood.None) ShowMood(reaction.mood);
                 purchase = reaction.purchase;
+                React(reaction.mood, tank.Tank, reaction.purchase);
                 yield return new WaitForSeconds(GameRandom.Range(shop.minLookSeconds, shop.maxLookSeconds));
                 faceTarget = null;
+                watching = null;
             }
 
             if (purchase != null) yield return BuyAtRegister();
@@ -124,12 +152,13 @@ namespace FishBreeder.Shop
             {
                 int place = day.QueuePlace(this);
                 yield return WalkTo(layout.RegisterQueueSpot(place));
-                faceTarget = Quaternion.LookRotation(Vector3.back);
+                faceTarget = Quaternion.LookRotation(Vector3.forward);
                 if (place == 0) break;
                 while (day.QueuePlace(this) == place) yield return null;
             }
 
             yield return day.HandOverBag(this, handPoint);
+            if (rig != null) rig.Play(GameRandom.Value < 0.5f ? Gesture.Cheer : Gesture.Wow, Shopkeeper.Instance != null ? Shopkeeper.Instance.transform.position + Vector3.up * 1.3f : (Vector3?)null);
             CompletePurchase();
             day.LeaveQueue(this);
             faceTarget = null;
@@ -146,6 +175,15 @@ namespace FishBreeder.Shop
         {
             IsLeaving = true;
             yield return WalkTo(layout.DoorInside);
+            // A wave goodbye to the shopkeeper now and then.
+            if (rig != null && Shopkeeper.Instance != null && GameRandom.Value < 0.4f)
+            {
+                faceTarget = Quaternion.LookRotation(Flat(Shopkeeper.Instance.transform.position - transform.position));
+                yield return new WaitForSeconds(0.3f);
+                rig.Play(Gesture.Wave, Shopkeeper.Instance.transform.position + Vector3.up * 1.3f);
+                yield return new WaitForSeconds(1.6f);
+                faceTarget = null;
+            }
             yield return WalkTo(layout.DoorOutside);
             day.Remove(this);
             Destroy(gameObject);
@@ -156,6 +194,37 @@ namespace FishBreeder.Shop
         {
             CompletePurchase();
             Destroy(gameObject);
+        }
+
+        /// <summary>Acts out what they think of a tank, aimed at a fish in it when there is one.</summary>
+        void React(Mood mood, Tank tank, Fish picked)
+        {
+            if (rig == null) return;
+            var target = picked != null ? picked.transform.position : SomeFish(tank);
+            switch (mood)
+            {
+                case Mood.Sad: rig.Play(Gesture.HeadShake, target); break;
+                case Mood.Grossed: rig.Play(Gesture.Grossed, target); break;
+                case Mood.Mad: rig.Play(Gesture.Mad, target); break;
+                case Mood.Happy: rig.Play(GameRandom.Value < 0.7f ? Gesture.PointAndWow : Gesture.Wow, target); break;
+                default:
+                    float roll = GameRandom.Value;
+                    rig.Play(roll < 0.3f ? Gesture.LeanIn : roll < 0.55f ? Gesture.PointAndWow : roll < 0.8f ? Gesture.Think : Gesture.Nod, target);
+                    break;
+            }
+        }
+
+        static Vector3 SomeFish(Tank tank)
+        {
+            var living = new List<Fish>();
+            foreach (var fish in tank.Residents) if (fish != null && !fish.IsDead) living.Add(fish);
+            return living.Count > 0 ? living[GameRandom.Range(0, living.Count)].transform.position : tank.InnerBounds.center;
+        }
+
+        static Vector3 Flat(Vector3 v)
+        {
+            v.y = 0f;
+            return v.sqrMagnitude > 1e-6f ? v : Vector3.forward;
         }
 
         void ShowMood(Mood mood)
@@ -226,11 +295,29 @@ namespace FishBreeder.Shop
             if (faceTarget.HasValue && speed < 0.1f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, faceTarget.Value, Time.deltaTime * 6f);
 
-            // A little bob and sway while walking.
-            walkPhase += speed * Time.deltaTime * 7f;
-            float moving = Mathf.Clamp01(speed / 0.5f);
-            body.localPosition = new Vector3(0f, Mathf.Abs(Mathf.Sin(walkPhase)) * 0.04f * PersonScale * moving, 0f);
-            body.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(walkPhase) * 3f * moving);
+            if (rig != null)
+            {
+                rig.Speed = speed;
+                // At a tank, the eyes follow one fish after another.
+                fishGlance -= Time.deltaTime;
+                if (watching != null && fishGlance <= 0f)
+                {
+                    fishGlance = GameRandom.Range(1.2f, 2.5f);
+                    glanceFish = null;
+                    var living = new List<Fish>();
+                    foreach (var fish in watching.Residents) if (fish != null && !fish.IsDead) living.Add(fish);
+                    if (living.Count > 0) glanceFish = living[GameRandom.Range(0, living.Count)];
+                }
+                rig.LookTarget = watching == null ? (Vector3?)null : glanceFish != null ? glanceFish.transform.position : watching.InnerBounds.center;
+            }
+            else
+            {
+                // A little bob and sway while walking.
+                walkPhase += speed * Time.deltaTime * 7f;
+                float moving = Mathf.Clamp01(speed / 0.5f);
+                body.localPosition = new Vector3(0f, Mathf.Abs(Mathf.Sin(walkPhase)) * 0.04f * PersonScale * moving, 0f);
+                body.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(walkPhase) * 3f * moving);
+            }
 
             // In a tank close-up, someone standing between the camera and the glass would fill the screen.
             bool hidden = BlocksCloseUp(Tank.Focused);

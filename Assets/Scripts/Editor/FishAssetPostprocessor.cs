@@ -3,17 +3,19 @@ using UnityEditor;
 namespace FishBreeder.EditorTools
 {
     /// <summary>
-    /// Import settings for Meshy models and textures under Assets/Resources/Fish and
-    /// Assets/Resources/Decor, so a new model only needs to be dropped into a folder there.
+    /// Import settings for Meshy models and textures under Assets/Resources/Fish,
+    /// Assets/Resources/Decor and Assets/Resources/Crew, so a new model only needs to be dropped
+    /// into a folder there. Crew models keep their skeleton (moved by code, see CrewRig).
     /// </summary>
     public class FishAssetPostprocessor : AssetPostprocessor
     {
         const string FishFolder = "Assets/Resources/Fish/";
         const string DecorFolder = "Assets/Resources/Decor/";
+        const string CrewFolder = "Assets/Resources/Crew/";
 
-        public override uint GetVersion() => 3;
+        public override uint GetVersion() => 4;
 
-        static bool IsManaged(string path) => path.StartsWith(FishFolder) || path.StartsWith(DecorFolder);
+        static bool IsManaged(string path) => path.StartsWith(FishFolder) || path.StartsWith(DecorFolder) || path.StartsWith(CrewFolder);
 
         void OnPreprocessModel()
         {
@@ -26,6 +28,13 @@ namespace FishBreeder.EditorTools
             importer.animationType = ModelImporterAnimationType.None;
             importer.importCameras = false;
             importer.importLights = false;
+            if (assetPath.StartsWith(CrewFolder))
+            {
+                importer.isReadable = false;
+                importer.animationType = ModelImporterAnimationType.Generic;
+                importer.avatarSetup = ModelImporterAvatarSetup.NoAvatar;
+                importer.optimizeGameObjects = false;
+            }
         }
 
         void OnPreprocessTexture()

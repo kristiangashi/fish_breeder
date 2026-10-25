@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using FishBreeder.Core;
 using FishBreeder.Feeding;
 using FishBreeder.Genetics;
+using FishBreeder.People;
 using FishBreeder.Shop;
 using UnityEngine;
 
@@ -20,7 +21,7 @@ namespace FishBreeder.Store
     /// </summary>
     public class StoreView : MonoBehaviour
     {
-        enum Panel { None, Register, Supplier, Unlock, BuyTank, DayReport }
+        enum Panel { None, Register, Supplier, Unlock, BuyTank, DayReport, Owner }
 
         static readonly Vector3 StoreViewDirection = new Vector3(0f, 0.62f, -0.78f).normalized;
         static readonly Color StoreBackground = new Color(0.42f, 0.78f, 0.86f);
@@ -30,6 +31,13 @@ namespace FishBreeder.Store
         static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment and care" };
 #endif
         const int EggsTab = 0, FryTab = 1, DecorTab = 2, FoodTab = 3, EquipmentTab = 4, DevFryTab = 5;
+        // The fish seller sells the fish; the supplier computer everything else.
+#if UNITY_EDITOR
+        static readonly int[] FishSellerTabs = { EggsTab, FryTab, DevFryTab };
+#else
+        static readonly int[] FishSellerTabs = { EggsTab, FryTab };
+#endif
+        static readonly int[] ComputerTabs = { DecorTab, FoodTab, EquipmentTab };
         static readonly float[] Speeds = { 1f, 5f, 20f };
 
         StoreLayout store;
@@ -42,6 +50,7 @@ namespace FishBreeder.Store
         StoreLayout.Slot pendingSlot;
         StoreTank orderTarget;
         int supplierTab;
+        bool atFishSeller;
         Vector2 supplierScroll;
         float panX;
         float distance = 15f;
@@ -72,6 +81,7 @@ namespace FishBreeder.Store
             cam.transform.SetPositionAndRotation(position, rotation);
             lastDay = Economy.Day;
             shownMoney = lastMoney = Economy.Money;
+            if (!ShopOwner.Chosen) panel = Panel.Owner;
         }
 
         void Update()
@@ -80,6 +90,7 @@ namespace FishBreeder.Store
             float dt = Time.unscaledDeltaTime;
 
             HandleDevKeys();
+            FishSeller.ShopOpen = shopDay.IsOpen;
             foreach (var levelUp in Progression.LevelUps) levelUp.age += dt;
             Progression.LevelUps.RemoveAll(l => l.age > 6f);
             UpdateMoney(dt);
@@ -133,7 +144,7 @@ namespace FishBreeder.Store
                 if (hud.HasSelection) hud.ClearSelection();
                 else ExitTank();
             }
-            else if (focused == null && escape && panel != Panel.DayReport) panel = Panel.None;
+            else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused != null)
             {
                 GetTankPose(focused, hud.Focus, out targetPosition, out targetRotation);
@@ -319,6 +330,7 @@ namespace FishBreeder.Store
                 case Panel.Unlock: panelRect = Centered(width, height, 380f, 170f); DrawUnlock(); break;
                 case Panel.BuyTank: panelRect = Centered(width, height, 440f, 250f); DrawBuyTank(); break;
                 case Panel.DayReport: panelRect = Centered(width, height, 460f, 360f); DrawDayReport(); break;
+                case Panel.Owner: panelRect = Centered(width, height, 480f, 400f); DrawOwnerPick(); break;
             }
 
             HandleClick();
@@ -704,7 +716,8 @@ namespace FishBreeder.Store
                 WorldLabel(t.InnerBounds.center + Vector3.up * 0.65f, $"<b>{tank.Title}</b>\n{contents}{warning}", scale, height);
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
-            WorldLabel(store.ComputerPoint, "<b>Supplier computer</b>", scale, height);
+            WorldLabel(store.ComputerPoint, "<b>Supplier computer</b>\nfood, decorations, equipment", scale, height);
+            WorldLabel(store.FishSellerPoint, "<b>Fish seller</b>\negg and fry boxes", scale, height);
             WorldLabel(store.BackRoomLabelPoint, "<b>Back room</b>\nstaff only: breeding and quarantine", scale, height);
 
             if (!shopDay.IsOpen)
@@ -819,6 +832,11 @@ namespace FishBreeder.Store
                 GUILayout.Label(ledger[i]);
 
             GUILayout.FlexibleSpace();
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Shopkeeper:", GUILayout.Width(90f));
+            if (GUILayout.Toggle(ShopOwner.Look == OwnerLook.Woman, "Woman", GUI.skin.button) && ShopOwner.Look != OwnerLook.Woman) ShopOwner.Look = OwnerLook.Woman;
+            if (GUILayout.Toggle(ShopOwner.Look == OwnerLook.Man, "Man", GUI.skin.button) && ShopOwner.Look != OwnerLook.Man) ShopOwner.Look = OwnerLook.Man;
+            GUILayout.EndHorizontal();
             GUILayout.Label("<b>Developer</b>", Rich());
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("+$1,000 (dev)")) Economy.Earn(1000, "developer cash");
@@ -875,23 +893,69 @@ namespace FishBreeder.Store
             GUILayout.EndArea();
         }
 
+        void OpenSupplier(bool fishSeller)
+        {
+            atFishSeller = fishSeller;
+            panel = Panel.Supplier;
+            if (fishSeller && FishSeller.Instance != null) FishSeller.Instance.Greet();
+        }
+
+        /// <summary>The first time the game runs: who runs the shop. It can be changed at the register.</summary>
+        void DrawOwnerPick()
+        {
+            GUILayout.BeginArea(panelRect, UiStyles.Window);
+            GUILayout.Label("Who runs the shop?", UiTheme.Title);
+            GUILayout.Label("Pick your shopkeeper. You can change this any time at the register.", Rich());
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            OwnerCard(OwnerLook.Woman, CrewModels.OwnerWoman, "Her");
+            GUILayout.Space(24f);
+            OwnerCard(OwnerLook.Man, CrewModels.OwnerMan, "Him");
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
+            GUILayout.FlexibleSpace();
+            GUILayout.EndArea();
+        }
+
+        void OwnerCard(OwnerLook look, string modelId, string label)
+        {
+            GUILayout.BeginVertical(UiTheme.Card, GUILayout.Width(170f));
+            var rect = GUILayoutUtility.GetRect(150f, 220f, GUILayout.Width(150f), GUILayout.Height(220f));
+            GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 6f);
+            var photo = ItemPreviews.Person(modelId);
+            if (photo != null) GUI.DrawTexture(rect, photo, ScaleMode.ScaleToFit);
+            if (GUILayout.Button(label, UiTheme.Primary, GUILayout.Height(34f)))
+            {
+                ShopOwner.Look = look;
+                panel = Panel.None;
+            }
+            GUILayout.EndVertical();
+        }
+
         void DrawSupplier()
         {
             GUILayout.BeginArea(panelRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Supplier", UiTheme.Title);
+            GUILayout.Label(atFishSeller ? "Fish seller" : "Supplier computer", UiTheme.Title);
             GUILayout.FlexibleSpace();
             GUILayout.Label($"Fishkeeping {Progression.Fishkeeping}   Shopkeeping {Progression.Shopkeeping}   Balance: <b>{Economy.Format(Economy.Money)}</b>", Rich());
             GUILayout.EndHorizontal();
             if (shopDay.IsOpen)
             {
-                GUILayout.Label("The supplier only delivers while the shop is closed.");
+                GUILayout.Label(atFishSeller ? "The fish seller only sells while the shop is closed." : "The supplier only delivers while the shop is closed.");
                 if (GUILayout.Button("Close")) panel = Panel.None;
                 GUILayout.EndArea();
                 return;
             }
-            supplierTab = Mathf.Clamp(GUILayout.Toolbar(supplierTab, SupplierTabs), 0, SupplierTabs.Length - 1);
-            GUILayout.Space(4f);
+            var tabs = atFishSeller ? FishSellerTabs : ComputerTabs;
+            var tabNames = new string[tabs.Length];
+            for (int i = 0; i < tabs.Length; i++) tabNames[i] = SupplierTabs[tabs[i]];
+            int shown = Mathf.Max(0, System.Array.IndexOf(tabs, supplierTab));
+            shown = Mathf.Clamp(GUILayout.Toolbar(shown, tabNames), 0, tabs.Length - 1);
+            supplierTab = tabs[shown];
+            GUILayout.Label(atFishSeller ? "<size=11><i>Food, decorations and equipment are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall.</i></size>", Rich());
+            GUILayout.Space(2f);
 
             if (supplierTab != FoodTab) DrawDeliverTo();
 
@@ -1051,6 +1115,7 @@ namespace FishBreeder.Store
             if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower())) return;
             var eggs = EggBoxes.Roll(tier, Progression.Fishkeeping, true);
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
+            if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {tier.name.ToLower()} delivered to {orderTarget.Title}. They hatch at the next time step.");
         }
 
@@ -1060,6 +1125,7 @@ namespace FishBreeder.Store
             var tank = orderTarget.Tank;
             foreach (var genome in EggBoxes.Roll(tier, Progression.Fishkeeping, false))
                 FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
+            if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {EggBoxes.FryName(tier).ToLower()} delivered to {orderTarget.Title}. You'll see what they are when they grow.");
         }
 
@@ -1282,7 +1348,7 @@ namespace FishBreeder.Store
             if (panel != Panel.None)
             {
                 // Clicking outside a window closes it (except the day report, which needs its button).
-                if (!panelRect.Contains(e.mousePosition) && panel != Panel.DayReport) panel = Panel.None;
+                if (!panelRect.Contains(e.mousePosition) && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
                 e.Use();
                 return;
             }
@@ -1298,7 +1364,8 @@ namespace FishBreeder.Store
             {
                 case StoreClickable.Kind.Tank: EnterTank(clickable.tank); break;
                 case StoreClickable.Kind.Register: panel = Panel.Register; break;
-                case StoreClickable.Kind.Computer: panel = Panel.Supplier; break;
+                case StoreClickable.Kind.Computer: OpenSupplier(false); break;
+                case StoreClickable.Kind.FishSeller: OpenSupplier(true); break;
                 case StoreClickable.Kind.EmptySlot: pendingSlot = clickable.slot; panel = Panel.BuyTank; break;
                 case StoreClickable.Kind.LockedSection: pendingSection = clickable.section; panel = Panel.Unlock; break;
             }

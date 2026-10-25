@@ -40,6 +40,24 @@ namespace FishBreeder.Core
             });
         }
 
+        /// <summary>One of the shop's people, standing, three-quarter view. Null until the photo is ready.</summary>
+        public static Texture2D Person(string id)
+        {
+            return Photo("person:" + id, false, () =>
+            {
+                var holder = new GameObject("Person photo");
+                var rig = People.CrewModels.Spawn(id, holder.transform, 1f);
+                if (rig == null)
+                {
+                    UnityEngine.Object.Destroy(holder);
+                    return null;
+                }
+                holder.transform.rotation = Quaternion.Euler(0f, 165f, 0f);
+                rig.StandNow();
+                return holder;
+            });
+        }
+
         /// <summary>A species' model from the side. Null until the photo is ready (or if it has no model).</summary>
         public static Texture2D Fish(Genetics.Species species)
         {

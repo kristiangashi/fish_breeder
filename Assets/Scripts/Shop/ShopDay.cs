@@ -249,6 +249,7 @@ namespace FishBreeder.Shop
         /// <summary>The shopkeeper bags the fish and hands it over the counter.</summary>
         public IEnumerator HandOverBag(Customer customer, Transform customerHand)
         {
+            if (People.Shopkeeper.Instance != null) People.Shopkeeper.Instance.HandOver(customer);
             var bag = MaterialFactory.Decor(PrimitiveType.Cube, "Bag", null, layout.ShopkeeperHand, new Vector3(0.2f, 0.26f, 0.1f), new Color(0.93f, 0.9f, 0.8f));
             var water = MaterialFactory.Decor(PrimitiveType.Sphere, "Water", bag.transform, new Vector3(0f, -0.15f, 0f), new Vector3(0.9f, 0.5f, 0.9f), new Color(0.5f, 0.75f, 0.95f));
             water.transform.localPosition = new Vector3(0f, -0.2f, 0f);

@@ -8,9 +8,10 @@
   :root {
     --bg: #f4f5f7; --panel: #ffffff; --ink: #1d232b; --muted: #66707c; --line: #dde1e6;
     --accent: #1f7a8c; --accent-ink: #ffffff; --warn: #b5541c; --ok: #2e7d4f; --chip: #eef2f5;
+    --series-1: #2a78d6;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #15191e; --panel: #1d232a; --ink: #e6e9ed; --muted: #9aa4af; --line: #2e3640; --accent: #3fa7bb; --accent-ink: #0d1115; --warn: #e08a5a; --ok: #6cc690; --chip: #262e37; }
+    :root { --bg: #15191e; --panel: #1d232a; --ink: #e6e9ed; --muted: #9aa4af; --line: #2e3640; --accent: #3fa7bb; --accent-ink: #0d1115; --warn: #e08a5a; --ok: #6cc690; --chip: #262e37; --series-1: #3987e5; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
@@ -67,6 +68,31 @@
   .crumbs { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
   .foods { display: flex; flex-wrap: wrap; gap: 4px 14px; }
   td.readout { color: var(--muted); white-space: nowrap; }
+  .pin { border: none; background: none; padding: 0 2px; font-size: 13px; line-height: 1; color: var(--muted); opacity: .45; cursor: pointer; }
+  .pin:hover { opacity: 1; color: var(--accent); }
+  .pin.on { opacity: 1; color: #d4a017; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .tile-label { font-size: 12px; color: var(--muted); }
+  .tile-value { font-size: 22px; font-weight: 650; margin: 2px 0; }
+  .tile-sub { font-size: 12px; color: var(--muted); }
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+  @media (max-width: 520px) { .charts { grid-template-columns: 1fr; } }
+  .chart-wrap { position: relative; }
+  .chart-title { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+  svg.chart .axis { fill: var(--muted); font-size: 10px; }
+  svg.chart .band { fill: var(--series-1); opacity: .15; stroke: none; }
+  svg.chart .line { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  svg.chart .hair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  svg.chart .dot { fill: var(--series-1); stroke: var(--panel); stroke-width: 2; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15); white-space: nowrap; display: none; z-index: 2; }
+  .split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .split2 { grid-template-columns: 1fr; } }
+  .diary { max-height: 320px; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; }
+  .sim-tank { border-left: 3px solid var(--accent); }
+  .sim-tank h3 { font-size: 12.5px; margin: 12px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 </style>
 </head>
 <body>
@@ -231,6 +257,7 @@ const REPAIR_SUPPLIER = ["repairKitPrice", "repairKitsPerPack", "repairWearRemov
 const FOOD_NAMES = ["Flakes", "Premium pellets", "Algae wafers", "Frozen bloodworms", "Frozen brine shrimp"];
 
 const TABS = [
+  ["pinned", "Pinned"],
   ["species", "Species"],
   ["compat", "Relationships"],
   ["cross", "Cross-breeding"],
@@ -244,6 +271,7 @@ const TABS = [
   ["research", "Research"],
   ["progression", "Levels & XP"],
   ["perks", "Perks"],
+  ["sim", "Simulator"],
   ["rules", "Rules"],
   ["raw", "Raw JSON"],
 ];
@@ -412,8 +440,9 @@ function foodChecks(obj, key) {
 function field(obj, key, onChange) {
   if (key === "favoriteFoods") return foodChecks(obj, key);
   const control = input(obj, key, onChange);
-  if (control.type === "checkbox") return el("label", { class: "field check", title: help(key) }, control, nice(key));
-  return el("label", { class: "field", title: help(key) }, el("span", {}, nice(key)), control);
+  const pin = pinButton(obj, key);
+  if (control.type === "checkbox") return el("label", { class: "field check", title: help(key) }, control, nice(key), pin);
+  return el("label", { class: "field", title: help(key) }, el("span", {}, nice(key), pin), control);
 }
 
 /** Every simple field of an object as a form; lists of objects become small tables. */
@@ -732,6 +761,983 @@ function expectedLife(item) {
   return `${(steps / 2).toFixed(1)} days`;
 }
 
+// ---------------------------------------------------------------- pinned settings
+
+// Pins are kept in this browser (they're your own shortlist, not part of the balance file).
+// Each pin is a path into the balance data; list items are found by id or name, so a pin
+// survives reordering and reloading.
+const PIN_KEY = "fishBreederPinnedSettings";
+let pins = (() => { try { return JSON.parse(localStorage.getItem(PIN_KEY) || "[]"); } catch { return []; } })();
+let pathIndex = new WeakMap();
+
+function savePins() { try { localStorage.setItem(PIN_KEY, JSON.stringify(pins)); } catch {} }
+
+function itemKey(item, i) {
+  for (const f of ["id", "name", "title", "displayName"]) if (typeof item[f] === "string" && item[f]) return `@${f}=${item[f]}`;
+  if (item.body && item.fins) return `@combo=${item.body}+${item.fins}`;
+  return `#${i}`;
+}
+
+/** Remembers where every object in the balance data lives, so a field can name its own path. */
+function indexPaths() {
+  pathIndex = new WeakMap();
+  const walk = (obj, segs) => {
+    pathIndex.set(obj, segs);
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (Array.isArray(v)) v.forEach((item, i) => { if (item && typeof item === "object") walk(item, [...segs, k, itemKey(item, i)]); });
+      else if (v && typeof v === "object" && !("r" in v && "g" in v)) walk(v, [...segs, k]);
+    }
+  };
+  if (data) walk(data, []);
+}
+
+function pinPath(obj, key) {
+  const segs = pathIndex.get(obj);
+  return segs ? JSON.stringify([...segs, key]) : null;
+}
+
+function resolveItem(list, seg) {
+  if (!Array.isArray(list)) return undefined;
+  if (seg.startsWith("#")) return list[parseInt(seg.slice(1), 10)];
+  if (seg.startsWith("@combo=")) { const [b, f] = seg.slice(7).split("+"); return list.find((x) => x && x.body === b && x.fins === f); }
+  const [f, v] = seg.slice(1).split(/=(.*)/s);
+  return list.find((x) => x && x[f] === v);
+}
+
+/** The object and key a pin points at, or null if that setting no longer exists. */
+function resolvePin(path) {
+  let segs;
+  try { segs = JSON.parse(path); } catch { return null; }
+  let cur = data;
+  for (let i = 0; i < segs.length - 1 && cur; i++) {
+    const seg = segs[i];
+    cur = Array.isArray(cur) ? resolveItem(cur, seg) : cur[seg];
+  }
+  const key = segs[segs.length - 1];
+  return cur && typeof cur === "object" && key in cur ? { obj: cur, key, segs } : null;
+}
+
+function pinCrumbs(segs) {
+  let cur = data;
+  return segs.slice(0, -1).map((seg, i) => {
+    const list = cur;
+    cur = cur && cur[seg];
+    if (!seg.startsWith("@") && !seg.startsWith("#")) return i === 0 ? (TOP_NAMES[seg] || nice(seg)) : nice(seg);
+    cur = resolveItem(list, seg);
+    if (cur && (cur.displayName || cur.name || cur.title)) return cur.displayName || cur.name || cur.title;
+    return seg.startsWith("#") ? `#${parseInt(seg.slice(1), 10) + 1}` : seg.slice(1).split(/=(.*)/s)[1].replace("+", " with ");
+  }).join(" › ");
+}
+
+function pinButton(obj, key) {
+  const path = pinPath(obj, key);
+  if (!path) return null;
+  const on = pins.includes(path);
+  return el("button", {
+    class: "pin" + (on ? " on" : ""), type: "button", title: on ? "Unpin" : "Pin to Pinned settings",
+    onclick: (e) => {
+      e.preventDefault(); e.stopPropagation();
+      pins = on ? pins.filter((p) => p !== path) : [...pins, path];
+      savePins();
+      render();
+    },
+  }, on ? "★" : "☆");
+}
+
+function renderPinned() {
+  if (!pins.length) return [el("div", { class: "card" }, el("h2", {}, "Pinned settings"),
+    el("p", { class: "hint" }, "Click the ☆ next to any setting to pin it here, so the ones you tweak most are in one place. Settings that only appear in tables (like decoration prices) can be pinned from the search results. Pins are kept in this browser."))];
+  const cards = [];
+  const missing = [];
+  let last = null, grid = null;
+  for (const path of pins) {
+    const found = resolvePin(path);
+    if (!found) { missing.push(path); continue; }
+    const where = pinCrumbs(found.segs);
+    if (where !== last) {
+      grid = el("div", { class: "grid" });
+      cards.push(el("div", { class: "card" }, el("p", { class: "crumbs" }, where), grid));
+      last = where;
+    }
+    grid.append(field(found.obj, found.key));
+  }
+  const head = el("p", { class: "hint" }, `${pins.length - missing.length} pinned. Click ★ to unpin. Edits here are the same as on the tabs.`);
+  const out = [head, ...cards];
+  if (missing.length) out.push(el("div", { class: "card" },
+    el("p", { class: "hint" }, `${missing.length} pinned setting${missing.length === 1 ? " no longer exists" : "s no longer exist"} (renamed or removed).`),
+    el("button", { class: "small", onclick: () => { pins = pins.filter((p) => !missing.includes(p)); savePins(); render(); } }, "Remove them")));
+  return out;
+}
+
+// ---------------------------------------------------------------- simulator
+
+// A stand-alone copy of the game's time-step rules (Shop/TimeStep.cs, Tank.OnTimeStep,
+// Fish.OnTimeStep, FishHealth, TankMates, BreedingSystem, EggClutch), run on the numbers in
+// this console without the game. Each simulated day: your routine while the shop is closed
+// (remove dead fish, repair, treat water, medicine, wipes, feeding, selling), then the two time
+// steps (opening and closing), then the next morning (allowance). Perks, research,
+// customers and decorations' looks are left out; selling surplus fish is at their appraised value.
+const SIM_KEY = "fishBreederSimSetup";
+const SIM_STAGES = ["Fry", "Juvenile", "Adult"];
+const SIM_GROWTH = [0.05, 0.5, 1];
+const SIM_ROLES = ["For sale", "Display", "Breeder", "Quarantine"];
+const MEDICINES = ["None", "Antiviral", "Antibacterial", "Antiparasitic"];
+let simSetup = null;
+let simResult = null;
+let simRunning = false;
+
+function simDefaultTank() {
+  const first = data.species[0] ? data.species[0].id : "";
+  return {
+    role: 0, size: 0, salt: false, decorations: 4, plants: false,
+    filter: -1, heater: -1, bubbler: -1, heaterTemp: 0,
+    feedings: 1, food: 0, wipes: 2,
+    removeDead: true, treatSick: true, treatWater: true, repair: true, breeding: true, sellAbove: 0,
+    fish: [{ species: first, count: 5, stage: 2 }],
+  };
+}
+
+function simDefaults() {
+  return { days: 60, runs: 20, seed: 1, money: data.store.startingMoney, level: 1, allowance: true, payUpfront: true, tanks: [simDefaultTank()] };
+}
+
+function simSetupData() {
+  if (!simSetup) {
+    try { simSetup = JSON.parse(localStorage.getItem(SIM_KEY) || "null"); } catch { simSetup = null; }
+    if (!simSetup || !Array.isArray(simSetup.tanks)) simSetup = simDefaults();
+  }
+  return simSetup;
+}
+
+function saveSimSetup() { try { localStorage.setItem(SIM_KEY, JSON.stringify(simSetup)); } catch {} }
+
+// ---- the rules
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+const lerp = (a, b, t) => a + (b - a) * clamp01(t);
+const moveTowards = (v, target, step) => (Math.abs(target - v) <= step ? target : v + Math.sign(target - v) * step);
+const outsideBy = (v, lo, hi) => (v < lo ? lo - v : v > hi ? v - hi : 0);
+
+function simulate(setup, B, seed) {
+  const rnd = mulberry32(seed);
+  const chance = (p) => rnd() < p;
+  const range = (lo, hi) => lo + (hi - lo) * rnd();
+  const rangeInt = (lo, hiExclusive) => lo + Math.floor(rnd() * Math.max(0, hiExclusive - lo));
+  const pick = (list) => list[Math.floor(rnd() * list.length)];
+
+  const ts = B.timeStep, hb = B.health, rules = B.rules, med = B.medicine, mates = B.tankMates, sup = B.supplier, store = B.store;
+  const species = new Map(B.species.map((s) => [s.id, s]));
+  const relations = new Map();
+  for (const r of B.relationships || []) {
+    if (!relations.has(r.a)) relations.set(r.a, new Map());
+    relations.get(r.a).set(r.b, r.relation);
+  }
+  const relation = (a, b) => { const row = relations.get(a); return (row && row.get(b)) || 0; };
+  const competitive = (a, b) => relation(a, b) === 2 || relation(b, a) === 2;
+  const pairs = (B.crossBreeding && B.crossBreeding.pairs) || [];
+  const canCross = (a, b) => a !== b && pairs.some((p) => (p.a === a && p.b === b) || (p.a === b && p.b === a));
+  const foods = sup.food || [];
+  const foodInfo = (type) => foods.find((f) => f.type === type) || { type, name: ENUMS.type[type], price: 0, feedings: 1, nutrition: 0.35, contamination: 1, spoilChance: 0 };
+  const diseases = (B.diseases || []).filter((d) => d);
+  const every = ts.extraWipeEveryFishkeepingLevels;
+  const wipesPerSession = Math.max(1, ts.wipesPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
+  const wipeSkill = 1 + B.progression.wipeBonusPerFishkeepingLevel * (setup.level - 1);
+
+  const out = {
+    alive: [], money: [], sick: [], tankAlive: setup.tanks.map(() => []), tankWater: setup.tanks.map(() => []),
+    born: 0, died: 0, eaten: 0, causes: {}, fellIll: 0, cured: 0, recovered: 0, overdoses: 0, doses: 0,
+    cost: { fish: 0, tanks: 0, equipment: 0, food: 0, medicine: 0, conditioner: 0, repairs: 0 },
+    income: { sales: 0, allowance: 0 }, sold: 0, brokeDay: null, bailouts: 0, missedFeedings: 0, breakdowns: 0,
+    speciesStats: {}, start: 0, diary: [],
+  };
+  const diary = (day, text) => { if (out.diary.length < 400) out.diary.push(`Day ${day}: ${text}`); };
+  const spStat = (id) => out.speciesStats[id] || (out.speciesStats[id] = { start: 0, end: 0, born: 0, died: 0, eaten: 0, sold: 0 });
+
+  let money = setup.money;
+  let day = 0;
+  const stock = { food: {}, conditioner: 0, kits: 0 };
+  const spend = (amount, what, bucket) => {
+    if (amount <= 0) return true;
+    if (money < amount) {
+      if (out.brokeDay === null) { out.brokeDay = day; diary(day, `couldn't afford ${what} ($${amount}, had $${money})`); }
+      return false;
+    }
+    money -= amount;
+    out.cost[bucket] += amount;
+    return true;
+  };
+
+  // ---- fish
+
+  const randomGenes = () => ({ h: [rnd(), rnd()], l: [rnd(), rnd()] });
+  const childGenes = (m, f) => {
+    const allele = (a, b) => {
+      let v = chance(0.5) ? a[Math.floor(rnd() * 2)] : b[Math.floor(rnd() * 2)];
+      if (chance(rules.mutationChance)) v = clamp01(v + range(-rules.mutationStrength, rules.mutationStrength));
+      return v;
+    };
+    return { h: [allele(m.h, m.h), allele(f.h, f.h)], l: [allele(m.l, m.l), allele(f.l, f.l)] };
+  };
+  const makeFish = (sp, genes, growth, gen) => {
+    const s = species.get(sp);
+    return {
+      sp, s, genes, gen, growth, age: growth * s.daysToAdult, hunger: range(0, 0.2), male: chance(0.5),
+      hard: (genes.h[0] + genes.h[1]) / 2, len: lerp(s.minLength, s.maxLength, (genes.l[0] + genes.l[1]) / 2),
+      health: 1, disease: null, severity: 0, injury: 0, load: 0, stress: 0, damage: 0, cooldown: 0, sinceFav: 99,
+      pregnant: null, valueFactor: range(0.8, 1.25), dead: false,
+    };
+  };
+  const stage = (f) => (f.growth >= 1 ? 2 : f.growth >= 0.4 ? 1 : 0);
+  const bodyLength = (f) => (stage(f) === 0 ? 0.045 : f.len) * lerp(0.5, 1, f.growth);
+  const starving = (f) => f.hunger >= rules.starvingThreshold;
+  const infertile = (f) => f.damage > 0 && f.damage >= med.infertileAtDamage;
+  const value = (f) => {
+    const st = [0.3, 0.6, 1][stage(f)];
+    return Math.max(1, Math.round(f.s.baseValue * st * lerp(0.4, 1, f.health) * clamp01(1 - f.damage * med.damageValue)));
+  };
+
+  // ---- tanks
+
+  const tanks = setup.tanks.map((cfg, index) => {
+    const sizes = store.tankSizes || [];
+    const size = sizes[Math.min(cfg.size, sizes.length - 1)] || { capacity: 24, decorationSlots: 12 };
+    const capacity = Math.max(1, Math.round(size.capacity));
+    const eq = (list, tier) => (tier >= 0 && list && list[tier] ? { info: list[tier], wear: 0, broken: false } : null);
+    const t = {
+      cfg, index, capacity, hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
+      wq: 1, algae: 0, temp: rules.roomTemperature, ph: cfg.salt ? 8.1 : rules.startingPh, salinity: cfg.salt ? 35 : 0, pests: false,
+      filter: eq(sup.filters, cfg.filter), heater: eq(sup.heaters, cfg.heater), bubbler: eq(sup.bubblers, cfg.bubbler),
+      residents: [], corpses: 0, clutches: [], wipesLeft: wipesPerSession, decor: Math.max(0, Math.min(cfg.decorations, size.decorationSlots || 99)),
+    };
+    for (const row of cfg.fish) {
+      if (!species.has(row.species)) continue;
+      for (let i = 0; i < row.count; i++) {
+        if (t.residents.length >= t.hardCap) break;
+        t.residents.push(makeFish(row.species, randomGenes(), SIM_GROWTH[row.stage] ?? 1, 1));
+        spStat(row.species).start++;
+        out.start++;
+      }
+    }
+    if (setup.payUpfront) {
+      const free = index === setup.tanks.findIndex((c) => c.role === 0) ? 0 : 1;
+      const tankPrice = [store.forSaleTankPrice, store.displayTankPrice, store.breederTankPrice, store.quarantineTankPrice][cfg.role] || 0;
+      out.cost.tanks += tankPrice * free;
+      for (let i = 1; i <= cfg.size && i < sizes.length; i++) out.cost.tanks += sizes[i].upgradePrice || 0;
+      for (const item of [t.filter, t.heater, t.bubbler]) if (item) out.cost.equipment += item.info.price || 0;
+      out.cost.equipment += 0;
+      for (const f of t.residents) out.cost.fish += f.s.fryPrice || 0;
+    }
+    return t;
+  });
+  if (setup.payUpfront) {
+    const upfront = out.cost.tanks + out.cost.equipment + out.cost.fish;
+    money -= upfront;
+    if (money < 0) { out.brokeDay = 0; diary(0, `the starting setup ($${upfront}) costs more than the budget`); }
+  }
+
+  const alive = (t) => t.residents.length;
+  const overLimit = (t) => Math.max(0, alive(t) - t.capacity);
+  const oxygenFor = (t) => (t.bubbler && !t.bubbler.broken ? Math.max(1, Math.round(t.bubbler.info.effect)) : Math.max(1, rules.fishPerTankWithoutBubbler));
+  const oxygen = (t) => { const n = oxygenFor(t); return clamp01(1 - Math.max(0, alive(t) - n) / n); };
+  const infectionMultiplier = (t) => lerp(rules.dirtyWaterInfectionMultiplier, 1, t.wq) * (t.pests ? 1.3 : 1) * (1 + overLimit(t) * ts.overcrowdedIllnessPerFish);
+  const eggsIn = (t) => t.clutches.reduce((n, c) => n + c.genes.length, 0);
+  const hasPlants = (t) => t.cfg.plants && t.decor > 0;
+
+  const envMismatch = (s, t) => {
+    const temp = outsideBy(t.temp, s.tempMin, s.tempMax) * hb.tempPenaltyPerDegree;
+    const ph = outsideBy(t.ph, s.phMin, s.phMax) * hb.phPenaltyPerUnit;
+    const salt = outsideBy(t.salinity, s.salinityMin, s.salinityMax) * hb.saltPenaltyPerPpt;
+    return clamp01(temp + ph + salt + (1 - t.wq) * 0.5 + (1 - oxygen(t)) * 0.4);
+  };
+
+  const comfort = (f, t) => {
+    let c = 0.75, liked = 0, sameKind = 0;
+    if (f.s.likesPlants && hasPlants(t)) c += hb.plantsBonus;
+    if (f.sinceFav <= 1) c += hb.favouriteFoodComfort;
+    const grown = new Set(t.residents.filter((o) => o !== f && stage(o) === 2).map((o) => o.sp));
+    const seen = new Set();
+    const canFight = stage(f) === 2;
+    for (const o of t.residents) {
+      if (o === f) continue;
+      if (o.sp === f.sp) sameKind++;
+      if (seen.has(o.sp)) continue;
+      seen.add(o.sp);
+      const otherGrown = grown.has(o.sp);
+      if (otherGrown && relation(o.sp, f.sp) === 1) c -= mates.predatorFear;
+      if (canFight && otherGrown && competitive(f.sp, o.sp)) c -= mates.competitiveStress;
+      if (relation(f.sp, o.sp) === 3 && liked < 2) { liked++; c += mates.preferredComfort; }
+    }
+    if (f.s.schoolSize > 0 && sameKind + 1 < f.s.schoolSize) c -= hb.tooFewSchoolmates;
+    if (t.decor > hb.idealDecorMax) c -= 0.15; else if (t.decor < hb.idealDecorMin) c -= 0.1; else c += 0.1;
+    if (t.pests) c -= hb.pestsComfortLoss;
+    if (alive(t) > t.capacity * 0.75) c -= 0.15;
+    if (f.stress > 0.01) c -= f.stress;
+    return { level: clamp01(c), liked };
+  };
+
+  const report = (f, t) => {
+    const r = {};
+    r.hunger = f.hunger > 0.5 ? (f.hunger - 0.5) / 0.5 * hb.hungerWeight : 0;
+    r.illness = f.disease ? (0.25 + 0.75 * f.severity) * f.disease.lethality * hb.illnessWeight : 0;
+    const life = f.s.lifespanDays;
+    r.oldAge = f.age > life ? clamp01((f.age - life) / Math.max(1, life * 0.5)) * hb.oldAgeWeight : 0;
+    r.deadTankmates = t.corpses * hb.perDeadTankmate;
+    r.overcrowding = Math.min(hb.overcrowdedMaxPenalty, overLimit(t) * hb.overcrowdedHealthPerFish);
+    const cf = comfort(f, t);
+    r.comfort = (1 - cf.level) * hb.comfortWeight;
+    r.companionship = cf.liked * mates.preferredHealth;
+    r.environment = envMismatch(f.s, t) * hb.environmentWeight;
+    r.injury = f.injury * mates.injuryWeight;
+    r.medicineDamage = f.damage * med.damageHealth;
+    r.total = clamp01(1 - r.hunger - r.illness - r.comfort - r.environment - r.oldAge - r.deadTankmates - r.injury - r.medicineDamage - r.overcrowding + r.companionship);
+    return r;
+  };
+
+  const worstCause = (r, f) => {
+    let worst = r.hunger, cause = "starvation";
+    const check = (v, name) => { if (v > worst) { worst = v; cause = name; } };
+    check(r.illness, f.disease ? f.disease.displayName : "illness");
+    check(r.environment, "poor water");
+    check(r.comfort, "stress");
+    check(r.oldAge, "old age");
+    check(r.injury, "wounds");
+    check(r.medicineDamage, "medicine poisoning");
+    check(r.overcrowding, "an overcrowded tank");
+    if (r.deadTankmates > worst) cause = "rot from dead tank mates";
+    return cause;
+  };
+
+  const pickDisease = () => {
+    const total = diseases.reduce((n, d) => n + Math.max(0, d.weight), 0);
+    let roll = rnd() * total;
+    for (const d of diseases) { roll -= Math.max(0, d.weight); if (roll <= 0) return d; }
+    return diseases[diseases.length - 1] || null;
+  };
+  const infect = (f, d) => {
+    if (!d || f.disease) return false;
+    f.disease = d; f.severity = 0.1;
+    out.fellIll++;
+    return true;
+  };
+
+  const killFish = (t, f, cause, corpse) => {
+    f.dead = true;
+    f.pregnant = null;
+    t.residents.splice(t.residents.indexOf(f), 1);
+    if (corpse) t.corpses++;
+    out.causes[cause] = (out.causes[cause] || 0) + 1;
+    if (cause === "eaten by a tank mate") { out.eaten++; spStat(f.sp).eaten++; } else { out.died++; spStat(f.sp).died++; }
+  };
+
+  const addFry = (t, sp, genes, gen) => {
+    if (alive(t) >= t.hardCap || !species.has(sp)) return false;
+    t.residents.push(makeFish(sp, genes, 0.05, gen));
+    out.born++;
+    spStat(sp).born++;
+    return true;
+  };
+
+  const whyNotReady = (f, t) => stage(f) !== 2 || f.pregnant || f.disease || infertile(f) || starving(f) || f.cooldown > 0 || envMismatch(f.s, t) > ts.maxStressToBreed;
+
+  const conceive = (t, a, b) => {
+    const mother = a.male ? b : a, father = mother === a ? b : a;
+    const s = mother.s;
+    const count = Math.min(rangeInt(s.litterMin, s.litterMax + 1), t.hardCap - alive(t) - eggsIn(t));
+    if (count <= 0) return 0;
+    const gen = Math.max(a.gen, b.gen) + 1;
+    const genes = [];
+    for (let i = 0; i < count; i++) genes.push(childGenes(mother.genes, father.genes));
+    father.cooldown = rules.breedingCooldownSteps;
+    if (s.reproduction === 1) mother.pregnant = { genes, gen, steps: Math.max(1, s.gestationSteps), sp: mother.sp };
+    else {
+      mother.cooldown = rules.breedingCooldownSteps;
+      t.clutches.push({ genes, gen, steps: Math.max(1, s.eggHatchSteps), sp: mother.sp });
+    }
+    return count;
+  };
+
+  const shuffle = (list) => { for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; } return list; };
+
+  const chanceBreeding = (t, p) => {
+    const groups = new Map();
+    for (const f of t.residents) {
+      if (whyNotReady(f, t)) continue;
+      if (!groups.has(f.sp)) groups.set(f.sp, { females: [], males: [] });
+      groups.get(f.sp)[f.male ? "males" : "females"].push(f);
+    }
+    const singleF = [], singleM = [];
+    for (const g of groups.values()) {
+      shuffle(g.females); shuffle(g.males);
+      const n = Math.min(g.females.length, g.males.length);
+      for (let i = 0; i < n; i++) if (chance(p)) conceive(t, g.females[i], g.males[i]);
+      singleF.push(...g.females.slice(n)); singleM.push(...g.males.slice(n));
+    }
+    const crossP = clamp01(p * clamp01((B.crossBreeding && B.crossBreeding.crossChanceMultiplier) ?? 0.5));
+    shuffle(singleF); shuffle(singleM);
+    for (const female of singleF) {
+      const i = singleM.findIndex((m) => canCross(female.sp, m.sp));
+      if (i < 0) continue;
+      const male = singleM.splice(i, 1)[0];
+      if (chance(crossP)) conceive(t, female, male);
+    }
+  };
+
+  const receiveMedicine = (f, cure) => {
+    if (f.disease && cure !== 0 && cure === f.disease.cure) {
+      f.disease = null; f.severity = 0;
+      out.cured++;
+      f.load += med.loadPerNeededDose;
+    } else {
+      f.stress = clamp01(f.stress + med.stressPerDose);
+      f.load += med.loadPerDose;
+    }
+    if (f.load >= med.overdoseLoad && f.damage < med.maxDamage) {
+      f.damage++;
+      f.load = med.overdoseLoad * 0.5;
+      out.overdoses++;
+    }
+  };
+
+  const suggestedTemp = (t) => {
+    if (!t.residents.length) return 25;
+    let lo = -Infinity, hi = Infinity, mid = 0;
+    for (const f of t.residents) { lo = Math.max(lo, f.s.tempMin); hi = Math.min(hi, f.s.tempMax); mid += (f.s.tempMin + f.s.tempMax) / 2; }
+    return Math.round(lo <= hi ? (lo + hi) / 2 : mid / t.residents.length);
+  };
+  for (const t of tanks) {
+    t.heaterSetting = t.cfg.heaterTemp > 0 ? t.cfg.heaterTemp : suggestedTemp(t);
+    if (t.heater) t.temp = t.heaterSetting;
+  }
+
+  // ---- your routine while the shop is closed
+
+  const feed = (t) => {
+    const type = t.cfg.food;
+    const info = foodInfo(type);
+    if (!(stock.food[type] > 0)) {
+      if (!spend(info.price, `${info.name || "food"}`, "food")) { out.missedFeedings++; return; }
+      stock.food[type] = (stock.food[type] || 0) + Math.max(1, info.feedings);
+    }
+    stock.food[type]--;
+    let pellets = Math.max(8, alive(t) + 2);
+    const mult = infectionMultiplier(t);
+    let hungry = shuffle(t.residents.filter((f) => f.hunger > 0.25));
+    while (pellets > 0 && hungry.length) {
+      for (const f of hungry) {
+        if (pellets <= 0) break;
+        if (f.hunger <= 0.25) continue;
+        pellets--;
+        const wasStarving = starving(f);
+        let nutrition = info.nutrition;
+        if ((f.s.favoriteFoods || []).includes(type)) { nutrition *= hb.favouriteFoodNutrition; f.sinceFav = 0; }
+        f.hunger = Math.max(0, f.hunger - nutrition);
+        if (!f.disease) {
+          const spoiled = chance(info.spoilChance);
+          let p = rules.baseInfectionChancePerMeal * info.contamination * (spoiled ? 4 : 1) * mult;
+          if (wasStarving) p *= rules.starvingInfectionMultiplier;
+          p *= 1 - f.hard * rules.hardinessProtection;
+          if (chance(clamp01(p))) infect(f, pickDisease());
+        }
+      }
+      hungry = hungry.filter((f) => f.hunger > 0.25);
+    }
+    t.wq = clamp01(t.wq - pellets * rules.waterQualityLossPerRottenPellet);
+  };
+
+  const routine = (t) => {
+    const cfg = t.cfg;
+    if (cfg.removeDead) t.corpses = 0;
+    if (cfg.repair) for (const item of [t.filter, t.heater, t.bubbler]) {
+      if (!item || !item.broken) continue;
+      if (stock.kits <= 0) {
+        if (!spend(sup.repairKitPrice, "repair kits", "repairs")) continue;
+        stock.kits += Math.max(1, sup.repairKitsPerPack);
+      }
+      stock.kits--;
+      item.broken = false;
+      item.wear *= 1 - clamp01(sup.repairWearRemoved);
+      if (item === t.heater) t.temp = t.heaterSetting;
+    }
+    if (cfg.treatWater && (t.pests || t.residents.some((f) => t.ph < f.s.phMin || t.ph > f.s.phMax))) {
+      let ok = stock.conditioner > 0;
+      if (!ok && spend(sup.waterConditionerPrice, "water conditioner", "conditioner")) { stock.conditioner += Math.max(1, sup.waterConditionerDoses); ok = true; }
+      if (ok) {
+        stock.conditioner--;
+        t.ph = cfg.salt ? 8.1 : 7.0;
+        t.pests = false;
+        t.wq = clamp01(t.wq + 0.1);
+      }
+    }
+    if (cfg.treatSick) {
+      const cures = [...new Set(t.residents.filter((f) => f.disease && f.disease.cure).map((f) => f.disease.cure))];
+      for (const cure of cures) {
+        if (!spend(sup.medicinePrice, `${MEDICINES[cure].toLowerCase()} medicine`, "medicine")) break;
+        out.doses++;
+        for (const f of [...t.residents]) receiveMedicine(f, cure);
+      }
+    }
+    for (let i = 0; i < cfg.wipes && t.wipesLeft > 0; i++) {
+      t.wipesLeft--;
+      t.algae = clamp01(t.algae - ts.wipeAlgaeRemoved * wipeSkill);
+      t.wq = clamp01(t.wq + ts.wipeQualityRestored * wipeSkill);
+    }
+    for (let i = 0; i < cfg.feedings; i++) feed(t);
+    if (cfg.heaterTemp <= 0) {
+      t.heaterSetting = suggestedTemp(t);
+      if (t.heater && !t.heater.broken) t.temp = t.heaterSetting;
+    }
+    if (cfg.sellAbove > 0 && alive(t) > cfg.sellAbove) {
+      const forSale = t.residents.filter((f) => stage(f) > 0 && !f.pregnant).sort((a, b) => b.age - a.age);
+      while (alive(t) > cfg.sellAbove && forSale.length) {
+        const f = forSale.shift();
+        const price = value(f);
+        money += price;
+        out.income.sales += price;
+        out.sold++;
+        spStat(f.sp).sold++;
+        t.residents.splice(t.residents.indexOf(f), 1);
+      }
+    }
+  };
+
+  // ---- one time step (the shop opening or closing)
+
+  const timeStep = () => {
+    for (const t of tanks) {
+      for (const c of [...t.clutches]) {
+        const loss = ts.eggLossInFilthyWater * clamp01((0.5 - t.wq) * 2);
+        if (loss > 0) c.genes = c.genes.filter(() => !chance(loss));
+        if (!c.genes.length) { t.clutches.splice(t.clutches.indexOf(c), 1); continue; }
+        if (--c.steps <= 0) {
+          t.clutches.splice(t.clutches.indexOf(c), 1);
+          for (const g of c.genes) if (!addFry(t, c.sp, g, c.gen)) break;
+        }
+      }
+    }
+    for (const t of tanks) for (const f of [...t.residents]) {
+      if (!f.pregnant || --f.pregnant.steps > 0) continue;
+      const p = f.pregnant;
+      f.pregnant = null;
+      for (const g of p.genes) if (!addFry(t, p.sp, g, p.gen)) break;
+      f.cooldown = rules.breedingCooldownSteps;
+    }
+
+    for (const t of tanks) {
+      const waste = t.filter && !t.filter.broken ? t.filter.info.effect : 1;
+      t.wq = clamp01(t.wq - ts.waterQualityLossPerStep * waste - alive(t) * ts.wasteQualityLossPerFish * waste
+        - t.corpses * ts.corpseQualityLoss - overLimit(t) * ts.overcrowdedWastePerFish);
+      const growth = ts.algaePerStep + t.decor * ts.algaePerDecoration;
+      const grazers = t.residents.filter((f) => f.s.eatsAlgae).length;
+      t.algae = clamp01(t.algae + growth * (1.5 - t.wq) - grazers * ts.algaeEatenPerGrazer);
+      t.ph = moveTowards(t.ph, (t.salinity > 15 ? 8.1 : 7) - 1.2, ts.phDriftPerStep * (1 - t.wq) * 2);
+      if (!t.pests && t.wq < 0.5 && chance(ts.pestChance * (1.5 - t.wq))) t.pests = true;
+      for (const item of [t.filter, t.heater, t.bubbler]) {
+        if (!item || item.broken) continue;
+        item.wear += 1;
+        const info = item.info;
+        if (chance(clamp01(Math.min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * item.wear)))) { item.broken = true; out.breakdowns++; }
+      }
+      if (t.heater && !t.heater.broken) t.temp = Math.round((t.heaterSetting + range(-t.heater.info.effect, t.heater.info.effect)) * 10) / 10;
+      else t.temp = rules.roomTemperature;
+      t.wipesLeft = wipesPerSession;
+    }
+
+    for (const t of tanks) for (const f of t.residents) {
+      f.age += 0.5;
+      f.hunger = clamp01(f.hunger + 0.5 / Math.max(0.5, f.s.hungerToleranceDays) * rules.starvingThreshold);
+      if (f.growth < 1 && !starving(f)) f.growth = Math.min(1, f.growth + 0.5 / Math.max(0.5, f.s.daysToAdult));
+      if (f.cooldown > 0) f.cooldown--;
+      if (f.sinceFav < 99) f.sinceFav++;
+    }
+
+    const newly = new Set();
+    for (const t of tanks) {
+      const mult = infectionMultiplier(t);
+      for (const f of t.residents) {
+        f.injury = Math.max(0, f.injury - mates.injuryHealPerStep);
+        f.load = Math.max(0, f.load - med.loadClearedPerStep);
+        f.stress = Math.max(0, f.stress - med.stressRecoveryPerStep);
+        if (f.disease) {
+          const d = f.disease;
+          f.severity = clamp01(f.severity + d.progressionPerStep * (1 - 0.5 * f.hard));
+          if (chance(d.recoveryChancePerStep * (0.5 + f.hard))) { f.disease = null; f.severity = 0; out.recovered++; continue; }
+          if (d.contagionChancePerStep > 0)
+            for (const o of t.residents)
+              if (o !== f && !o.disease && !newly.has(o) && chance(d.contagionChancePerStep * (1 - o.hard * rules.hardinessProtection)) && infect(o, d)) newly.add(o);
+          continue;
+        }
+        if (newly.has(f)) continue;
+        const p = ts.diseaseChance * (1 + (1 - f.health)) * (1 - f.hard * rules.hardinessProtection) * mult;
+        if (chance(p)) infect(f, pickDisease());
+      }
+    }
+
+    for (const t of tanks) {
+      if (!t.cfg.breeding) continue;
+      chanceBreeding(t, t.cfg.role === 2 ? ts.pregnancyChanceBreederTank : ts.pregnancyChanceOtherTank);
+    }
+
+    for (const t of tanks) {
+      const reports = new Map();
+      for (const f of t.residents) {
+        f.health = moveTowards(f.health, report(f, t).total, hb.healthChangePerStep);
+        reports.set(f, report(f, t));
+      }
+      for (const f of [...t.residents]) {
+        if (f.health >= ts.deathHealthThreshold) continue;
+        const danger = (ts.deathHealthThreshold - f.health) / Math.max(0.01, ts.deathHealthThreshold);
+        if (chance(ts.deathChanceAtZeroHealth * Math.pow(danger, 1.5))) killFish(t, f, worstCause(reports.get(f), f), true);
+      }
+    }
+
+    for (const t of tanks) {
+      for (const hunter of [...t.residents]) {
+        if (hunter.dead || stage(hunter) !== 2) continue;
+        const prey = t.residents.filter((o) => o !== hunter && relation(hunter.sp, o.sp) === 1);
+        if (!prey.length) continue;
+        const target = pick(prey);
+        if (bodyLength(target) <= bodyLength(hunter) * mates.preyMaxSizeRatio && chance(mates.eatChance)) killFish(t, target, "eaten by a tank mate", false);
+        else if (chance(mates.biteChance)) target.injury = clamp01(target.injury + mates.biteInjury);
+      }
+      if (alive(t) <= t.capacity * mates.crowdedAbove) continue;
+      for (const victim of [...t.residents]) {
+        if (stage(victim) !== 2) continue;
+        const nippers = t.residents.filter((o) => o !== victim && stage(o) === 2 && competitive(victim.sp, o.sp));
+        if (nippers.length && chance(mates.nipChance)) victim.injury = clamp01(victim.injury + mates.nipInjury);
+      }
+    }
+  };
+
+  // ---- the days
+
+  const record = () => {
+    let total = 0, sick = 0;
+    tanks.forEach((t, i) => {
+      total += alive(t);
+      sick += t.residents.filter((f) => f.disease).length;
+      out.tankAlive[i].push(alive(t));
+      out.tankWater[i].push(t.wq);
+    });
+    out.alive.push(total);
+    out.money.push(money);
+    out.sick.push(sick);
+  };
+  record();
+  for (day = 1; day <= setup.days; day++) {
+    const before = { died: out.died, eaten: out.eaten, born: out.born, ill: out.fellIll, cured: out.cured };
+    for (const t of tanks) routine(t);
+    timeStep();
+    timeStep();
+    const allowance = store.dailyAllowance;
+    if (money < allowance) {
+      if (setup.allowance) { out.income.allowance += allowance - money; money = allowance; out.bailouts++; }
+    }
+    record();
+    const notes = [];
+    if (out.born > before.born) notes.push(`${out.born - before.born} born`);
+    if (out.fellIll > before.ill) notes.push(`${out.fellIll - before.ill} fell ill`);
+    if (out.cured > before.cured) notes.push(`${out.cured - before.cured} cured`);
+    if (out.died > before.died) notes.push(`${out.died - before.died} died`);
+    if (out.eaten > before.eaten) notes.push(`${out.eaten - before.eaten} eaten`);
+    if (notes.length) diary(day, `${notes.join(", ")}. ${out.alive[out.alive.length - 1]} alive, $${money}.`);
+  }
+  for (const t of tanks) for (const f of t.residents) spStat(f.sp).end++;
+  out.endMoney = money;
+  out.endWater = tanks.map((t) => t.wq);
+  return out;
+}
+
+/** Runs the setup many times with different luck and sums it all up. */
+/** Runs the setup many times and averages them; yields to the page now and then so it can show progress. */
+async function runSimulation(setup, onProgress) {
+  const runs = [];
+  const n = Math.max(1, Math.min(500, Math.round(setup.runs)));
+  let pause = performance.now();
+  for (let i = 0; i < n; i++) {
+    runs.push(simulate(setup, data, (Math.round(setup.seed) || 1) * 1000 + i));
+    if (performance.now() - pause > 100) {
+      if (onProgress) onProgress(i + 1, n);
+      await new Promise((done) => setTimeout(done, 0));
+      pause = performance.now();
+    }
+  }
+  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
+  const series = (get) => {
+    const len = get(runs[0]).length;
+    const m = [], lo = [], hi = [];
+    for (let d = 0; d < len; d++) {
+      const vals = runs.map((r) => get(r)[d]);
+      m.push(vals.reduce((a, b) => a + b, 0) / vals.length);
+      lo.push(Math.min(...vals));
+      hi.push(Math.max(...vals));
+    }
+    return { mean: m, lo, hi };
+  };
+  const causes = {};
+  for (const r of runs) for (const [k, v] of Object.entries(r.causes)) causes[k] = (causes[k] || 0) + v / runs.length;
+  const speciesIds = [...new Set(runs.flatMap((r) => Object.keys(r.speciesStats)))];
+  const perSpecies = speciesIds.map((id) => {
+    const avg = (k) => mean((r) => (r.speciesStats[id] ? r.speciesStats[id][k] : 0));
+    return { id, start: avg("start"), end: avg("end"), born: avg("born"), died: avg("died"), eaten: avg("eaten"), sold: avg("sold") };
+  });
+  const ends = runs.map((r) => r.alive[r.alive.length - 1]);
+  const broke = runs.filter((r) => r.brokeDay !== null);
+  return {
+    setup: JSON.parse(JSON.stringify(setup)), runs: runs.length, start: runs[0].start,
+    endAlive: { mean: mean((r) => r.alive[r.alive.length - 1]), lo: Math.min(...ends), hi: Math.max(...ends) },
+    born: mean((r) => r.born), died: mean((r) => r.died), eaten: mean((r) => r.eaten), sold: mean((r) => r.sold),
+    fellIll: mean((r) => r.fellIll), cured: mean((r) => r.cured), recovered: mean((r) => r.recovered), overdoses: mean((r) => r.overdoses),
+    doses: mean((r) => r.doses), breakdowns: mean((r) => r.breakdowns), missedFeedings: mean((r) => r.missedFeedings),
+    cost: Object.fromEntries(Object.keys(runs[0].cost).map((k) => [k, mean((r) => r.cost[k])])),
+    income: Object.fromEntries(Object.keys(runs[0].income).map((k) => [k, mean((r) => r.income[k])])),
+    endMoney: mean((r) => r.endMoney), bailouts: mean((r) => r.bailouts),
+    brokeShare: broke.length / runs.length, brokeDay: broke.length ? broke.reduce((s, r) => s + r.brokeDay, 0) / broke.length : null,
+    causes, perSpecies,
+    alive: series((r) => r.alive), money: series((r) => r.money), sick: series((r) => r.sick),
+    tankAlive: setup.tanks.map((_, i) => series((r) => r.tankAlive[i])),
+    tankWater: setup.tanks.map((_, i) => series((r) => r.tankWater[i])),
+    diary: runs[0].diary,
+  };
+}
+
+// ---- the tab
+
+function simInput(obj, key, opts = {}) {
+  const changed = (v) => { obj[key] = v; saveSimSetup(); if (opts.rerender) render(); };
+  let control;
+  if (opts.options) {
+    control = el("select", { onchange: (e) => changed(opts.numeric === false ? e.target.value : parseInt(e.target.value, 10)) },
+      opts.options.map(([v, label]) => el("option", { value: v }, label)));
+    control.value = obj[key];
+  } else if (typeof obj[key] === "boolean") {
+    control = el("input", { type: "checkbox", onchange: (e) => changed(e.target.checked) });
+    control.checked = obj[key];
+    return el("label", { class: "field check", title: opts.help || "" }, control, opts.label);
+  } else {
+    control = el("input", { type: "number", step: opts.step || "1", min: opts.min ?? 0, value: obj[key], oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) changed(n); } });
+  }
+  return el("label", { class: "field", title: opts.help || "" }, el("span", {}, opts.label), control);
+}
+
+const tierOptions = (list) => [[-1, "None"], ...(list || []).map((t, i) => [i, `${t.name} ($${t.price})`])];
+
+function simTankCard(cfg, index, setup) {
+  const sp = data.species;
+  const fishRows = cfg.fish.map((row, i) => el("tr", {},
+    el("td", {}, simInput(row, "species", { label: "", options: sp.map((s) => [s.id, s.displayName]), numeric: false })),
+    el("td", {}, simInput(row, "count", { label: "", min: 0 })),
+    el("td", {}, simInput(row, "stage", { label: "", options: SIM_STAGES.map((s, j) => [j, s]) })),
+    el("td", { class: "readout" }, (() => { const s = sp.find((x) => x.id === row.species); return s ? `${s.tempMin}-${s.tempMax} C, pH ${s.phMin}-${s.phMax}${s.schoolSize > 0 ? `, school ${s.schoolSize}+` : ""}` : ""; })()),
+    el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { cfg.fish.splice(i, 1); saveSimSetup(); render(); } }, "×"))));
+  const every = data.timeStep.extraWipeEveryFishkeepingLevels;
+  const wipeLimit = Math.max(1, data.timeStep.wipesPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
+  return el("div", { class: "card sim-tank" },
+    el("div", { class: "row" },
+      el("h2", { style: "margin:0;flex:1" }, `Tank ${index + 1}: ${SIM_ROLES[cfg.role]}`),
+      el("button", { class: "small", onclick: () => { setup.tanks.splice(index + 1, 0, JSON.parse(JSON.stringify(cfg))); saveSimSetup(); render(); } }, "Duplicate"),
+      setup.tanks.length > 1 ? el("button", { class: "small", onclick: () => { setup.tanks.splice(index, 1); saveSimSetup(); render(); } }, "Remove") : null),
+    el("h3", {}, "Tank"),
+    el("div", { class: "grid" },
+      simInput(cfg, "role", { label: "Kind", options: SIM_ROLES.map((r, i) => [i, r]), rerender: true, help: "Breeder tanks use the breeder pregnancy chance; the rest use the other-tank chance." }),
+      simInput(cfg, "size", { label: "Size", options: (data.store.tankSizes || []).map((s, i) => [i, `${s.name} (${s.capacity} fish)`]) }),
+      simInput(cfg, "salt", { label: "Salt water" }),
+      simInput(cfg, "decorations", { label: "Decorations", help: `Fish like ${data.health.idealDecorMin}-${data.health.idealDecorMax}. Each one also adds algae.` }),
+      simInput(cfg, "plants", { label: "Some decorations are plants", help: "Fish that like plants get a comfort bonus." })),
+    el("h3", {}, "Equipment"),
+    el("div", { class: "grid" },
+      simInput(cfg, "filter", { label: "Filter", options: tierOptions(data.supplier.filters) }),
+      simInput(cfg, "heater", { label: "Heater", options: tierOptions(data.supplier.heaters) }),
+      simInput(cfg, "heaterTemp", { label: "Heater setting (C, 0 = best for the fish)", help: "0 sets it every day to the middle of the range the fish share." }),
+      simInput(cfg, "bubbler", { label: "Bubbler", options: tierOptions(data.supplier.bubblers), help: `Without one, a tank has air for ${data.rules.fishPerTankWithoutBubbler} fish.` })),
+    el("h3", {}, "Your routine each day (while the shop is closed)"),
+    el("div", { class: "grid" },
+      simInput(cfg, "feedings", { label: "Feedings per day" }),
+      simInput(cfg, "food", { label: "Food", options: (data.supplier.food || []).map((f) => [f.type, `${f.name} ($${f.price} for ${f.feedings})`]) }),
+      simInput(cfg, "wipes", { label: `Wipes per day (the game allows ${wipeLimit})`, help: "Capped at the game's limit for your Fishkeeping level." }),
+      simInput(cfg, "sellAbove", { label: "Sell grown fish above (0 = never)", help: "Sells the oldest juveniles and adults at their appraised value until the tank is down to this many." }),
+      simInput(cfg, "removeDead", { label: "Remove dead fish" }),
+      simInput(cfg, "treatSick", { label: "Dose sick fish with the right medicine" }),
+      simInput(cfg, "treatWater", { label: "Treat the water for pests or bad pH" }),
+      simInput(cfg, "repair", { label: "Repair broken equipment" }),
+      simInput(cfg, "breeding", { label: "Let fish breed", help: "Off stops all breeding in this tank (the game can't do that; it's for testing)." })),
+    el("h3", {}, "Fish"),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "How many"), el("th", {}, "Start as"), el("th", {}, "Needs"), el("th"))),
+      el("tbody", {}, fishRows))),
+    el("button", { class: "small", style: "margin-top:6px", onclick: () => { cfg.fish.push({ species: sp[0] ? sp[0].id : "", count: 1, stage: 2 }); saveSimSetup(); render(); } }, "+ Add fish"));
+}
+
+function renderSim() {
+  const setup = simSetupData();
+  const cards = [];
+  cards.push(el("div", { class: "card" },
+    el("h2", {}, "Balance simulator"),
+    el("p", { class: "hint" }, "Plays out days of tank keeping with the numbers in this console (unsaved edits included), without the game. Each day: your routine while the shop is closed, then the opening and closing time steps. It runs the whole thing many times with different luck and averages the results. Perks, research, customers and milestones are left out; selling uses appraised values."),
+    el("div", { class: "grid" },
+      simInput(setup, "days", { label: "Days to simulate", min: 1 }),
+      simInput(setup, "runs", { label: "Runs to average", min: 1, help: "More runs smooth out luck (up to 500)." }),
+      simInput(setup, "money", { label: "Starting money ($)" }),
+      simInput(setup, "level", { label: "Fishkeeping level", min: 1, rerender: true, help: "More wipes per day and stronger wipes at higher levels." }),
+      simInput(setup, "seed", { label: "Luck seed", help: "The same seed gives the same results; change it to see other luck." }),
+      simInput(setup, "payUpfront", { label: "Pay for the starting fish, tanks and equipment", help: "Fish cost their fry price. The first For sale tank is free, like in the game." }),
+      simInput(setup, "allowance", { label: "Daily allowance bails you out", help: `The game tops you up to $${data.store.dailyAllowance} every morning. Untick to see when you'd really go broke.` })),
+    el("div", { class: "row", style: "margin-top:12px;margin-bottom:0" },
+      el("button", { class: "primary", onclick: () => {
+        if (simRunning) return;
+        simRunning = true; render();
+        setTimeout(async () => {
+          const button = document.getElementById("sim-run");
+          try { simResult = await runSimulation(simSetupData(), (done, all) => { if (button) button.textContent = `Running… ${done}/${all}`; }); }
+          catch (e) { toast("The simulation hit an error: " + e.message); console.error(e); }
+          simRunning = false; render();
+          const res = document.getElementById("sim-results");
+          if (res) res.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 20);
+      }, id: "sim-run" }, simRunning ? "Running…" : "Run"),
+      el("button", { onclick: () => { setup.tanks.push(simDefaultTank()); saveSimSetup(); render(); } }, "+ Add tank"),
+      el("button", { onclick: () => { if (confirm("Reset the simulator setup?")) { simSetup = simDefaults(); saveSimSetup(); simResult = null; render(); } } }, "Reset setup"))));
+  setup.tanks.forEach((cfg, i) => cards.push(simTankCard(cfg, i, setup)));
+  if (simResult) cards.push(...renderSimResults(simResult));
+  return cards;
+}
+
+const fmt1 = (v) => (Math.abs(v - Math.round(v)) < 0.05 ? `${Math.round(v)}` : v.toFixed(1));
+const money$ = (v) => `${v < 0 ? "-" : ""}$${Math.round(Math.abs(v)).toLocaleString()}`;
+
+function tile(label, value, sub) {
+  return el("div", { class: "tile" }, el("div", { class: "tile-label" }, label), el("div", { class: "tile-value" }, value), sub ? el("div", { class: "tile-sub" }, sub) : null);
+}
+
+function renderSimResults(r) {
+  const s = r.setup;
+  const spend = Object.values(r.cost).reduce((a, b) => a + b, 0);
+  const tiles = el("div", { class: "tiles" },
+    tile("Fish alive at the end", fmt1(r.endAlive.mean), `started with ${r.start}; ${r.endAlive.lo} to ${r.endAlive.hi} across runs`),
+    tile("Born", fmt1(r.born), r.sold ? `${fmt1(r.sold)} sold` : null),
+    tile("Died", fmt1(r.died), r.eaten ? `plus ${fmt1(r.eaten)} eaten by tank mates` : null),
+    tile("Fell ill", fmt1(r.fellIll), `${fmt1(r.cured)} cured with medicine, ${fmt1(r.recovered)} got better alone`),
+    tile("Medicine", money$(r.cost.medicine), `${fmt1(r.doses)} doses${r.overdoses ? `, ${fmt1(r.overdoses)} overdoses` : ""}`),
+    tile("Money at the end", money$(r.endMoney), `from ${money$(s.money)}`),
+    tile("Went broke", r.brokeShare ? `${Math.round(r.brokeShare * 100)}% of runs` : "Never",
+      r.brokeShare ? `first couldn't pay around day ${fmt1(r.brokeDay)}${s.allowance ? `; bailed out ${fmt1(r.bailouts)} days` : ""}` : (s.allowance && r.bailouts ? `bailed out ${fmt1(r.bailouts)} days` : null)));
+
+  const causeRows = Object.entries(r.causes).sort((a, b) => b[1] - a[1]).map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, fmt1(v))));
+  const money = [
+    ["Starting fish", r.cost.fish], ["Tanks and upgrades", r.cost.tanks], ["Equipment", r.cost.equipment], ["Food", r.cost.food],
+    ["Medicine", r.cost.medicine], ["Water conditioner", r.cost.conditioner], ["Repair kits", r.cost.repairs],
+  ].filter(([, v]) => v > 0);
+  const moneyRows = [
+    ...money.map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, `-${money$(v)}`))),
+    r.income.sales ? el("tr", {}, el("td", {}, "Fish sold"), el("td", {}, `+${money$(r.income.sales)}`)) : null,
+    r.income.allowance ? el("tr", {}, el("td", {}, "Daily allowance"), el("td", {}, `+${money$(r.income.allowance)}`)) : null,
+    el("tr", {}, el("th", {}, "Spent in all"), el("th", {}, money$(spend))),
+  ];
+  const nameOf = (id) => (data.species.find((x) => x.id === id) || { displayName: id }).displayName;
+  const speciesRows = r.perSpecies.map((p) => el("tr", {},
+    el("td", {}, nameOf(p.id)), el("td", {}, fmt1(p.start)), el("td", {}, fmt1(p.born)), el("td", {}, fmt1(p.died)),
+    el("td", {}, fmt1(p.eaten)), el("td", {}, fmt1(p.sold)), el("td", {}, el("b", {}, fmt1(p.end)))));
+  const notes = [];
+  if (r.missedFeedings) notes.push(`${fmt1(r.missedFeedings)} feedings were skipped for lack of money.`);
+  if (r.breakdowns) notes.push(`Equipment broke down ${fmt1(r.breakdowns)} times.`);
+
+  const days = r.alive.mean.length;
+  const charts = el("div", { class: "charts" },
+    lineChart("Fish alive", r.alive, (v) => fmt1(v), days),
+    lineChart("Money", r.money, money$, days),
+    lineChart("Sick fish", r.sick, (v) => fmt1(v), days));
+  const tankCharts = s.tanks.length > 1 ? el("div", { class: "charts" }, s.tanks.map((t, i) => lineChart(`Tank ${i + 1} (${SIM_ROLES[t.role]}): fish alive`, r.tankAlive[i], (v) => fmt1(v), days))) : null;
+  const waterCharts = el("div", { class: "charts" }, s.tanks.map((t, i) => lineChart(`Tank ${i + 1} water quality`, r.tankWater[i], (v) => `${Math.round(v * 100)}%`, days, 1)));
+
+  return [
+    el("div", { class: "card", id: "sim-results" },
+      el("h2", {}, `Results: ${s.days} days, averaged over ${r.runs} runs`),
+      tiles,
+      el("p", { class: "hint", style: "margin-top:10px" }, "Lines are the average across runs; the shaded band is the best and worst run. Hover a chart for the numbers."),
+      charts, tankCharts, waterCharts,
+      notes.length ? el("p", { class: "hint" }, notes.join(" ")) : null),
+    el("div", { class: "split2" },
+      el("div", { class: "card" }, el("h2", {}, "Fish by species (average per run)"), el("div", { class: "scroll" }, el("table", {},
+        el("thead", {}, el("tr", {}, ["Species", "Started", "Born", "Died", "Eaten", "Sold", "Alive at end"].map((h) => el("th", {}, h)))),
+        el("tbody", {}, speciesRows)))),
+      el("div", { class: "card" }, el("h2", {}, "Money (average per run)"), el("table", {}, el("tbody", {}, moneyRows)))),
+    el("div", { class: "split2" },
+      el("div", { class: "card" }, el("h2", {}, "Causes of death (average per run)"),
+        causeRows.length ? el("table", {}, el("tbody", {}, causeRows)) : el("p", { class: "hint" }, "No fish died.")),
+      el("div", { class: "card" }, el("h2", {}, "Diary of the first run"),
+        el("div", { class: "diary" }, r.diary.length ? r.diary.map((line) => el("div", {}, line)) : "Nothing happened worth noting."))),
+  ];
+}
+
+/** A single-series line over the days: the average, with a band from the worst to the best run. */
+function lineChart(title, series, format, days, fixedMax) {
+  const W = 560, H = 190, L = 48, R = 12, T = 12, Bm = 26;
+  const rawMax = fixedMax ?? Math.max(1, ...series.hi);
+  const rawMin = Math.min(0, ...series.lo);
+  // Round gridlines: steps of 1, 2, 2.5 or 5 times a power of ten.
+  const rough = (rawMax - rawMin) / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = fixedMax != null ? rough : [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= rough);
+  const maxV = fixedMax ?? Math.ceil(rawMax / step - 1e-9) * step;
+  const minV = Math.floor(rawMin / step + 1e-9) * step;
+  const x = (d) => L + (W - L - R) * (days > 1 ? d / (days - 1) : 0);
+  const y = (v) => T + (H - T - Bm) * (1 - (v - minV) / (maxV - minV || 1));
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("class", "chart");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `${title} over ${days - 1} days`);
+  const add = (tag, attrs, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    svg.append(n);
+    return n;
+  };
+  for (let v = minV; v <= maxV + step * 0.01; v += step) {
+    add("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" });
+    add("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", class: "axis" }, format(v));
+  }
+  const ticks = Math.min(6, days - 1);
+  for (let i = 0; i <= ticks; i++) {
+    const d = Math.round((days - 1) * i / Math.max(1, ticks));
+    add("text", { x: x(d), y: H - 8, "text-anchor": "middle", class: "axis" }, `${d}`);
+  }
+  const band = series.hi.map((v, d) => `${x(d)},${y(v)}`).concat(series.lo.map((v, d) => `${x(d)},${y(v)}`).reverse()).join(" ");
+  add("polygon", { points: band, class: "band" });
+  add("polyline", { points: series.mean.map((v, d) => `${x(d)},${y(v)}`).join(" "), class: "line" });
+  const hair = add("line", { x1: 0, x2: 0, y1: T, y2: H - Bm, class: "hair", visibility: "hidden" });
+  const dot = add("circle", { r: 4, class: "dot", visibility: "hidden" });
+  const tip = el("div", { class: "tip" });
+  const wrap = el("div", { class: "chart-wrap" }, el("div", { class: "chart-title" }, title), svg, tip);
+  const hide = () => { hair.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.style.display = "none"; };
+  svg.addEventListener("pointermove", (e) => {
+    const box = svg.getBoundingClientRect();
+    const px = (e.clientX - box.left) / box.width * W;
+    const d = Math.max(0, Math.min(days - 1, Math.round((px - L) / (W - L - R) * (days - 1))));
+    hair.setAttribute("x1", x(d)); hair.setAttribute("x2", x(d)); hair.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(d)); dot.setAttribute("cy", y(series.mean[d])); dot.setAttribute("visibility", "visible");
+    tip.replaceChildren(el("b", {}, format(series.mean[d])), ` on day ${d}`, el("br"), el("span", {}, `runs ranged ${format(series.lo[d])} to ${format(series.hi[d])}`));
+    tip.style.display = "block";
+    const left = (x(d) / W) * box.width;
+    tip.style.left = `${Math.min(box.width - 170, Math.max(0, left + 10))}px`;
+  });
+  svg.addEventListener("pointerleave", hide);
+  return wrap;
+}
+
 // ---------------------------------------------------------------- search
 
 const TOP_NAMES = Object.fromEntries(TABS.map(([k, n]) => [k, n]));
@@ -797,8 +1803,10 @@ function renderRaw() {
 }
 
 function render() {
+  indexPaths();
   $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
-    el("button", { class: key === tab ? "active" : "", onclick: () => { tab = key; query = ""; $("#search").value = ""; render(); } }, name)));
+    el("button", { class: key === tab ? "active" : "", onclick: () => { tab = key; query = ""; $("#search").value = ""; render(); } },
+      key === "pinned" && pins.length ? `${name} (${pins.length})` : name)));
   let content;
   if (query.trim()) {
     $("#tabs").querySelectorAll("button").forEach((b) => b.classList.remove("active"));
@@ -811,6 +1819,8 @@ function render() {
     case "cross": content = renderCross(); break;
     case "diseases": content = renderDiseases(); break;
     case "raw": content = renderRaw(); break;
+    case "pinned": content = renderPinned(); break;
+    case "sim": content = renderSim(); break;
     default: content = renderSection(tab);
   }
   $("#view").replaceChildren(...content);
@@ -822,6 +1832,7 @@ $("#reload").onclick = () => { if (!dirty || confirm("Throw away unsaved changes
 $("#defaults").onclick = () => { if (confirm("Load the game's built-in defaults? Nothing is saved until you press Save.")) load("/api/defaults"); };
 window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); } });
+if (pins.length) tab = "pinned";
 load("/api/balance").catch(() => { $("#status").textContent = "Can't reach Unity. Open the project, then use Fish Breeder > Balance Console."; });
 setInterval(() => { if (!dirty) refreshStatus(""); }, 5000);
 </script>

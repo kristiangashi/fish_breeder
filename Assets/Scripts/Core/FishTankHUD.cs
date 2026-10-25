@@ -145,7 +145,7 @@ namespace FishBreeder.Core
                     GUILayout.Label($"<color=#ffe9a8>Eggs: {clutch.Count} {clutch.Label}, hatch in {BreedingSystem.Steps(clutch.StepsToHatch)}</color>", Rich());
             foreach (var fish in tank.Residents)
                 if (fish.IsPregnant)
-                    GUILayout.Label($"<color=#ffb3d9>Pregnant: {fish.FishName} ({fish.Species}), due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", Rich());
+                    GUILayout.Label($"<color=#ffb3d9>Pregnant: {fish.FishName} ({fish.SpeciesLabel}), due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", Rich());
 
             foreach (var line in BreedingSystem.Readiness(tank))
                 GUILayout.Label($"<color=#c9d7e8>{line}</color>", Rich());
@@ -509,7 +509,13 @@ namespace FishBreeder.Core
             if (fish.IdentityHidden) GUILayout.Label("<b>Mystery fry</b>: too small to tell what it is yet. It shows its colours when it grows into a juvenile.", Rich());
             else
             {
-                GUILayout.Label($"<b>{species.displayName}</b>  <size=11>({species.rarity} species, {fish.Phenotype.RarityLabel} looks)</size>", Rich());
+                var look = fish.Phenotype;
+                if (look.IsHybrid)
+                {
+                    GUILayout.Label($"<b>{fish.SpeciesLabel}</b>  <size=11>(cross-bred, {look.RarityLabel} looks)</size>", Rich());
+                    GUILayout.Label($"<size=11>Body: {species.displayName} ({species.rarity}), fins: {look.finSpecies.displayName}, tail: {look.tailSpecies.displayName}. It lives like a {species.displayName}.</size>", Rich());
+                }
+                else GUILayout.Label($"<b>{species.displayName}</b>  <size=11>({species.rarity} species, {look.RarityLabel} looks)</size>", Rich());
                 if (!string.IsNullOrEmpty(species.family)) GUILayout.Label($"<size=11><i>{species.scientificName}</i>, {species.family}</size>", Rich());
             }
             string growing = fish.Stage == LifeStage.Adult ? "" : $", grown up in about {Mathf.Max(0.5f, (1f - fish.Growth) * species.daysToAdult):0.#} days";

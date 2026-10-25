@@ -18,7 +18,7 @@ namespace FishBreeder.Shop
             var all = Genetics.Species.All;
             return new ShopperProfile
             {
-                priceTolerance = GameRandom.Range(shop.minPriceTolerance, shop.maxPriceTolerance) * Mathf.Lerp(0.9f, 1.1f, Economy.Reputation),
+                priceTolerance = GameRandom.Range(shop.minPriceTolerance, shop.maxPriceTolerance) * Mathf.Lerp(0.9f, 1.1f, Economy.Reputation) * Perks.More(PerkEffect.PriceTolerance),
                 favoriteSpecies = all.Count > 0 ? all[GameRandom.Range(0, all.Count)].id : null,
             };
         }
@@ -46,14 +46,15 @@ namespace FishBreeder.Shop
             var reaction = new Reaction();
 
             // Dead fish put some shoppers off, more of them the more there are; the rest carry on.
-            if (tank.Corpses.Count > 0 && GameRandom.Chance(Mathf.Min(shop.maxSadChance, shop.sadChancePerDeadFish * tank.Corpses.Count)))
+            if (tank.Corpses.Count > 0 && GameRandom.Chance(Mathf.Min(shop.maxSadChance, shop.sadChancePerDeadFish * tank.Corpses.Count) * Perks.Less(PerkEffect.DeadFishTolerance)))
             {
                 reaction.mood = Mood.Sad;
                 return reaction;
             }
 
             float averageHealth = AverageHealth(tank);
-            bool gross = tank.WaterHealth < shop.grossWaterQuality || tank.Algae > shop.grossAlgae || (tank.Residents.Count > 0 && averageHealth < 0.45f);
+            float tolerance = Perks.Value(PerkEffect.GrossTolerance);
+            bool gross = tank.WaterHealth < shop.grossWaterQuality * (1f - tolerance) || tank.Algae > shop.grossAlgae * (1f + tolerance) || (tank.Residents.Count > 0 && averageHealth < 0.45f);
             if (gross && GameRandom.Chance(0.85f))
             {
                 reaction.mood = Mood.Grossed;
@@ -84,7 +85,7 @@ namespace FishBreeder.Shop
                 }
 
                 float bargain = Mathf.Clamp(willingToPay / pick.Price, 1f, 1.5f);
-                float chance = shop.purchaseChance * Mathf.Lerp(0.5f, 1f, averageHealth) * bargain
+                float chance = shop.purchaseChance * Perks.More(PerkEffect.PurchaseChance) * Mathf.Lerp(0.5f, 1f, averageHealth) * bargain
                                * (pick.Species.id == shopper.favoriteSpecies ? 1.5f : 1f)
                                * (tank.Corpses.Count > 0 ? shop.deadFishPurchaseMultiplier : 1f);
                 if (GameRandom.Chance(chance))

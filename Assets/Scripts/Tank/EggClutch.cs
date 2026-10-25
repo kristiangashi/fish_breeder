@@ -105,7 +105,7 @@ namespace FishBreeder
         void LoseEggsToDirtyWater()
         {
             if (Tank == null) return;
-            float chance = Balance.Data.timeStep.eggLossInFilthyWater * Mathf.Clamp01((0.5f - Tank.WaterQuality) * 2f);
+            float chance = Balance.Data.timeStep.eggLossInFilthyWater * Mathf.Clamp01((0.5f - Tank.WaterQuality) * 2f) * Perks.Less(PerkEffect.HardyEggs);
             if (chance <= 0f) return;
             for (int i = genomes.Count - 1; i >= 0; i--)
             {

@@ -101,6 +101,15 @@ const ENUMS = {
   style: ["Midwater", "Bottom"],
   type: ["Flakes", "Premium", "AlgaeWafers", "Bloodworms", "BrineShrimp"],
   cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
+  tree: ["Aquariums", "Biology", "Breeding", "Finances", "Construction", "Public Relations"],
+  effect: [
+    "CleanerWater", "StrongerWipes", "SlowerAlgae", "DecorationSpots", "SturdierEquipment", "BetterRepairs", "RoomierTanks", "ExtraWipes",
+    "FewerIllnesses", "SlowerHunger", "WiderTolerance", "GentlerMedicine", "FasterGrowth", "BetterFood", "LongerLife", "FasterResearch",
+    "BreedingChance", "ShorterRest", "BiggerLitters", "HardyEggs", "QuickerBirths", "MoreMutations", "CrossChance", "PedigreeValue",
+    "SupplierDiscount", "PriceTolerance", "SaleTips", "BiggerAllowance", "PurchaseChance", "Interest",
+    "BuildDiscount", "DecorDiscount", "MoreShopTanks", "TankTraffic", "DecorTraffic", "UpgradeDiscount", "BiggerCrowds",
+    "MoreCustomers", "ReputationGain", "ReputationShield", "GrossTolerance", "DeadFishTolerance", "ExtraTankVisits", "DailyReputation",
+  ],
 };
 
 // Friendly labels and help text. Anything missing gets a label made from its name.
@@ -205,6 +214,17 @@ const META = {
   repairKitPrice: ["Repair kit pack price ($)", ""], repairKitsPerPack: ["Kits per pack", ""],
   repairWearRemoved: ["Wear removed by a repair", "0.25 = a repair takes off a quarter of the wear, so old kit keeps breaking more."],
   repairKitLevel: ["Level for repair kits", "Fishkeeping level."], xpRepairEquipment: ["XP per repair", "Fishkeeping XP."],
+  tree: ["Tree", "Aquariums, Biology and Breeding spend Fishkeeping points; Finances, Construction and Public Relations spend Shopkeeping points."],
+  tier: ["Tier", "1 is open from the start. Each later tier opens once enough points (Points per tier) are spent in the tiers above it in the same tree."],
+  text: ["Text", "What the perk does. {0} is replaced by its value at the current rank."],
+  maxRank: ["Max rank", "How many points the perk can take."],
+  perRank: ["Per rank", "Added to the effect for each rank. For percentages, 0.05 = 5%."],
+  percent: ["Percent", "Show the value as a percentage."],
+  effect: ["Effect", "What it changes in the game. Perks with the same effect add up."],
+  pointsPerLevel: ["Points per level", "Perk points for every Fishkeeping or Shopkeeping level gained."],
+  pointsPerTier: ["Points per tier", "Points spent in a tree's earlier tiers to open each next tier (tier 2 needs this many, tier 3 twice as many...)."],
+  tiers: ["Tiers", "Tiers shown per tree."],
+  maxInterestPerNight: ["Most interest per night ($)", "Cap on what the Savings account perk pays each night."],
 };
 
 const REPAIR_SUPPLIER = ["repairKitPrice", "repairKitsPerPack", "repairWearRemoved", "repairKitLevel"];
@@ -223,6 +243,7 @@ const TABS = [
   ["equipment", "Equipment & repairs"],
   ["research", "Research"],
   ["progression", "Levels & XP"],
+  ["perks", "Perks"],
   ["rules", "Rules"],
   ["raw", "Raw JSON"],
 ];
@@ -679,6 +700,21 @@ function renderSection(key) {
     if (!data.milestones) data.milestones = [];
     cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, "Milestones are one-off achievements that pay cash and XP, in this order. The next three show on the right of the store screen."), listTable("Milestones", data.milestones)));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Closing notifications"), objectForm(data.notifications)));
+  } else if (key === "perks") {
+    if (!data.perkSettings) data.perkSettings = { pointsPerLevel: 1, pointsPerTier: 5, tiers: 4, maxInterestPerNight: 150 };
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Perk points"),
+      el("p", { class: "hint" }, "Each Fishkeeping or Shopkeeping level gives perk points to spend in that track's three trees (P in game). A tree's tiers open as points are spent in the tiers above."),
+      objectForm(data.perkSettings)));
+    if (data.perks && data.perks.length) {
+      const atMax = (p) => {
+        const v = p.perRank * p.maxRank;
+        return (p.text || "").split("{0}").join(p.percent ? `${+(v * 100).toFixed(1)}%` : `${+v.toFixed(2)}`);
+      };
+      const points = (tree) => data.perks.filter((p) => p.tree === tree).reduce((n, p) => n + p.maxRank, 0);
+      const totals = ENUMS.tree.map((name, i) => `${name} ${points(i)}`).join(" · ");
+      cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, `Points to max each tree: ${totals}. Players earn ${(data.progression.maxLevel - 1) * data.perkSettings.pointsPerLevel} per track by the max level.`),
+        listTable("Perks", data.perks, [["At max rank", atMax]])));
+    }
   } else {
     cards.push(el("div", { class: "card" }, objectForm(data[key])));
   }

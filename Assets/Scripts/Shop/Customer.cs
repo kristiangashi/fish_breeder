@@ -90,7 +90,7 @@ namespace FishBreeder.Shop
             yield return WalkTo(layout.DoorInside);
 
             var shop = Balance.Data.shop;
-            int visits = GameRandom.Range(shop.minTankVisits, shop.maxTankVisits + 1);
+            int visits = GameRandom.Range(shop.minTankVisits, shop.maxTankVisits + 1) + Perks.Count(PerkEffect.ExtraTankVisits);
             StoreTank last = null;
             for (int i = 0; i < visits && purchase == null; i++)
             {

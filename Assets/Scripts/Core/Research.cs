@@ -36,7 +36,7 @@ namespace FishBreeder.Core
         }
 
         /// <summary>Multiplier on everything research does: 1 at Research level 1, more at higher levels.</summary>
-        public static float Speed => 1f + Data.speedPerLevel * (Progression.Level(XpTrack.Research) - 1);
+        public static float Speed => (1f + Data.speedPerLevel * (Progression.Level(XpTrack.Research) - 1)) * Perks.More(PerkEffect.FasterResearch);
 
         public static bool CanReadPh => Progression.IsUnlocked(XpTrack.Research, Data.phReadingLevel);
 

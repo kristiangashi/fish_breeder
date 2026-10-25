@@ -59,6 +59,14 @@ namespace FishBreeder.Breeding
             return Conceive(tank, a, b);
         }
 
+        /// <summary>A litter or clutch size for this species, bigger with the Big families perk (fractions round up by chance).</summary>
+        static int LitterSize(Species species)
+        {
+            float size = GameRandom.Range(species.litterMin, species.litterMax + 1) * Perks.More(PerkEffect.BiggerLitters);
+            int whole = Mathf.FloorToInt(size);
+            return whole + (GameRandom.Chance(size - whole) ? 1 : 0);
+        }
+
         /// <summary>
         /// A compatible pair breeds: the young's genes are fixed now, then the mother carries them
         /// (livebearers) or they wait as eggs on the sand (egg-layers). Returns how many young are on the way.
@@ -71,30 +79,33 @@ namespace FishBreeder.Breeding
             // The mother's species decides how the young come: live fry or eggs, and how many.
             var species = mother.Species;
             bool cross = mother.Species != father.Species;
-            int count = Mathf.Min(GameRandom.Range(species.litterMin, species.litterMax + 1), tank.FreeSpace - EggClutch.EggsIn(tank));
+            int count = Mathf.Min(LitterSize(species), tank.FreeSpace - EggClutch.EggsIn(tank));
             if (count <= 0) return 0;
 
             int generation = Mathf.Max(a.Generation, b.Generation) + 1;
             var genomes = new List<Genome>();
             for (int i = 0; i < count; i++)
-                genomes.Add(BreedingService.Cross(mother.Genome, father.Genome, config.mutationChance, config.mutationStrength));
+                genomes.Add(BreedingService.Cross(mother.Genome, father.Genome, Mathf.Clamp01(config.mutationChance * Perks.More(PerkEffect.MoreMutations)), config.mutationStrength));
 
-            father.BreedCooldown = config.breedingCooldownSteps;
+            int rest = Mathf.Max(0, config.breedingCooldownSteps - Perks.Count(PerkEffect.ShorterRest));
+            int gestation = Mathf.Max(1, species.gestationSteps - Perks.Count(PerkEffect.QuickerBirths));
+            int hatch = Mathf.Max(1, species.eggHatchSteps - Perks.Count(PerkEffect.QuickerBirths));
+            father.BreedCooldown = rest;
             Fx.Text(a.transform.position + Vector3.up * 0.05f, "♥", UiTheme.Hibiscus, 24f, 1.8f);
             Fx.Text(b.transform.position + Vector3.up * 0.05f, "♥", UiTheme.Hibiscus, 24f, 1.8f);
             Progression.Award(XpTrack.Fishkeeping, Progression.BredFishXp(Balance.Data.progression.xpBreedingStarted, species, null));
             string crossNote = cross ? $" It's a cross with a {father.Species}, so expect some unusual fry!" : "";
             if (species.reproduction == Reproduction.Livebearer)
             {
-                mother.BecomePregnant(genomes, generation, father.FishName, species.gestationSteps);
-                GameLog.Add($"{mother.FishName} the {species} is pregnant by {father.FishName}! About {count} fry due in {Steps(species.gestationSteps)}.{crossNote}");
+                mother.BecomePregnant(genomes, generation, father.FishName, gestation);
+                GameLog.Add($"{mother.FishName} the {species} is pregnant by {father.FishName}! About {count} fry due in {Steps(gestation)}.{crossNote}");
             }
             else
             {
-                mother.BreedCooldown = config.breedingCooldownSteps;
-                EggClutch.LayFrom(tank, genomes, generation, $"{mother.FishName} x {father.FishName}", species.eggHatchSteps);
+                mother.BreedCooldown = rest;
+                EggClutch.LayFrom(tank, genomes, generation, $"{mother.FishName} x {father.FishName}", hatch);
                 string eggs = cross ? $"{species} x {father.Species}" : species.ToString();
-                GameLog.Add($"{mother.FishName} and {father.FishName} laid {count} {eggs} eggs. They hatch in {Steps(species.eggHatchSteps)}.");
+                GameLog.Add($"{mother.FishName} and {father.FishName} laid {count} {eggs} eggs. They hatch in {Steps(hatch)}.");
             }
             return count;
         }
@@ -133,7 +144,7 @@ namespace FishBreeder.Breeding
             }
 
             // Fish without a partner of their own kind may cross with a compatible species.
-            float crossChance = chance * CrossBreeding.CrossChanceMultiplier;
+            float crossChance = Mathf.Clamp01(chance * CrossBreeding.CrossChanceMultiplier * Perks.More(PerkEffect.CrossChance));
             Shuffle(singleFemales);
             Shuffle(singleMales);
             foreach (var female in singleFemales)

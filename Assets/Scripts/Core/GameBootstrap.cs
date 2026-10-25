@@ -50,6 +50,7 @@ namespace FishBreeder.Core
             var hud = gameObject.AddComponent<FishTankHUD>();
             gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
             gameObject.AddComponent<JournalView>();
+            gameObject.AddComponent<PerksView>();
             gameObject.AddComponent<FxOverlay>();
             int setup = Economy.DaysUntilOpening;
             if (setup > 0)

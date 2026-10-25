@@ -156,14 +156,15 @@ namespace FishBreeder.Health
             }
             else
             {
-                MedicineStress = Mathf.Clamp01(MedicineStress + rules.stressPerDose);
+                MedicineStress = Mathf.Clamp01(MedicineStress + rules.stressPerDose * Perks.Less(PerkEffect.GentlerMedicine));
                 MedicineLoad += rules.loadPerDose;
                 result = IsSick ? MedicineResult.Wrong : MedicineResult.NotNeeded;
             }
-            if (MedicineLoad >= rules.overdoseLoad && MedicineDamage < rules.maxDamage)
+            float overdose = rules.overdoseLoad * Perks.More(PerkEffect.GentlerMedicine);
+            if (MedicineLoad >= overdose && MedicineDamage < rules.maxDamage)
             {
                 MedicineDamage++;
-                MedicineLoad = rules.overdoseLoad * 0.5f;
+                MedicineLoad = overdose * 0.5f;
                 GameLog.Add($"{Owner.FishName} has had too much medicine and is damaged for good" + (Infertile ? " (it can't breed any more)." : "."));
             }
             return result;
@@ -234,7 +235,7 @@ namespace FishBreeder.Health
 
             if (newlyInfected.Contains(Owner)) return false;
             float stress = 1f + (1f - current);
-            float chance = Balance.Data.timeStep.diseaseChance * stress * (1f - hardiness * config.hardinessProtection);
+            float chance = Balance.Data.timeStep.diseaseChance * stress * (1f - hardiness * config.hardinessProtection) * Perks.Less(PerkEffect.FewerIllnesses);
             if (Owner.Tank != null) chance *= Owner.Tank.InfectionMultiplier;
             if (!GameRandom.Chance(chance)) return false;
             return Infect(DiseaseDefinition.PickWeighted(Balance.Data.diseases, GameRandom.Value), Owner.Tank != null && Owner.Tank.WaterQuality < 0.5f ? "the dirty water" : "a passing bug");
@@ -250,8 +251,9 @@ namespace FishBreeder.Health
 
             if (fish.Hunger > 0.5f) report.hunger = (fish.Hunger - 0.5f) / 0.5f * weights.hungerWeight;
             if (IsSick) report.illness = (0.25f + 0.75f * Severity) * Disease.lethality * weights.illnessWeight;
-            if (fish.AgeDays > species.lifespanDays)
-                report.oldAge = Mathf.Clamp01((fish.AgeDays - species.lifespanDays) / Mathf.Max(1f, species.lifespanDays * 0.5f)) * weights.oldAgeWeight;
+            float lifespan = species.lifespanDays * Perks.More(PerkEffect.LongerLife);
+            if (fish.AgeDays > lifespan)
+                report.oldAge = Mathf.Clamp01((fish.AgeDays - lifespan) / Mathf.Max(1f, lifespan * 0.5f)) * weights.oldAgeWeight;
 
             var mates = Balance.Data.tankMates;
             report.comfortLevel = 1f;
@@ -364,7 +366,7 @@ namespace FishBreeder.Health
             float temp = OutsideBy(tank.Temperature, species.tempMin, species.tempMax) * weights.tempPenaltyPerDegree;
             float ph = OutsideBy(tank.Ph, species.phMin, species.phMax) * weights.phPenaltyPerUnit;
             float salt = OutsideBy(tank.Salinity, species.salinityMin, species.salinityMax) * weights.saltPenaltyPerPpt;
-            float mismatch = temp + ph + salt
+            float mismatch = (temp + ph + salt) * Perks.Less(PerkEffect.WiderTolerance)
                              + (1f - tank.WaterQuality) * 0.5f
                              + (1f - tank.Oxygen) * 0.4f;
             return Mathf.Clamp01(mismatch);

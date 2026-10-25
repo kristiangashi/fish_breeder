@@ -120,12 +120,12 @@ namespace FishBreeder
             const float daysPerStep = 0.5f;
             var species = Species;
             ageDays += daysPerStep;
-            hunger = Mathf.Clamp01(hunger + daysPerStep / Mathf.Max(0.5f, species.hungerToleranceDays) * GameConfig.Active.starvingThreshold);
+            hunger = Mathf.Clamp01(hunger + daysPerStep / Mathf.Max(0.5f, species.hungerToleranceDays) * GameConfig.Active.starvingThreshold * Perks.Less(PerkEffect.SlowerHunger));
             if (growth < 1f && !IsStarving)
             {
                 bool wasFry = Stage == LifeStage.Fry;
                 bool wasHidden = IdentityHidden;
-                growth = Mathf.Min(1f, growth + daysPerStep / Mathf.Max(0.5f, species.daysToAdult));
+                growth = Mathf.Min(1f, growth + daysPerStep / Mathf.Max(0.5f, species.daysToAdult) * Perks.More(PerkEffect.FasterGrowth));
                 ApplyGrowthScale();
                 if (wasFry && Stage != LifeStage.Fry) GrowOutOfFry(wasHidden);
                 if (growth >= 1f) GrewUp();
@@ -180,7 +180,7 @@ namespace FishBreeder
             if (!pellet.TryConsume()) return;
 
             // Fish eat anything, but a favourite food fills them up more and cheers them up.
-            float nutrition = pellet.Nutrition;
+            float nutrition = pellet.Nutrition * Perks.More(PerkEffect.BetterFood);
             if (Species.favoriteFoods.Contains(pellet.Type))
             {
                 if (stepsSinceFavourite > 0 && !IdentityHidden) Fx.Text(transform.position + Vector3.up * 0.04f, "♥", UiTheme.Hibiscus, 18f, 1.2f);
@@ -210,7 +210,8 @@ namespace FishBreeder
                 float health = Mathf.Lerp(0.4f, 1f, Health.Current);
                 float damage = Mathf.Clamp01(1f - Health.MedicineDamage * Balance.Data.medicine.damageValue);
                 int baseValue = CrossBreeding.BaseValue(p.species, p.finSpecies, p.tailSpecies);
-                return Mathf.Max(1, Mathf.RoundToInt(baseValue * looks * stage * health * damage));
+                float pedigree = generation > 1 ? Perks.More(PerkEffect.PedigreeValue) : 1f;
+                return Mathf.Max(1, Mathf.RoundToInt(baseValue * looks * stage * health * damage * pedigree));
             }
         }
 
@@ -300,7 +301,7 @@ namespace FishBreeder
             }
             int lost = unborn.Count - born;
             unborn.Clear();
-            BreedCooldown = GameConfig.Active.breedingCooldownSteps;
+            BreedCooldown = Mathf.Max(0, GameConfig.Active.breedingCooldownSteps - Perks.Count(PerkEffect.ShorterRest));
             GameLog.Add($"{fishName} the {Species} gave birth to {born} fry (generation {unbornGeneration})." + (lost > 0 ? $" {lost} didn't make it: the tank is full." : ""));
             return born;
         }

@@ -49,7 +49,9 @@ namespace FishBreeder.Store
         {
             public int index;
             public string name;
-            public int price;
+            public int basePrice;
+            /// <summary>What unlocking it costs now, after building discounts.</summary>
+            public int Price => Perks.Build(basePrice);
             public bool unlocked;
             public Transform shell;
             public float CenterX => index * SectionWidth;
@@ -145,7 +147,7 @@ namespace FishBreeder.Store
 
         void AddSection(string name, int price, bool unlocked)
         {
-            sections.Add(new Section { index = sections.Count, name = name, price = price, unlocked = unlocked });
+            sections.Add(new Section { index = sections.Count, name = name, basePrice = price, unlocked = unlocked });
         }
 
         public int CountTanks(TankRole role)
@@ -184,7 +186,7 @@ namespace FishBreeder.Store
                 GameLog.Add($"The {section.name} needs {Progression.LockText(XpTrack.Shopkeeping, SectionLevel(section))}.");
                 return false;
             }
-            if (!Economy.TrySpend(section.price, $"unlocking the {section.name}")) return false;
+            if (!Economy.TrySpend(section.Price, $"unlocking the {section.name}")) return false;
             section.unlocked = true;
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpUnlockSection);
             BuildShell();
@@ -213,7 +215,7 @@ namespace FishBreeder.Store
             if (size <= tank.Tank.SizeIndex || size >= sizes.Count) return "It's already this size or bigger.";
             var info = sizes[size];
             if (!Progression.IsUnlocked(XpTrack.Fishkeeping, info.unlockLevel)) return $"Needs {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}.";
-            if (!Economy.CanAfford(info.upgradePrice)) return "Not enough money.";
+            if (!Economy.CanAfford(Perks.Upgrade(info.upgradePrice))) return "Not enough money.";
             return null;
         }
 
@@ -226,7 +228,7 @@ namespace FishBreeder.Store
                 return false;
             }
             var info = Balance.Data.store.tankSizes[size];
-            if (!Economy.TrySpend(info.upgradePrice, $"upgrading {tank.Title} to a {info.name.ToLower()} tank")) return false;
+            if (!Economy.TrySpend(Perks.Upgrade(info.upgradePrice), $"upgrading {tank.Title} to a {info.name.ToLower()} tank")) return false;
             tank.Tank.Resize(size);
             BuildStand(tank);
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpTankUpgrade);

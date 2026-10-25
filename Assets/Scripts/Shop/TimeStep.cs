@@ -43,7 +43,7 @@ namespace FishBreeder.Shop
             int conceived = 0;
             foreach (var storeTank in tanks)
             {
-                float chance = storeTank.Role == TankRole.Breeder ? balance.pregnancyChanceBreederTank : balance.pregnancyChanceOtherTank;
+                float chance = (storeTank.Role == TankRole.Breeder ? balance.pregnancyChanceBreederTank : balance.pregnancyChanceOtherTank) * Perks.More(PerkEffect.BreedingChance);
                 conceived += BreedingSystem.ChanceBreeding(storeTank.Tank, chance);
             }
 

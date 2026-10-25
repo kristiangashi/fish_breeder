@@ -64,8 +64,9 @@ namespace FishBreeder.Shop
                 int other = layout.PublicTanks.Count - display;
                 int decorations = 0;
                 foreach (var tank in layout.PublicTanks) decorations += tank.Tank.DecorCount;
-                float traffic = 1f + display * shop.trafficPerDisplayTank + other * shop.trafficPerOtherTank + decorations * shop.trafficPerDecoration;
-                return shop.customersPerHour * traffic * Mathf.Lerp(0.5f, 1.5f, Economy.Reputation);
+                float traffic = 1f + (display * shop.trafficPerDisplayTank + other * shop.trafficPerOtherTank) * Perks.More(PerkEffect.TankTraffic)
+                                + decorations * shop.trafficPerDecoration * Perks.More(PerkEffect.DecorTraffic);
+                return shop.customersPerHour * traffic * Mathf.Lerp(0.5f, 1.5f, Economy.Reputation) * Perks.More(PerkEffect.MoreCustomers);
             }
         }
 
@@ -141,7 +142,7 @@ namespace FishBreeder.Shop
             {
                 today.visitors++;
                 var profile = ShopperProfile.Random();
-                int visits = GameRandom.Range(shop.minTankVisits, shop.maxTankVisits + 1);
+                int visits = GameRandom.Range(shop.minTankVisits, shop.maxTankVisits + 1) + Perks.Count(PerkEffect.ExtraTankVisits);
                 var tanks = layout.PublicTanks;
                 for (int v = 0; v < visits && tanks.Count > 0; v++)
                 {
@@ -185,7 +186,7 @@ namespace FishBreeder.Shop
             if (spawnTimer <= 0f)
             {
                 spawnTimer = SpawnInterval * GameRandom.Range(0.6f, 1.4f);
-                if (customers.Count < Balance.Data.shop.maxCustomersInStore && layout.PublicTanks.Count > 0)
+                if (customers.Count < Balance.Data.shop.maxCustomersInStore + Perks.Count(PerkEffect.BiggerCrowds) && layout.PublicTanks.Count > 0)
                 {
                     customers.Add(Customer.Spawn(this, layout));
                     today.visitors++;
@@ -215,16 +216,18 @@ namespace FishBreeder.Shop
             string name = $"{fish.FishName} the {fish.SpeciesLabel}";
             fish.RemoveFromTank();
             Economy.Earn(price, $"sold {name}");
+            int tip = Mathf.RoundToInt(price * Perks.Value(PerkEffect.SaleTips));
+            if (tip > 0) Economy.Earn(tip, $"tip for {name}");
             var progression = Balance.Data.progression;
             Progression.Award(XpTrack.Shopkeeping, progression.xpSaleBase + Mathf.RoundToInt(price * progression.xpPerSaleDollar));
             Progression.Count(GoalKind.SellFish);
             Progression.Count(GoalKind.EarnMoney, price);
-            popups.Add(new MoneyPopup { position = registerPoint, amount = price });
+            popups.Add(new MoneyPopup { position = registerPoint, amount = price + tip });
             Fx.Burst(registerPoint + Vector3.up * 0.4f, UiTheme.Sun, 16);
             if (today != null)
             {
                 today.fishSold++;
-                today.earnings += price;
+                today.earnings += price + tip;
             }
         }
 
@@ -271,6 +274,7 @@ namespace FishBreeder.Shop
             float score = good + bad == 0 ? 0.5f : good / (float)(good + bad);
             report.stars = Mathf.Round(Mathf.Lerp(1f, 5f, score) * 2f) / 2f;
             report.reputationChange = (score - 0.5f) * 2f * shop.reputationChangePerDay;
+            report.reputationChange *= report.reputationChange > 0f ? Perks.More(PerkEffect.ReputationGain) : Perks.Less(PerkEffect.ReputationShield);
             Economy.ChangeReputation(report.reputationChange);
 
             if (report.visitors == 0) report.review = "Nobody came in today. More tanks, especially display tanks, bring in more people.";

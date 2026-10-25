@@ -87,7 +87,15 @@ namespace FishBreeder.Core
         public static void NextDay()
         {
             Day++;
-            int allowance = Balance.Data.store.dailyAllowance;
+            int interest = Mathf.Min(Perks.MaxInterestPerNight, Mathf.FloorToInt(Mathf.Max(0, Money) * Perks.Value(PerkEffect.Interest)));
+            if (interest > 0)
+            {
+                Earn(interest, "interest on savings");
+                GameLog.Add($"Your savings earned {Format(interest)} interest overnight.");
+            }
+            float buzz = Perks.Value(PerkEffect.DailyReputation);
+            if (buzz > 0f) ChangeReputation(buzz);
+            int allowance = Balance.Data.store.dailyAllowance + Perks.Count(PerkEffect.BiggerAllowance);
             if (Money < allowance)
             {
                 Earn(allowance - Money, "daily allowance");

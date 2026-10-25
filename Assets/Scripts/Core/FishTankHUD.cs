@@ -187,7 +187,7 @@ namespace FishBreeder.Core
             if (tank.Residents.Count == 0 && tank.Corpses.Count == 0)
             {
                 var supplier = Balance.Data.supplier;
-                int salt = supplier.marineSaltPrice;
+                int salt = Perks.Supplier(supplier.marineSaltPrice);
                 string label = tank.IsSaltwater ? $"Change to fresh water ({Economy.Format(salt)})" : $"Change to salt water ({Economy.Format(salt)})";
                 if (!tank.IsSaltwater && !Progression.IsUnlocked(XpTrack.Fishkeeping, supplier.marineSaltLevel))
                     GUILayout.Label($"<i>Salt water tanks: {Progression.LockText(XpTrack.Fishkeeping, supplier.marineSaltLevel)}</i>", Rich());
@@ -204,6 +204,7 @@ namespace FishBreeder.Core
             GUILayout.EndScrollView();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Journal (J)")) JournalView.Toggle();
+            if (GUILayout.Button(Perks.TotalAvailable > 0 ? $"Perks (P) ●{Perks.TotalAvailable}" : "Perks (P)")) PerksView.Toggle();
             if (GUILayout.Button("Watch (V)")) ViewMode.Set(true);
             GUILayout.EndHorizontal();
             if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
@@ -325,7 +326,7 @@ namespace FishBreeder.Core
             }
             int sick = 0;
             foreach (var fish in tank.Residents) if (fish.Health.IsSick) sick++;
-            GUILayout.Label($"Medicine for the whole tank ({Economy.Format(supplier.medicinePrice)} a dose)" + (sick > 0 ? $": <color=#ff8080>{sick} sick</color>" : ": no one is sick"), Rich());
+            GUILayout.Label($"Medicine for the whole tank ({Economy.Format(Perks.Supplier(supplier.medicinePrice))} a dose)" + (sick > 0 ? $": <color=#ff8080>{sick} sick</color>" : ": no one is sick"), Rich());
             GUILayout.BeginHorizontal();
             foreach (Medicine medicine in new[] { Medicine.Antiviral, Medicine.Antibacterial, Medicine.Antiparasitic })
                 if (GUILayout.Button(medicine.ToString(), SmallButton(), GUILayout.MinWidth(50f))) DoseTank(medicine);
@@ -337,7 +338,7 @@ namespace FishBreeder.Core
 
         void DoseTank(Medicine medicine)
         {
-            int price = Balance.Data.supplier.medicinePrice;
+            int price = Perks.Supplier(Balance.Data.supplier.medicinePrice);
             if (!Economy.TrySpend(price, $"{medicine.ToString().ToLower()} for {storeTank.Title}")) return;
             int cured = 0, stressed = 0;
             foreach (var fish in new List<Fish>(tank.Residents))
@@ -430,12 +431,13 @@ namespace FishBreeder.Core
             GUILayout.Space(2f);
             if (!Progression.IsUnlocked(XpTrack.Fishkeeping, info.unlockLevel))
             {
-                GUILayout.Label($"<i>{info.name} tank ({info.capacity} fish): {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}</i>", Rich());
+                GUILayout.Label($"<i>{info.name} tank ({Tank.CapacityOf(info)} fish): {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}</i>", Rich());
                 return;
             }
             bool wasEnabled = GUI.enabled;
-            GUI.enabled = wasEnabled && Economy.CanAfford(info.upgradePrice);
-            if (GUILayout.Button($"Upgrade to {info.name.ToLower()} tank ({info.capacity} fish)  {Economy.Format(info.upgradePrice)}")) upgradeTank(storeTank, next);
+            int price = Perks.Upgrade(info.upgradePrice);
+            GUI.enabled = wasEnabled && Economy.CanAfford(price);
+            if (GUILayout.Button($"Upgrade to {info.name.ToLower()} tank ({Tank.CapacityOf(info)} fish)  {Economy.Format(price)}")) upgradeTank(storeTank, next);
             GUI.enabled = wasEnabled;
         }
 

@@ -559,6 +559,8 @@ namespace FishBreeder.Core
         public ResearchBalance research = new ResearchBalance();
         public List<MilestoneBalance> milestones = MilestoneBalance.CreateDefaults();
         public CrossBreedingBalance crossBreeding = new CrossBreedingBalance();
+        public PerkSettingsBalance perkSettings = new PerkSettingsBalance();
+        public List<PerkBalance> perks = PerkBalance.CreateDefaults();
     }
 
     /// <summary>
@@ -608,6 +610,9 @@ namespace FishBreeder.Core
                 Upgrade(parsed, ReadDataVersion(json));
                 if (parsed.crossBreeding == null) parsed.crossBreeding = new CrossBreedingBalance();
                 CrossBreeding.FillCombos(parsed.crossBreeding, parsed.species);
+                if (parsed.perkSettings == null) parsed.perkSettings = new PerkSettingsBalance();
+                if (parsed.perks == null) parsed.perks = new List<PerkBalance>();
+                AddMissingPerks(parsed.perks);
                 return parsed;
             }
             catch (Exception e)
@@ -627,6 +632,15 @@ namespace FishBreeder.Core
             foreach (var s in species) if (s != null && !string.IsNullOrEmpty(s.id)) known.Add(s.id);
             foreach (var s in Species.CreateDefaults())
                 if (!known.Contains(s.id)) species.Add(s);
+        }
+
+        /// <summary>Perks added after the balance file was saved join it with their defaults, like species.</summary>
+        static void AddMissingPerks(List<PerkBalance> perks)
+        {
+            var known = new HashSet<string>();
+            foreach (var p in perks) if (p != null && !string.IsNullOrEmpty(p.id)) known.Add(p.id);
+            foreach (var p in PerkBalance.CreateDefaults())
+                if (!known.Contains(p.id)) perks.Add(p);
         }
 
         static int ReadDataVersion(string json)

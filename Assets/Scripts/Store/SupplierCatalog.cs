@@ -13,7 +13,10 @@ namespace FishBreeder.Store
 
         public static SupplierBalance Equipment => Balance.Data.supplier;
 
-        public static int TankPrice(TankRole role)
+        /// <summary>A new tank's price, after building discounts.</summary>
+        public static int TankPrice(TankRole role) => Perks.Build(BaseTankPrice(role));
+
+        static int BaseTankPrice(TankRole role)
         {
             var store = Balance.Data.store;
             switch (role)
@@ -47,8 +50,8 @@ namespace FishBreeder.Store
             switch (role)
             {
                 case TankRole.Breeder: return store.maxBreederTanks;
-                case TankRole.ForSale: return store.maxForSaleTanks;
-                case TankRole.Display: return store.maxDisplayTanks;
+                case TankRole.ForSale: return store.maxForSaleTanks + Perks.Count(PerkEffect.MoreShopTanks);
+                case TankRole.Display: return store.maxDisplayTanks + Perks.Count(PerkEffect.MoreShopTanks);
                 default: return store.maxQuarantineTanks;
             }
         }

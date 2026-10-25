@@ -90,6 +90,13 @@ namespace FishBreeder
             foreach (var id in keep) Add(id);
         }
 
+        /// <summary>Changes how many spots the tank has (a perk added some), keeping what's placed.</summary>
+        public void SetSpotCount(int count)
+        {
+            if (root == null || count == spots.Length) return;
+            Rebuild(root, tankSize, count);
+        }
+
         /// <summary>Puts a decoration in the next free spot that suits it. False if the tank has no room.</summary>
         public bool Add(string id)
         {

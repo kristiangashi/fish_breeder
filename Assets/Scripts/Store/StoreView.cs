@@ -122,6 +122,11 @@ namespace FishBreeder.Store
                 JournalView.Close();
                 escape = false;
             }
+            if (escape && PerksView.IsOpen)
+            {
+                PerksView.Close();
+                escape = false;
+            }
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && escape)
             {
@@ -135,7 +140,7 @@ namespace FishBreeder.Store
             }
             else
             {
-                if (panel == Panel.None && !JournalView.IsOpen) HandleStoreCameraInput(dt);
+                if (panel == Panel.None && !JournalView.IsOpen && !PerksView.IsOpen) HandleStoreCameraInput(dt);
                 GetStorePose(out targetPosition, out targetRotation);
             }
             if (ViewMode.Watching)
@@ -353,6 +358,7 @@ namespace FishBreeder.Store
                     : $"<color={UiTheme.CoralHex}><b>CLOSED</b></color>  <size=12>tank work and ordering</size>", Rich());
                 GUILayout.FlexibleSpace();
                 if (GUILayout.Button("Journal (J)", GUILayout.Width(92f))) JournalView.Toggle();
+                if (GUILayout.Button(PerksButtonLabel(), PerkButtonStyle(), GUILayout.Width(Perks.TotalAvailable > 0 ? 104f : 84f))) PerksView.Toggle();
                 if (GUILayout.Button("Watch (V)", GUILayout.Width(84f))) ToggleWatch();
                 if (setup > 0)
                 {
@@ -367,6 +373,11 @@ namespace FishBreeder.Store
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
+
+        static string PerksButtonLabel() => Perks.TotalAvailable > 0 ? $"Perks (P) <color={UiTheme.SunHex}>●{Perks.TotalAvailable}</color>" : "Perks (P)";
+
+        static GUIStyle perkButton;
+        static GUIStyle PerkButtonStyle() => perkButton != null ? perkButton : perkButton = new GUIStyle(GUI.skin.button) { richText = true };
 
         static string Stars(float stars)
         {
@@ -387,6 +398,16 @@ namespace FishBreeder.Store
             GUILayout.Space(10f);
             LevelMeter(XpTrack.Research);
             GUILayout.Space(10f);
+            if (Perks.TotalAvailable > 0)
+            {
+                // A pulsing reminder while level-up points wait to be spent.
+                float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
+                var old = GUI.color;
+                GUI.color = Color.Lerp(Color.white, UiTheme.Sun, pulse);
+                if (GUILayout.Button($"★ {Perks.TotalAvailable} perk point{(Perks.TotalAvailable == 1 ? "" : "s")}!", UiTheme.Primary, GUILayout.Width(132f))) PerksView.Open();
+                GUI.color = old;
+                GUILayout.Space(10f);
+            }
             var goals = new List<string>();
             foreach (var goal in Progression.Goals)
                 goals.Add(goal.Done ? $"<color={UiTheme.LeafHex}>{goal.Describe()} ✔</color>" : $"{goal.Describe()} <b>{goal.progress}/{goal.target}</b>");
@@ -695,7 +716,7 @@ namespace FishBreeder.Store
                 if (!section.unlocked)
                 {
                     int level = StoreLayout.SectionLevel(section);
-                    string requirement = Progression.IsUnlocked(XpTrack.Shopkeeping, level) ? $"Unlock for {Economy.Format(section.price)}" : $"Needs {Progression.LockText(XpTrack.Shopkeeping, level)}";
+                    string requirement = Progression.IsUnlocked(XpTrack.Shopkeeping, level) ? $"Unlock for {Economy.Format(section.Price)}" : $"Needs {Progression.LockText(XpTrack.Shopkeeping, level)}";
                     WorldLabel(section.LabelPoint, $"<b>{section.name}</b> (locked)\n{requirement}", scale, height);
                 }
         }
@@ -977,7 +998,7 @@ namespace FishBreeder.Store
                     for (int k = 0; k < odds.Length && k < 3; k++) oddsText.Add($"{k + 1}+ {Percent(odds[k])}");
                     details += $"\n{tier.eggs} {(fry ? "fry" : "eggs")}. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText) : RareUnlockText(tier, eggLayersOnly));
                 }
-                int price = fry ? tier.fryPrice : tier.price;
+                int price = Perks.Supplier(fry ? tier.fryPrice : tier.price);
                 string what = fry ? "fry" : "eggs";
                 string label = free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
                 bool canBuy = anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
@@ -1027,7 +1048,7 @@ namespace FishBreeder.Store
 
         void OrderEggs(EggTierBalance tier)
         {
-            if (!Economy.TrySpend(tier.price, tier.name.ToLower())) return;
+            if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower())) return;
             var eggs = EggBoxes.Roll(tier, Progression.Fishkeeping, true);
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
             GameLog.Add($"{tier.eggs} {tier.name.ToLower()} delivered to {orderTarget.Title}. They hatch at the next time step.");
@@ -1035,7 +1056,7 @@ namespace FishBreeder.Store
 
         void OrderFryBox(EggTierBalance tier)
         {
-            if (!Economy.TrySpend(tier.fryPrice, EggBoxes.FryName(tier).ToLower())) return;
+            if (!Economy.TrySpend(Perks.Supplier(tier.fryPrice), EggBoxes.FryName(tier).ToLower())) return;
             var tank = orderTarget.Tank;
             foreach (var genome in EggBoxes.Roll(tier, Progression.Fishkeeping, false))
                 FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
@@ -1052,9 +1073,10 @@ namespace FishBreeder.Store
                 if (tank != null) foreach (var id in tank.Decor.Ids) if (id == item.id) inTank++;
                 string details = (item.plant ? "Plant. " : "") + (item.back ? "Goes along the back." : "Goes near the front.") + (inTank > 0 ? $"  {inTank} in this tank." : "");
                 bool full = tank == null || tank.Decor.IsFull;
-                string label = full ? "No room in this tank" : $"Add  {Economy.Format(item.price)}";
-                if (OfferRow(ItemPreviews.Decoration(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, label, !full && Economy.CanAfford(item.price))
-                    && Economy.TrySpend(item.price, $"a {item.name.ToLower()} for {orderTarget.Title}"))
+                int price = Perks.Decoration(item.price);
+                string label = full ? "No room in this tank" : $"Add  {Economy.Format(price)}";
+                if (OfferRow(ItemPreviews.Decoration(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, label, !full && Economy.CanAfford(price))
+                    && Economy.TrySpend(price, $"a {item.name.ToLower()} for {orderTarget.Title}"))
                 {
                     if (tank.Decor.Add(item.id))
                     {
@@ -1062,7 +1084,7 @@ namespace FishBreeder.Store
                         Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
                         Progression.Count(GoalKind.BuyDecorations);
                     }
-                    else Economy.Earn(item.price, "refund: no room for a decoration");
+                    else Economy.Earn(price, "refund: no room for a decoration");
                 }
             }
         }
@@ -1073,9 +1095,10 @@ namespace FishBreeder.Store
             {
                 var tint = offer.color;
                 string details = $"{offer.blurb}\nYou have {Economy.FoodPortions(offer.type)} feedings.";
+                int price = Perks.Supplier(offer.price);
                 if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Food, tint), offer.name, details, XpTrack.Fishkeeping, offer.unlockLevel,
-                        $"{offer.feedings} feedings  {Economy.Format(offer.price)}", Economy.CanAfford(offer.price))
-                    && Economy.TrySpend(offer.price, offer.name.ToLower()))
+                        $"{offer.feedings} feedings  {Economy.Format(price)}", Economy.CanAfford(price))
+                    && Economy.TrySpend(price, offer.name.ToLower()))
                 {
                     Economy.AddFood(offer.type, offer.feedings);
                     GameLog.Add($"Bought {offer.name.ToLower()}: {offer.feedings} more feedings.");
@@ -1098,16 +1121,18 @@ namespace FishBreeder.Store
                 info => $"Air for {info.effect:0} fish");
 
             GUILayout.Label("<b>Care</b>", Rich());
+            int repairPrice = Perks.Supplier(supplier.repairKitPrice);
+            int conditionerPrice = Perks.Supplier(supplier.waterConditionerPrice);
             string repairDetails = $"One kit fixes one broken filter, heater or bubbler. Repairs take off only a little wear, so old equipment keeps breaking more often.\nYou have {Economy.RepairKits} kits.";
             if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Repair, new Color(0.85f, 0.6f, 0.25f)), "Repair kits", repairDetails, XpTrack.Fishkeeping, supplier.repairKitLevel,
-                    $"{supplier.repairKitsPerPack} kits  {Economy.Format(supplier.repairKitPrice)}", Economy.CanAfford(supplier.repairKitPrice))
-                && Economy.TrySpend(supplier.repairKitPrice, "repair kits"))
+                    $"{supplier.repairKitsPerPack} kits  {Economy.Format(repairPrice)}", Economy.CanAfford(repairPrice))
+                && Economy.TrySpend(repairPrice, "repair kits"))
                 Economy.RepairKits += supplier.repairKitsPerPack;
 
             string details = $"Resets the pH and gets rid of snails and worms. Use it from the tank view.\nYou have {Economy.WaterConditionerDoses} doses.";
             if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Conditioner, new Color(0.35f, 0.65f, 0.85f)), "Water conditioner", details, XpTrack.Fishkeeping, supplier.waterConditionerLevel,
-                    $"{supplier.waterConditionerDoses} doses  {Economy.Format(supplier.waterConditionerPrice)}", Economy.CanAfford(supplier.waterConditionerPrice))
-                && Economy.TrySpend(supplier.waterConditionerPrice, "water conditioner"))
+                    $"{supplier.waterConditionerDoses} doses  {Economy.Format(conditionerPrice)}", Economy.CanAfford(conditionerPrice))
+                && Economy.TrySpend(conditionerPrice, "water conditioner"))
                 Economy.WaterConditionerDoses += supplier.waterConditionerDoses;
         }
 
@@ -1125,14 +1150,15 @@ namespace FishBreeder.Store
                 var info = tiers[i];
                 int tier = i;
                 bool same = installed != null && installed.tier == i;
-                string label = installed == null ? $"Install  {Economy.Format(info.price)}"
-                    : same ? $"Replace with new  {Economy.Format(info.price)}"
-                    : $"Swap to this  {Economy.Format(info.price)}";
+                int price = Perks.Supplier(info.price);
+                string label = installed == null ? $"Install  {Economy.Format(price)}"
+                    : same ? $"Replace with new  {Economy.Format(price)}"
+                    : $"Swap to this  {Economy.Format(price)}";
                 string details = $"{info.blurb} {effect(info)}. Breaks {info.breakChance * 100f:0.#}% of time steps when new, up to {info.maxBreakChance * 100f:0}% when old.";
                 var tint = Color.Lerp(new Color(0.55f, 0.6f, 0.68f), new Color(0.95f, 0.8f, 0.35f), tiers.Count > 1 ? i / (float)(tiers.Count - 1) : 0f);
                 if (OfferRow(ItemPreviews.Filler(icon, tint), info.name, details, XpTrack.Fishkeeping, info.unlockLevel, label,
-                        tank != null && Economy.CanAfford(info.price), 56f)
-                    && Economy.TrySpend(info.price, $"a {info.name.ToLower()} for {where}"))
+                        tank != null && Economy.CanAfford(price), 56f)
+                    && Economy.TrySpend(price, $"a {info.name.ToLower()} for {where}"))
                 {
                     tank.Install(kind, tier);
                     Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyEquipment);
@@ -1211,11 +1237,11 @@ namespace FishBreeder.Store
             if (shopDay.IsOpen) GUILayout.Label("<i>Building work has to wait until the shop is closed.</i>", Rich());
             else if (next != section) GUILayout.Label($"<i>Unlock the {next.name} first.</i>", Rich());
             else if (!levelOk) GUILayout.Label($"<i>Needs {Progression.LockText(XpTrack.Shopkeeping, level)}.</i>", Rich());
-            else if (!Economy.CanAfford(section.price)) GUILayout.Label($"<i>You need {Economy.Format(section.price - Economy.Money)} more.</i>", Rich());
+            else if (!Economy.CanAfford(section.Price)) GUILayout.Label($"<i>You need {Economy.Format(section.Price - Economy.Money)} more.</i>", Rich());
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
-            GUI.enabled = !shopDay.IsOpen && next == section && levelOk && Economy.CanAfford(section.price);
-            if (GUILayout.Button($"Unlock for {Economy.Format(section.price)}") && store.TryUnlock(section)) panel = Panel.None;
+            GUI.enabled = !shopDay.IsOpen && next == section && levelOk && Economy.CanAfford(section.Price);
+            if (GUILayout.Button($"Unlock for {Economy.Format(section.Price)}") && store.TryUnlock(section)) panel = Panel.None;
             GUI.enabled = true;
             if (GUILayout.Button("Cancel")) panel = Panel.None;
             GUILayout.EndHorizontal();

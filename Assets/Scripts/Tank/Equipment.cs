@@ -32,7 +32,7 @@ namespace FishBreeder
             {
                 var info = Info;
                 if (info == null) return 0f;
-                return Mathf.Clamp01(Mathf.Min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * wear));
+                return Mathf.Clamp01(Mathf.Min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * wear) * Perks.Less(PerkEffect.SturdierEquipment));
             }
         }
     }

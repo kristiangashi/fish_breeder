@@ -17,7 +17,11 @@ namespace FishBreeder.Core
             if (Watching == watching) return;
             Watching = watching;
             Since = Time.unscaledTime;
-            if (watching) JournalView.Close();
+            if (watching)
+            {
+                JournalView.Close();
+                PerksView.Close();
+            }
         }
 
         public static void Toggle() => Set(!Watching);

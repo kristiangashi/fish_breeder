@@ -104,7 +104,11 @@ namespace FishBreeder
         /// The tank's fish limit. It's a soft limit: you can put more in (up to <see cref="HardCapacity"/>),
         /// but every fish over it hurts the health of all of them, dirties the water faster and spreads illness.
         /// </summary>
-        public int Capacity => Mathf.Max(1, SizeInfo.capacity);
+        public int Capacity => CapacityOf(SizeInfo);
+        /// <summary>How many fish a tank of this size holds, with the Roomy tanks perk.</summary>
+        public static int CapacityOf(TankSizeBalance size) => Mathf.Max(1, Mathf.RoundToInt(size.capacity * Perks.More(PerkEffect.RoomierTanks)));
+        /// <summary>Decoration spots: the size's own, plus any from the Aquascaper perk.</summary>
+        public int DecorationSlots => SizeInfo.decorationSlots + Perks.Count(PerkEffect.DecorationSpots);
         /// <summary>No more fish than this fit at all.</summary>
         public int HardCapacity => Mathf.Max(Capacity, Mathf.FloorToInt(Capacity * Balance.Data.store.tankHardLimitMultiplier));
         /// <summary>Fish over the limit (0 when within it).</summary>
@@ -149,7 +153,7 @@ namespace FishBreeder
             {
                 var balance = Balance.Data.timeStep;
                 int every = balance.extraWipeEveryFishkeepingLevels;
-                return Mathf.Max(1, balance.wipesPerSession + (every > 0 ? (Progression.Fishkeeping - 1) / every : 0));
+                return Mathf.Max(1, balance.wipesPerSession + (every > 0 ? (Progression.Fishkeeping - 1) / every : 0) + Perks.Count(PerkEffect.ExtraWipes));
             }
         }
 
@@ -158,7 +162,13 @@ namespace FishBreeder
             temperature = GameConfig.Active.roomTemperature;
             ph = GameConfig.Active.startingPh;
             WipesLeft = WipesPerSession;
+            Perks.Changed += OnPerksChanged;
         }
+
+        void OnDestroy() => Perks.Changed -= OnPerksChanged;
+
+        /// <summary>A perk can add decoration spots: lay the tank's decorations out again with the new count.</summary>
+        void OnPerksChanged() => decor.SetSpotCount(DecorationSlots);
 
         /// <summary>For Sale tanks: fish arriving without a price get their appraised value as a starting price.</summary>
         public bool PricesNewFish { get; set; }
@@ -196,7 +206,7 @@ namespace FishBreeder
             var balance = Balance.Data.timeStep;
             WipesLeft--;
             // Experienced fishkeepers get more out of every wipe.
-            float skill = 1f + Balance.Data.progression.wipeBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1);
+            float skill = (1f + Balance.Data.progression.wipeBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
             algae = Mathf.Clamp01(algae - balance.wipeAlgaeRemoved * skill);
             waterQuality = Mathf.Clamp01(waterQuality + balance.wipeQualityRestored * skill);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpWipeTank);
@@ -284,14 +294,14 @@ namespace FishBreeder
         public void OnTimeStep()
         {
             var balance = Balance.Data.timeStep;
-            float waste = FilterWorking ? filter.Info.effect : 1f;
+            float waste = (FilterWorking ? filter.Info.effect : 1f) * Perks.Less(PerkEffect.CleanerWater);
 
             waterQuality = Mathf.Clamp01(waterQuality
                 - balance.waterQualityLossPerStep * waste
                 - residents.Count * balance.wasteQualityLossPerFish * waste
                 - corpses.Count * balance.corpseQualityLoss
                 - OverLimit * balance.overcrowdedWastePerFish);
-            float algaeGrowth = balance.algaePerStep + DecorCount * balance.algaePerDecoration;
+            float algaeGrowth = (balance.algaePerStep + DecorCount * balance.algaePerDecoration) * Perks.Less(PerkEffect.SlowerAlgae);
             int grazers = 0;
             foreach (var fish in residents) if (!fish.IsDead && fish.Species.eatsAlgae) grazers++;
             algae = Mathf.Clamp01(algae + algaeGrowth * (1.5f - waterQuality) - grazers * balance.algaeEatenPerGrazer);
@@ -410,7 +420,7 @@ namespace FishBreeder
             }
             Economy.RepairKits--;
             item.broken = false;
-            item.wear *= 1f - Balance.Data.supplier.repairWearRemoved;
+            item.wear *= 1f - Mathf.Clamp01(Balance.Data.supplier.repairWearRemoved + Perks.Value(PerkEffect.BetterRepairs));
             if (kind == EquipmentKind.Heater) temperature = heaterSetting;
             UpdateEquipmentLook();
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpRepairEquipment);
@@ -520,7 +530,7 @@ namespace FishBreeder
             if (HasHeater) BuildHeater();
             if (HasBubbler) BuildBubbler();
             UpdateEquipmentLook();
-            decor.Rebuild(root, b, SizeInfo.decorationSlots);
+            decor.Rebuild(root, b, DecorationSlots);
             BuildSubstrate();
             water = TankWater.Build(root, b);
             // New colliders must be in the physics scene before fish pick spawn points.

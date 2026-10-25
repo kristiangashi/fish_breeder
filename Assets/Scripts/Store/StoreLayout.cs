@@ -470,11 +470,11 @@ namespace FishBreeder.Store
             root.SetParent(transform, false);
             var table = new Vector3(-SectionWidth * 0.5f + 0.75f, 0f, -2.15f);
             var wood = new Color(0.62f, 0.42f, 0.26f);
-            Wall(root, "StallTable", table + new Vector3(0f, 0.78f, 0f), new Vector3(1.3f, 0.05f, 0.62f), CounterTopColor);
-            Wall(root, "StallFront", table + new Vector3(0f, 0.4f, -0.29f), new Vector3(1.3f, 0.76f, 0.04f), wood);
+            Wall(root, "StallTable", table + new Vector3(0f, 0.7f, 0f), new Vector3(1.3f, 0.05f, 0.62f), CounterTopColor);
+            Wall(root, "StallFront", table + new Vector3(0f, 0.35f, -0.29f), new Vector3(1.3f, 0.68f, 0.04f), wood);
             for (int sx = -1; sx <= 1; sx += 2)
             {
-                Wall(root, "StallLeg", table + new Vector3(sx * 0.6f, 0.38f, 0.26f), new Vector3(0.06f, 0.76f, 0.06f), wood);
+                Wall(root, "StallLeg", table + new Vector3(sx * 0.6f, 0.34f, 0.26f), new Vector3(0.06f, 0.68f, 0.06f), wood);
                 Wall(root, "AwningPole", table + new Vector3(sx * 0.62f, 1.25f, 0.28f), new Vector3(0.05f, 2.5f, 0.05f), wood);
             }
             for (int i = 0; i < 6; i++)
@@ -483,7 +483,7 @@ namespace FishBreeder.Store
             var eggColors = new[] { new Color(0.98f, 0.95f, 0.85f), new Color(0.9f, 0.82f, 0.6f), new Color(0.75f, 0.9f, 0.95f) };
             for (int c = 0; c < 2; c++)
             {
-                var carton = table + new Vector3(-0.38f + c * 0.32f, 0.84f, -0.02f);
+                var carton = table + new Vector3(-0.38f + c * 0.32f, 0.76f, -0.02f);
                 Wall(root, "Carton", carton, new Vector3(0.26f, 0.06f, 0.36f), new Color(0.8f, 0.7f, 0.55f));
                 for (int e = 0; e < 6; e++)
                     MaterialFactory.Decor(PrimitiveType.Sphere, "Egg", root, carton + new Vector3((e % 2 - 0.5f) * 0.1f, 0.05f, (e / 2 - 1) * 0.1f), new Vector3(0.07f, 0.09f, 0.07f), eggColors[(e + c) % eggColors.Length]);
@@ -491,7 +491,7 @@ namespace FishBreeder.Store
             var fryColors = new[] { new Color(1f, 0.55f, 0.15f), new Color(0.95f, 0.85f, 0.2f), new Color(0.3f, 0.6f, 1f) };
             for (int b = 0; b < 3; b++)
             {
-                var bag = table + new Vector3(0.22f + b * 0.16f, 0.9f, -0.05f + (b % 2) * 0.12f);
+                var bag = table + new Vector3(0.22f + b * 0.16f, 0.82f, -0.05f + (b % 2) * 0.12f);
                 MaterialFactory.Decor(PrimitiveType.Sphere, "FryBag", root, bag, new Vector3(0.13f, 0.17f, 0.13f), new Color(0.65f, 0.85f, 0.95f));
                 MaterialFactory.Decor(PrimitiveType.Capsule, "Fry", root, bag + new Vector3(0f, 0f, -0.06f), new Vector3(0.025f, 0.03f, 0.025f), fryColors[b]);
                 MaterialFactory.Decor(PrimitiveType.Cylinder, "BagKnot", root, bag + new Vector3(0f, 0.1f, 0f), new Vector3(0.03f, 0.03f, 0.03f), new Color(0.9f, 0.9f, 0.9f));

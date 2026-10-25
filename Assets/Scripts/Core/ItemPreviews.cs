@@ -20,6 +20,8 @@ namespace FishBreeder.Core
             public string key;
             public Func<GameObject> make;
             public bool sideView;
+            /// <summary>Optional: what to fit in the shot, instead of the renderers' bounds.</summary>
+            public Func<GameObject, Bounds> frame;
         }
 
         static readonly Dictionary<string, Texture2D> cache = new Dictionary<string, Texture2D>();
@@ -55,6 +57,12 @@ namespace FishBreeder.Core
                 holder.transform.rotation = Quaternion.Euler(0f, 165f, 0f);
                 rig.StandNow();
                 return holder;
+            }, subject =>
+            {
+                // Skinned bounds still cover the arms-out modelling pose; frame the standing figure.
+                var rig = subject.GetComponentInChildren<People.CrewRig>();
+                float h = rig != null ? rig.Height : 1.7f;
+                return new Bounds(subject.transform.position + Vector3.up * h * 0.5f, new Vector3(h * 0.3f, h, h * 0.2f));
             });
         }
 
@@ -86,10 +94,10 @@ namespace FishBreeder.Core
             });
         }
 
-        static Texture2D Photo(string key, bool sideView, Func<GameObject> make)
+        static Texture2D Photo(string key, bool sideView, Func<GameObject> make, Func<GameObject, Bounds> frame = null)
         {
             if (cache.TryGetValue(key, out var texture)) return texture;
-            if (!pending.ContainsKey(key)) pending[key] = new Job { key = key, make = make, sideView = sideView };
+            if (!pending.ContainsKey(key)) pending[key] = new Job { key = key, make = make, sideView = sideView, frame = frame };
             if (studio == null) studio = new GameObject("Preview studio").AddComponent<Studio>();
             return null;
         }
@@ -150,6 +158,7 @@ namespace FishBreeder.Core
                 }
                 var bounds = renderers[0].bounds;
                 foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+                if (job.frame != null) bounds = job.frame(subject);
 
                 // Fish are photographed side-on: look across whichever way the body runs.
                 var look = Vector3.forward;

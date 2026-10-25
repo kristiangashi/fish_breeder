@@ -156,13 +156,11 @@ namespace FishBreeder.Store
             }
             else if (person != null)
             {
-                // Close up on one of the shop's people, from in front and a little to the side.
-                var forward = person.forward;
-                forward.y = 0f;
-                forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : Vector3.back;
-                var side = Vector3.Cross(Vector3.up, forward);
-                targetPosition = person.position + Vector3.up * 2f + forward * 2.6f + side * 0.8f;
-                targetRotation = Quaternion.LookRotation(person.position + Vector3.up * 0.8f - targetPosition);
+                // Close up on one of the shop's people, from the store camera's side: the shopkeeper and
+                // the fish seller face it, and customers turn round to it when something wows them.
+                var look = person.position + Vector3.up * 0.85f;
+                targetPosition = look + StoreViewDirection * 3.4f;
+                targetRotation = Quaternion.LookRotation(look - targetPosition);
             }
             else
             {

@@ -18,7 +18,7 @@ namespace FishBreeder.Shop
     public class Customer : MonoBehaviour
     {
         /// <summary>People are drawn a bit smaller than life so the tanks and the store read bigger.</summary>
-        public const float PersonScale = 0.8f;
+        public const float PersonScale = 0.9f;
 
         static readonly List<Customer> all = new List<Customer>();
         /// <summary>Everyone in or around the shop right now.</summary>

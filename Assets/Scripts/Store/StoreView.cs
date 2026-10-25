@@ -51,6 +51,8 @@ namespace FishBreeder.Store
         StoreTank orderTarget;
         int supplierTab;
         bool atFishSeller;
+        /// <summary>Who the people camera (C) is following: -1 off, 0 the shopkeeper, 1 the fish seller, then customers.</summary>
+        int following = -1;
         Vector2 supplierScroll;
         float panX;
         float distance = 15f;
@@ -144,10 +146,23 @@ namespace FishBreeder.Store
                 if (hud.HasSelection) hud.ClearSelection();
                 else ExitTank();
             }
+            else if (focused == null && escape && following >= 0) following = -1;
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
+            if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && GUIUtility.keyboardControl == 0) following++;
+            var person = focused == null ? FollowedPerson() : null;
             if (focused != null)
             {
                 GetTankPose(focused, hud.Focus, out targetPosition, out targetRotation);
+            }
+            else if (person != null)
+            {
+                // Close up on one of the shop's people, from in front and a little to the side.
+                var forward = person.forward;
+                forward.y = 0f;
+                forward = forward.sqrMagnitude > 1e-4f ? forward.normalized : Vector3.back;
+                var side = Vector3.Cross(Vector3.up, forward);
+                targetPosition = person.position + Vector3.up * 1.35f + forward * 2.3f + side * 0.7f;
+                targetRotation = Quaternion.LookRotation(person.position + Vector3.up * 0.75f - targetPosition);
             }
             else
             {
@@ -166,6 +181,22 @@ namespace FishBreeder.Store
             cam.transform.SetPositionAndRotation(
                 Vector3.Lerp(cam.transform.position, targetPosition, blend),
                 Quaternion.Slerp(cam.transform.rotation, targetRotation, blend));
+        }
+
+        /// <summary>The person the people camera follows, or null (stepping past the last one turns it off).</summary>
+        Transform FollowedPerson()
+        {
+            if (following < 0) return null;
+            var people = new List<Transform>();
+            if (Shopkeeper.Instance != null) people.Add(Shopkeeper.Instance.transform);
+            if (FishSeller.Instance != null) people.Add(FishSeller.Instance.transform);
+            foreach (var customer in Customer.All) if (customer != null) people.Add(customer.transform);
+            if (following >= people.Count)
+            {
+                following = -1;
+                return null;
+            }
+            return people[following];
         }
 
         void HandleStoreCameraInput(float dt)
@@ -309,7 +340,7 @@ namespace FishBreeder.Store
             DrawStatusBar();
             if (panel == Panel.None)
             {
-                DrawWorldLabels(scale, height);
+                if (following < 0) DrawWorldLabels(scale, height);
                 DrawCustomerBubbles(scale, height);
             }
             DrawMoneyPopups(scale, height);

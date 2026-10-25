@@ -169,6 +169,8 @@ namespace FishBreeder.Store
                     if (personRig != null) personRig.Play((Gesture)devGesture, cam.transform.position);
                     GameLog.Add($"Gesture (dev): {(Gesture)devGesture}");
                 }
+                // H: slow motion while checking them.
+                if (Input.GetKeyDown(KeyCode.H) && !shopDay.IsOpen) Time.timeScale = Time.timeScale < 1f ? 1f : 0.2f;
 #endif
                 // Close up on one of the shop's people, from the store camera's side: the shopkeeper and
                 // the fish seller face it, and customers turn round to it when something wows them.

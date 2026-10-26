@@ -539,8 +539,10 @@ namespace FishBreeder
             t.localPosition = new Vector3(b.x * 0.5f, b.y, b.z * 0.22f);
             piece.AddComponent<TankObstacle>();
 
+            // Pour from the box's lip, just inside the glass and above the rim, down into the water.
+            var lip = new Vector3(b.x * 0.5f - 0.05f, b.y + 0.03f, b.z * 0.22f);
             flow = holder.gameObject.AddComponent<TankFilterFlow>();
-            flow.Initialize(new Vector3(b.x * 0.5f - 0.07f, b.y - 0.02f, b.z * 0.22f), EquipmentModels.LowestPart(piece, holder), b.y * 0.94f);
+            flow.Initialize(lip, EquipmentModels.LowestPart(piece, holder), b.y * 0.94f);
         }
 
         /// <summary>

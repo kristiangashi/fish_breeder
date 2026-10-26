@@ -32,14 +32,14 @@ namespace FishBreeder
             var bubble = MaterialFactory.Transparent(new Color(0.9f, 0.97f, 1f, 0.75f));
 
             // The stream itself, a thin sheet from the lip down to the surface.
-            var sheet = MaterialFactory.Decor(PrimitiveType.Cube, "Pour", transform, new Vector3(spout.x, spout.y - fallHeight * 0.5f, spout.z), new Vector3(0.05f, fallHeight, 0.018f), Color.white);
+            var sheet = MaterialFactory.Decor(PrimitiveType.Cube, "Pour", transform, new Vector3(spout.x, spout.y - fallHeight * 0.5f, spout.z), new Vector3(0.08f, fallHeight, 0.025f), Color.white);
             sheet.GetComponent<Renderer>().sharedMaterial = pour;
 
             drops = new Transform[Drops];
             dropPhase = new float[Drops];
             for (int i = 0; i < Drops; i++)
             {
-                var drop = MaterialFactory.Decor(PrimitiveType.Sphere, "Drop", transform, spout, new Vector3(0.012f, 0.02f, 0.012f), Color.white);
+                var drop = MaterialFactory.Decor(PrimitiveType.Sphere, "Drop", transform, spout, new Vector3(0.018f, 0.028f, 0.018f), Color.white);
                 drop.GetComponent<Renderer>().sharedMaterial = pour;
                 drops[i] = drop.transform;
                 dropPhase[i] = i / (float)Drops;
@@ -49,7 +49,7 @@ namespace FishBreeder
             splashPhase = new float[Splashes];
             for (int i = 0; i < Splashes; i++)
             {
-                var splash = MaterialFactory.Decor(PrimitiveType.Sphere, "Splash", transform, splashPoint, Vector3.one * 0.01f, Color.white);
+                var splash = MaterialFactory.Decor(PrimitiveType.Sphere, "Splash", transform, splashPoint, Vector3.one * 0.016f, Color.white);
                 splash.GetComponent<Renderer>().sharedMaterial = bubble;
                 splashes[i] = splash.transform;
                 splashPhase[i] = i / (float)Splashes;
@@ -100,7 +100,7 @@ namespace FishBreeder
                 var p = Vector3.Lerp(spout, splashPoint, t * t);
                 p.x += Mathf.Sin(time * 7f + i) * 0.008f;
                 drops[i].localPosition = p;
-                drops[i].localScale = new Vector3(0.012f, 0.02f + t * 0.012f, 0.012f);
+                drops[i].localScale = new Vector3(0.018f, 0.028f + t * 0.016f, 0.018f);
             }
 
             for (int i = 0; i < splashes.Length; i++)
@@ -113,9 +113,9 @@ namespace FishBreeder
                 }
                 float t = splashPhase[i];
                 float angle = i * 2.39996f;
-                var p = splashPoint + new Vector3(Mathf.Cos(angle) * t * 0.09f, -t * fallHeight * 1.4f, Mathf.Sin(angle) * t * 0.05f);
+                var p = splashPoint + new Vector3(Mathf.Cos(angle) * t * 0.12f, -t * 0.06f, Mathf.Sin(angle) * t * 0.08f);
                 splashes[i].localPosition = p;
-                splashes[i].localScale = Vector3.one * Mathf.Lerp(0.014f, 0.002f, t);
+                splashes[i].localScale = Vector3.one * Mathf.Lerp(0.02f, 0.003f, t);
             }
 
             for (int i = 0; i < motes.Length; i++)

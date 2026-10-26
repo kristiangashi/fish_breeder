@@ -940,7 +940,7 @@ namespace FishBreeder.Store
                 shopDay.LastReport = new DayReport
                 {
                     day = Economy.Day, morning = morning, visitors = 12, fishSold = 4, earnings = 260, happy = 6, grossed = 1, sad = 1, mad = 2, stars = 3.5f,
-                    review = "\"Nice fish, but the prices are ridiculous.\"",
+                    reviews = new List<string> { "Nice fish, but the prices are ridiculous.", "Lots of tanks, hardly any fish to buy.", "Watched a big fish bully the little ones. Horrible." },
                     tanks = "3 eggs hatched, 5 fry born, a new pregnancy or clutch of eggs, 2 fish fell ill, 1 died, a fish was eaten by a tank mate, 2 fish were bitten or nipped.",
                 };
                 panel = Panel.DayReport;

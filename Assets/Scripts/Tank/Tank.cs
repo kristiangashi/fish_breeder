@@ -29,6 +29,7 @@ namespace FishBreeder
         Transform visuals;
         TankDecor decor;
         TankBubbles bubbles;
+        TankFilterFlow flow;
         /// <summary>The 3D model of each kind of equipment, by <see cref="EquipmentKind"/>.</summary>
         readonly GameObject[] equipmentModels = new GameObject[3];
         static readonly Color ClearWater = new Color(0.12f, 0.35f, 0.55f);
@@ -460,10 +461,11 @@ namespace FishBreeder
             UpdateEquipmentLook();
         }
 
-        /// <summary>A broken bubbler stops bubbling.</summary>
+        /// <summary>A broken bubbler stops bubbling, and a broken filter stops moving water.</summary>
         void UpdateEquipmentLook()
         {
             if (bubbles != null) bubbles.enabled = BubblerWorking;
+            if (flow != null) flow.enabled = FilterWorking;
         }
 
         /// <summary>Tank height the equipment sizes are for (see <see cref="EquipmentModels"/>).</summary>
@@ -476,6 +478,7 @@ namespace FishBreeder
             if (equipmentModels[index] != null) Destroy(equipmentModels[index]);
             equipmentModels[index] = null;
             if (kind == EquipmentKind.Bubbler) bubbles = null;
+            if (kind == EquipmentKind.Filter) flow = null;
             var item = GetEquipment(kind);
             if (item == null) return;
             var holder = new GameObject(kind.ToString()).transform;
@@ -507,9 +510,14 @@ namespace FishBreeder
         /// <summary>Yaw that turns an equipment model's front towards the glass the camera looks through.</summary>
         static readonly Quaternion FaceFront = Quaternion.Euler(0f, 180f, 0f);
 
+        /// <summary>Turns a filter model so the box on its outside faces out through the right-hand glass.</summary>
+        static readonly Quaternion FilterFacing = Quaternion.Euler(0f, 90f, 0f);
+
         /// <summary>
-        /// The filter hangs inside the tank on the top edge of the back glass, right of centre,
-        /// facing the front with its spout pouring forward and its intake reaching down.
+        /// The filter hangs on the right-hand glass towards the back, the way a hang-on-back filter
+        /// does: the intake tube reaches down inside the tank, the box with the media sits outside.
+        /// Water is drawn in at the tube's mouth and pours back in over the rim
+        /// (<see cref="TankFilterFlow"/>). The model's pivot is where it hangs, on the glass's top edge.
         /// </summary>
         void BuildFilter(Transform holder, int tier)
         {
@@ -519,18 +527,20 @@ namespace FishBreeder
             if (piece == null)
             {
                 var dark = new Color(0.15f, 0.16f, 0.18f);
-                MaterialFactory.Decor(PrimitiveType.Cube, "Filter", holder, new Vector3(b.x * 0.33f, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
-                MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", holder, new Vector3(b.x * 0.33f, b.y * 0.55f, b.z * 0.5f - 0.03f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
+                MaterialFactory.Decor(PrimitiveType.Cube, "Filter", holder, new Vector3(b.x * 0.5f + 0.08f, b.y - 0.1f, b.z * 0.22f), new Vector3(0.16f, 0.2f, 0.12f), dark);
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", holder, new Vector3(b.x * 0.5f - 0.05f, b.y * 0.55f, b.z * 0.22f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
                 return;
             }
-            // The design's pivot is the top of the glass it clips onto (see split_equipment.py).
             var t = piece.transform;
-            t.localRotation = FaceFront;
+            t.localRotation = FilterFacing;
             var size = EquipmentModels.LocalBounds(piece, holder).size;
             float longest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
             if (longest > 1e-5f) t.localScale *= EquipmentModels.Size(design) * b.y / StandardTankHeight / longest;
-            t.localPosition = new Vector3(b.x * 0.33f, b.y + 0.01f, b.z * 0.5f);
+            t.localPosition = new Vector3(b.x * 0.5f, b.y, b.z * 0.22f);
             piece.AddComponent<TankObstacle>();
+
+            flow = holder.gameObject.AddComponent<TankFilterFlow>();
+            flow.Initialize(new Vector3(b.x * 0.5f - 0.07f, b.y - 0.02f, b.z * 0.22f), EquipmentModels.LowestPart(piece, holder), b.y * 0.94f);
         }
 
         /// <summary>

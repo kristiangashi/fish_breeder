@@ -31,7 +31,7 @@ namespace FishBreeder
         /// <summary>Longest side of each design in a Standard tank (metres; scaled with the tank's height).</summary>
         static readonly Dictionary<string, float> Sizes = new Dictionary<string, float>
         {
-            { "Filter0", 0.44f }, { "Filter1", 0.46f }, { "Filter2", 0.48f },
+            { "Filter0", 0.66f }, { "Filter1", 0.67f }, { "Filter2", 0.67f },
             { "FilterBase0", 0.22f }, { "FilterBase1", 0.24f }, { "FilterBase2", 0.34f },
             { "Heater0", 0.3f }, { "Heater1", 0.3f }, { "Heater2", 0.28f }, { HeaterController, 0.17f },
             { "Bubbler0", 0.13f }, { "Bubbler1", 0.3f }, { "Bubbler2", 0.2f },
@@ -101,6 +101,33 @@ namespace FishBreeder
                 }
             }
             return bounds;
+        }
+
+        /// <summary>
+        /// The middle of the lowest slice of a piece's mesh, in <paramref name="space"/>: the mouth
+        /// of a filter's intake tube, which is the only part reaching that far down.
+        /// </summary>
+        public static Vector3 LowestPart(GameObject piece, Transform space, float slice = 0.12f)
+        {
+            var bounds = LocalBounds(piece, space);
+            float top = bounds.min.y + Mathf.Max(0.001f, bounds.size.y * slice);
+            Vector3 sum = Vector3.zero;
+            int count = 0;
+            foreach (var renderer in piece.GetComponentsInChildren<MeshRenderer>())
+            {
+                var filter = renderer.GetComponent<MeshFilter>();
+                if (filter == null || filter.sharedMesh == null || !filter.sharedMesh.isReadable) continue;
+                foreach (var vertex in filter.sharedMesh.vertices)
+                {
+                    var p = space.InverseTransformPoint(renderer.transform.TransformPoint(vertex));
+                    if (p.y > top) continue;
+                    sum += p;
+                    count++;
+                }
+            }
+            if (count == 0) return bounds.center - Vector3.up * bounds.extents.y;
+            var middle = sum / count;
+            return new Vector3(middle.x, bounds.min.y, middle.z);
         }
 
         /// <summary>

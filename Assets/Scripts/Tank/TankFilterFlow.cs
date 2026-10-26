@@ -65,12 +65,12 @@ namespace FishBreeder
                 mote.GetComponent<Renderer>().sharedMaterial = bubble;
                 motes[i] = mote.transform;
                 motePhase[i] = i / (float)Motes;
-                moteFrom[i] = Start(i);
+                moteFrom[i] = IntakeStart(i);
             }
         }
 
         /// <summary>Where a speck starts its run into the tube's mouth: spread around it, mostly below.</summary>
-        Vector3 Start(int i)
+        Vector3 IntakeStart(int i)
         {
             float angle = GameRandom.Range(0f, Mathf.PI * 2f);
             float reach = moteReach * GameRandom.Range(0.6f, 1f);
@@ -124,7 +124,7 @@ namespace FishBreeder
                 if (motePhase[i] > 1f)
                 {
                     motePhase[i] -= 1f;
-                    moteFrom[i] = Start(i);
+                    moteFrom[i] = IntakeStart(i);
                 }
                 float t = motePhase[i];
                 // Faster the closer it gets, as the pull grows towards the mouth.

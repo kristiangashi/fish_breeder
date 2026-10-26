@@ -510,12 +510,12 @@ namespace FishBreeder.Store
             float east = (sections.Count - 1) * SectionWidth + SectionWidth * 0.5f + WallThickness;
             var outside = new GameObject("Pavement").transform;
             outside.SetParent(transform, false);
-            Wall(outside, "Pavement", new Vector3((west + east) * 0.5f, -0.055f, -halfD - 2.3f), new Vector3(east - west, 0.1f, 4.2f), new Color(0.8f, 0.77f, 0.7f));
+            Wall(outside, "Pavement", new Vector3((west + east) * 0.5f, -0.055f, -halfD - 2.3f), new Vector3(east - west, 0.1f, 4.2f), new Color(0.72f, 0.68f, 0.6f));
             Wall(outside, "Pavement", new Vector3((west + east) * 0.5f, -0.06f, -halfD - 6.4f), new Vector3(east - west, 0.1f, 4f), new Color(0.32f, 0.34f, 0.36f));
 
             var root = new GameObject("Fish seller").transform;
             root.SetParent(transform, false);
-            var van = new Vector3(-5.4f, 0f, -6.6f);
+            var van = new Vector3(-5.4f, 0f, -6.3f);
             var paint = new Color(0.95f, 0.97f, 0.96f);
             var glass = new Color(0.2f, 0.32f, 0.42f);
             var tyre = new Color(0.12f, 0.12f, 0.13f);
@@ -546,7 +546,7 @@ namespace FishBreeder.Store
             for (int sz = -1; sz <= 1; sz += 2)
             {
                 var hinge = new Vector3(back, 0f, van.z + sz * 0.8f);
-                var open = new Vector3(0.8f, 0f, sz * 0.6f).normalized;
+                var open = new Vector3(0.95f, 0f, sz * 0.3f).normalized;
                 var door = Wall(root, "VanDoor", hinge + open * 0.39f + Vector3.up * 1.12f, new Vector3(0.78f, 1.5f, 0.04f), paint);
                 door.transform.localRotation = Quaternion.FromToRotation(Vector3.right, open);
             }
@@ -555,12 +555,9 @@ namespace FishBreeder.Store
             Wall(root, "FoamBox", van + new Vector3(1.25f, 0.62f, 0.35f), new Vector3(0.5f, 0.36f, 0.42f), foam);
             Wall(root, "FoamBox", van + new Vector3(1.25f, 0.62f, -0.2f), new Vector3(0.5f, 0.36f, 0.42f), foam);
             Wall(root, "FoamBox", van + new Vector3(1.25f, 0.99f, 0.1f), new Vector3(0.5f, 0.36f, 0.42f), foam);
-            Wall(root, "FoamBox", van + new Vector3(1.1f, 0.18f, 1.18f), new Vector3(0.5f, 0.36f, 0.42f), foam);
-            Wall(root, "FoamBox", van + new Vector3(1.1f, 0.55f, 1.18f), new Vector3(0.5f, 0.36f, 0.42f), foam);
-            Wall(root, "BoxTape", van + new Vector3(1.1f, 0.735f, 1.18f), new Vector3(0.08f, 0.01f, 0.43f), new Color(0.3f, 0.6f, 0.85f));
 
             // The folding table: two aerated holding tanks, an air pump and a row of bagged fish.
-            var table = new Vector3(-2.75f, 0f, -6.55f);
+            var table = new Vector3(-2.75f, 0f, -6.35f);
             var metal = new Color(0.62f, 0.64f, 0.66f);
             Wall(root, "StallTable", table + new Vector3(0f, 0.74f, 0f), new Vector3(1.3f, 0.04f, 0.6f), new Color(0.3f, 0.62f, 0.66f));
             for (int sx = -1; sx <= 1; sx += 2)
@@ -578,6 +575,10 @@ namespace FishBreeder.Store
                 MaterialFactory.Decor(PrimitiveType.Cylinder, "AirLine", root, holding + new Vector3(0.12f, 0.24f, 0.08f), new Vector3(0.012f, 0.1f, 0.012f), new Color(0.85f, 0.95f, 0.9f));
             }
             Wall(root, "AirPump", table + new Vector3(0.5f, 0.82f, 0.15f), new Vector3(0.16f, 0.1f, 0.12f), DarkColor);
+            // A stack of taped-up foam boxes at the end of the table, waiting to come in.
+            Wall(root, "FoamBox", table + new Vector3(0.98f, 0.18f, 0.05f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "FoamBox", table + new Vector3(0.98f, 0.55f, 0.05f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "BoxTape", table + new Vector3(0.98f, 0.735f, 0.05f), new Vector3(0.08f, 0.01f, 0.43f), new Color(0.3f, 0.6f, 0.85f));
             for (int b = 0; b < 4; b++)
             {
                 var bag = table + new Vector3(0.12f + b * 0.15f, 0.86f, -0.18f);
@@ -609,11 +610,11 @@ namespace FishBreeder.Store
 
             var seller = new GameObject("Fish seller (person)").transform;
             seller.SetParent(root, false);
-            seller.position = table + new Vector3(0f, 0f, 0.7f);
+            seller.position = table + new Vector3(0f, 0f, 0.68f);
             seller.rotation = Quaternion.LookRotation(new Vector3(0.25f, 0f, -1f));
             seller.gameObject.AddComponent<FishSeller>();
             FishSellerPoint = seller.position + Vector3.up * 1.85f;
-            StoreClickable.Add(root, "Fish seller", new Vector3(-3.1f, 0.9f, -6.3f), new Vector3(2.2f, 1.8f, 1.9f), StoreClickable.Kind.FishSeller);
+            StoreClickable.Add(root, "Fish seller", new Vector3(-3.1f, 0.9f, -6.05f), new Vector3(2.2f, 1.8f, 1.8f), StoreClickable.Kind.FishSeller);
         }
 
         // Wall dressing and palm fronds overhead don't block the walkway (the palm's pot and trunk do).

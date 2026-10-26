@@ -27,6 +27,10 @@ namespace FishBreeder.Core
         static readonly Dictionary<string, float> viewWidths = new Dictionary<string, float>();
         static readonly Dictionary<string, bool> scrollBars = new Dictionary<string, bool>();
         static readonly HashSet<string> reported = new HashSet<string>();
+        // Repaints in a row each id has overflowed. Windows that grow to fit are a frame behind
+        // their content, so only an overflow that lasts a few frames counts.
+        static readonly Dictionary<string, int> overflowing = new Dictionary<string, int>();
+        const int FramesToCount = 3;
 
         /// <summary>Everything that overflowed since the last <see cref="ClearProblems"/>, one line each.</summary>
         public static readonly List<string> Problems = new List<string>();
@@ -60,8 +64,9 @@ namespace FishBreeder.Core
                 var need = new Vector2(content.xMax + o.padding.right, content.yMax + o.padding.bottom);
                 measured[o.id] = need;
                 Seen.Add(o.id);
-                if (need.y > o.rect.height + 1.5f) Report(o.id, $"needs {need.y:0} high, has {o.rect.height:0}");
-                if (need.x > o.rect.width + 1.5f) Report(o.id, $"needs {need.x:0} wide, has {o.rect.width:0}");
+                bool tall = need.y > o.rect.height + 1.5f, wide = need.x > o.rect.width + 1.5f;
+                if (Lasting(o.id, tall || wide))
+                    Report(o.id, tall ? $"needs {need.y:0} high, has {o.rect.height:0}" : $"needs {need.x:0} wide, has {o.rect.width:0}");
             }
             GUILayout.EndArea();
         }
@@ -101,7 +106,7 @@ namespace FishBreeder.Core
             bool settled = viewWidths.TryGetValue(o.id, out var oldWidth) && Mathf.Abs(oldWidth - view.width) < 0.5f && bar == hadBar;
             viewWidths[o.id] = view.width;
             float visible = view.width - (bar ? BarWidth : 0f);
-            if (settled && content.width > visible + 1.5f) Report(o.id, $"content {content.width:0} wide, only {visible:0} visible");
+            if (Lasting(o.id, settled && content.width > visible + 1.5f)) Report(o.id, $"content {content.width:0} wide, only {visible:0} visible");
         }
 
         static float BarWidth
@@ -131,6 +136,13 @@ namespace FishBreeder.Core
                 }
             }
             GUI.Label(rect, content, style);
+        }
+
+        static bool Lasting(string id, bool over)
+        {
+            int frames = over && overflowing.TryGetValue(id, out var n) ? n + 1 : over ? 1 : 0;
+            overflowing[id] = frames;
+            return frames >= FramesToCount;
         }
 
         static void Report(string id, string what)

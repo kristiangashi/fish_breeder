@@ -234,7 +234,8 @@ namespace FishBreeder.Store
 
         void GetStorePose(out Vector3 position, out Quaternion rotation)
         {
-            var lookAt = new Vector3(panX, 0.8f, 0.3f);
+            // Centred a little in front of the middle, so the pavement and the fish seller's van show.
+            var lookAt = new Vector3(panX, 0.8f, -0.8f);
             position = lookAt + StoreViewDirection * distance;
             rotation = Quaternion.LookRotation(lookAt - position);
         }

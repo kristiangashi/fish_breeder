@@ -383,7 +383,13 @@ namespace FishBreeder.Store
             HandleClick();
         }
 
-        static Rect Centered(float width, float height, float w, float h) => new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
+        /// <summary>A window of this size in the middle of the screen, shrunk to fit a small one.</summary>
+        static Rect Centered(float width, float height, float w, float h)
+        {
+            w = Mathf.Min(w, width - 20f);
+            h = Mathf.Min(h, height - 20f);
+            return new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
+        }
 
         const float NarrowWidth = 1100f;
 

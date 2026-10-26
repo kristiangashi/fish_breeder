@@ -65,8 +65,13 @@ namespace FishBreeder.Core
                 measured[o.id] = need;
                 Seen.Add(o.id);
                 bool tall = need.y > o.rect.height + 1.5f, wide = need.x > o.rect.width + 1.5f;
-                if (Lasting(o.id, tall || wide))
-                    Report(o.id, tall ? $"needs {need.y:0} high, has {o.rect.height:0}" : $"needs {need.x:0} wide, has {o.rect.width:0}");
+                // The window itself has to be on the screen too (in GUI units, after the UI scale).
+                float scale = Mathf.Max(0.01f, GUI.matrix.m00);
+                var screen = new Rect(0f, 0f, Screen.width / scale, Screen.height / scale);
+                bool off = o.rect.xMin < screen.xMin - 1f || o.rect.yMin < screen.yMin - 1f || o.rect.xMax > screen.xMax + 1f || o.rect.yMax > screen.yMax + 1f;
+                if (Lasting(o.id, tall || wide || off))
+                    Report(o.id, off ? $"window {o.rect.width:0}x{o.rect.height:0} at {o.rect.x:0},{o.rect.y:0} runs off the screen"
+                        : tall ? $"needs {need.y:0} high, has {o.rect.height:0}" : $"needs {need.x:0} wide, has {o.rect.width:0}");
             }
             GUILayout.EndArea();
         }

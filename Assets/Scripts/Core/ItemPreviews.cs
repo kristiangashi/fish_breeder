@@ -5,7 +5,7 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// Little pictures for the supplier shop. Things that have a 3D design (fish and decorations)
+    /// Little pictures for the supplier shop. Things that have a 3D design (fish, decorations, equipment)
     /// are photographed at runtime by a hidden studio camera; everything else gets a simple drawn
     /// filler icon until it has a design of its own. Pictures are made once and cached.
     /// </summary>
@@ -39,6 +39,36 @@ namespace FishBreeder.Core
                 piece.transform.rotation = Quaternion.Euler(0f, 160f, 0f);
                 TankDecor.Dress(piece, out _, false);
                 return piece;
+            });
+        }
+
+        /// <summary>
+        /// A filter, heater or bubbler model, front three-quarter view; the smart heater controller
+        /// with its box beside the heater. Null until the photo is ready (or if it has no model).
+        /// </summary>
+        public static Texture2D Equipment(EquipmentKind kind, int tier)
+        {
+            string design = EquipmentModels.Design(kind, tier);
+            bool controller = EquipmentModels.HasController(kind, tier);
+            return Photo($"equipment:{design}:{controller}", false, () =>
+            {
+                var holder = new GameObject("Equipment photo");
+                var piece = EquipmentModels.Spawn(design, holder.transform, false);
+                if (piece == null)
+                {
+                    UnityEngine.Object.Destroy(holder);
+                    return null;
+                }
+                var bounds = EquipmentModels.Place(piece, holder.transform, Quaternion.identity, EquipmentModels.Size(design), Vector3.zero, Vector3.zero);
+                if (controller)
+                {
+                    var box = EquipmentModels.Spawn(EquipmentModels.HeaterController, holder.transform, false);
+                    if (box != null)
+                        EquipmentModels.Place(box, holder.transform, Quaternion.identity, EquipmentModels.Size(EquipmentModels.HeaterController),
+                            new Vector3(bounds.min.x - 0.02f, bounds.min.y, bounds.max.z), new Vector3(1f, -1f, 1f));
+                }
+                holder.transform.rotation = Quaternion.Euler(0f, 160f, 0f);
+                return holder;
             });
         }
 

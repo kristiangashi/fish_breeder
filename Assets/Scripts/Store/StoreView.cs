@@ -1445,7 +1445,7 @@ namespace FishBreeder.Store
                 var quality = Balance.Data.quality;
                 string details = $"{info.blurb} {effect(info)}. Breaks {info.breakChance * 100f:0.#}% of time steps when new, up to {info.maxBreakChance * 100f:0}% when old. Quality {quality.equipmentPoints + quality.pointsPerEquipmentTier * i:0}.";
                 var tint = Color.Lerp(new Color(0.55f, 0.6f, 0.68f), new Color(0.95f, 0.8f, 0.35f), tiers.Count > 1 ? i / (float)(tiers.Count - 1) : 0f);
-                if (OfferRow(ItemPreviews.Filler(icon, tint), info.name, details, XpTrack.Fishkeeping, info.unlockLevel, label,
+                if (OfferRow(ItemPreviews.Equipment(kind, i) ?? ItemPreviews.Filler(icon, tint), info.name, details, XpTrack.Fishkeeping, info.unlockLevel, label,
                         tank != null && Economy.CanAfford(price), 56f)
                     && Economy.TrySpend(price, $"a {info.name.ToLower()} for {where}"))
                 {

@@ -4,7 +4,7 @@ namespace FishBreeder.EditorTools
 {
     /// <summary>
     /// Import settings for Meshy models and textures under Assets/Resources/Fish,
-    /// Assets/Resources/Decor and Assets/Resources/Crew, so a new model only needs to be dropped
+    /// Assets/Resources/Decor, Assets/Resources/Equipment and Assets/Resources/Crew, so a new model only needs to be dropped
     /// into a folder there. Crew models keep their skeleton (moved by code, see CrewRig).
     /// </summary>
     public class FishAssetPostprocessor : AssetPostprocessor
@@ -12,16 +12,17 @@ namespace FishBreeder.EditorTools
         const string FishFolder = "Assets/Resources/Fish/";
         const string DecorFolder = "Assets/Resources/Decor/";
         const string CrewFolder = "Assets/Resources/Crew/";
+        const string EquipmentFolder = "Assets/Resources/Equipment/";
 
-        public override uint GetVersion() => 4;
+        public override uint GetVersion() => 5;
 
-        static bool IsManaged(string path) => path.StartsWith(FishFolder) || path.StartsWith(DecorFolder) || path.StartsWith(CrewFolder);
+        static bool IsManaged(string path) => path.StartsWith(FishFolder) || path.StartsWith(DecorFolder) || path.StartsWith(CrewFolder) || path.StartsWith(EquipmentFolder);
 
         void OnPreprocessModel()
         {
             if (!IsManaged(assetPath)) return;
             var importer = (ModelImporter)assetImporter;
-            // Readable so FishVisual can work out which end is the head, and decor can build mesh colliders.
+            // Readable so FishVisual can work out which end is the head, and decor and equipment can build mesh colliders.
             importer.isReadable = true;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
             importer.importAnimation = false;

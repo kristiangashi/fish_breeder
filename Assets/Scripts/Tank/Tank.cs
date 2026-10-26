@@ -29,6 +29,8 @@ namespace FishBreeder
         Transform visuals;
         TankDecor decor;
         TankBubbles bubbles;
+        /// <summary>The 3D model of each kind of equipment, by <see cref="EquipmentKind"/>.</summary>
+        readonly GameObject[] equipmentModels = new GameObject[3];
         static readonly Color ClearWater = new Color(0.12f, 0.35f, 0.55f);
         static readonly Color MurkyWater = new Color(0.25f, 0.33f, 0.12f);
         static readonly Color AlgaeWater = new Color(0.18f, 0.42f, 0.16f);
@@ -405,20 +407,15 @@ namespace FishBreeder
             var item = new InstalledEquipment { kind = kind, tier = tier };
             switch (kind)
             {
-                case EquipmentKind.Filter:
-                    filter = item;
-                    if (!had) BuildFilter();
-                    break;
+                case EquipmentKind.Filter: filter = item; break;
                 case EquipmentKind.Heater:
                     heater = item;
-                    if (!had) BuildHeater();
                     SetHeater(had ? heaterSetting : SuggestedTemperature);
                     break;
-                default:
-                    bubbler = item;
-                    if (!had) BuildBubbler();
-                    break;
+                default: bubbler = item; break;
             }
+            // The new model may look different: swap in its design.
+            if (visuals != null) BuildEquipment(kind);
             UpdateEquipmentLook();
         }
 
@@ -469,26 +466,123 @@ namespace FishBreeder
             if (bubbles != null) bubbles.enabled = BubblerWorking;
         }
 
-        void BuildFilter()
+        /// <summary>Tank height the equipment sizes are for (see <see cref="EquipmentModels"/>).</summary>
+        const float StandardTankHeight = 0.9f;
+
+        /// <summary>(Re)builds one kind of equipment's 3D model, for the installed model, or removes it if there is none.</summary>
+        void BuildEquipment(EquipmentKind kind)
+        {
+            int index = (int)kind;
+            if (equipmentModels[index] != null) Destroy(equipmentModels[index]);
+            equipmentModels[index] = null;
+            if (kind == EquipmentKind.Bubbler) bubbles = null;
+            var item = GetEquipment(kind);
+            if (item == null) return;
+            var holder = new GameObject(kind.ToString()).transform;
+            holder.SetParent(visuals, false);
+            equipmentModels[index] = holder.gameObject;
+            switch (kind)
+            {
+                case EquipmentKind.Filter: BuildFilter(holder, item.tier); break;
+                case EquipmentKind.Heater: BuildHeater(holder, item.tier); break;
+                default: BuildBubbler(holder, item.tier); break;
+            }
+        }
+
+        /// <summary>
+        /// One equipment design, turned, sized for this tank and lined up with an anchor (see
+        /// <see cref="EquipmentModels.Place"/>). Null if the model is missing.
+        /// </summary>
+        GameObject PlaceModel(string design, Transform holder, Quaternion rotation, Vector3 anchor, Vector3 align, out Bounds bounds, bool colliders = true)
+        {
+            bounds = default;
+            var piece = EquipmentModels.Spawn(design, holder, colliders);
+            if (piece == null) return null;
+            float size = EquipmentModels.Size(design) * innerSize.y / StandardTankHeight;
+            bounds = EquipmentModels.Place(piece, holder, rotation, size, anchor, align);
+            if (colliders) piece.AddComponent<TankObstacle>();
+            return piece;
+        }
+
+        /// <summary>Yaw that turns an equipment model's front towards the glass the camera looks through.</summary>
+        static readonly Quaternion FaceFront = Quaternion.Euler(0f, 180f, 0f);
+
+        /// <summary>
+        /// The filter: the model's own design on the floor in the back right corner, and the part
+        /// on top of the tank (the same for every model; a placeholder box until it has a design)
+        /// joined to it by the intake pipe.
+        /// </summary>
+        void BuildFilter(Transform holder, int tier)
         {
             var b = innerSize;
             var dark = new Color(0.15f, 0.16f, 0.18f);
-            MaterialFactory.Decor(PrimitiveType.Cube, "Filter", visuals, new Vector3(b.x * 0.36f, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
-            MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", visuals, new Vector3(b.x * 0.36f, b.y * 0.55f, b.z * 0.5f - 0.03f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
+            var anchor = new Vector3(b.x * 0.5f - 0.03f, 0f, b.z * 0.5f - 0.015f);
+            float x = b.x * 0.36f, top = 0.2f * b.y, pipeZ = b.z * 0.5f - 0.03f;
+            if (PlaceModel(EquipmentModels.Design(EquipmentKind.Filter, tier), holder, FaceFront, anchor, new Vector3(1f, -1f, 1f), out var bounds) != null)
+            {
+                x = bounds.center.x;
+                top = bounds.max.y;
+                pipeZ = Mathf.Min(pipeZ, bounds.max.z - 0.02f);
+            }
+            MaterialFactory.Decor(PrimitiveType.Cube, "FilterTop", holder, new Vector3(x, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
+            float pipeLength = b.y - top;
+            MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", holder, new Vector3(x, top + pipeLength * 0.5f, pipeZ), new Vector3(0.025f, pipeLength * 0.5f, 0.025f), dark);
         }
 
-        void BuildHeater()
+        /// <summary>
+        /// The heater stands upright against the back glass on the left. The smart controller's box
+        /// hangs on the outside of the left glass, its cable running over the rim to the heater.
+        /// </summary>
+        void BuildHeater(Transform holder, int tier)
         {
             var b = innerSize;
-            MaterialFactory.Decor(PrimitiveType.Cylinder, "Heater", visuals, new Vector3(-b.x * 0.45f, b.y * 0.5f, b.z * 0.42f), new Vector3(0.03f, b.y * 0.3f, 0.03f), new Color(0.75f, 0.3f, 0.2f));
+            // The heater designs lie along their x axis with their suction cups underneath: stand
+            // them up (x to up) with the cups against the back glass.
+            var upright = Quaternion.LookRotation(Vector3.Cross(Vector3.up, Vector3.back), Vector3.back);
+            var anchor = new Vector3(-b.x * 0.43f, b.y * 0.5f, b.z * 0.5f - 0.005f);
+            var heaterModel = PlaceModel(EquipmentModels.Design(EquipmentKind.Heater, tier), holder, upright, anchor, new Vector3(0f, 0f, 1f), out var heaterBounds);
+            if (heaterModel == null)
+            {
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "Heater", holder, new Vector3(-b.x * 0.43f, b.y * 0.5f, b.z * 0.42f), new Vector3(0.03f, b.y * 0.3f, 0.03f), new Color(0.75f, 0.3f, 0.2f));
+                heaterBounds = new Bounds(new Vector3(-b.x * 0.43f, b.y * 0.5f, b.z * 0.42f), new Vector3(0.03f, b.y * 0.6f, 0.03f));
+            }
+            if (!EquipmentModels.HasController(EquipmentKind.Heater, tier)) return;
+
+            // Outside the left glass (the frame is 2 cm thick), towards the front so it can be seen.
+            var boxAnchor = new Vector3(-b.x * 0.5f - 0.012f, b.y * 0.62f, -b.z * 0.2f);
+            if (PlaceModel(EquipmentModels.HeaterController, holder, FaceFront, boxAnchor, new Vector3(1f, 0f, 0f), out var box, false) == null) return;
+            float over = b.y + 0.03f;
+            var cable = new Color(0.08f, 0.08f, 0.09f);
+            var start = new Vector3(box.center.x, box.max.y - 0.01f, box.center.z);
+            var rimOutside = new Vector3(box.center.x, over, box.center.z);
+            var rimInside = new Vector3(heaterBounds.center.x, over, heaterBounds.center.z);
+            var end = new Vector3(heaterBounds.center.x, heaterBounds.max.y - 0.01f, heaterBounds.center.z);
+            Cable(holder, start, rimOutside, cable);
+            Cable(holder, rimOutside, rimInside, cable);
+            Cable(holder, rimInside, end, cable);
         }
 
-        void BuildBubbler()
+        /// <summary>A straight piece of thin cable between two points.</summary>
+        static void Cable(Transform parent, Vector3 from, Vector3 to, Color color)
+        {
+            var length = Vector3.Distance(from, to);
+            if (length < 1e-4f) return;
+            var piece = MaterialFactory.Decor(PrimitiveType.Cylinder, "Cable", parent, (from + to) * 0.5f, new Vector3(0.007f, length * 0.5f + 0.0035f, 0.007f), color);
+            piece.transform.localRotation = Quaternion.FromToRotation(Vector3.up, to - from);
+        }
+
+        /// <summary>The bubbler on the sand towards the back on the left; its bubbles rise from the top.</summary>
+        void BuildBubbler(Transform holder, int tier)
         {
             var b = innerSize;
-            MaterialFactory.Decor(PrimitiveType.Cylinder, "Bubbler", visuals, new Vector3(-b.x * 0.2f, 0.01f, b.z * 0.38f), new Vector3(0.1f, 0.01f, 0.1f), new Color(0.3f, 0.32f, 0.35f));
-            bubbles = visuals.gameObject.AddComponent<TankBubbles>();
-            bubbles.Initialize(this, new Vector3(-b.x * 0.2f, 0.02f, b.z * 0.38f), b.y);
+            var anchor = new Vector3(-b.x * 0.2f, 0f, b.z * 0.38f);
+            var origin = new Vector3(anchor.x, 0.02f, anchor.z);
+            if (PlaceModel(EquipmentModels.Design(EquipmentKind.Bubbler, tier), holder, FaceFront, anchor, new Vector3(0f, -1f, 0f), out var bounds) != null)
+                origin = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+            else
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "Bubbler", holder, new Vector3(anchor.x, 0.01f, anchor.z), new Vector3(0.1f, 0.01f, 0.1f), new Color(0.3f, 0.32f, 0.35f));
+            bubbles = holder.gameObject.AddComponent<TankBubbles>();
+            bubbles.Initialize(this, origin, b.y);
         }
 
         /// <summary>Builds a new tank of the given size with these decorations (ids from the balance file).</summary>
@@ -545,9 +639,7 @@ namespace FishBreeder
                 MaterialFactory.Decor(PrimitiveType.Cube, "FrameZ", root, new Vector3(s * b.x * 0.5f, y, 0f), new Vector3(t, t, b.z), frame);
             }
 
-            if (HasFilter) BuildFilter();
-            if (HasHeater) BuildHeater();
-            if (HasBubbler) BuildBubbler();
+            foreach (var kind in Equipment.Kinds) BuildEquipment(kind);
             UpdateEquipmentLook();
             decor.Rebuild(root, b, DecorationSlots);
             BuildSubstrate();

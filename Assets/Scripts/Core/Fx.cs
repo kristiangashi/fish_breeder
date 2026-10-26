@@ -122,6 +122,12 @@ namespace FishBreeder.Core
             });
         }
 
+        /// <summary>A celebration card for anything else worth a moment (bounties, finished research).</summary>
+        public static void Card(string kicker, string title, string subtitle, string reward, Color accent)
+        {
+            Queue.Enqueue(new Celebration { kicker = kicker, title = title, subtitle = subtitle, reward = reward, accent = accent });
+        }
+
         /// <summary>A species seen for the first time: a card, then the journal opens on it.</summary>
         public static void Discovery(Species species)
         {

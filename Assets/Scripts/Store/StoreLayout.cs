@@ -9,12 +9,13 @@ namespace FishBreeder.Store
 {
     /// <summary>
     /// The shop building: a sunny beach-shack fish shop of rooms in a row (seafoam walls, wooden
-    /// floors, a bamboo counter, palms and surfboards). The main floor (with the one
-    /// entrance, the register, the supplier computer and the fish seller's stall) is open from the start; the other
-    /// sections are bought with money and each adds room for more display and for sale tanks.
-    /// Breeder and quarantine tanks live in the back room to the west, which customers never see.
-    /// Every spot has room for the biggest tank size, so tanks can be upgraded where they stand.
-    /// Tanks always face -Z (the entrance side) because Tank bounds are axis aligned.
+    /// floors, a bamboo counter, palms and surfboards). The main floor (with the one entrance, the
+    /// register and the supplier computer) is open from the start; the other sections are bought
+    /// with money and each adds room for more display and for sale tanks. Tanks stand round the
+    /// walls, facing into the room, which leaves the middle free to walk about. Breeder and
+    /// quarantine tanks live in the back room to the west, which customers never see. The fish
+    /// seller parks his van on the pavement outside, west of the door. Every spot has room for the
+    /// biggest tank size, so tanks can be upgraded where they stand.
     /// </summary>
     public class StoreLayout : MonoBehaviour
     {
@@ -29,7 +30,12 @@ namespace FishBreeder.Store
         const float StaffDoorWidth = 1.6f;
 
         static readonly float[] SlotColumns = { -4f, 0f, 4f };
-        static readonly float[] SlotRows = { 3.4f, 0.2f };
+        // Far enough off the back wall for the biggest tank to clear the palms in the corners.
+        const float BackSlotZ = 3.7f;
+        const float FrontSlotZ = -4.3f;
+        const float WestSlotX = -SectionWidth * 0.5f + 0.7f;
+        static readonly float[] WestSlotZ = { 2.05f, -1.15f };
+        static readonly float[] BackRoomRows = { 3.4f, 0.2f };
         static readonly float[] BackRoomColumns = { -2.2f, 2.2f };
 
         /// <summary>Centre of the back room, west of the main floor.</summary>
@@ -64,6 +70,7 @@ namespace FishBreeder.Store
             public Section section;   // null in the back room
             public bool backRoom;
             public Vector3 position; // sand level of a tank placed here
+            public float yaw;         // 0: the tank's front faces -Z, the entrance side
             public StoreTank tank;
             public GameObject emptyMarker;
 
@@ -93,15 +100,21 @@ namespace FishBreeder.Store
         public Vector3 DoorInside => new Vector3(0f, 0f, -SectionDepth * 0.5f + 0.8f);
         public Vector3 ShopkeeperHand { get; private set; }
 
-        /// <summary>Where a customer stands to look into a tank.</summary>
+        /// <summary>Where a customer stands to look into a tank, in front of its glass.</summary>
         public static Vector3 ViewingSpot(StoreTank tank)
         {
-            var p = tank.transform.position;
-            return new Vector3(p.x, 0f, p.z - tank.Tank.InnerSize.z * 0.5f - 0.75f);
+            var p = tank.transform.position + tank.Tank.Front * (tank.Tank.InnerSize.z * 0.5f + 0.75f);
+            return new Vector3(p.x, 0f, p.z);
         }
 
-        /// <summary>The register queue runs left along the front of the counter; place 0 is being served.</summary>
-        public Vector3 RegisterQueueSpot(int place) => registerFront + Vector3.left * (0.75f * place);
+        /// <summary>A step sideways along a tank's glass, so shoppers don't all stand on one spot.</summary>
+        public static Vector3 AlongGlass(StoreTank tank, float offset) => tank.transform.right * offset;
+
+        /// <summary>The register queue runs back into the shop from the front of the counter; place 0 is being served.</summary>
+        public Vector3 RegisterQueueSpot(int place) => registerFront + Vector3.forward * (0.75f * place);
+
+        /// <summary>Which way a customer at the register faces: the counter, and the shopkeeper behind it.</summary>
+        public Vector3 RegisterFacing => Vector3.right;
 
         Vector3 registerFront;
 
@@ -123,28 +136,42 @@ namespace FishBreeder.Store
 
             tankRoot = new GameObject("Tanks").transform;
             tankRoot.SetParent(transform, false);
-            foreach (var row in SlotRows)
+            foreach (var row in BackRoomRows)
                 foreach (var column in BackRoomColumns)
                     slots.Add(new Slot { backRoom = true, position = new Vector3(BackRoomCenterX + column, StandHeight, row) });
+            // Round the walls in walking order. The main floor: up the west wall (its front is the
+            // staff door and the computer), then along the back. The others: along the back wall,
+            // then back along the front wall facing in. Their east side stays open into the next one.
             foreach (var section in sections)
-                foreach (var row in SlotRows)
-                    foreach (var column in SlotColumns)
-                        slots.Add(new Slot { section = section, position = new Vector3(section.CenterX + column, StandHeight, row) });
+            {
+                float cx = section.CenterX;
+                if (section.index == 0)
+                    for (int i = WestSlotZ.Length - 1; i >= 0; i--)
+                        slots.Add(new Slot { section = section, position = new Vector3(cx + WestSlotX, StandHeight, WestSlotZ[i]), yaw = -90f });
+                foreach (var column in SlotColumns)
+                    slots.Add(new Slot { section = section, position = new Vector3(cx + column, StandHeight, BackSlotZ) });
+                if (section.index > 0)
+                    for (int i = SlotColumns.Length - 1; i >= 0; i--)
+                        slots.Add(new Slot { section = section, position = new Vector3(cx + SlotColumns[i], StandHeight, FrontSlotZ), yaw = 180f });
+            }
 
             BuildShell();
             BuildBackRoom();
             BuildRegister();
             BuildComputer();
-            BuildFishStall();
+            BuildFishVan();
             RefreshEmptySlots();
 
             // One of each to start: a breeder in the back room, and a for sale and a display tank
             // along the shop's back wall.
             var starter = Balance.Data.store.starterDecorations;
             PlaceTank(FirstFreeSlot(TankRole.Breeder), TankRole.Breeder, starter);
-            PlaceTank(slots.Find(s => !s.backRoom && s.section.index == 0 && s.tank == null), TankRole.ForSale, starter);
-            PlaceTank(FirstFreeSlot(TankRole.Display), TankRole.Display, starter);
+            PlaceTank(slots.Find(s => !s.backRoom && s.section.index == 0 && s.yaw == 0f && s.tank == null), TankRole.ForSale, starter);
+            PlaceTank(slots.Find(s => !s.backRoom && s.section.index == 0 && s.yaw == 0f && s.tank == null), TankRole.Display, starter);
         }
+
+        /// <summary>Where a slot sits in walking order (back room first), for flicking between tanks.</summary>
+        public int SlotOrder(Slot slot) => slot == null ? int.MaxValue : slots.IndexOf(slot);
 
         Slot FirstFreeSlot(TankRole role) => slots.Find(s => s.tank == null && s.IsOpen && s.Allows(role));
 
@@ -211,14 +238,17 @@ namespace FishBreeder.Store
             return reason == null;
         }
 
-        /// <summary>Why a tank can't be upgraded to this size right now, or null if it can.</summary>
+        public const string NoMoney = "Not enough money.";
+
+        /// <summary>Why a tank can't be upgraded to this size right now (<see cref="NoMoney"/> last), or null if it can.</summary>
         public static string WhyCantUpgrade(StoreTank tank, int size)
         {
             var sizes = Balance.Data.store.tankSizes;
             if (size <= tank.Tank.SizeIndex || size >= sizes.Count) return "It's already this size or bigger.";
             var info = sizes[size];
             if (!Progression.IsUnlocked(XpTrack.Fishkeeping, info.unlockLevel)) return $"Needs {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}.";
-            if (!Economy.CanAfford(Perks.Upgrade(info.upgradePrice))) return "Not enough money.";
+            if (tank.Tank.Quality < info.qualityNeeded) return $"Needs aquarium quality {info.qualityNeeded} (it's {tank.Tank.Quality}): add better equipment and more decorations.";
+            if (!Economy.CanAfford(Perks.Upgrade(info.upgradePrice))) return NoMoney;
             return null;
         }
 
@@ -255,7 +285,7 @@ namespace FishBreeder.Store
 
         StoreTank PlaceTank(Slot slot, TankRole role, IEnumerable<string> decorations)
         {
-            var tank = StoreTank.Create(role, CountTanks(role) + 1, slot.position, tankRoot, 0, decorations);
+            var tank = StoreTank.Create(role, CountTanks(role) + 1, slot.position, slot.yaw, tankRoot, 0, decorations);
             slot.tank = tank;
             tank.Slot = slot;
             tanks.Add(tank);
@@ -303,7 +333,11 @@ namespace FishBreeder.Store
                 if (wantMarker && slot.emptyMarker == null)
                 {
                     var floorPoint = new Vector3(slot.position.x, 0f, slot.position.z);
-                    var marker = MaterialFactory.Decor(PrimitiveType.Cube, "Empty tank spot", transform, floorPoint + Vector3.up * 0.01f,
+                    // An unscaled holder turned like the slot, so the pad and its click box line up with the wall.
+                    var marker = new GameObject("Empty tank spot");
+                    marker.transform.SetParent(transform, false);
+                    marker.transform.SetPositionAndRotation(floorPoint, Quaternion.Euler(0f, slot.yaw, 0f));
+                    MaterialFactory.Decor(PrimitiveType.Cube, "Empty tank spot", marker.transform, Vector3.up * 0.01f,
                         new Vector3(1.72f, 0.02f, 0.82f), new Color(0.45f, 0.74f, 0.74f));
                     var click = StoreClickable.Add(marker.transform, "Empty spot", floorPoint + Vector3.up * 0.3f, new Vector3(1.72f, 0.6f, 0.82f), StoreClickable.Kind.EmptySlot);
                     click.slot = slot;
@@ -348,8 +382,8 @@ namespace FishBreeder.Store
 
                 Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(SectionWidth + t, WallHeight, t), WallColor);
                 Stripes(root, cx, SectionWidth, halfD);
-                Palm(root, new Vector3(cx + halfW - 0.6f, 0f, halfD - 0.55f));
-                if (section.index == 0) Palm(root, new Vector3(cx - halfW + 0.6f, 0f, halfD - 0.55f));
+                Palm(root, new Vector3(cx + halfW - 0.45f, 0f, halfD - 0.45f));
+                if (section.index == 0) Palm(root, new Vector3(cx - halfW + 0.45f, 0f, halfD - 0.45f));
                 Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
 
                 // The front wall is cut down (dollhouse style) so the overhead camera can see in.
@@ -407,30 +441,33 @@ namespace FishBreeder.Store
 
         public Vector3 BackRoomLabelPoint => new Vector3(BackRoomCenterX, 1.6f, -SectionDepth * 0.5f + 0.5f);
 
+        /// <summary>
+        /// The counter stands along the east wall by the front, side on to the room: the shopkeeper
+        /// behind it faces into the shop, and customers queue up from the front of it back into the room.
+        /// </summary>
         void BuildRegister()
         {
             var root = new GameObject("Register").transform;
             root.SetParent(transform, false);
-            var counter = new Vector3(3.6f, 0f, -3.4f);
-            Wall(root, "Counter", counter + new Vector3(0f, 0.5f, 0f), new Vector3(2f, 1f, 0.6f), CounterColor);
-            Wall(root, "CounterTop", counter + new Vector3(0f, 1.02f, 0f), new Vector3(2.08f, 0.04f, 0.66f), CounterTopColor);
-            // Bamboo canes up the front of the counter.
+            var counter = new Vector3(4.5f, 0f, -3.1f);
+            Wall(root, "Counter", counter + new Vector3(0f, 0.5f, 0f), new Vector3(0.6f, 1f, 2f), CounterColor);
+            Wall(root, "CounterTop", counter + new Vector3(0f, 1.02f, 0f), new Vector3(0.66f, 0.04f, 2.08f), CounterTopColor);
+            // Bamboo canes up the customers' side of the counter.
             for (int i = 0; i < 9; i++)
-                MaterialFactory.Decor(PrimitiveType.Cylinder, "Bamboo", root, counter + new Vector3(-0.88f + i * 0.22f, 0.5f, -0.31f), new Vector3(0.09f, 0.5f, 0.09f), i % 2 == 0 ? new Color(0.8f, 0.64f, 0.38f) : new Color(0.74f, 0.58f, 0.33f));
-            Wall(root, "Till", counter + new Vector3(0.45f, 1.16f, 0.05f), new Vector3(0.44f, 0.24f, 0.38f), DarkColor);
-            Wall(root, "TillDrawer", counter + new Vector3(0.45f, 1.08f, -0.15f), new Vector3(0.4f, 0.08f, 0.06f), new Color(0.3f, 0.3f, 0.32f));
-            var display = Wall(root, "TillDisplay", counter + new Vector3(0.45f, 1.38f, 0.12f), new Vector3(0.3f, 0.16f, 0.03f), new Color(0.3f, 0.75f, 0.45f));
-            display.transform.localRotation = Quaternion.Euler(-20f, 0f, 0f);
-            RegisterPoint = counter + new Vector3(0.45f, 1.6f, 0f);
-            // Customers queue on the entrance side, so the shopkeeper behind the counter faces the camera.
-            registerFront = new Vector3(counter.x - 0.2f, 0f, counter.z - 0.75f);
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "Bamboo", root, counter + new Vector3(-0.31f, 0.5f, -0.88f + i * 0.22f), new Vector3(0.09f, 0.5f, 0.09f), i % 2 == 0 ? new Color(0.8f, 0.64f, 0.38f) : new Color(0.74f, 0.58f, 0.33f));
+            var till = counter + new Vector3(0.05f, 0f, 0.45f);
+            Wall(root, "Till", till + new Vector3(0f, 1.16f, 0f), new Vector3(0.38f, 0.24f, 0.44f), DarkColor);
+            Wall(root, "TillDrawer", till + new Vector3(0.2f, 1.08f, 0f), new Vector3(0.06f, 0.08f, 0.4f), new Color(0.3f, 0.3f, 0.32f));
+            var display = Wall(root, "TillDisplay", till + new Vector3(-0.12f, 1.38f, 0f), new Vector3(0.03f, 0.16f, 0.3f), new Color(0.3f, 0.75f, 0.45f));
+            display.transform.localRotation = Quaternion.Euler(0f, 0f, 20f);
+            RegisterPoint = till + new Vector3(0f, 1.6f, 0f);
+            registerFront = new Vector3(counter.x - 0.75f, 0f, counter.z - 0.2f);
 
-            // The shopkeeper (you) behind the counter.
+            // The shopkeeper (you) behind the counter, beside the till rather than hidden behind it.
             var keeper = new GameObject("Shopkeeper").transform;
             keeper.SetParent(root, false);
-            // Beside the till, not hidden behind it.
-            keeper.position = new Vector3(counter.x - 0.2f, 0f, counter.z + 0.62f);
-            keeper.rotation = Quaternion.LookRotation(Vector3.back);
+            keeper.position = new Vector3(counter.x + 0.72f, 0f, counter.z - 0.2f);
+            keeper.rotation = Quaternion.LookRotation(Vector3.left);
             var placeholder = new GameObject("Placeholder").transform;
             placeholder.SetParent(keeper, false);
             placeholder.localScale = Vector3.one * Customer.PersonScale;
@@ -439,15 +476,15 @@ namespace FishBreeder.Store
             MaterialFactory.Decor(PrimitiveType.Capsule, "Torso", placeholder, new Vector3(0f, 1.17f, 0f), new Vector3(0.44f, 0.36f, 0.28f), apron);
             MaterialFactory.Decor(PrimitiveType.Sphere, "Head", placeholder, new Vector3(0f, 1.62f, 0f), new Vector3(0.24f, 0.27f, 0.24f), new Color(0.9f, 0.75f, 0.6f));
             keeper.gameObject.AddComponent<Shopkeeper>().Build(placeholder.gameObject);
-            ShopkeeperHand = keeper.position + new Vector3(0f, 1.05f * Customer.PersonScale, -0.35f);
-            StoreClickable.Add(root, "Register", counter + new Vector3(0f, 0.75f, 0f), new Vector3(2.1f, 1.5f, 0.7f), StoreClickable.Kind.Register);
+            ShopkeeperHand = keeper.position + new Vector3(-0.35f, 1.05f * Customer.PersonScale, 0f);
+            StoreClickable.Add(root, "Register", counter + new Vector3(0f, 0.75f, 0f), new Vector3(0.7f, 1.5f, 2.1f), StoreClickable.Kind.Register);
         }
 
         void BuildComputer()
         {
             var root = new GameObject("Supplier computer").transform;
             root.SetParent(transform, false);
-            var desk = new Vector3(-3.6f, 0f, -3.4f);
+            var desk = new Vector3(-2.8f, 0f, -3.6f);
             Wall(root, "Desk", desk + new Vector3(0f, 0.72f, 0f), new Vector3(1.4f, 0.06f, 0.7f), CounterColor);
             for (int sx = -1; sx <= 1; sx += 2)
                 Wall(root, "DeskLeg", desk + new Vector3(sx * 0.62f, 0.35f, 0f), new Vector3(0.06f, 0.7f, 0.62f), CounterColor);
@@ -461,47 +498,102 @@ namespace FishBreeder.Store
         }
 
         /// <summary>
-        /// The fish seller's stall by the staff door: a table of egg cartons and bagged fry, an
-        /// awning and a sign. He stands behind it facing the shop floor (and the camera).
+        /// The pavement along the shop front, and the fish seller's van parked on it west of the
+        /// door: a wholesaler's van with its back doors open, a folding table of aerated holding
+        /// tanks and bagged fish, foam shipping boxes and a sign on the roof. He stands behind the
+        /// table facing the shop (and the camera).
         /// </summary>
-        void BuildFishStall()
+        void BuildFishVan()
         {
+            float halfD = SectionDepth * 0.5f;
+            float west = BackRoomCenterX - BackRoomWidth * 0.5f - WallThickness;
+            float east = (sections.Count - 1) * SectionWidth + SectionWidth * 0.5f + WallThickness;
+            var outside = new GameObject("Pavement").transform;
+            outside.SetParent(transform, false);
+            Wall(outside, "Pavement", new Vector3((west + east) * 0.5f, -0.055f, -halfD - 2.3f), new Vector3(east - west, 0.1f, 4.2f), new Color(0.8f, 0.77f, 0.7f));
+            Wall(outside, "Pavement", new Vector3((west + east) * 0.5f, -0.06f, -halfD - 6.4f), new Vector3(east - west, 0.1f, 4f), new Color(0.32f, 0.34f, 0.36f));
+
             var root = new GameObject("Fish seller").transform;
             root.SetParent(transform, false);
-            var table = new Vector3(-SectionWidth * 0.5f + 0.75f, 0f, -2.15f);
-            var wood = new Color(0.62f, 0.42f, 0.26f);
-            Wall(root, "StallTable", table + new Vector3(0f, 0.7f, 0f), new Vector3(1.3f, 0.05f, 0.62f), CounterTopColor);
-            Wall(root, "StallFront", table + new Vector3(0f, 0.35f, -0.29f), new Vector3(1.3f, 0.68f, 0.04f), wood);
+            var van = new Vector3(-5.4f, 0f, -6.6f);
+            var paint = new Color(0.95f, 0.97f, 0.96f);
+            var glass = new Color(0.2f, 0.32f, 0.42f);
+            var tyre = new Color(0.12f, 0.12f, 0.13f);
+            // Cab at the west end, the load box behind it; the open back faces the shop door.
+            Wall(root, "VanChassis", van + new Vector3(0f, 0.32f, 0f), new Vector3(3.1f, 0.2f, 1.5f), tyre);
+            Wall(root, "VanBox", van + new Vector3(0.4f, 1.12f, 0f), new Vector3(2.4f, 1.6f, 1.6f), paint);
+            Wall(root, "VanCab", van + new Vector3(-1.2f, 0.88f, 0f), new Vector3(0.8f, 1.12f, 1.56f), paint);
+            Wall(root, "VanBonnet", van + new Vector3(-1.45f, 0.6f, 0f), new Vector3(0.3f, 0.5f, 1.5f), paint);
+            Wall(root, "VanWindscreen", van + new Vector3(-1.61f, 1.18f, 0f), new Vector3(0.03f, 0.42f, 1.36f), glass);
+            Wall(root, "VanWindow", van + new Vector3(-1.15f, 1.18f, -0.79f), new Vector3(0.5f, 0.36f, 0.02f), glass);
+            Wall(root, "VanWindow", van + new Vector3(-1.15f, 1.18f, 0.79f), new Vector3(0.5f, 0.36f, 0.02f), glass);
+            // Coral and aqua stripes down the side the camera sees, with a painted fish.
+            Wall(root, "Stripe", van + new Vector3(0.4f, 0.98f, -0.81f), new Vector3(2.4f, 0.16f, 0.02f), StripeColor);
+            Wall(root, "Stripe", van + new Vector3(0.4f, 1.16f, -0.81f), new Vector3(2.4f, 0.07f, 0.02f), new Color(0.3f, 0.75f, 0.78f));
+            MaterialFactory.Decor(PrimitiveType.Sphere, "Stripe", root, van + new Vector3(0.5f, 1.5f, -0.81f), new Vector3(0.5f, 0.26f, 0.02f), new Color(1f, 0.6f, 0.2f));
+            var tail = MaterialFactory.Decor(PrimitiveType.Cube, "Stripe", root, van + new Vector3(0.84f, 1.5f, -0.81f), new Vector3(0.18f, 0.18f, 0.02f), new Color(1f, 0.6f, 0.2f));
+            tail.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
             for (int sx = -1; sx <= 1; sx += 2)
+                for (int sz = -1; sz <= 1; sz += 2)
+                {
+                    var wheel = MaterialFactory.Decor(PrimitiveType.Cylinder, "Wheel", root, van + new Vector3(sx < 0 ? -1.1f : 1f, 0.3f, sz * 0.74f), new Vector3(0.6f, 0.06f, 0.6f), tyre);
+                    wheel.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                    var hub = MaterialFactory.Decor(PrimitiveType.Cylinder, "Wheel", root, van + new Vector3(sx < 0 ? -1.1f : 1f, 0.3f, sz * 0.78f), new Vector3(0.28f, 0.02f, 0.28f), new Color(0.8f, 0.8f, 0.82f));
+                    hub.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                }
+            // Back doors swung open.
+            var back = van.x + 1.6f;
+            for (int sz = -1; sz <= 1; sz += 2)
             {
-                Wall(root, "StallLeg", table + new Vector3(sx * 0.6f, 0.34f, 0.26f), new Vector3(0.06f, 0.68f, 0.06f), wood);
-                Wall(root, "AwningPole", table + new Vector3(sx * 0.62f, 1.25f, 0.28f), new Vector3(0.05f, 2.5f, 0.05f), wood);
+                var hinge = new Vector3(back, 0f, van.z + sz * 0.8f);
+                var open = new Vector3(0.8f, 0f, sz * 0.6f).normalized;
+                var door = Wall(root, "VanDoor", hinge + open * 0.39f + Vector3.up * 1.12f, new Vector3(0.78f, 1.5f, 0.04f), paint);
+                door.transform.localRotation = Quaternion.FromToRotation(Vector3.right, open);
             }
-            for (int i = 0; i < 6; i++)
-                Wall(root, "Awning", table + new Vector3(-0.55f + i * 0.22f, 2.45f, 0.05f), new Vector3(0.22f, 0.04f, 0.75f), i % 2 == 0 ? StripeColor : Color.white);
-            // Egg cartons, and fry in bags of water.
-            var eggColors = new[] { new Color(0.98f, 0.95f, 0.85f), new Color(0.9f, 0.82f, 0.6f), new Color(0.75f, 0.9f, 0.95f) };
-            for (int c = 0; c < 2; c++)
+            // Foam shipping boxes stacked inside the back and beside the van.
+            var foam = new Color(0.96f, 0.96f, 0.93f);
+            Wall(root, "FoamBox", van + new Vector3(1.25f, 0.62f, 0.35f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "FoamBox", van + new Vector3(1.25f, 0.62f, -0.2f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "FoamBox", van + new Vector3(1.25f, 0.99f, 0.1f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "FoamBox", van + new Vector3(1.1f, 0.18f, 1.18f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "FoamBox", van + new Vector3(1.1f, 0.55f, 1.18f), new Vector3(0.5f, 0.36f, 0.42f), foam);
+            Wall(root, "BoxTape", van + new Vector3(1.1f, 0.735f, 1.18f), new Vector3(0.08f, 0.01f, 0.43f), new Color(0.3f, 0.6f, 0.85f));
+
+            // The folding table: two aerated holding tanks, an air pump and a row of bagged fish.
+            var table = new Vector3(-2.75f, 0f, -6.55f);
+            var metal = new Color(0.62f, 0.64f, 0.66f);
+            Wall(root, "StallTable", table + new Vector3(0f, 0.74f, 0f), new Vector3(1.3f, 0.04f, 0.6f), new Color(0.3f, 0.62f, 0.66f));
+            for (int sx = -1; sx <= 1; sx += 2)
+                for (int sz = -1; sz <= 1; sz += 2)
+                    Wall(root, "StallLeg", table + new Vector3(sx * 0.58f, 0.36f, sz * 0.24f), new Vector3(0.04f, 0.72f, 0.04f), metal);
+            var water = new Color(0.45f, 0.75f, 0.9f);
+            var fishColors = new[] { new Color(1f, 0.55f, 0.15f), new Color(0.95f, 0.85f, 0.2f), new Color(0.3f, 0.6f, 1f), new Color(0.95f, 0.35f, 0.5f) };
+            for (int t = 0; t < 2; t++)
             {
-                var carton = table + new Vector3(-0.38f + c * 0.32f, 0.76f, -0.02f);
-                Wall(root, "Carton", carton, new Vector3(0.26f, 0.06f, 0.36f), new Color(0.8f, 0.7f, 0.55f));
-                for (int e = 0; e < 6; e++)
-                    MaterialFactory.Decor(PrimitiveType.Sphere, "Egg", root, carton + new Vector3((e % 2 - 0.5f) * 0.1f, 0.05f, (e / 2 - 1) * 0.1f), new Vector3(0.07f, 0.09f, 0.07f), eggColors[(e + c) % eggColors.Length]);
+                var holding = table + new Vector3(-0.38f + t * 0.42f, 0.9f, 0.08f);
+                Wall(root, "HoldingTank", holding, new Vector3(0.36f, 0.28f, 0.26f), water);
+                Wall(root, "HoldingTankLid", holding + new Vector3(0f, 0.15f, 0f), new Vector3(0.38f, 0.02f, 0.28f), DarkColor);
+                for (int f = 0; f < 3; f++)
+                    MaterialFactory.Decor(PrimitiveType.Capsule, "Fish", root, holding + new Vector3(-0.1f + f * 0.1f, -0.04f + (f % 2) * 0.07f, -0.135f), new Vector3(0.03f, 0.04f, 0.015f), fishColors[(f + t) % fishColors.Length]).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "AirLine", root, holding + new Vector3(0.12f, 0.24f, 0.08f), new Vector3(0.012f, 0.1f, 0.012f), new Color(0.85f, 0.95f, 0.9f));
             }
-            var fryColors = new[] { new Color(1f, 0.55f, 0.15f), new Color(0.95f, 0.85f, 0.2f), new Color(0.3f, 0.6f, 1f) };
-            for (int b = 0; b < 3; b++)
+            Wall(root, "AirPump", table + new Vector3(0.5f, 0.82f, 0.15f), new Vector3(0.16f, 0.1f, 0.12f), DarkColor);
+            for (int b = 0; b < 4; b++)
             {
-                var bag = table + new Vector3(0.22f + b * 0.16f, 0.82f, -0.05f + (b % 2) * 0.12f);
-                MaterialFactory.Decor(PrimitiveType.Sphere, "FryBag", root, bag, new Vector3(0.13f, 0.17f, 0.13f), new Color(0.65f, 0.85f, 0.95f));
-                MaterialFactory.Decor(PrimitiveType.Capsule, "Fry", root, bag + new Vector3(0f, 0f, -0.06f), new Vector3(0.025f, 0.03f, 0.025f), fryColors[b]);
+                var bag = table + new Vector3(0.12f + b * 0.15f, 0.86f, -0.18f);
+                MaterialFactory.Decor(PrimitiveType.Sphere, "FishBag", root, bag, new Vector3(0.12f, 0.16f, 0.12f), new Color(0.7f, 0.88f, 0.96f));
+                MaterialFactory.Decor(PrimitiveType.Capsule, "Fish", root, bag + new Vector3(0f, -0.01f, -0.055f), new Vector3(0.025f, 0.03f, 0.02f), fishColors[b]).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
                 MaterialFactory.Decor(PrimitiveType.Cylinder, "BagKnot", root, bag + new Vector3(0f, 0.1f, 0f), new Vector3(0.03f, 0.03f, 0.03f), new Color(0.9f, 0.9f, 0.9f));
             }
-            // A sign on the awning.
-            var sign = Wall(root, "StallSign", table + new Vector3(0f, 2.2f, -0.33f), new Vector3(0.9f, 0.26f, 0.04f), new Color(0.98f, 0.92f, 0.72f));
-            var text = new GameObject("StallSignText").AddComponent<TextMesh>();
+
+            // A sign along the roof, facing the street (and the camera).
+            var sign = Wall(root, "VanSign", van + new Vector3(0.4f, 2.18f, -0.3f), new Vector3(2.3f, 0.42f, 0.05f), new Color(0.98f, 0.92f, 0.72f));
+            Wall(root, "VanSign", van + new Vector3(0.4f, 1.95f, -0.3f), new Vector3(0.06f, 0.08f, 0.06f), DarkColor);
+            var text = new GameObject("VanSignText").AddComponent<TextMesh>();
             text.transform.SetParent(sign.transform.parent, false);
             text.transform.position = sign.transform.position + new Vector3(0f, 0f, -0.03f);
-            text.text = "FRESH FISH & EGGS";
+            text.text = "TROPICAL FISH WHOLESALE\n<size=34>live fish \u00b7 eggs \u00b7 fry</size>";
+            text.richText = true;
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
             text.characterSize = 0.011f;
@@ -517,15 +609,15 @@ namespace FishBreeder.Store
 
             var seller = new GameObject("Fish seller (person)").transform;
             seller.SetParent(root, false);
-            seller.position = table + new Vector3(0f, 0f, 0.62f);
-            seller.rotation = Quaternion.LookRotation(new Vector3(0.3f, 0f, -1f));
+            seller.position = table + new Vector3(0f, 0f, 0.7f);
+            seller.rotation = Quaternion.LookRotation(new Vector3(0.25f, 0f, -1f));
             seller.gameObject.AddComponent<FishSeller>();
             FishSellerPoint = seller.position + Vector3.up * 1.85f;
-            StoreClickable.Add(root, "Fish seller", table + new Vector3(0f, 0.8f, 0.25f), new Vector3(1.4f, 1.6f, 1.3f), StoreClickable.Kind.FishSeller);
+            StoreClickable.Add(root, "Fish seller", new Vector3(-3.1f, 0.9f, -6.3f), new Vector3(2.2f, 1.8f, 1.9f), StoreClickable.Kind.FishSeller);
         }
 
         // Wall dressing and palm fronds overhead don't block the walkway (the palm's pot and trunk do).
-        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble", "Stripe", "Frond", "Surfboard", "Awning", "StallSign", "StallSignText" };
+        static readonly HashSet<string> NotObstacles = new HashSet<string> { "Floor", "DoorMat", "Empty tank spot", "Water", "Caustics", "Bubble", "Stripe", "Frond", "Surfboard", "Pavement", "VanSign", "VanSignText" };
 
         /// <summary>
         /// Bakes where customers can walk: the open sections' floors and the pavement outside,

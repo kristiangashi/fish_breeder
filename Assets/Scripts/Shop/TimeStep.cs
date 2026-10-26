@@ -8,8 +8,8 @@ using UnityEngine;
 namespace FishBreeder.Shop
 {
     /// <summary>
-    /// Everything that happens between one shop phase and the next. Runs once when the shop opens
-    /// and once when it closes; nothing else moves time on.
+    /// Everything that happens while time passes. Runs twice a day: when the shop closes (or the day
+    /// passes with it shut) and overnight when the player goes to sleep; nothing else moves time on.
     /// Order: eggs develop (and hatch when due), pregnant fish give birth when due, water changes
     /// (waste, algae, pH, pests, temperature), fish age and get hungrier, illness progresses,
     /// spreads or strikes, compatible pairs may breed, each fish in poor health rolls for death, and

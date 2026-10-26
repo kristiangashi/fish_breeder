@@ -220,10 +220,18 @@ namespace FishBreeder
         /// <summary>Unrounded true value, so cheap fish aren't over- or under-valued by rounding.</summary>
         public float TrueValueExact => AppraisedValue * valueFactor;
 
+        /// <summary>The smallest tank size this fish will live in (its body, fins or tail species may want more room).</summary>
+        public int MinTankSize => TankQuality.MinSize(genome);
+
         /// <summary>Moves the fish into another tank. Fish in a For Sale tank get the appraised price if they had none.</summary>
         public bool MoveTo(Tank destination)
         {
             if (destination == null || destination == Tank || destination.IsFull || IsDead) return false;
+            if (MinTankSize > destination.SizeIndex)
+            {
+                GameLog.Add($"{FishName} won't go in {destination.Title}: it wants a {TankQuality.SizeName(MinTankSize).ToLower()} tank or bigger.");
+                return false;
+            }
             if (Tank != null) Tank.Remove(this);
             Tank = destination;
             destination.Add(this);

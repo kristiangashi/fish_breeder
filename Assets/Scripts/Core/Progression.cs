@@ -102,6 +102,8 @@ namespace FishBreeder.Core
                 GameLog.Add($"{TrackName(track)} level {level[t]}!" + (unlocks.Count > 0 ? $" Unlocked: {string.Join(", ", unlocks)}." : ""));
             }
             if (level[t] >= Data.maxLevel) xp[t] = 0;
+            // A new Research level can post new research bounties.
+            if (track == XpTrack.Research) Research.Refresh();
         }
 
         /// <summary>Counts towards today's goals; finishing one awards its XP.</summary>
@@ -187,7 +189,8 @@ namespace FishBreeder.Core
             {
                 var research = balance.research;
                 list.Add($"research speed x{1f + research.speedPerLevel * (lvl - 1):0.##}");
-                if (research.phReadingLevel == lvl) list.Add("measuring pH");
+                foreach (var project in research.projects)
+                    if (project != null && project.level == lvl && lvl > 1) list.Add($"the {project.name.ToLower()} bounty");
             }
             else
             {

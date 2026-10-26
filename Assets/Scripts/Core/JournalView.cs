@@ -49,7 +49,7 @@ namespace FishBreeder.Core
         void Update()
         {
             if (ViewMode.Watching || GUIUtility.keyboardControl != 0) return;
-            if (Input.GetKeyDown(KeyCode.J) || Input.GetKeyDown(KeyCode.R)) Toggle();
+            if (Input.GetKeyDown(KeyCode.J)) Toggle();
         }
 
         void OnGUI()
@@ -68,13 +68,13 @@ namespace FishBreeder.Core
             // Dim the store behind, like a book opened on the counter.
             GUI.DrawTexture(new Rect(0f, 0f, width, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, 0.45f), 0f, 0f);
 
-            GUILayout.BeginArea(window, UiStyles.Window);
+            UiCheck.Begin("Journal", window, UiStyles.Window);
             var profile = page != null ? FindSpecies(page) : null;
             if (profile != null && !Journal.IsDiscovered(profile)) profile = null;
             DrawHeader(profile);
             if (profile == null) DrawIndex(w);
             else DrawProfile(profile);
-            GUILayout.EndArea();
+            UiCheck.End();
 
             // The journal is modal: clicks outside it close it instead of reaching the store behind.
             var e = Event.current;
@@ -113,7 +113,7 @@ namespace FishBreeder.Core
         void DrawIndex(float windowWidth)
         {
             GUILayout.Label("<size=12>Every kind of fish you can find. New ones join the journal the first time you can tell what they are.</size>", Rich());
-            indexScroll = GUILayout.BeginScrollView(indexScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+            indexScroll = UiCheck.BeginScroll("Journal: index", indexScroll);
             const float cardW = 128f, cardH = 132f;
             int perRow = Mathf.Max(2, Mathf.FloorToInt((windowWidth - 50f) / (cardW + 8f)));
             foreach (var group in Journal.Groups)
@@ -135,7 +135,7 @@ namespace FishBreeder.Core
                     GUILayout.EndHorizontal();
                 }
             }
-            GUILayout.EndScrollView();
+            UiCheck.EndScroll();
         }
 
         void DrawCard(Species species, float w, float h)
@@ -161,7 +161,11 @@ namespace FishBreeder.Core
             if (!known) GUI.Label(pictureRect, $"<size=40><b><color={UiTheme.AquaHex}>?</color></b></size>", Centered());
 
             var nameRect = new Rect(rect.x + 4f, pictureRect.yMax + 2f, rect.width - 8f, 20f);
-            GUI.Label(nameRect, known ? $"<b>{species.displayName}</b>" : "<b>???</b>", Centered());
+            // Long names step down a size or two so they fit the card.
+            var name = new GUIContent(known ? $"<b>{species.displayName}</b>" : "<b>???</b>");
+            for (int size = 12; size >= 9 && Centered().CalcSize(name).x > nameRect.width; size--)
+                name = new GUIContent($"<size={size}><b>{species.displayName}</b></size>");
+            UiCheck.Label("Journal: card name", nameRect, name, Centered());
             var subRect = new Rect(rect.x + 4f, nameRect.yMax - 2f, rect.width - 8f, 16f);
             GUI.Label(subRect, known ? $"<size=10><color={RarityHex(species.rarity)}>{species.rarity}</color></size>"
                 : $"<size=10><color=#8fb3bd>Fishkeeping {species.unlockLevel}+</color></size>", Centered());
@@ -269,15 +273,9 @@ namespace FishBreeder.Core
         void DrawFacts(Species species)
         {
             GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-            pageScroll = GUILayout.BeginScrollView(pageScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
-            float points = Research.Points(species);
-            var next = Research.NextFact(species);
+            pageScroll = UiCheck.BeginScroll("Journal: research notes", pageScroll);
             GUILayout.Label("RESEARCH NOTES", UiTheme.Heading);
-            GUILayout.Label($"Research points: <b>{points:0.#}</b>" + (next.HasValue
-                ? $"   Next: {Research.FactName(next.Value)} at {Research.PointsNeeded(next.Value):0}"
-                : "   Everything known."), Rich());
-            if (next.HasValue) ProgressBar(Mathf.Clamp01(points / Mathf.Max(1f, Research.PointsNeeded(next.Value))));
-            GUILayout.Label("<size=11>Every fish you keep teaches you about its kind at each time step. A higher Research level learns faster.</size>", Rich());
+            GUILayout.Label("<size=11>Research projects (R) teach you more about every fish you've discovered.</size>", Rich());
 
             Section("Temperature");
             if (Research.Knows(species, ResearchFact.Temperature))
@@ -288,8 +286,7 @@ namespace FishBreeder.Core
             else Unknown(species, ResearchFact.Temperature);
 
             Section("pH");
-            if (!Research.CanReadPh)
-                GUILayout.Label($"<i>You can't measure pH yet. Reach Research level {Balance.Data.research.phReadingLevel} to learn what it is and read it.</i>", Rich());
+            if (!Research.CanReadPh) Unknown(species, ResearchFact.Ph);
             else
             {
                 GUILayout.Label("<size=11>pH measures how acidic (below 7) or alkaline (above 7) the water is. Dirty water drifts acidic; water conditioner sets it back to neutral.</size>", Rich());
@@ -334,8 +331,8 @@ namespace FishBreeder.Core
                     Line($"Loves {FoodPellet.Name(food)}.");
                     foundFoods++;
                 }
-            if (foundFoods < species.favoriteFoods.Count)
-                GUILayout.Label("<i>" + (foundFoods == 0 ? "Unknown. " : "There may be more. ") + "Feed it different foods: a fish enjoying a favourite may give it away. It eats any food, though.</i>", Rich());
+            if (foundFoods == 0) Unknown(species, ResearchFact.Temperature);
+            else if (foundFoods < species.favoriteFoods.Count) GUILayout.Label("<size=11><i>There may be more.</i></size>", Rich());
 
             Section("Tank mates");
             int foundMates = 0;
@@ -345,20 +342,13 @@ namespace FishBreeder.Core
                 Line(Research.DescribeRelationship(species, other));
                 foundMates++;
             }
-            if (foundMates == 0) GUILayout.Label("<i>Unknown. Grow two kinds of fish to adulthood in the same tank and you may see how they get on.</i>", Rich());
-            else GUILayout.Label("<size=11><i>Keep adults together to discover more.</i></size>", Rich());
+            if (foundMates == 0) Unknown(species, ResearchFact.Temperature);
 
-            GUILayout.EndScrollView();
+            UiCheck.EndScroll();
             GUILayout.EndVertical();
         }
 
-        static void Unknown(Species species, ResearchFact fact)
-        {
-            float needed = Research.PointsNeeded(fact);
-            float have = Research.Points(species);
-            string why = have >= needed ? "" : $" ({needed - have:0.#} more research points)";
-            GUILayout.Label($"<color=#8fb3bd>???{why}</color>", Rich());
-        }
+        static void Unknown(Species species, ResearchFact fact) => GUILayout.Label("<color=#8fb3bd>???</color>", Rich());
 
         static void RangeGauge(bool temperature, float min, float max)
         {

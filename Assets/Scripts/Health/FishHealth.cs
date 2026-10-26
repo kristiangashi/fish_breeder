@@ -290,7 +290,7 @@ namespace FishBreeder.Health
 
         /// <summary>
         /// Comfort from tank mates, plants, decorations, pests, crowding, medicine and food. Notes
-        /// about tank mates only name them once research has shown how the two kinds get on.
+        /// about tank mates only name them once the tank mate research is done.
         /// </summary>
         float Comfort(Fish fish, Tank tank, HealthBalance weights, List<ComfortNote> notes, out int likedKinds)
         {
@@ -329,18 +329,18 @@ namespace FishBreeder.Health
                 if (otherGrown && Relationships.Get(otherSpecies, species) == Relationship.Predator)
                 {
                     comfort -= mates.predatorFear;
-                    Note(notes, known ? $"Afraid of {name}" : "Nervous of a tank mate (not researched yet)", -mates.predatorFear);
+                    Note(notes, known ? $"Afraid of {name}" : "Nervous of a tank mate", -mates.predatorFear);
                 }
                 if (canFight && otherGrown && Relationships.AreCompetitive(species, otherSpecies))
                 {
                     comfort -= mates.competitiveStress;
-                    Note(notes, known ? $"Fights with {(otherSpecies.id == species.id ? "other " + name : name)}" : "Squabbles with a tank mate (not researched yet)", -mates.competitiveStress);
+                    Note(notes, known ? $"Fights with {(otherSpecies.id == species.id ? "other " + name : name)}" : "Squabbles with a tank mate", -mates.competitiveStress);
                 }
                 if (Relationships.Get(species, otherSpecies) == Relationship.Preferred && likedKinds < 2)
                 {
                     likedKinds++;
                     comfort += mates.preferredComfort;
-                    Note(notes, known ? $"Likes {(otherSpecies.id == species.id ? "other " + name : name)}" : "Enjoys a tank mate's company (not researched yet)", mates.preferredComfort);
+                    Note(notes, known ? $"Likes {(otherSpecies.id == species.id ? "other " + name : name)}" : "Enjoys a tank mate's company", mates.preferredComfort);
                 }
             }
             if (species.schoolSize > 0 && sameKind + 1 < species.schoolSize)
@@ -354,6 +354,8 @@ namespace FishBreeder.Health
             else { comfort += 0.1f; Note(notes, "Nicely decorated", 0.1f); }
 
             if (tank.HasPests) { comfort -= weights.pestsComfortLoss; Note(notes, "Pests in the tank", -weights.pestsComfortLoss); }
+            var cramped = TankQuality.TooSmallFor(fish.MinTankSize, tank);
+            if (cramped != null) { comfort -= weights.crampedComfortLoss; Note(notes, $"Cramped: {cramped.ToLower()}", -weights.crampedComfortLoss); }
             if (tank.Residents.Count > tank.Capacity * 0.75f) { comfort -= 0.15f; Note(notes, tank.IsOvercrowded ? "Overcrowded" : "Crowded", -0.15f); }
             if (MedicineStress > 0.01f) { comfort -= MedicineStress; Note(notes, "Upset by medicine", -MedicineStress); }
             return Mathf.Clamp01(comfort);
@@ -374,7 +376,7 @@ namespace FishBreeder.Health
 
         /// <summary>
         /// What about the water bothers this species, one line each, for its status window. Ranges
-        /// show once research has found them; pH can't be read at all until the Research level for it.
+        /// show once research has found them; pH can't be read at all until the water testing research.
         /// </summary>
         public static List<string> EnvironmentNotes(Genetics.Species species, Tank tank)
         {
@@ -383,12 +385,12 @@ namespace FishBreeder.Health
             if (cold || warm)
                 notes.Add(Research.Knows(species, ResearchFact.Temperature)
                     ? $"Too {(cold ? "cold" : "warm")}: {tank.Temperature:0.#} C (likes {species.tempMin:0}-{species.tempMax:0} C)"
-                    : $"Too {(cold ? "cold" : "warm")} at {tank.Temperature:0.#} C (research it to learn its range)");
+                    : $"Too {(cold ? "cold" : "warm")} at {tank.Temperature:0.#} C");
             bool acid = tank.Ph < species.phMin, alkaline = tank.Ph > species.phMax;
             if (acid || alkaline)
             {
-                if (!Research.CanReadPh) notes.Add($"Something in the water chemistry bothers it (you can measure it at Research level {Balance.Data.research.phReadingLevel})");
-                else if (!Research.Knows(species, ResearchFact.Ph)) notes.Add($"pH {tank.Ph:0.0} is {(acid ? "too acidic (low)" : "too alkaline (high)")} for it (research it to learn its range)");
+                if (!Research.CanReadPh) notes.Add("Something in the water chemistry bothers it");
+                else if (!Research.Knows(species, ResearchFact.Ph)) notes.Add($"pH {tank.Ph:0.0} is {(acid ? "too acidic (low)" : "too alkaline (high)")} for it");
                 else notes.Add($"pH too {(acid ? "low (acidic)" : "high (alkaline)")}: {tank.Ph:0.0} (likes {species.phMin:0.0}-{species.phMax:0.0})");
             }
             if (tank.Salinity < species.salinityMin) notes.Add("Needs salt water");

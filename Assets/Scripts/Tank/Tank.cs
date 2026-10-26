@@ -115,6 +115,8 @@ namespace FishBreeder
         public int OverLimit => Mathf.Max(0, residents.Count - Capacity);
         public bool IsOvercrowded => residents.Count > Capacity;
         public Vector3 InnerSize => innerSize;
+        /// <summary>Aquarium quality from its equipment and decorations; it opens up bigger sizes (see <see cref="TankQuality"/>).</summary>
+        public int Quality => TankQuality.Score(this);
 
         /// <summary>Fish the tank keeps in full oxygen: more with a (working) bubbler, and more with a better one.</summary>
         public int OxygenFor => BubblerWorking ? Mathf.Max(1, Mathf.RoundToInt(bubbler.Info.effect)) : Mathf.Max(1, GameConfig.Active.fishPerTankWithoutBubbler);
@@ -132,7 +134,18 @@ namespace FishBreeder
         /// <summary>One number for how the water looks to a customer: 1 sparkling, 0 a swamp.</summary>
         public float WaterHealth => Mathf.Clamp01(Mathf.Min(waterQuality, 1f - algae * 0.8f) - (pests ? 0.15f : 0f));
 
-        public Bounds InnerBounds => new Bounds(transform.position + Vector3.up * innerSize.y * 0.5f, innerSize);
+        /// <summary>The water, in world space. Tanks only ever turn in quarter turns, so this stays exact when one faces a side wall.</summary>
+        public Bounds InnerBounds
+        {
+            get
+            {
+                var size = transform.rotation * innerSize;
+                return new Bounds(transform.position + Vector3.up * innerSize.y * 0.5f, new Vector3(Mathf.Abs(size.x), Mathf.Abs(size.y), Mathf.Abs(size.z)));
+            }
+        }
+
+        /// <summary>The side customers look in from (the backdrop is on the other side).</summary>
+        public Vector3 Front => -transform.forward;
         /// <summary>Height of the water's surface, where bubbles pop and ripples spread.</summary>
         public float SurfaceY => InnerBounds.max.y - 0.04f;
         /// <summary>Not even one more fish fits (the hard limit, well past the soft one).</summary>
@@ -227,6 +240,7 @@ namespace FishBreeder
             var inner = InnerBounds;
             Fx.Bubbles(new Vector3(inner.center.x, inner.min.y + 0.03f, inner.center.z), 14, SurfaceY, inner.extents.x * 0.6f);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpTreatWater);
+            Milestones.Add(MilestoneKind.TreatWater);
         }
 
         /// <summary>Developer shortcut: makes the water filthy to check how dirty tanks look and how shoppers react.</summary>
@@ -408,7 +422,10 @@ namespace FishBreeder
             UpdateEquipmentLook();
         }
 
-        /// <summary>Fixes broken equipment with one repair kit. It keeps most of its wear.</summary>
+        /// <summary>
+        /// Fixes broken equipment with a repair kit. It keeps most of its wear. Sometimes the kit
+        /// isn't used up (<see cref="SupplierBalance.repairKitSaveChance"/>).
+        /// </summary>
         public bool Repair(EquipmentKind kind)
         {
             var item = GetEquipment(kind);
@@ -418,13 +435,15 @@ namespace FishBreeder
                 GameLog.Add("No repair kits. Order some at the supplier computer.");
                 return false;
             }
-            Economy.RepairKits--;
+            bool kept = GameRandom.Chance(Balance.Data.supplier.repairKitSaveChance);
+            if (!kept) Economy.RepairKits--;
             item.broken = false;
             item.wear *= 1f - Mathf.Clamp01(Balance.Data.supplier.repairWearRemoved + Perks.Value(PerkEffect.BetterRepairs));
             if (kind == EquipmentKind.Heater) temperature = heaterSetting;
             UpdateEquipmentLook();
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpRepairEquipment);
-            GameLog.Add($"Repaired the {item.Name.ToLower()} in {Title}. {Economy.RepairKits} repair kits left.");
+            GameLog.Add($"Repaired the {item.Name.ToLower()} in {Title}." + (kept ? " The repair kit wasn't used up!" : "") + $" {Economy.RepairKits} repair kits left.");
+            Milestones.Add(MilestoneKind.RepairEquipment);
             return true;
         }
 

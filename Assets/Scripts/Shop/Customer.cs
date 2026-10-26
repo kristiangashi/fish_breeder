@@ -126,8 +126,8 @@ namespace FishBreeder.Shop
                 var tank = tanks[index];
                 last = tank;
 
-                yield return WalkTo(StoreLayout.ViewingSpot(tank) + Vector3.right * GameRandom.Range(-0.55f, 0.55f));
-                faceTarget = Quaternion.LookRotation(Vector3.forward);
+                yield return WalkTo(StoreLayout.ViewingSpot(tank) + StoreLayout.AlongGlass(tank, GameRandom.Range(-0.55f, 0.55f)));
+                faceTarget = Quaternion.LookRotation(-tank.Tank.Front);
                 watching = tank.Tank;
                 yield return new WaitForSeconds(GameRandom.Range(0.8f, 1.6f));
 
@@ -152,7 +152,7 @@ namespace FishBreeder.Shop
             {
                 int place = day.QueuePlace(this);
                 yield return WalkTo(layout.RegisterQueueSpot(place));
-                faceTarget = Quaternion.LookRotation(Vector3.forward);
+                faceTarget = Quaternion.LookRotation(place == 0 ? layout.RegisterFacing : Vector3.back);
                 if (place == 0) break;
                 while (day.QueuePlace(this) == place) yield return null;
             }

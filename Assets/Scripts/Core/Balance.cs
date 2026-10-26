@@ -28,47 +28,64 @@ namespace FishBreeder.Core
         public Color color = new Color(0.55f, 0.4f, 0.25f);
     }
 
-    /// <summary>One thing research teaches about a species, and the research points it takes.</summary>
+    /// <summary>
+    /// One research project. Its bounty is posted once the Research level (and any project it
+    /// builds on) allows; doing the bounty lets you start the research, which then takes a number of
+    /// time steps (fewer at a higher Research level) and teaches what it says.
+    /// </summary>
     [Serializable]
-    public class ResearchFactBalance
+    public class ResearchProjectBalance
     {
-        public ResearchFact fact;
-        public float points = 2f;
+        public string id;
+        public string name;
+        [Tooltip("What finishing it teaches, shown to the player.")]
+        public string teaches;
+        [Tooltip("What the game shows once it's done.")]
+        public ResearchUnlock unlock;
+        [Tooltip("The bounty: what to do to be allowed to start the research.")]
+        public MilestoneKind bounty;
+        [Tooltip("How many times (for fish kept, kinds discovered and levels: how many at once).")]
+        public int target = 1;
+        [Tooltip("Time steps of research once started, at research speed 1 (there are two time steps a day).")]
+        public float steps = 2f;
+        [Tooltip("Research level needed before the bounty is posted.")]
+        public int level = 1;
+        [Tooltip("Id of a project that has to be finished first (empty for none).")]
+        public string requires = "";
+        public int xpBounty = 20;
+        public int xpResearch = 40;
+
+        static ResearchProjectBalance Make(string id, string name, string teaches, ResearchUnlock unlock, MilestoneKind bounty, int target, float steps, int level, string requires = "", int xpBounty = 20, int xpResearch = 40)
+            => new ResearchProjectBalance { id = id, name = name, teaches = teaches, unlock = unlock, bounty = bounty, target = target, steps = steps, level = level, requires = requires, xpBounty = xpBounty, xpResearch = xpResearch };
+
+        public static List<ResearchProjectBalance> CreateDefaults() => new List<ResearchProjectBalance>
+        {
+            Make("health_checkup", "Health check-ups", "The fish window shows how much each thing adds to or takes from a fish's health.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 8, 2f, 1),
+            Make("temperature", "Temperature preferences", "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.", ResearchUnlock.Temperature, MilestoneKind.KeepFish, 6, 2f, 1),
+            Make("tank_mates", "Tank mate behaviour", "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.", ResearchUnlock.TankMates, MilestoneKind.DiscoverSpecies, 3, 3f, 1),
+            Make("water_testing", "Water testing kit", "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.", ResearchUnlock.WaterTesting, MilestoneKind.CleanTank, 6, 3f, 2, "", 25, 50),
+            Make("feeding", "Feeding study", "A fish shows it loves a food the first time it eats one of its favourites, and favourites you've seen already are written up.", ResearchUnlock.FavouriteFoods, MilestoneKind.HatchEggs, 5, 2f, 2, "", 25, 50),
+            Make("breeding", "Breeding biology", "The breeding tab explains why each fish isn't ready to breed, and you learn which kinds lay eggs and which give birth.", ResearchUnlock.Breeding, MilestoneKind.BreedFish, 5, 3f, 2, "", 25, 50),
+            Make("shoaling", "Shoaling behaviour", "Learn how many of its own kind each fish wants around it.", ResearchUnlock.Shoaling, MilestoneKind.GrowUp, 3, 2f, 2, "", 25, 50),
+            Make("pathology", "Fish pathology", "Sick fish show how far along their illness is and which medicine cures it.", ResearchUnlock.Pathology, MilestoneKind.CureFish, 2, 3f, 3, "", 30, 60),
+            Make("plants", "Plant preferences", "Learn which fish love plants in their tank.", ResearchUnlock.Plants, MilestoneKind.BuyDecoration, 3, 2f, 3, "", 30, 60),
+            Make("ph", "pH preferences", "Learn the pH range every fish you've discovered likes.", ResearchUnlock.Ph, MilestoneKind.KeepFish, 15, 4f, 3, "water_testing", 30, 60),
+            Make("lifespan", "Ageing study", "Learn how long each kind of fish lives before it starts to slow down.", ResearchUnlock.Lifespan, MilestoneKind.GrowUp, 8, 4f, 4, "", 40, 80),
+        };
     }
 
     /// <summary>
-    /// Research: the more time you spend keeping a species, the more you learn about it. Every time
-    /// step each species in your tanks earns research points (times your research speed, which
-    /// grows with the Research level), and facts unlock at their point totals. Adult tank mates may
-    /// reveal how they get on, and feeding may reveal favourite foods.
+    /// Research: bounties (breed this, cure that) unlock research projects, and finished research
+    /// makes the game tell you more. Research speed grows with the Research level.
     /// </summary>
     [Serializable]
     public class ResearchBalance
     {
-        [Tooltip("Research points each species you keep earns per time step, at research speed 1.")]
-        public float pointsPerStep = 1f;
-        [Tooltip("Research speed = 1 + this x (Research level - 1).")]
+        [Tooltip("Research speed = 1 + this x (Research level - 1). Research progresses this much per time step.")]
         public float speedPerLevel = 0.2f;
-        public List<ResearchFactBalance> facts = new List<ResearchFactBalance>
-        {
-            new ResearchFactBalance { fact = ResearchFact.Temperature, points = 2f },
-            new ResearchFactBalance { fact = ResearchFact.Plants, points = 3f },
-            new ResearchFactBalance { fact = ResearchFact.School, points = 4f },
-            new ResearchFactBalance { fact = ResearchFact.Ph, points = 6f },
-            new ResearchFactBalance { fact = ResearchFact.Breeding, points = 8f },
-            new ResearchFactBalance { fact = ResearchFact.Lifespan, points = 12f },
-        };
-        [Tooltip("Chance per time step, at research speed 1, that two kinds of adult fish sharing a tank show how they get on.")]
-        [Range(0f, 1f)] public float relationshipChance = 0.08f;
-        [Tooltip("Chance, at research speed 1, that a fish eating one of its favourite foods shows it's a favourite.")]
-        [Range(0f, 1f)] public float favouriteFoodChance = 0.15f;
-        [Tooltip("Research level needed to measure pH at all.")]
-        public int phReadingLevel = 2;
-        [Header("Research XP")]
+        [Tooltip("Research XP each kind of fish you keep earns per time step.")]
         public int xpPerSpeciesPerStep = 2;
-        public int xpFact = 8;
-        public int xpRelationship = 15;
-        public int xpFavouriteFood = 10;
+        public List<ResearchProjectBalance> projects = ResearchProjectBalance.CreateDefaults();
     }
 
     [Serializable]
@@ -95,6 +112,8 @@ namespace FishBreeder.Core
         public int unlockLevel = 1;
         [Tooltip("Decorations it has room for.")]
         public int decorationSlots = 12;
+        [Tooltip("Aquarium quality (from equipment and decorations) a tank needs before it can be upgraded to this size.")]
+        public int qualityNeeded;
 
         public Vector3 Size => new Vector3(width, height, depth);
     }
@@ -172,6 +191,28 @@ namespace FishBreeder.Core
         public bool back;
     }
 
+    /// <summary>
+    /// A tank's quality: what its equipment and decorations add up to. Reaching a size's quality
+    /// lets the tank be upgraded to that size (for money), and bigger tanks can keep fish that
+    /// want more room.
+    /// </summary>
+    [Serializable]
+    public class QualityBalance
+    {
+        [Tooltip("Points for having a filter, heater or bubbler at all (the first model).")]
+        public float equipmentPoints = 5f;
+        [Tooltip("Extra points for each model better than the first.")]
+        public float pointsPerEquipmentTier = 5f;
+        [Tooltip("Share of its points broken equipment still counts for, until it's repaired.")]
+        [Range(0f, 1f)] public float brokenEquipmentShare = 0.5f;
+        [Tooltip("Points for each decoration.")]
+        public float decorationPoints = 3f;
+        [Tooltip("Extra points for each plant.")]
+        public float plantPoints = 2f;
+        [Tooltip("Extra points for each different kind of decoration, since variety looks better.")]
+        public float varietyPoints = 1f;
+    }
+
     [Serializable]
     public class StoreBalance
     {
@@ -195,8 +236,8 @@ namespace FishBreeder.Core
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
         {
             new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
-            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, upgradePrice = 600, unlockLevel = 6, decorationSlots = 16 },
-            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 14, decorationSlots = 20 },
+            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
+            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
         [Tooltip("Decoration ids the three starting tanks come with.")]
         public List<string> starterDecorations = new List<string>();
@@ -280,6 +321,8 @@ namespace FishBreeder.Core
         public int repairKitsPerPack = 3;
         [Tooltip("Share of the equipment's wear (age) a repair takes off. Old equipment keeps breaking more often until replaced.")]
         [Range(0f, 1f)] public float repairWearRemoved = 0.25f;
+        [Tooltip("Chance a repair doesn't use up the repair kit (0.3 = 30%).")]
+        [Range(0f, 1f)] public float repairKitSaveChance = 0.3f;
         [Tooltip("What a bought fry is worth while it's still too small to tell what it is.")]
         public int unknownFryValue = 4;
         public int waterConditionerPrice = 20;
@@ -391,6 +434,8 @@ namespace FishBreeder.Core
         public float favouriteFoodNutrition = 1.4f;
         [Tooltip("Comfort a fish gets for a time step after a meal of one of its favourite foods.")]
         public float favouriteFoodComfort = 0.1f;
+        [Tooltip("Comfort a fish loses in a tank smaller than it wants (see each species' smallest tank).")]
+        public float crampedComfortLoss = 0.35f;
     }
 
     /// <summary>
@@ -557,6 +602,7 @@ namespace FishBreeder.Core
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
         public ResearchBalance research = new ResearchBalance();
+        public QualityBalance quality = new QualityBalance();
         public List<MilestoneBalance> milestones = MilestoneBalance.CreateDefaults();
         public CrossBreedingBalance crossBreeding = new CrossBreedingBalance();
         public PerkSettingsBalance perkSettings = new PerkSettingsBalance();
@@ -573,8 +619,9 @@ namespace FishBreeder.Core
         /// <summary>
         /// 2: real-world species data (names, families, temperature and pH ranges, schools).
         /// 3: favourite foods and new foods, no starting decorations, one wipe per tank.
+        /// 4: research projects, aquarium quality gates tank sizes (not levels), smallest tank per species.
         /// </summary>
-        public const int CurrentDataVersion = 3;
+        public const int CurrentDataVersion = 4;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -613,6 +660,10 @@ namespace FishBreeder.Core
                 if (parsed.perkSettings == null) parsed.perkSettings = new PerkSettingsBalance();
                 if (parsed.perks == null) parsed.perks = new List<PerkBalance>();
                 AddMissingPerks(parsed.perks);
+                if (parsed.quality == null) parsed.quality = new QualityBalance();
+                if (parsed.research == null) parsed.research = new ResearchBalance();
+                if (parsed.research.projects == null) parsed.research.projects = new List<ResearchProjectBalance>();
+                AddMissingProjects(parsed.research.projects);
                 return parsed;
             }
             catch (Exception e)
@@ -641,6 +692,15 @@ namespace FishBreeder.Core
             foreach (var p in perks) if (p != null && !string.IsNullOrEmpty(p.id)) known.Add(p.id);
             foreach (var p in PerkBalance.CreateDefaults())
                 if (!known.Contains(p.id)) perks.Add(p);
+        }
+
+        /// <summary>Research projects added after the balance file was saved join it with their defaults, like species.</summary>
+        static void AddMissingProjects(List<ResearchProjectBalance> projects)
+        {
+            var known = new HashSet<string>();
+            foreach (var p in projects) if (p != null && !string.IsNullOrEmpty(p.id)) known.Add(p.id);
+            foreach (var p in ResearchProjectBalance.CreateDefaults())
+                if (!known.Contains(p.id)) projects.Add(p);
         }
 
         static int ReadDataVersion(string json)
@@ -698,6 +758,21 @@ namespace FishBreeder.Core
                 }
                 if (data.store != null) data.store.starterDecorations = new List<string>();
                 if (data.timeStep != null) data.timeStep.wipesPerSession = 1;
+            }
+            if (fromVersion < 4)
+            {
+                var defaults = new Dictionary<string, Species>();
+                foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
+                foreach (var s in data.species)
+                    if (s != null && s.id != null && defaults.TryGetValue(s.id, out var d)) s.minTankSize = d.minTankSize;
+                // Bigger tanks are now earned with aquarium quality instead of Fishkeeping levels.
+                var sizes = new StoreBalance().tankSizes;
+                if (data.store != null && data.store.tankSizes != null)
+                    for (int i = 0; i < data.store.tankSizes.Count && i < sizes.Count; i++)
+                    {
+                        data.store.tankSizes[i].qualityNeeded = sizes[i].qualityNeeded;
+                        data.store.tankSizes[i].unlockLevel = 1;
+                    }
             }
             data.dataVersion = CurrentDataVersion;
         }

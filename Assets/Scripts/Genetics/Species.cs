@@ -73,6 +73,8 @@ namespace FishBreeder.Genetics
         public bool likesPlants = true;
         /// <summary>Feels unsafe with fewer than this many of its own kind in the tank (0 = happy alone).</summary>
         public int schoolSize;
+        /// <summary>Smallest tank it will live in, as an index into the tank sizes (0 = any tank, 1 = Large, 2 = Grand).</summary>
+        public int minTankSize;
 
         // Life
         public float daysToAdult = 4f;
@@ -146,6 +148,16 @@ namespace FishBreeder.Genetics
             { "GoldenMbuna", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
         };
 
+        /// <summary>
+        /// Fish that need more room than a standard tank: tall angelfish, big shoaling silver
+        /// dollars, territorial sharks and cichlids want a Large tank, and the oscar (which grows
+        /// huge and messy) a Grand one.
+        /// </summary>
+        static readonly Dictionary<string, int> MinTankSizes = new Dictionary<string, int>
+        {
+            { "Angelfish", 1 }, { "SilverDollar", 1 }, { "RedTailShark", 1 }, { "GreenTerror", 1 }, { "BlueAcara", 1 }, { "Oscar", 2 },
+        };
+
         const string Carps = "Carps and minnows (Cyprinidae)";
         const string Danios = "Danios (Danionidae)";
         const string Cichlids = "Cichlids (Cichlidae)";
@@ -200,6 +212,7 @@ namespace FishBreeder.Genetics
                 if (s.category == FishCategory.FreshwaterCold) { s.lifespanDays = 120f; s.daysToAdult = 5f; }
                 if (s.rarity >= SpeciesRarity.Rare) s.daysToAdult = 6f;
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
+                if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }
             return list;
         }

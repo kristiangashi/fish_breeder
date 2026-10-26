@@ -23,10 +23,11 @@ namespace FishBreeder.Store
             return name.EndsWith(" eggs") ? name.Substring(0, name.Length - 5) + " fry" : name + " (fry)";
         }
 
-        public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly)
+        /// <summary>The fish in one box, only of kinds that will live in a tank of <paramref name="tankSize"/>.</summary>
+        public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
         {
-            var normal = Pool(tier.normalMin, tier.normalMax, fishkeepingLevel, eggLayersOnly);
-            var rare = Pool(tier.rarePool, tier.rarePool, fishkeepingLevel, eggLayersOnly);
+            var normal = Pool(tier.normalMin, tier.normalMax, fishkeepingLevel, eggLayersOnly, tankSize);
+            var rare = Pool(tier.rarePool, tier.rarePool, fishkeepingLevel, eggLayersOnly, tankSize);
             var eggs = new List<Genome>();
             int rares = 0;
             for (int i = 0; i < tier.eggs; i++)
@@ -46,12 +47,15 @@ namespace FishBreeder.Store
             return eggs;
         }
 
-        /// <summary>Species of these rarities that can come in a box at this level (only egg-layers for egg boxes).</summary>
-        public static List<Species> Pool(SpeciesRarity min, SpeciesRarity max, int fishkeepingLevel, bool eggLayersOnly = false)
+        /// <summary>
+        /// Species of these rarities that can come in a box at this level (only egg-layers for egg
+        /// boxes), for a tank of this size: the seller won't put fish in a tank too small for them.
+        /// </summary>
+        public static List<Species> Pool(SpeciesRarity min, SpeciesRarity max, int fishkeepingLevel, bool eggLayersOnly = false, int tankSize = int.MaxValue)
         {
             var pool = new List<Species>();
             foreach (var species in Species.All)
-                if (species.rarity >= min && species.rarity <= max && species.unlockLevel <= fishkeepingLevel
+                if (species.rarity >= min && species.rarity <= max && species.unlockLevel <= fishkeepingLevel && species.minTankSize <= tankSize
                     && (!eggLayersOnly || species.reproduction == Reproduction.EggLayer)) pool.Add(species);
             return pool;
         }

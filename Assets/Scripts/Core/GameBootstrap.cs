@@ -34,6 +34,7 @@ namespace FishBreeder.Core
             Research.Reset();
             Journal.Reset();
             Milestones.Reset();
+            Research.Refresh();
             Fx.Reset();
             ViewMode.Set(false);
             Tank.Focused = null;
@@ -51,15 +52,16 @@ namespace FishBreeder.Core
             gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
             gameObject.AddComponent<JournalView>();
             gameObject.AddComponent<PerksView>();
+            gameObject.AddComponent<ResearchView>();
             gameObject.AddComponent<FxOverlay>();
             int setup = Economy.DaysUntilOpening;
             if (setup > 0)
             {
                 GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)} and {setup} days before the grand opening to raise some fish to sell.");
-                GameLog.Add("Buy your first box of eggs or fry from the fish seller by the staff door, then end the day to let time pass.");
+                GameLog.Add("Buy your first box of eggs or fry from the fish seller's van out front. Time passes twice a day: when you let the day pass (or close the shop), and when you go to sleep.");
                 Fx.Day("Welcome to your fish shop!", $"{setup} days to raise some fish before the grand opening");
             }
-            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Buy your first box of eggs from the fish seller by the staff door.");
+            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Buy your first box of eggs from the fish seller's van out front.");
         }
 
         static Camera SetupCamera()

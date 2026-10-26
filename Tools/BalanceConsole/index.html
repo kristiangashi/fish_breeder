@@ -123,7 +123,10 @@ const ENUMS = {
   fact: ["Temperature", "Ph", "Plants", "School", "Breeding", "Lifespan"],
   relation: ["Neutral", "Predator", "Competitive", "Preferred"],
   kind: ["BreedFish", "HatchEggs", "FeedTanks", "CleanTanks", "SellFish", "HappyCustomers", "EarnMoney", "BuyDecorations"],
-  goal: ["GetFish", "KeepFish", "DiscoverSpecies", "GrowUp", "FeedFish", "CleanTank", "HatchEggs", "BreedFish", "LearnFact", "BuyEquipment", "BuyDecoration", "OpenShop", "SellFish", "EarnMoney", "HappyCustomers", "FishkeepingLevel"],
+  goal: ["GetFish", "KeepFish", "DiscoverSpecies", "GrowUp", "FeedFish", "CleanTank", "HatchEggs", "BreedFish", "LearnFact", "BuyEquipment", "BuyDecoration", "OpenShop", "SellFish", "EarnMoney", "HappyCustomers", "FishkeepingLevel", "CureFish", "RepairEquipment", "TreatWater"],
+  bounty: ["GetFish", "KeepFish", "DiscoverSpecies", "GrowUp", "FeedFish", "CleanTank", "HatchEggs", "BreedFish", "LearnFact", "BuyEquipment", "BuyDecoration", "OpenShop", "SellFish", "EarnMoney", "HappyCustomers", "FishkeepingLevel", "CureFish", "RepairEquipment", "TreatWater"],
+  unlock: ["HealthDetails", "Temperature", "TankMates", "WaterTesting", "FavouriteFoods", "Breeding", "Shoaling", "Pathology", "Plants", "Ph", "Lifespan"],
+  minTankSize: ["Any (Standard)", "Large", "Grand", "Size 4", "Size 5"],
   style: ["Midwater", "Bottom"],
   type: ["Flakes", "Premium", "AlgaeWafers", "Bloodworms", "BrineShrimp"],
   cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
@@ -214,16 +217,26 @@ const META = {
   sinkSpeed: ["Sink speed (m/s)", "Flakes float a while; wafers drop to the bottom-feeders."],
   color: ["Colour", ""],
   // Research
-  pointsPerStep: ["Points per step", "Research points each kept species earns per time step at speed 1."],
-  speedPerLevel: ["Speed per level", "Research speed = 1 + this x (Research level - 1). Multiplies points and discovery chances."],
-  facts: ["Facts", ""],
-  fact: ["Fact", ""],
-  points: ["Points needed", "Total research points a species needs before this fact shows."],
-  relationshipChance: ["Relationship discovery chance", "Per time step and per pair of adult species in a tank, at speed 1."],
-  favouriteFoodChance: ["Favourite food discovery chance", "Per meal of a favourite, at speed 1."],
-  phReadingLevel: ["Research level to measure pH", "Below it the player can't see pH at all."],
-  xpPerSpeciesPerStep: ["XP per kept species per step", ""], xpFact: ["XP per fact learned", ""],
-  xpRelationship: ["XP per relationship found", ""], xpFavouriteFood: ["XP per favourite food found", ""],
+  speedPerLevel: ["Speed per level", "Research speed = 1 + this x (Research level - 1). The bench gets through this many time steps of research per time step."],
+  xpPerSpeciesPerStep: ["Research XP per kept species per step", "Every kind of fish you keep earns this much Research XP each time step."],
+  projects: ["Research projects", ""],
+  name: ["Name", ""],
+  teaches: ["Teaches", "What finishing it teaches, shown to the player."],
+  unlock: ["Shows", "What the game starts showing once it's done."],
+  bounty: ["Bounty", "What the player has to do before the research can start. KeepFish, DiscoverSpecies and FishkeepingLevel count what you have at once; the rest count from when the bounty is posted."],
+  steps: ["Research steps", "Time steps at the bench at speed 1 (two time steps a day)."],
+  level: ["Research level", "Research level needed before the bounty is posted."],
+  requires: ["Needs project", "Id of a project that has to be finished first (empty for none)."],
+  xpBounty: ["XP for the bounty", "Research XP."], xpResearch: ["XP for finishing", "Research XP."],
+  // Aquarium quality
+  equipmentPoints: ["Points per piece of equipment", "Quality for a filter, heater or bubbler of the first model."],
+  pointsPerEquipmentTier: ["Points per better model", "Extra quality for each model above the first."],
+  brokenEquipmentShare: ["Broken equipment counts", "Share of its points broken equipment keeps until repaired."],
+  decorationPoints: ["Points per decoration", ""], plantPoints: ["Extra points per plant", ""],
+  varietyPoints: ["Points per different decoration", "Variety looks better: each kind of decoration in the tank adds this once."],
+  qualityNeeded: ["Quality needed", "Aquarium quality a tank needs before it can be upgraded to this size (it still costs the upgrade price)."],
+  minTankSize: ["Smallest tank", "The smallest tank size this fish will live in. The fish seller won't sell it for a smaller tank, it can't be moved into one, and it's cramped (less comfortable) if it ends up in one."],
+  crampedComfortLoss: ["Cramped comfort loss", "Comfort a fish loses in a tank smaller than its smallest tank."],
   // Crowding, selling, wipes, health
   tankHardLimitMultiplier: ["Hard limit (x capacity)", "Fish can go over a tank's capacity up to this, with overcrowding penalties."],
   sadChancePerDeadFish: ["Sad chance per dead fish", "Chance a customer turns sad per corpse in view."],
@@ -240,6 +253,7 @@ const META = {
   repairKitPrice: ["Repair kit pack price ($)", ""], repairKitsPerPack: ["Kits per pack", ""],
   repairWearRemoved: ["Wear removed by a repair", "0.25 = a repair takes off a quarter of the wear, so old kit keeps breaking more."],
   repairKitLevel: ["Level for repair kits", "Fishkeeping level."], xpRepairEquipment: ["XP per repair", "Fishkeeping XP."],
+  repairKitSaveChance: ["Chance a kit survives", "Chance a repair doesn't use up the repair kit (0.3 = 30%)."],
   tree: ["Tree", "Aquariums, Biology and Breeding spend Fishkeeping points; Finances, Construction and Public Relations spend Shopkeeping points."],
   tier: ["Tier", "1 is open from the start. Each later tier opens once enough points (Points per tier) are spent in the tiers above it in the same tree."],
   text: ["Text", "What the perk does. {0} is replaced by its value at the current rank."],
@@ -253,7 +267,7 @@ const META = {
   maxInterestPerNight: ["Most interest per night ($)", "Cap on what the Savings account perk pays each night."],
 };
 
-const REPAIR_SUPPLIER = ["repairKitPrice", "repairKitsPerPack", "repairWearRemoved", "repairKitLevel"];
+const REPAIR_SUPPLIER = ["repairKitPrice", "repairKitsPerPack", "repairWearRemoved", "repairKitLevel", "repairKitSaveChance"];
 const FOOD_NAMES = ["Flakes", "Premium pellets", "Algae wafers", "Frozen bloodworms", "Frozen brine shrimp"];
 
 const TABS = [
@@ -279,7 +293,7 @@ const TABS = [
 const SPECIES_GROUPS = [
   ["Identity", ["id", "displayName", "scientificName", "family", "category", "reproduction", "rarity", "unlockLevel"]],
   ["Money", ["baseValue", "fryPrice"]],
-  ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "likesPlants", "schoolSize"]],
+  ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "likesPlants", "schoolSize", "minTankSize"]],
   ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
   ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style"]],
@@ -693,10 +707,10 @@ const SECTION_HINTS = {
   timeStep: "What happens at each time step: once when the shop opens and once when it closes (a day with the shop kept shut runs both). Nothing changes while you work in the closed shop.",
   health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step. Below: what tank mate relationships do, and how medicine works (it goes into the whole tank).",
   store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
-  stock: "Egg and fry boxes, decorations and tank sizes. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box. Decorations bring customers (Shop tab) but too many speed up algae.",
+  stock: "Egg and fry boxes, decorations, tank sizes and aquarium quality. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box (boxes only hold fish that fit the tank they're for). Decorations bring customers (Shop tab) but too many speed up algae. A tank's quality comes from its equipment and decorations; reaching a size's quality lets it be upgraded.",
   progression: "Two tracks, each up to the max level. XP to reach level n+1 = XP for level 2 × growth^(n-1). Daily goals: one per track each day; the target grows per level and finishing it gives the goal XP. Closing notifications are at the bottom.",
   equipment: "Filters, heaters and bubblers, and repairs. Equipment breaks at a time step with its break chance, which grows by the extra chance for every step of wear, up to the highest break chance. A repair kit fixes a broken piece and takes off some of its wear. 'Expected life' is how long a new piece runs on average before its first breakdown (2 time steps a day).",
-  research: "Research: every species kept earns points each time step (times research speed), and facts unlock at their point totals. Adults sharing a tank can reveal how two species get on; eating a favourite food can reveal it. pH can't be measured at all below its Research level.",
+  research: "Research (R in game): each project posts a bounty once the Research level allows. Doing the bounty lets the player start the project at the research bench (one at a time), which then takes its research steps divided by the research speed. Finished projects make the game show more: health numbers, ranges, tank mate details, pH and so on.",
   rules: "General rules: feeding and disease from meals, water basics, breeding.",
 };
 
@@ -713,6 +727,8 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, listTable("Egg and fry boxes", data.supplier.eggTiers)));
     cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
     cards.push(el("div", { class: "card" }, listTable("Tank sizes", data.store.tankSizes)));
+    if (!data.quality) data.quality = { equipmentPoints: 5, pointsPerEquipmentTier: 5, brokenEquipmentShare: 0.5, decorationPoints: 3, plantPoints: 2, varietyPoints: 1 };
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Aquarium quality"), objectForm(data.quality)));
   } else if (key === "equipment") {
     const repairs = el("div", { class: "grid" }, REPAIR_SUPPLIER.filter((k) => k in data.supplier).map((k) => field(data.supplier, k)));
     if ("xpRepairEquipment" in data.progression) repairs.append(field(data.progression, "xpRepairEquipment"));

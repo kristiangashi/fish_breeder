@@ -9,6 +9,7 @@ namespace FishBreeder.Core
     {
         GetFish, KeepFish, DiscoverSpecies, GrowUp, FeedFish, CleanTank, HatchEggs, BreedFish, LearnFact,
         BuyEquipment, BuyDecoration, OpenShop, SellFish, EarnMoney, HappyCustomers, FishkeepingLevel,
+        CureFish, RepairEquipment, TreatWater,
     }
 
     /// <summary>One milestone: reach <see cref="target"/> of <see cref="goal"/> for a cash (and XP) reward.</summary>
@@ -83,12 +84,14 @@ namespace FishBreeder.Core
         {
             if (amount <= 0) return;
             progress[kind] = Progress(kind) + amount;
+            Research.OnEvent(kind, amount);
             Check();
         }
 
         /// <summary>A running total (fish kept, species found, level): only ever goes up.</summary>
         public static void Report(MilestoneKind kind, int value)
         {
+            Research.OnTotal(kind, value);
             if (value <= Progress(kind)) return;
             progress[kind] = value;
             Check();

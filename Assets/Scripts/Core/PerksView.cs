@@ -76,10 +76,10 @@ namespace FishBreeder.Core
 
             GUI.DrawTexture(new Rect(0f, 0f, width, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, 0.45f), 0f, 0f);
 
-            GUILayout.BeginArea(window, UiStyles.Window);
+            UiCheck.Begin("Perks", window, UiStyles.Window);
             DrawHeader();
             DrawTrees(w);
-            GUILayout.EndArea();
+            UiCheck.End();
 
             // Modal: clicks outside close it instead of reaching the store behind.
             var e = Event.current;
@@ -128,7 +128,7 @@ namespace FishBreeder.Core
             foreach (PerkTree tree in System.Enum.GetValues(typeof(PerkTree)))
                 if (Perks.TrackOf(tree) == page) trees.Add(tree);
             float column = (windowWidth - 60f) / Mathf.Max(1, trees.Count);
-            scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+            scroll = UiCheck.BeginScroll("Perks: trees", scroll);
             GUILayout.BeginHorizontal();
             foreach (var tree in trees)
             {
@@ -138,7 +138,7 @@ namespace FishBreeder.Core
                 GUILayout.Space(6f);
             }
             GUILayout.EndHorizontal();
-            GUILayout.EndScrollView();
+            UiCheck.EndScroll();
         }
 
         void DrawTree(PerkTree tree, float width)

@@ -46,7 +46,8 @@ for s in small:
     bpy.ops.object.select_all(action='DESELECT'); s.select_set(True); tgt.select_set(True); bpy.context.view_layer.objects.active=tgt; bpy.ops.object.join()
 big=[o for o in bpy.data.objects if o.type=='MESH']
 top=sorted([o for o in big if ctr(o).z>0],key=lambda o:ctr(o).x); bot=sorted([o for o in big if ctr(o).z<=0],key=lambda o:ctr(o).x)
-names=['OwnerWoman','OwnerMan','FishSeller']+['CustomerSunhat','CustomerKid','CustomerTourist','CustomerRocker']
+# The Meshy lineup's third figure became a customer and the Hawaiian-shirt tourist the fish seller.
+names=['OwnerWoman','OwnerMan','CustomerTrader']+['CustomerSunhat','CustomerKid','FishSeller','CustomerRocker']
 for o,n in zip(top+bot,names): o.name=n; o.data.name=n
 man=[o for o in big if o.name=='OwnerMan'][0]; bm_=bbox(man); scale=1.75/(bm_[5]-bm_[4]); print('scale',scale)
 for o in big:

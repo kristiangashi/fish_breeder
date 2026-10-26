@@ -14,7 +14,7 @@ namespace FishBreeder.People
         public const string OwnerMan = "OwnerMan";
         public const string OwnerWoman = "OwnerWoman";
         public const string FishSeller = "FishSeller";
-        public static readonly string[] Customers = { "CustomerSunhat", "CustomerKid", "CustomerTourist", "CustomerRocker" };
+        public static readonly string[] Customers = { "CustomerSunhat", "CustomerKid", "CustomerTrader", "CustomerRocker" };
 
         /// <summary>Turns the imported models (which face +Z) to face the way their parent faces.</summary>
         const float ModelYaw = 0f;

@@ -146,7 +146,16 @@ namespace FishBreeder.Core
         {
             var card = Fx.Current;
             if (card == null) return;
-            const float w = 480f, h = 118f;
+            // The card grows to fit its text (research cards say a lot).
+            const float w = 520f;
+            float textW = w - 14f - 112f - 14f - 14f;
+            var title = new GUIContent(card.title);
+            var subtitle = new GUIContent(card.subtitle);
+            var reward = new GUIContent($"<b><color={UiTheme.LeafHex}>{card.reward}</color></b>");
+            float titleH = Mathf.Max(30f, cardTitle.CalcHeight(title, textW));
+            float subtitleH = cardText.CalcHeight(subtitle, textW);
+            float rewardH = cardText.CalcHeight(reward, textW);
+            float h = Mathf.Max(118f, 12f + 16f + titleH + subtitleH + 4f + rewardH + 14f);
             float t = card.age;
             float y;
             if (t < CardIn) y = Mathf.LerpUnclamped(-h - 20f, 96f, EaseOutBack(t / CardIn));
@@ -184,12 +193,15 @@ namespace FishBreeder.Core
             }
 
             float x = iconRect.xMax + 14f;
-            float textW = cardRect.xMax - x - 14f;
             cardKicker.normal.textColor = card.accent;
-            GUI.Label(new Rect(x, cardRect.y + 12f, textW, 18f), card.kicker, cardKicker);
-            GUI.Label(new Rect(x, cardRect.y + 28f, textW, 30f), card.title, cardTitle);
-            GUI.Label(new Rect(x, cardRect.y + 58f, textW, 20f), card.subtitle, cardText);
-            GUI.Label(new Rect(x, cardRect.y + 80f, textW, 22f), $"<b><color={UiTheme.LeafHex}>{card.reward}</color></b>", cardText);
+            float ty = cardRect.y + 12f;
+            UiCheck.Label("Celebration card: kicker", new Rect(x, ty, textW, 18f), new GUIContent(card.kicker), cardKicker);
+            ty += 16f;
+            UiCheck.Label("Celebration card: title", new Rect(x, ty, textW, titleH), title, cardTitle);
+            ty += titleH;
+            UiCheck.Label("Celebration card: text", new Rect(x, ty, textW, subtitleH), subtitle, cardText);
+            ty += subtitleH + 4f;
+            UiCheck.Label("Celebration card: reward", new Rect(x, ty, textW, rewardH), reward, cardText);
 
             var e = Event.current;
             if (e.type == EventType.MouseDown && cardRect.Contains(e.mousePosition))
@@ -276,9 +288,9 @@ namespace FishBreeder.Core
             floatStyle = new GUIStyle(skin.label) { fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = true };
             floatStyle.normal.textColor = Color.white;
             cardKicker = new GUIStyle(skin.label) { fontSize = 11, fontStyle = FontStyle.Bold, wordWrap = false };
-            cardTitle = new GUIStyle(skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, wordWrap = false, richText = true, alignment = TextAnchor.MiddleLeft };
+            cardTitle = new GUIStyle(skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, wordWrap = true, richText = true, alignment = TextAnchor.MiddleLeft };
             cardTitle.normal.textColor = UiTheme.Sun;
-            cardText = new GUIStyle(skin.label) { fontSize = 13, wordWrap = false, richText = true };
+            cardText = new GUIStyle(skin.label) { fontSize = 13, wordWrap = true, richText = true };
             stampStyle = new GUIStyle(skin.label) { fontSize = 84, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
             stampStyle.normal.textColor = Color.white;
             dayTitle = new GUIStyle(skin.label) { fontSize = 54, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };

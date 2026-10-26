@@ -22,7 +22,7 @@ namespace FishBreeder.Core
         public static readonly Color Hibiscus = new Color(1f, 0.42f, 0.66f);
 
         /// <summary>Rich-text colour codes for headings and highlights.</summary>
-        public const string SunHex = "#ffd361", AquaHex = "#7ff0e4", CoralHex = "#ff8a73", LeafHex = "#8ff0a0", SandHex = "#fff4dc";
+        public const string SunHex = "#ffd361", AquaHex = "#7ff0e4", CoralHex = "#ff8a73", LeafHex = "#8ff0a0", SandHex = "#fff4dc", HibiscusHex = "#ff6ba8";
 
         static GUISkin skin;
         static Font font;
@@ -153,6 +153,8 @@ namespace FishBreeder.Core
                 style.fontSize = 13;
                 style.richText = true;
             }
+            // Labels always wrap, so long text stays inside its window.
+            skin.label.wordWrap = true;
 
             skin.box.normal.background = Rounded(new Color(0.04f, 0.27f, 0.36f, 0.9f), new Color(0.02f, 0.15f, 0.23f, 0.9f), new Color(0.28f, 0.72f, 0.72f), 9, 1);
             skin.box.border = new RectOffset(10, 10, 10, 10);

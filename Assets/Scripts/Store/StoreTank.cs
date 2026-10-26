@@ -32,12 +32,12 @@ namespace FishBreeder.Store
 
         public static string RoleName(TankRole role) => role == TankRole.ForSale ? "For Sale" : role.ToString();
 
-        /// <summary>Builds a tank with its feeding and breeding systems at <paramref name="position"/> (the sand level).</summary>
-        public static StoreTank Create(TankRole role, int number, Vector3 position, Transform parent, int size, IEnumerable<string> decorations)
+        /// <summary>Builds a tank with its feeding and breeding systems at <paramref name="position"/> (the sand level), turned <paramref name="yaw"/> degrees (its front faces -Z at 0).</summary>
+        public static StoreTank Create(TankRole role, int number, Vector3 position, float yaw, Transform parent, int size, IEnumerable<string> decorations)
         {
             var go = new GameObject($"{RoleName(role)} tank {number}");
             go.transform.SetParent(parent, false);
-            go.transform.position = position;
+            go.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
 
             var storeTank = go.AddComponent<StoreTank>();
             storeTank.role = role;

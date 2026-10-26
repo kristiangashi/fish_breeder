@@ -197,7 +197,7 @@ namespace FishBreeder.Breeding
                 if (pairs > 0) lines.Add($"{name}: {(pairs == 1 ? "1 pair" : pairs + " pairs")} ready to breed");
                 else if (group.females.Count > 0) lines.Add($"{name}: ready, but no ready male");
                 else if (group.males.Count > 0) lines.Add($"{name}: ready, but no ready female");
-                else lines.Add($"{name}: not ready ({reasons[id].TrimEnd('.')})");
+                else lines.Add(Core.Research.Has(Core.ResearchUnlock.Breeding) ? $"{name}: not ready ({reasons[id].TrimEnd('.')})" : $"{name}: not ready");
             }
             for (int i = 0; i < order.Count; i++)
                 for (int j = i + 1; j < order.Count; j++)

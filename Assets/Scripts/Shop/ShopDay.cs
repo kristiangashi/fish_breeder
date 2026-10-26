@@ -6,7 +6,18 @@ using UnityEngine;
 
 namespace FishBreeder.Shop
 {
-    /// <summary>What happened during one open-shop day, for the end-of-day report.</summary>
+    /// <summary>The three parts of a day.</summary>
+    public enum DayPhase
+    {
+        /// <summary>Getting the tanks ready before opening. No time has passed since the night.</summary>
+        Morning,
+        /// <summary>Customers are in. Time passes, and its events land when the shop closes.</summary>
+        Open,
+        /// <summary>After closing: deal with the day, then settle the fish in for the night.</summary>
+        Evening,
+    }
+
+    /// <summary>What happened during the day (shown in the evening) or overnight (shown in the morning).</summary>
     public class DayReport
     {
         public int day;
@@ -14,18 +25,24 @@ namespace FishBreeder.Shop
         public int happy, grossed, sad, mad;
         public float stars;
         public string review;
-        public string overnight;
+        /// <summary>What happened in the tanks: during the day for an evening report, overnight for a morning one.</summary>
+        public string tanks;
         public float reputationChange;
         /// <summary>The shop stayed closed: time passed, but no customers came.</summary>
         public bool stayedClosed;
+        /// <summary>The morning report, after the night.</summary>
+        public bool morning;
     }
 
     /// <summary>
-    /// The open-shop phase. Opening runs a time step and starts a day of customers (one real hour by
-    /// default); when the time is up the shop closes on its own, runs another time step, starts the
-    /// next day and shows the day's report. Developer controls speed it up or skip it. Instead of
-    /// opening, the player can keep the shop closed for the day: both time steps run straight away
-    /// and nobody comes in. For the first few days (the setup days) that's the only choice.
+    /// The day in three parts. <b>Morning</b>: feed, clean and get ready; opening the shop doesn't
+    /// move time on, so nothing changes between getting ready and opening. <b>Open</b>: customers
+    /// come in for a day (one real hour by default) and time passes; when the shop closes, the day's
+    /// time step runs (births, deaths, growth, illness) and the day's report shows. <b>Evening</b>:
+    /// deal with what happened and settle the fish in; going to sleep runs the night's time step and
+    /// starts the next morning with a report of the night. Instead of opening, the player can keep
+    /// the shop closed: the day still passes, with nobody coming in. For the first few days (the setup
+    /// days) that's the only choice. Developer controls speed the open shop up or skip it.
     /// </summary>
     public class ShopDay : MonoBehaviour
     {
@@ -44,12 +61,13 @@ namespace FishBreeder.Shop
         readonly List<GameObject> bags = new List<GameObject>();
         DayReport today;
 
-        public bool IsOpen { get; private set; }
+        public DayPhase Phase { get; private set; } = DayPhase.Morning;
+        public bool IsOpen => Phase == DayPhase.Open;
         public float TimeLeft { get; private set; }
         public IReadOnlyList<Customer> Customers => customers;
         public List<MoneyPopup> Popups => popups;
         public DayReport Today => today;
-        /// <summary>The report of the day that just ended, until the player dismisses it.</summary>
+        /// <summary>The report of the day (evening) or night (morning) that just ended, until the player dismisses it.</summary>
         public DayReport LastReport { get; set; }
         public float SpeedMultiplier { get; private set; } = 1f;
 
@@ -72,64 +90,77 @@ namespace FishBreeder.Shop
 
         float SpawnInterval => 3600f / Mathf.Max(1f, CustomersPerHour);
 
+        /// <summary>Opens the shop for the day. No time passes: the tanks are just as you left them.</summary>
         public void Open()
         {
-            if (IsOpen) return;
+            if (Phase != DayPhase.Morning) return;
             if (!Economy.CanOpenShop)
             {
                 GameLog.Add($"The shop isn't ready to open yet: {Economy.DaysUntilOpening} more days to raise some fish to sell.");
                 return;
             }
-            GameLog.Add("You flip the sign to OPEN. Overnight in the tanks:");
-            string overnight = TimeStep.Run(layout.Tanks);
-            IsOpen = true;
+            GameLog.Add("You flip the sign to OPEN.");
+            Phase = DayPhase.Open;
             TimeLeft = Balance.Data.shop.dayLengthSeconds;
             spawnTimer = 2f;
-            today = new DayReport { day = Economy.Day, overnight = overnight };
+            today = new DayReport { day = Economy.Day };
             layout.BuildNavMesh();
             Milestones.Add(MilestoneKind.OpenShop);
             Fx.Stamp("OPEN!", UiTheme.Leaf);
         }
 
         /// <summary>
-        /// Keeps the shop closed today: the day's two time steps run straight away (fish grow, eggs
-        /// hatch, water gets dirtier, and so on), but no customers come and nothing is sold.
+        /// Keeps the shop closed today: the day's time step runs straight away (fish grow, eggs
+        /// hatch, water gets dirtier, and so on), but no customers come and nothing is sold. It's
+        /// evening afterwards.
         /// </summary>
         public void StayClosed()
         {
-            if (IsOpen) return;
+            if (Phase != DayPhase.Morning) return;
             var report = new DayReport { day = Economy.Day, stayedClosed = true };
-            GameLog.Add(Economy.CanOpenShop ? "You keep the shop closed today. Morning in the tanks:" : "Another day of getting ready. Morning in the tanks:");
-            string morning = TimeStep.Run(layout.Tanks);
-            GameLog.Add("Evening in the tanks:");
-            string evening = TimeStep.Run(layout.Tanks);
-            report.overnight = $"Morning: {morning}\nEvening: {evening}";
-            Economy.NextDay();
-            Progression.NewDailyGoals();
-            LastReport = report;
+            GameLog.Add(Economy.CanOpenShop ? "You keep the shop closed today. During the day in the tanks:" : "Another day of getting ready. During the day in the tanks:");
+            report.tanks = TimeStep.Run(layout.Tanks);
+            StartEvening(report);
         }
 
         public void Close()
         {
-            if (!IsOpen) return;
+            if (Phase != DayPhase.Open) return;
             foreach (var customer in customers.ToArray())
                 if (customer != null) customer.FinishNow();
             customers.Clear();
             registerQueue.Clear();
             foreach (var bag in bags) if (bag != null) Destroy(bag);
             bags.Clear();
-            IsOpen = false;
             SetSpeed(1f);
 
             FinishReport(today);
             GameLog.Add($"Closed for the day: {today.visitors} visitors, {today.fishSold} fish sold, {Economy.Format(today.earnings)} earned.");
-            GameLog.Add("While you closed up:");
-            today.overnight = TimeStep.Run(layout.Tanks);
+            GameLog.Add("During the day in the tanks:");
+            today.tanks = TimeStep.Run(layout.Tanks);
             Progression.Award(XpTrack.Shopkeeping, Mathf.RoundToInt(Balance.Data.progression.xpPerReviewStar * today.stars));
+            var report = today;
+            today = null;
+            StartEvening(report);
+        }
+
+        void StartEvening(DayReport report)
+        {
+            Phase = DayPhase.Evening;
+            LastReport = report;
+            Fx.Day("Evening", "See to the day's events, then settle the fish in for the night");
+        }
+
+        /// <summary>Ends the evening: the night's time step runs and the next morning starts, with a report of the night.</summary>
+        public void GoToSleep()
+        {
+            if (Phase != DayPhase.Evening) return;
+            GameLog.Add("You turn the lights off for the night. Overnight in the tanks:");
+            string night = TimeStep.Run(layout.Tanks);
             Economy.NextDay();
             Progression.NewDailyGoals();
-            LastReport = today;
-            today = null;
+            Phase = DayPhase.Morning;
+            LastReport = new DayReport { day = Economy.Day, morning = true, tanks = night };
         }
 
         /// <summary>Developer shortcut: plays out the rest of the day instantly with the same shopper rules, then closes.</summary>

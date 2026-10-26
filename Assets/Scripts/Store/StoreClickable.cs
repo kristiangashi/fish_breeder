@@ -22,6 +22,8 @@ namespace FishBreeder.Store
         {
             var go = new GameObject($"Click - {name}") { layer = Layer };
             go.transform.SetParent(parent, true);
+            // Turned with its parent (a tank against a side wall), so the size is along the parent's axes.
+            go.transform.localRotation = Quaternion.identity;
             go.transform.position = worldCenter;
             var box = go.AddComponent<BoxCollider>();
             box.size = size;

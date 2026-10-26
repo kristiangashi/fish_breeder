@@ -69,7 +69,8 @@ namespace FishBreeder.Core
                         EquipmentModels.Place(box, holder.transform, Quaternion.identity, EquipmentModels.Size(EquipmentModels.HeaterController),
                             new Vector3(bounds.min.x - 0.02f, bounds.min.y, bounds.max.z), new Vector3(1f, -1f, 1f));
                 }
-                holder.transform.rotation = Quaternion.Euler(0f, 160f, 0f);
+                // Heaters are long and thin: tilt them across the picture so they fill more of it.
+                holder.transform.rotation = Quaternion.Euler(0f, 160f, 0f) * Quaternion.Euler(0f, 0f, kind == EquipmentKind.Heater ? 30f : 0f);
                 return holder;
             }, null, 2.2f);
         }

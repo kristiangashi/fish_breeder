@@ -68,7 +68,12 @@ namespace FishBreeder
                 if (filter.name.EndsWith("_Collider"))
                 {
                     if (colliders) filter.gameObject.AddComponent<MeshCollider>().sharedMesh = filter.sharedMesh;
-                    if (renderer != null) Object.Destroy(renderer);
+                    if (renderer != null)
+                    {
+                        // Hidden now: Destroy waits for the end of the frame, after a shop photo is taken.
+                        renderer.enabled = false;
+                        Object.Destroy(renderer);
+                    }
                     continue;
                 }
                 if (renderer != null) renderer.sharedMaterial = MaterialFor(design);

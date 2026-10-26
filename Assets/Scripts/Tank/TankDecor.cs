@@ -211,7 +211,12 @@ namespace FishBreeder
                         var collider = filter.gameObject.AddComponent<MeshCollider>();
                         collider.sharedMesh = filter.sharedMesh;
                     }
-                    if (renderer != null) Destroy(renderer);
+                    if (renderer != null)
+                    {
+                        // Hidden now: Destroy waits for the end of the frame, after a shop photo is taken.
+                        renderer.enabled = false;
+                        Destroy(renderer);
+                    }
                     continue;
                 }
                 if (renderer == null) continue;

@@ -72,7 +72,7 @@ namespace FishBreeder.Core
                 // Heaters are long and thin: tilt them across the picture so they fill more of it.
                 holder.transform.rotation = Quaternion.Euler(0f, 160f, 0f) * Quaternion.Euler(0f, 0f, kind == EquipmentKind.Heater ? 30f : 0f);
                 return holder;
-            }, null, 2.2f);
+            }, null, 1.6f);
         }
 
         /// <summary>One of the shop's people, standing, three-quarter view. Null until the photo is ready.</summary>

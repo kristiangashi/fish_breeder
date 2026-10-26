@@ -370,10 +370,10 @@ namespace FishBreeder.Core
                 int current = item != null ? item.tier : -1;
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(kind.ToString(), GUILayout.Width(56f));
-                if (GUILayout.Button(new GUIContent("None", "Take it out"), current < 0 ? UiTheme.Primary : GUI.skin.button, GUILayout.Width(46f))) tank.DevRemoveEquipment(kind);
+                if (GUILayout.Button(new GUIContent("None", "Take it out"), current < 0 ? DevPrimary() : DevButton(), GUILayout.Width(44f))) tank.DevRemoveEquipment(kind);
                 var tiers = Equipment.Tiers(kind);
                 for (int t = 0; t < tiers.Count; t++)
-                    if (GUILayout.Button(new GUIContent((t + 1).ToString(), tiers[t].name), current == t ? UiTheme.Primary : GUI.skin.button, GUILayout.Width(28f))) tank.Install(kind, t);
+                    if (GUILayout.Button(new GUIContent((t + 1).ToString(), tiers[t].name), current == t ? DevPrimary() : DevButton(), GUILayout.Width(28f))) tank.Install(kind, t);
                 GUILayout.EndHorizontal();
             }
             if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich());
@@ -413,13 +413,13 @@ namespace FishBreeder.Core
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Label($"<size=11>{species.displayName}</size>", Rich(), GUILayout.Width(100f));
-                if (GUILayout.Button(new GUIContent("+1", "One adult"), GUILayout.Width(30f))) DevSpawn(species, 1f, null);
-                if (GUILayout.Button(new GUIContent("+♂♀", "A grown male and female"), GUILayout.Width(40f)))
+                if (GUILayout.Button(new GUIContent("+1", "One adult"), DevButton(), GUILayout.Width(30f))) DevSpawn(species, 1f, null);
+                if (GUILayout.Button(new GUIContent("+pair", "A grown male and female"), DevButton(), GUILayout.Width(40f)))
                 {
                     DevSpawn(species, 1f, Sex.Male);
                     DevSpawn(species, 1f, Sex.Female);
                 }
-                if (GUILayout.Button(new GUIContent("+5 fry", "Five fry of this kind (bred, so you can tell what they are)"), GUILayout.Width(50f)))
+                if (GUILayout.Button(new GUIContent("+5 fry", "Five fry of this kind (bred, so you can tell what they are)"), DevButton(), GUILayout.Width(50f)))
                     for (int i = 0; i < 5; i++) DevSpawn(species, 0.05f, null);
                 GUILayout.EndHorizontal();
             }
@@ -431,6 +431,11 @@ namespace FishBreeder.Core
             var fish = FishFactory.Spawn(Genome.CreateRandom(species), growth < 1f ? 2 : 1, growth, tank, tank.RandomFreePoint(0.1f));
             if (sex.HasValue) fish.DevSetSex(sex.Value);
         }
+
+        // Small-padding buttons so the dev rows fit the panel.
+        static GUIStyle devButton, devPrimary;
+        static GUIStyle DevButton() => devButton != null ? devButton : devButton = new GUIStyle(GUI.skin.button) { fontSize = 11, padding = new RectOffset(1, 1, 3, 4) };
+        static GUIStyle DevPrimary() => devPrimary != null ? devPrimary : devPrimary = new GUIStyle(UiTheme.Primary) { fontSize = 11, padding = new RectOffset(1, 1, 3, 4) };
 
         // A clickable heading that folds a section open or shut.
         static GUIStyle sectionHeader;

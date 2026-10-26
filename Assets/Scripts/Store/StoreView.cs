@@ -878,7 +878,8 @@ namespace FishBreeder.Store
         }
 
         /// <summary>
-        /// Keyboard versions of the dev controls: 1/2/3 set 1x/5x/20x and K skips the rest of the day.
+        /// Keyboard versions of the dev controls: 1/2/3 set 1x/5x/20x and K skips the rest of the day
+        /// (with the shop shut, K lets the day pass or goes to sleep).
         /// In the editor F8 runs the UI check and F9 puts the next equipment model in the tank you're looking at.
         /// F10 turns dev mode on and off (editor and development builds).
         /// </summary>
@@ -889,7 +890,16 @@ namespace FishBreeder.Store
             if (Input.GetKeyDown(KeyCode.F8) && !uiTourRunning) StartCoroutine(UiTour());
             if (Input.GetKeyDown(KeyCode.F9)) CycleEquipment();
 #endif
-            if (!shopDay.IsOpen) return;
+            if (!shopDay.IsOpen)
+            {
+                // K also moves a closed day on: morning to evening, evening to the next morning.
+                if ((DevMode.On || Application.isEditor) && Input.GetKeyDown(KeyCode.K) && panel != Panel.DayReport && GUIUtility.keyboardControl == 0)
+                {
+                    if (shopDay.Phase == DayPhase.Evening) Sleep();
+                    else if (shopDay.Phase == DayPhase.Morning) StayClosed();
+                }
+                return;
+            }
             for (int i = 0; i < Speeds.Length && i < 9; i++)
                 if (Input.GetKeyDown(KeyCode.Alpha1 + i)) shopDay.SetSpeed(Speeds[i]);
             if (Input.GetKeyDown(KeyCode.K)) shopDay.SkipRestOfDay();

@@ -783,12 +783,13 @@ namespace FishBreeder.Store
 
         /// <summary>
         /// Keyboard versions of the dev controls: 1/2/3 set 1x/5x/20x and K skips the rest of the day.
-        /// In the editor F8 runs the UI check.
+        /// In the editor F8 runs the UI check and F9 puts the next equipment model in the tank you're looking at.
         /// </summary>
         void HandleDevKeys()
         {
 #if UNITY_EDITOR
             if (Input.GetKeyDown(KeyCode.F8) && !uiTourRunning) StartCoroutine(UiTour());
+            if (Input.GetKeyDown(KeyCode.F9)) CycleEquipment();
 #endif
             if (!shopDay.IsOpen) return;
             for (int i = 0; i < Speeds.Length && i < 9; i++)
@@ -797,6 +798,17 @@ namespace FishBreeder.Store
         }
 
 #if UNITY_EDITOR
+        /// <summary>Editor only: installs the next model of every kind of equipment in the focused tank, to see each design.</summary>
+        void CycleEquipment()
+        {
+            var tank = Tank.Focused;
+            if (tank == null) return;
+            var current = tank.GetEquipment(EquipmentKind.Filter);
+            int tier = current == null ? 0 : (current.tier + 1) % Mathf.Max(1, Equipment.Tiers(EquipmentKind.Filter).Count);
+            foreach (var kind in Equipment.Kinds) tank.Install(kind, tier);
+            GameLog.Add($"(Editor) Equipment model {tier + 1} in {tank.Title}.");
+        }
+
         bool uiTourRunning;
 
         /// <summary>

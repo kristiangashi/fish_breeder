@@ -22,6 +22,8 @@ namespace FishBreeder.Core
             public bool sideView;
             /// <summary>Optional: what to fit in the shot, instead of the renderers' bounds.</summary>
             public Func<GameObject, Bounds> frame;
+            /// <summary>Light multiplier, for dark things like black plastic equipment.</summary>
+            public float exposure = 1f;
         }
 
         static readonly Dictionary<string, Texture2D> cache = new Dictionary<string, Texture2D>();
@@ -69,7 +71,7 @@ namespace FishBreeder.Core
                 }
                 holder.transform.rotation = Quaternion.Euler(0f, 160f, 0f);
                 return holder;
-            });
+            }, null, 2.2f);
         }
 
         /// <summary>One of the shop's people, standing, three-quarter view. Null until the photo is ready.</summary>
@@ -124,10 +126,10 @@ namespace FishBreeder.Core
             });
         }
 
-        static Texture2D Photo(string key, bool sideView, Func<GameObject> make, Func<GameObject, Bounds> frame = null)
+        static Texture2D Photo(string key, bool sideView, Func<GameObject> make, Func<GameObject, Bounds> frame = null, float exposure = 1f)
         {
             if (cache.TryGetValue(key, out var texture)) return texture;
-            if (!pending.ContainsKey(key)) pending[key] = new Job { key = key, make = make, sideView = sideView, frame = frame };
+            if (!pending.ContainsKey(key)) pending[key] = new Job { key = key, make = make, sideView = sideView, frame = frame, exposure = exposure };
             if (studio == null) studio = new GameObject("Preview studio").AddComponent<Studio>();
             return null;
         }
@@ -136,6 +138,7 @@ namespace FishBreeder.Core
         class Studio : MonoBehaviour
         {
             Camera cam;
+            Light studioLight;
             RenderTexture target;
 
             void Awake()
@@ -151,7 +154,7 @@ namespace FishBreeder.Core
                 target = new RenderTexture(Size, Size, 24, RenderTextureFormat.ARGB32) { antiAliasing = 4 };
                 cam.targetTexture = target;
 
-                var light = new GameObject("Studio light").AddComponent<Light>();
+                var light = studioLight = new GameObject("Studio light").AddComponent<Light>();
                 light.transform.SetParent(transform, false);
                 light.type = LightType.Directional;
                 light.cullingMask = 1 << StudioLayer;
@@ -200,6 +203,7 @@ namespace FishBreeder.Core
                 cam.farClipPlane = distance + radius * 2f;
                 cam.transform.position = bounds.center - direction * distance;
                 cam.transform.rotation = Quaternion.LookRotation(direction);
+                studioLight.intensity = 0.9f * job.exposure;
                 cam.Render();
 
                 var previous = RenderTexture.active;

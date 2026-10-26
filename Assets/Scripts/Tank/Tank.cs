@@ -511,7 +511,7 @@ namespace FishBreeder
         static readonly Quaternion FaceFront = Quaternion.Euler(0f, 180f, 0f);
 
         /// <summary>Turns a filter model so the box on its outside faces out through the right-hand glass.</summary>
-        static readonly Quaternion FilterFacing = Quaternion.Euler(0f, 90f, 0f);
+        static readonly Quaternion FilterFacing = Quaternion.Euler(0f, 270f, 0f);
 
         /// <summary>
         /// The filter hangs on the right-hand glass towards the back, the way a hang-on-back filter

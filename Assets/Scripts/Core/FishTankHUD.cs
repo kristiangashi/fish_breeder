@@ -370,17 +370,17 @@ namespace FishBreeder.Core
                 int current = item != null ? item.tier : -1;
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(kind.ToString(), GUILayout.Width(56f));
-                if (GUILayout.Button(new GUIContent("None", "Take it out"), current < 0 ? UiTheme.Primary : GUI.skin.button)) tank.DevRemoveEquipment(kind);
+                if (GUILayout.Button(new GUIContent("None", "Take it out"), current < 0 ? UiTheme.Primary : GUI.skin.button, GUILayout.Width(46f))) tank.DevRemoveEquipment(kind);
                 var tiers = Equipment.Tiers(kind);
                 for (int t = 0; t < tiers.Count; t++)
-                    if (GUILayout.Button(new GUIContent((t + 1).ToString(), tiers[t].name), current == t ? UiTheme.Primary : GUI.skin.button)) tank.Install(kind, t);
+                    if (GUILayout.Button(new GUIContent((t + 1).ToString(), tiers[t].name), current == t ? UiTheme.Primary : GUI.skin.button, GUILayout.Width(28f))) tank.Install(kind, t);
                 GUILayout.EndHorizontal();
             }
             if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich());
 
             GUILayout.Space(4f);
             var decor = tank.Decor;
-            devShowDecor = GUILayout.Toggle(devShowDecor, $" <b>Decorations</b> {(decor != null ? $"{decor.Count} / {decor.Capacity}" : "")}", RichToggle());
+            if (GUILayout.Button($"{(devShowDecor ? "▾" : "▸")} <b>Decorations</b>  <size=11>{(decor != null ? $"{decor.Count} / {decor.Capacity}" : "")}</size>", SectionHeader())) devShowDecor = !devShowDecor;
             if (devShowDecor && decor != null)
             {
                 var ids = decor.Ids;
@@ -407,19 +407,19 @@ namespace FishBreeder.Core
             }
 
             GUILayout.Space(4f);
-            devShowFish = GUILayout.Toggle(devShowFish, $" <b>Add fish</b>  <size=11>{tank.Residents.Count} / {tank.Capacity}</size>", RichToggle());
+            if (GUILayout.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>{tank.Residents.Count} / {tank.Capacity}</size>", SectionHeader())) devShowFish = !devShowFish;
             if (!devShowFish) return;
             foreach (var species in Species.All)
             {
                 GUILayout.BeginHorizontal();
-                GUILayout.Label($"<size=11>{species.displayName}</size>", Rich(), GUILayout.Width(118f));
-                if (GUILayout.Button(new GUIContent("+1", "One adult"), GUILayout.Width(34f))) DevSpawn(species, 1f, null);
-                if (GUILayout.Button(new GUIContent("+♂♀", "A grown male and female"), GUILayout.Width(44f)))
+                GUILayout.Label($"<size=11>{species.displayName}</size>", Rich(), GUILayout.Width(100f));
+                if (GUILayout.Button(new GUIContent("+1", "One adult"), GUILayout.Width(30f))) DevSpawn(species, 1f, null);
+                if (GUILayout.Button(new GUIContent("+♂♀", "A grown male and female"), GUILayout.Width(40f)))
                 {
                     DevSpawn(species, 1f, Sex.Male);
                     DevSpawn(species, 1f, Sex.Female);
                 }
-                if (GUILayout.Button(new GUIContent("+5 fry", "Five fry of this kind (bred, so you can tell what they are)"), GUILayout.Width(56f)))
+                if (GUILayout.Button(new GUIContent("+5 fry", "Five fry of this kind (bred, so you can tell what they are)"), GUILayout.Width(50f)))
                     for (int i = 0; i < 5; i++) DevSpawn(species, 0.05f, null);
                 GUILayout.EndHorizontal();
             }
@@ -432,8 +432,9 @@ namespace FishBreeder.Core
             if (sex.HasValue) fish.DevSetSex(sex.Value);
         }
 
-        static GUIStyle richToggle;
-        static GUIStyle RichToggle() => richToggle != null ? richToggle : richToggle = new GUIStyle(GUI.skin.toggle) { richText = true };
+        // A clickable heading that folds a section open or shut.
+        static GUIStyle sectionHeader;
+        static GUIStyle SectionHeader() => sectionHeader != null ? sectionHeader : sectionHeader = new GUIStyle(GUI.skin.label) { richText = true, alignment = TextAnchor.MiddleLeft };
 
         static GUIStyle tabStyle, narrowTabStyle;
         // Five tabs (with Dev) need a slightly smaller font to fit the panel.

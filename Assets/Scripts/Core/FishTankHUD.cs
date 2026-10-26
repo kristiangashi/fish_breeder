@@ -110,10 +110,18 @@ namespace FishBreeder.Core
             }
 
             // Runs down to the log, so eggs, pregnancies and breeding lines never push the buttons off the bottom.
-            leftPanel = new Rect(10f, 10f, 300f, Mathf.Max(520f, height - 170f));
-            logPanel = new Rect(10f, height - 150f, 460f, 140f);
-            breedBar = selected.Count == 2 ? new Rect(width * 0.5f - 210f, height - 120f, 420f, 60f) : Rect.zero;
-            tankBar = new Rect(Mathf.Max(logPanel.xMax + 10f, width * 0.5f - 230f), height - 50f, 460f, 40f);
+            leftPanel = new Rect(10f, 10f, 300f, Mathf.Min(height - 20f, Mathf.Max(520f, height - 170f)));
+            logPanel = new Rect(10f, height - 150f, Mathf.Min(460f, width - 20f), 140f);
+            breedBar = selected.Count == 2 ? new Rect(Mathf.Max(10f, width * 0.5f - 210f), height - 120f, Mathf.Min(420f, width - 20f), 60f) : Rect.zero;
+            // Beside the log when there's room; in a narrow window, just above it instead.
+            float barWidth = Mathf.Min(460f, width - 20f);
+            float barX = Mathf.Max(logPanel.xMax + 10f, width * 0.5f - barWidth * 0.5f);
+            if (barX + barWidth <= width - 10f) tankBar = new Rect(barX, height - 50f, barWidth, 40f);
+            else
+            {
+                barX = Mathf.Max(leftPanel.xMax + 10f, width - 10f - barWidth);
+                tankBar = new Rect(barX, logPanel.y - 46f, width - 10f - barX, 40f);
+            }
             fishWindow = Rect.zero;
             stepLeft = stepRight = Rect.zero;
 

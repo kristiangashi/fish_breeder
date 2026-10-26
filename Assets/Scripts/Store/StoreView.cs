@@ -97,6 +97,7 @@ namespace FishBreeder.Store
             HandleDevKeys();
             UpdateNightLook(dt);
             FishSeller.ShopOpen = shopDay.IsOpen;
+            FishSeller.Away = shopDay.Phase == DayPhase.Evening;
             foreach (var levelUp in Progression.LevelUps) levelUp.age += dt;
             Progression.LevelUps.RemoveAll(l => l.age > 6f);
             UpdateMoney(dt);
@@ -223,7 +224,7 @@ namespace FishBreeder.Store
             if (following < 0) return null;
             var people = new List<Transform>();
             if (Shopkeeper.Instance != null) people.Add(Shopkeeper.Instance.transform);
-            if (FishSeller.Instance != null) people.Add(FishSeller.Instance.transform);
+            if (FishSeller.Instance != null && !FishSeller.Away) people.Add(FishSeller.Instance.transform);
             foreach (var customer in Customer.All) if (customer != null) people.Add(customer.transform);
             if (following >= people.Count)
             {
@@ -1037,7 +1038,7 @@ namespace FishBreeder.Store
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
             WorldLabel(store.ComputerPoint, "<b>Supplier computer</b>\nfood, decorations, equipment", scale, height);
-            WorldLabel(store.FishSellerPoint, "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
+            WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
             WorldLabel(store.BackRoomLabelPoint, "<b>Back room</b>\nstaff only: breeding and quarantine", scale, height);
 
             if (!shopDay.IsOpen)
@@ -1281,6 +1282,8 @@ namespace FishBreeder.Store
             shown = Mathf.Clamp(GUILayout.Toolbar(shown, tabNames), 0, tabs.Length - 1);
             supplierTab = tabs[shown];
             GUILayout.Label(atFishSeller ? "<size=11><i>Food, decorations and equipment are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall.</i></size>", Rich());
+            if (atFishSeller && FishSeller.Away)
+                GUILayout.Label($"<color={UiTheme.SunHex}>The fish seller has gone home for the night. He's back in the morning.</color>", Rich());
             GUILayout.Space(2f);
 
             if (supplierTab != FoodTab) DrawDeliverTo();
@@ -1396,8 +1399,9 @@ namespace FishBreeder.Store
                 }
                 int price = Perks.Supplier(fry ? tier.fryPrice : tier.price);
                 string what = fry ? "fry" : "eggs";
-                string label = free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
-                bool canBuy = anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
+                bool away = FishSeller.Away;
+                string label = away ? "Back in the morning" : free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
+                bool canBuy = !away && anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
                 var picture = fry ? ItemPreviews.FryBox(tier.color) : ItemPreviews.EggBox(tier.color, tier.speckled);
                 if (OfferRow(picture, fry ? EggBoxes.FryName(tier) : tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
                 {
@@ -1517,15 +1521,7 @@ namespace FishBreeder.Store
             var supplier = SupplierCatalog.Equipment;
             var tank = orderTarget != null ? orderTarget.Tank : null;
             string where = orderTarget != null ? orderTarget.Title : "a tank";
-            GUILayout.Label("<b>Care</b>", Rich());
-            int conditionerPrice = Perks.Supplier(supplier.waterConditionerPrice);
-            string details = $"Resets the pH and gets rid of snails and worms. Use it from the tank view.\nYou have {Economy.WaterConditionerDoses} doses.";
-            if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Conditioner, new Color(0.35f, 0.65f, 0.85f)), "Water conditioner", details, XpTrack.Fishkeeping, supplier.waterConditionerLevel,
-                    $"{supplier.waterConditionerDoses} doses  {Economy.Format(conditionerPrice)}", Economy.CanAfford(conditionerPrice))
-                && Economy.TrySpend(conditionerPrice, "water conditioner", MoneyKind.Care))
-                Economy.WaterConditionerDoses += supplier.waterConditionerDoses;
-            GUILayout.Space(6f);
-            GUILayout.Label("<b>Equipment</b>  <size=11>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you fix it with a repair kit. Better models work better and break less.</size>", Rich());
+            GUILayout.Label("<b>Equipment</b>  <size=11>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you pay to repair it from the tank's Care tab. Better models work better and break less, but cost more to fix. (Water treatment is bought right from the Care tab too.)</size>", Rich());
             EquipmentSection(EquipmentKind.Filter, ItemPreviews.Icon.Filter, "Filters", "Cuts how fast waste dirties the water.", tank, where,
                 info => $"Leaves {info.effect * 100f:0}% of the waste");
             EquipmentSection(EquipmentKind.Heater, ItemPreviews.Icon.Heater, "Heaters", $"Holds the water at the temperature you set in the tank view. Without one the water is room temperature ({GameConfig.Active.roomTemperature:0} C).", tank, where,

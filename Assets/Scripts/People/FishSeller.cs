@@ -22,6 +22,9 @@ namespace FishBreeder.People
         /// <summary>True while the shop is open (customers about); set by the store.</summary>
         public static bool ShopOpen;
 
+        /// <summary>True in the evening, when the seller has driven home for the night; set by the store.</summary>
+        public static bool Away;
+
         void OnEnable() => Instance = this;
 
         void OnDisable()
@@ -38,6 +41,8 @@ namespace FishBreeder.People
         void Update()
         {
             if (rig == null) return;
+            if (rig.gameObject.activeSelf == Away) rig.gameObject.SetActive(!Away);
+            if (Away) return;
             lookTimer -= Time.deltaTime;
             if (lookTimer <= 0f)
             {
@@ -74,6 +79,7 @@ namespace FishBreeder.People
         /// <summary>The player walked up to the stall.</summary>
         public void Greet()
         {
+            if (Away) return;
             var cam = Camera.main;
             if (rig != null) rig.Play(Gesture.Wave, cam != null ? cam.transform.position : (Vector3?)null);
             idleTimer = Random.Range(6f, 10f);

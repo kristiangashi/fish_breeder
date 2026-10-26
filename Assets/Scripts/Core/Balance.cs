@@ -435,8 +435,8 @@ namespace FishBreeder.Core
         public List<EquipmentFaultBalance> faults = EquipmentFaultBalance.CreateDefaults();
         [Tooltip("What a bought fry is worth while it's still too small to tell what it is.")]
         public int unknownFryValue = 4;
-        public int waterConditionerPrice = 20;
-        public int waterConditionerDoses = 5;
+        [Tooltip("Cost of one water treatment (conditioner for one tank), paid from the tank's Care tab.")]
+        public int waterTreatmentPrice = 5;
         [Tooltip("Cost to turn a tank to salt water (or back).")]
         public int marineSaltPrice = 40;
         public int medicinePrice = 15;

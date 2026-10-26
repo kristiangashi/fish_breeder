@@ -31,7 +31,7 @@ namespace FishBreeder.Shop
                     case Kind.DirtyWater:
                         bool clean = t.WaterHealth >= settings.dirtyWaterBelow && t.Algae <= settings.algaeAbove && !t.HasPests;
                         // Out of wipes (and nothing left to treat pests with) is as far as it can go today.
-                        bool doneAllYouCan = t.WipesLeft == 0 && (!t.HasPests || Economy.WaterConditionerDoses == 0);
+                        bool doneAllYouCan = t.WipesLeft == 0 && (!t.HasPests || !Economy.CanAfford(Core.FishTankHUD.WaterTreatmentPrice));
                         return clean || doneAllYouCan;
                     case Kind.BrokenEquipment: return t.BrokenEquipment.Count == 0;
                     case Kind.GrimyTank: return 1f - t.WaterHealth <= settings.grimyAbove || t.WipesLeft == 0;

@@ -284,6 +284,7 @@ const META = {
   xpRepairEquipment: ["XP per repair", "Fishkeeping XP."],
   repairCost: ["Repair cost ($)", "A typical repair for this model, before the fault's multiplier and a bit of luck. Better models break less but cost more to fix."],
   repairPriceSpread: ["Repair price spread", "Repair prices vary by up to this much either way (0.15 = 15%)."],
+  waterTreatmentPrice: ["Water treatment price", "Cost of treating one tank's water (resets pH, clears snails and worms), paid from the tank's Care tab."],
   faults: ["Faults", "What can go wrong with each kind of equipment."],
   cost: ["Cost (x)", "Repair price = the model's repair cost × this."],
   weight: ["Relative chance", "How often this one comes up compared with the others: the disease that strikes, the fault when equipment of that kind breaks, the fish in an egg box."],
@@ -1080,7 +1081,7 @@ function simulate(setup, B, seed) {
 
   let money = setup.money;
   let day = 0;
-  const stock = { food: {}, conditioner: 0, kits: 0 };
+  const stock = { food: {} };
   const spend = (amount, what, bucket) => {
     if (amount <= 0) return true;
     if (money < amount) {
@@ -1392,10 +1393,7 @@ function simulate(setup, B, seed) {
       if (item === t.heater) t.temp = t.heaterSetting;
     }
     if (cfg.treatWater && (t.pests || t.residents.some((f) => t.ph < f.s.phMin || t.ph > f.s.phMax))) {
-      let ok = stock.conditioner > 0;
-      if (!ok && spend(sup.waterConditionerPrice, "water conditioner", "conditioner")) { stock.conditioner += Math.max(1, sup.waterConditionerDoses); ok = true; }
-      if (ok) {
-        stock.conditioner--;
+      if (spend(sup.waterTreatmentPrice || 5, "water conditioner", "conditioner")) {
         t.ph = cfg.salt ? 8.1 : 7.0;
         t.pests = false;
         t.wq = clamp01(t.wq + 0.1);

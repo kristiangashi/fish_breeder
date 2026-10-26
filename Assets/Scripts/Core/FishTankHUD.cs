@@ -266,15 +266,7 @@ namespace FishBreeder.Core
             GUI.enabled = !ReadOnly;
             DrawFeedButtons();
             if (GUILayout.Button($"Wipe tank ({tank.WipesLeft} left)")) tank.Clean();
-            if (GUILayout.Button($"Treat water ({Economy.WaterConditionerDoses} doses)"))
-            {
-                if (Economy.WaterConditionerDoses > 0)
-                {
-                    Economy.WaterConditionerDoses--;
-                    tank.TreatWater();
-                }
-                else GameLog.Add("No water conditioner. Order some at the supplier computer.");
-            }
+            DrawTreatWater();
             if (tank.Corpses.Count > 0 && GUILayout.Button($"Remove dead fish ({tank.Corpses.Count})"))
             {
                 int count = tank.Corpses.Count;
@@ -288,6 +280,27 @@ namespace FishBreeder.Core
             if (tank.HasHeater) DrawHeater();
             GUI.enabled = true;
         }
+
+        /// <summary>Water conditioner, bought and poured in one go: resets the pH and clears pests.</summary>
+        void DrawTreatWater()
+        {
+            var supplier = Balance.Data.supplier;
+            if (!Progression.IsUnlocked(XpTrack.Fishkeeping, supplier.waterConditionerLevel))
+            {
+                GUILayout.Label($"<size=11><i>Water treatment: {Progression.LockText(XpTrack.Fishkeeping, supplier.waterConditionerLevel)}</i></size>", Rich());
+                return;
+            }
+            int price = WaterTreatmentPrice;
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = wasEnabled && Economy.CanAfford(price);
+            if (GUILayout.Button(new GUIContent($"Treat water  {Economy.Format(price)}", "Water conditioner: resets the pH and gets rid of snails and worms"))
+                && Economy.TrySpend(price, $"water conditioner for {storeTank.Title}", MoneyKind.Care))
+                tank.TreatWater();
+            GUI.enabled = wasEnabled;
+        }
+
+        /// <summary>What one water treatment costs, after supplier perks.</summary>
+        public static int WaterTreatmentPrice => Perks.Supplier(Balance.Data.supplier.waterTreatmentPrice);
 
         void DrawBreedingTab()
         {

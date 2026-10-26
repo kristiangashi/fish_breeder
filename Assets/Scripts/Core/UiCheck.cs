@@ -109,6 +109,13 @@ namespace FishBreeder.Core
             if (Lasting(o.id, settled && content.width > visible + 1.5f)) Report(o.id, $"content {content.width:0} wide, only {visible:0} visible");
         }
 
+        /// <summary>The width a scroll list's content has to fit in (less the scrollbar), from last frame, or the fallback before it's been drawn.</summary>
+        public static float ScrollWidth(string id, float fallback)
+        {
+            if (!viewWidths.TryGetValue(id, out var width) || width <= 20f) return fallback;
+            return width - (scrollBars.TryGetValue(id, out var bar) && bar ? BarWidth : 0f);
+        }
+
         static float BarWidth
         {
             get

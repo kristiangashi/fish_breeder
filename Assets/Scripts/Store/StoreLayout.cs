@@ -588,16 +588,19 @@ namespace FishBreeder.Store
             }
 
             // A sign along the roof, facing the street (and the camera).
-            var sign = Wall(root, "VanSign", van + new Vector3(0.4f, 2.18f, -0.3f), new Vector3(2.3f, 0.42f, 0.05f), new Color(0.98f, 0.92f, 0.72f));
-            Wall(root, "VanSign", van + new Vector3(0.4f, 1.95f, -0.3f), new Vector3(0.06f, 0.08f, 0.06f), DarkColor);
+            // Leaning back, so it faces the camera looking down from above the street.
+            var tilt = Quaternion.Euler(35f, 0f, 0f);
+            var sign = Wall(root, "VanSign", van + new Vector3(0.4f, 2.2f, -0.3f), new Vector3(2.3f, 0.48f, 0.05f), new Color(0.98f, 0.92f, 0.72f));
+            sign.transform.localRotation = tilt;
+            Wall(root, "VanSign", van + new Vector3(0.4f, 1.95f, -0.3f), new Vector3(0.06f, 0.1f, 0.06f), DarkColor);
             var text = new GameObject("VanSignText").AddComponent<TextMesh>();
             text.transform.SetParent(sign.transform.parent, false);
-            text.transform.position = sign.transform.position + new Vector3(0f, 0f, -0.03f);
+            text.transform.SetPositionAndRotation(sign.transform.position + tilt * new Vector3(0f, 0f, -0.03f), tilt);
             text.text = "TROPICAL FISH WHOLESALE\n<size=34>live fish \u00b7 eggs \u00b7 fry</size>";
             text.richText = true;
             text.anchor = TextAnchor.MiddleCenter;
             text.alignment = TextAlignment.Center;
-            text.characterSize = 0.011f;
+            text.characterSize = 0.028f;
             text.fontSize = 48;
             text.fontStyle = FontStyle.Bold;
             text.color = new Color(0.1f, 0.3f, 0.4f);

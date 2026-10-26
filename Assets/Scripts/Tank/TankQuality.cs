@@ -99,7 +99,7 @@ namespace FishBreeder
                 if (Journal.IsDiscovered(species)) names.Add(species.displayName);
                 else unknown++;
             }
-            if (unknown > 0) names.Add($"{unknown} kind{(unknown == 1 ? "" : "s")} not found yet");
+            if (unknown > 0) names.Add($"{unknown} kind{(unknown == 1 ? "" : "s")} of fish you haven't found yet");
             if (names.Count == 0) return null;
             if (names.Count == 1) return names[0];
             return string.Join(", ", names.GetRange(0, names.Count - 1)) + " and " + names[names.Count - 1];

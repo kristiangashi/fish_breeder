@@ -127,7 +127,8 @@ namespace FishBreeder.Core
             var trees = new List<PerkTree>();
             foreach (PerkTree tree in System.Enum.GetValues(typeof(PerkTree)))
                 if (Perks.TrackOf(tree) == page) trees.Add(tree);
-            float column = (windowWidth - 60f) / Mathf.Max(1, trees.Count);
+            // Each column and the gap after it share the list's visible width exactly.
+            float column = (UiCheck.ScrollWidth("Perks: trees", windowWidth - 60f) - 6f * trees.Count) / Mathf.Max(1, trees.Count);
             scroll = UiCheck.BeginScroll("Perks: trees", scroll);
             GUILayout.BeginHorizontal();
             foreach (var tree in trees)

@@ -5,11 +5,13 @@ using UnityEngine;
 namespace FishBreeder
 {
     /// <summary>
-    /// The 3D filters, heaters and bubblers in Resources/Equipment: the Meshy equipment set, split
-    /// by Tools/Meshy/split_equipment.py into one FBX per piece (each with a low-poly "_Collider"
-    /// mesh) sharing one texture atlas. There are three designs of each kind for the four models
-    /// sold, so two neighbouring models share a design. The smart heater controller is the best
-    /// heater with its control box, which hangs on the outside of the glass.
+    /// The 3D filters, heaters and bubblers in Resources/Equipment: two Meshy sheets, split by
+    /// Tools/Meshy/split_equipment.py into one FBX per piece (each with a low-poly "_Collider"
+    /// mesh). The filters that hang on the back glass have their own textures ("Filters_");
+    /// everything else, including the filter bases kept for under the tank (FilterBase0-2, not
+    /// used yet), shares the "Equipment_" textures. There are three designs of each kind for the
+    /// four models sold, so two neighbouring models share a design. The smart heater controller
+    /// is the best heater with its control box, which hangs on the outside of the glass.
     /// </summary>
     public static class EquipmentModels
     {
@@ -17,12 +19,11 @@ namespace FishBreeder
         public const string HeaterController = "Heater2_Controller";
 
         /// <summary>
-        /// Design for each model, by kind (Filter, Heater, Bubbler) and tier. The filters are the
-        /// part that sits on the tank floor; the part on top is the same for every model.
+        /// Design for each model, by kind (Filter, Heater, Bubbler) and tier.
         /// </summary>
         static readonly int[][] DesignForTier =
         {
-            new[] { 0, 0, 1, 2 }, // sponge and hang-on-back share the small box; canister; sump
+            new[] { 0, 1, 1, 2 }, // sponge; hang-on-back and canister share the two-tray filter; the smart filter for the sump
             new[] { 0, 1, 2, 2 }, // basic, adjustable, titanium; the smart controller is the titanium tube plus its box
             new[] { 0, 1, 1, 2 }, // air stone; the long stone for both air pumps; oxygen reactor
         };
@@ -30,12 +31,13 @@ namespace FishBreeder
         /// <summary>Longest side of each design in a Standard tank (metres; scaled with the tank's height).</summary>
         static readonly Dictionary<string, float> Sizes = new Dictionary<string, float>
         {
-            { "Filter0", 0.22f }, { "Filter1", 0.24f }, { "Filter2", 0.34f },
+            { "Filter0", 0.44f }, { "Filter1", 0.46f }, { "Filter2", 0.48f },
+            { "FilterBase0", 0.22f }, { "FilterBase1", 0.24f }, { "FilterBase2", 0.34f },
             { "Heater0", 0.3f }, { "Heater1", 0.3f }, { "Heater2", 0.28f }, { HeaterController, 0.17f },
             { "Bubbler0", 0.13f }, { "Bubbler1", 0.3f }, { "Bubbler2", 0.2f },
         };
 
-        static Material material;
+        static readonly Dictionary<string, Material> materials = new Dictionary<string, Material>();
 
         public static string Design(EquipmentKind kind, int tier)
         {
@@ -69,7 +71,7 @@ namespace FishBreeder
                     if (renderer != null) Object.Destroy(renderer);
                     continue;
                 }
-                if (renderer != null) renderer.sharedMaterial = Material;
+                if (renderer != null) renderer.sharedMaterial = MaterialFor(design);
             }
             return piece;
         }
@@ -118,21 +120,23 @@ namespace FishBreeder
             return bounds;
         }
 
-        public static Material Material
+        /// <summary>Which texture set a design uses: the hanging filters have their own.</summary>
+        static string Textures(string design) => design.StartsWith("Filter") && !design.StartsWith("FilterBase") ? "Filters" : "Equipment";
+
+        static Material MaterialFor(string design)
         {
-            get
-            {
-                if (material == null) material = CreateMaterial();
-                return material;
-            }
+            string textures = Textures(design);
+            if (!materials.TryGetValue(textures, out var material) || material == null)
+                materials[textures] = material = CreateMaterial(textures);
+            return material;
         }
 
-        static Material CreateMaterial()
+        static Material CreateMaterial(string textures)
         {
-            var created = new Material(MaterialFactory.Lit) { name = "Equipment" };
-            var albedo = Resources.Load<Texture2D>(Folder + "Equipment_Albedo");
-            var normal = Resources.Load<Texture2D>(Folder + "Equipment_Normal");
-            var metallicSmoothness = Resources.Load<Texture2D>(Folder + "Equipment_MetallicSmoothness");
+            var created = new Material(MaterialFactory.Lit) { name = textures };
+            var albedo = Resources.Load<Texture2D>(Folder + textures + "_Albedo");
+            var normal = Resources.Load<Texture2D>(Folder + textures + "_Normal");
+            var metallicSmoothness = Resources.Load<Texture2D>(Folder + textures + "_MetallicSmoothness");
             if (albedo != null) created.mainTexture = albedo;
             if (normal != null && created.HasProperty("_BumpMap"))
             {

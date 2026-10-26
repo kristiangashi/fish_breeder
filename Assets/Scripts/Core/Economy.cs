@@ -47,10 +47,17 @@ namespace FishBreeder.Core
 
         public static string Format(int dollars) => $"${dollars:N0}";
 
-        public static bool CanAfford(int amount) => Money >= amount;
+        /// <summary>Always true in <see cref="DevMode"/>.</summary>
+        public static bool CanAfford(int amount) => DevMode.On || Money >= amount;
 
+        /// <summary>Pays for something; in <see cref="DevMode"/> it's free.</summary>
         public static bool TrySpend(int amount, string what)
         {
+            if (DevMode.On)
+            {
+                ledger.Add($"Day {Day}: {what} (dev mode, free)");
+                return true;
+            }
             if (!CanAfford(amount))
             {
                 GameLog.Add($"Not enough money for {what} ({Format(amount)}).");

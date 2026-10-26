@@ -508,25 +508,29 @@ namespace FishBreeder
         static readonly Quaternion FaceFront = Quaternion.Euler(0f, 180f, 0f);
 
         /// <summary>
-        /// The filter: the model's own design on the floor in the back right corner, and the part
-        /// on top of the tank (the same for every model; a placeholder box until it has a design)
-        /// joined to it by the intake pipe.
+        /// The filter hangs inside the tank on the top edge of the back glass, right of centre,
+        /// facing the front with its spout pouring forward and its intake reaching down.
         /// </summary>
         void BuildFilter(Transform holder, int tier)
         {
             var b = innerSize;
-            var dark = new Color(0.15f, 0.16f, 0.18f);
-            var anchor = new Vector3(b.x * 0.5f - 0.03f, 0f, b.z * 0.5f - 0.015f);
-            float x = b.x * 0.36f, top = 0.2f * b.y, pipeZ = b.z * 0.5f - 0.03f;
-            if (PlaceModel(EquipmentModels.Design(EquipmentKind.Filter, tier), holder, FaceFront, anchor, new Vector3(1f, -1f, 1f), out var bounds) != null)
+            string design = EquipmentModels.Design(EquipmentKind.Filter, tier);
+            var piece = EquipmentModels.Spawn(design, holder, true);
+            if (piece == null)
             {
-                x = bounds.center.x;
-                top = bounds.max.y;
-                pipeZ = Mathf.Min(pipeZ, bounds.max.z - 0.02f);
+                var dark = new Color(0.15f, 0.16f, 0.18f);
+                MaterialFactory.Decor(PrimitiveType.Cube, "Filter", holder, new Vector3(b.x * 0.33f, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
+                MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", holder, new Vector3(b.x * 0.33f, b.y * 0.55f, b.z * 0.5f - 0.03f), new Vector3(0.025f, b.y * 0.35f, 0.025f), dark);
+                return;
             }
-            MaterialFactory.Decor(PrimitiveType.Cube, "FilterTop", holder, new Vector3(x, b.y - 0.02f, b.z * 0.5f + 0.07f), new Vector3(0.22f, 0.2f, 0.1f), dark);
-            float pipeLength = b.y - top;
-            MaterialFactory.Decor(PrimitiveType.Cylinder, "FilterIntake", holder, new Vector3(x, top + pipeLength * 0.5f, pipeZ), new Vector3(0.025f, pipeLength * 0.5f, 0.025f), dark);
+            // The design's pivot is the top of the glass it clips onto (see split_equipment.py).
+            var t = piece.transform;
+            t.localRotation = FaceFront;
+            var size = EquipmentModels.LocalBounds(piece, holder).size;
+            float longest = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+            if (longest > 1e-5f) t.localScale *= EquipmentModels.Size(design) * b.y / StandardTankHeight / longest;
+            t.localPosition = new Vector3(b.x * 0.33f, b.y + 0.01f, b.z * 0.5f);
+            piece.AddComponent<TankObstacle>();
         }
 
         /// <summary>

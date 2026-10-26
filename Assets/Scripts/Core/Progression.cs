@@ -78,7 +78,11 @@ namespace FishBreeder.Core
 
         public static bool IsMaxLevel(XpTrack track) => Level(track) >= Data.maxLevel;
 
-        public static bool IsUnlocked(XpTrack track, int requiredLevel) => Level(track) >= requiredLevel;
+        /// <summary>Always true in <see cref="DevMode"/>.</summary>
+        public static bool IsUnlocked(XpTrack track, int requiredLevel) => DevMode.On || Level(track) >= requiredLevel;
+
+        /// <summary>The level that decides what's on offer (which fish egg boxes can hold): the top level in <see cref="DevMode"/>.</summary>
+        public static int UnlockLevel(XpTrack track) => DevMode.On ? Mathf.Max(Level(track), Data.maxLevel) : Level(track);
 
         public static string TrackName(XpTrack track) => track.ToString();
 

@@ -1,8 +1,11 @@
-# Splits the Meshy aquarium equipment sheet (three filters, three heaters, three bubblers in a
-# 3x3 grid, cheapest on the left) into one decimated FBX per piece, plus a low-poly _Collider
-# mesh each, and packs the textures for Unity at 1024.
+# Splits a Meshy aquarium equipment sheet into one decimated FBX per piece, plus a low-poly
+# _Collider mesh each, and packs the textures for Unity at 1024. Two sheets so far:
+#   equipment: three filter bases (for under the tank, not used yet), three heaters and three
+#              bubblers in a 3x3 grid, cheapest on the left. Textures: Equipment_*.png
+#   filters:   the three filters that hang on the back glass at the top of the tank, each on a
+#              grey bar standing in for the glass, which is cut away. Textures: Filters_*.png
 # Run with Blender's Python (Blender 4+/5, or `pip install bpy`):
-#   python3 split_equipment.py -- <meshy_sheet.fbx> <output folder>
+#   python3 split_equipment.py -- <meshy_sheet.fbx> <output folder> [equipment|filters]
 # The textures (<name>.png, _normal, _metallic, _roughness) are read from beside the FBX.
 # The third heater comes fused to its outside controller by two cables: the tube and the box
 # are cut out by the boxes in HEATER2_SPLIT and the cables are dropped (the game draws its own).
@@ -12,14 +15,16 @@ from PIL import Image
 
 args = sys.argv[sys.argv.index("--") + 1:]
 src, outdir = args[0], args[1]
+sheet_kind = args[2] if len(args) > 2 else "equipment"
 os.makedirs(outdir, exist_ok=True)
 
 # grid centre of each loose part (x, z in metres, as laid out in the sheet) -> name, target triangles, pivot
-# pivot "floor": bottom centre (stands on the sand); "centre": middle of the bounding box.
+# pivot "floor": bottom centre (stands on the sand); "centre": middle of the bounding box;
+# "clip": the top middle of the grey glass bar it hangs on (the bar itself is removed).
 PLAN = {
-    (-0.73, 0.30): ("Filter0", 1400, "floor"),
-    (-0.12, 0.28): ("Filter1", 1600, "floor"),
-    (0.60, 0.28): ("Filter2", 2000, "floor"),
+    (-0.73, 0.30): ("FilterBase0", 1400, "floor"),
+    (-0.12, 0.28): ("FilterBase1", 1600, "floor"),
+    (0.60, 0.28): ("FilterBase2", 2000, "floor"),
     (-0.74, -0.17): ("Heater0", 700, "centre"),
     (-0.12, -0.17): ("Heater1", 1200, "centre"),
     (0.60, -0.09): ("Heater2", 0, "split"),
@@ -32,7 +37,18 @@ HEATER2_SPLIT = {
     "Heater2": ((0.60, -1.0, -1.0), (1.0, 1.0, -0.125), 800),
     "Heater2_Controller": ((0.29, -0.16, -0.15), (0.575, 0.01, 0.075), 800),
 }
+PLAN_FILTERS = {
+    (-0.70, 0.0): ("Filter0", 1600, "clip"),
+    (-0.03, 0.0): ("Filter1", 1600, "clip"),
+    (0.68, 0.0): ("Filter2", 2000, "clip"),
+}
+# The glass bar: faces in this corner of each filter (y towards the back, z at the top) whose
+# texture is light grey.
+BAR_MIN_Y, BAR_MIN_Z, BAR_LIGHTNESS = 0.25, 0.38, 0.55
 COLLIDER_TRIS = 80
+if sheet_kind == "filters":
+    PLAN = PLAN_FILTERS
+TEXTURES = "Filters" if sheet_kind == "filters" else "Equipment"
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.fbx(filepath=src)
@@ -47,7 +63,8 @@ bpy.ops.mesh.remove_doubles(threshold=0.0001)
 bpy.ops.mesh.separate(type='LOOSE')
 bpy.ops.object.mode_set(mode='OBJECT')
 
-material = bpy.data.materials.new("Equipment")
+material = bpy.data.materials.new(TEXTURES)
+albedo_image = Image.open(os.path.splitext(src)[0] + ".png").convert("RGB")
 
 
 def bounds(obj):
@@ -88,11 +105,36 @@ def decimate(obj, target):
     return before
 
 
+def cut_bar(obj):
+    """Deletes the grey glass bar a filter hangs on; returns the bar's (min y, max y, max z)."""
+    bm = bmesh.new(); bm.from_mesh(obj.data)
+    uv = bm.loops.layers.uv.active
+    w, h = albedo_image.size
+    bar = []
+    for f in bm.faces:
+        c = f.calc_center_median()
+        if c.y < BAR_MIN_Y or c.z < BAR_MIN_Z:
+            continue
+        u = sum(l[uv].uv.x for l in f.loops) / len(f.loops)
+        v = sum(l[uv].uv.y for l in f.loops) / len(f.loops)
+        r, g, b = albedo_image.getpixel((min(w - 1, max(0, int(u * w))), min(h - 1, max(0, int((1 - v) * h)))))
+        if (r + g + b) / (3 * 255) > BAR_LIGHTNESS:
+            bar.append(f)
+    ys = [v.co.y for f in bar for v in f.verts]; zs = [v.co.z for f in bar for v in f.verts]
+    found = (min(ys), max(ys), max(zs)) if bar else None
+    bmesh.ops.delete(bm, geom=bar, context='FACES')
+    bm.to_mesh(obj.data); bm.free()
+    return found
+
+
 def finish(obj, name, target, pivot):
     obj.name = name; obj.data.name = name
+    bar = cut_bar(obj) if pivot == "clip" else None
     lo, hi = bounds(obj)
     centre = (lo + hi) / 2
     origin = Vector((centre.x, centre.y, lo.z)) if pivot == "floor" else centre
+    if bar:
+        origin = Vector((centre.x, (bar[0] + bar[1]) / 2, bar[2]))
     for v in obj.data.vertices:
         v.co -= origin
     obj.location = (0, 0, 0)
@@ -135,11 +177,11 @@ for part in [o for o in bpy.context.scene.objects if o.type == 'MESH']:
 # Textures: albedo and normal at 1024; metallic (R) and smoothness = 1 - roughness (A) packed together.
 base = os.path.splitext(src)[0]
 size = (1024, 1024)
-Image.open(base + ".png").convert("RGB").resize(size, Image.LANCZOS).save(os.path.join(outdir, "Equipment_Albedo.png"))
-Image.open(base + "_normal.png").convert("RGB").resize(size, Image.LANCZOS).save(os.path.join(outdir, "Equipment_Normal.png"))
+albedo_image.resize(size, Image.LANCZOS).save(os.path.join(outdir, TEXTURES + "_Albedo.png"))
+Image.open(base + "_normal.png").convert("RGB").resize(size, Image.LANCZOS).save(os.path.join(outdir, TEXTURES + "_Normal.png"))
 metal = Image.open(base + "_metallic.png").convert("L").resize(size, Image.LANCZOS)
 rough = Image.open(base + "_roughness.png").convert("L").resize(size, Image.LANCZOS)
 smooth = rough.point(lambda v: 255 - v)
 black = Image.new("L", size, 0)
-Image.merge("RGBA", (metal, black, black, smooth)).save(os.path.join(outdir, "Equipment_MetallicSmoothness.png"))
+Image.merge("RGBA", (metal, black, black, smooth)).save(os.path.join(outdir, TEXTURES + "_MetallicSmoothness.png"))
 print(json.dumps(report, indent=1))

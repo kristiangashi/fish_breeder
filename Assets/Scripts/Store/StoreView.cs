@@ -400,7 +400,8 @@ namespace FishBreeder.Store
             // Money rolls up or down to its new value, flashing green or coral.
             string moneyColor = moneyFlash > 0.01f ? ColorHex(Color.Lerp(UiTheme.Sand, UiTheme.Leaf, moneyFlash))
                 : moneyFlash < -0.01f ? ColorHex(Color.Lerp(UiTheme.Sand, UiTheme.Coral, -moneyFlash)) : UiTheme.SandHex;
-            GUILayout.Label($"<size=17><b><color={moneyColor}>{Economy.Format(Mathf.RoundToInt(shownMoney))}</color></b></size>", Rich(), GUILayout.Width(96f));
+            string moneyText = DevMode.On ? $"<size=14><color={UiTheme.SunHex}>DEV MODE</color></size>" : $"<color={moneyColor}>{Economy.Format(Mathf.RoundToInt(shownMoney))}</color>";
+            GUILayout.Label($"<size=17><b>{moneyText}</b></size>", Rich(), GUILayout.Width(96f));
             if (Event.current.type == EventType.Repaint && coinBurst)
             {
                 coinBurst = false;
@@ -784,9 +785,11 @@ namespace FishBreeder.Store
         /// <summary>
         /// Keyboard versions of the dev controls: 1/2/3 set 1x/5x/20x and K skips the rest of the day.
         /// In the editor F8 runs the UI check and F9 puts the next equipment model in the tank you're looking at.
+        /// F10 turns dev mode on and off (editor and development builds).
         /// </summary>
         void HandleDevKeys()
         {
+            if (Input.GetKeyDown(KeyCode.F10)) DevMode.Toggle();
 #if UNITY_EDITOR
             if (Input.GetKeyDown(KeyCode.F8) && !uiTourRunning) StartCoroutine(UiTour());
             if (Input.GetKeyDown(KeyCode.F9)) CycleEquipment();
@@ -1258,7 +1261,7 @@ namespace FishBreeder.Store
                 ? "<i>Boxes of mixed fry, delivered right away. Any kind of fish can come as fry, but they're all tiny grey fish: you find out what each one is when it grows into a juvenile. Each extra rare fish in one box is harder to get than the last.</i>"
                 : "<i>Boxes of mixed eggs. They hatch at the next time step (when the shop closes, or overnight). Only egg-laying fish come as eggs: livebearers like guppies and mollies come as fry. Each extra rare fish in one box is harder to get than the last.</i>", Rich());
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
-            int level = Progression.Fishkeeping;
+            int level = Progression.UnlockLevel(XpTrack.Fishkeeping);
             bool eggLayersOnly = !fry;
             int tankSize = orderTarget != null ? orderTarget.Tank.SizeIndex : 0;
             DrawBiggerTankFish(tankSize);
@@ -1346,7 +1349,7 @@ namespace FishBreeder.Store
         void OrderEggs(EggTierBalance tier)
         {
             if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower())) return;
-            var eggs = EggBoxes.Roll(tier, Progression.Fishkeeping, true, orderTarget.Tank.SizeIndex);
+            var eggs = EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), true, orderTarget.Tank.SizeIndex);
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {tier.name.ToLower()} delivered to {orderTarget.Title}. They hatch at the next time step.");
@@ -1356,7 +1359,7 @@ namespace FishBreeder.Store
         {
             if (!Economy.TrySpend(Perks.Supplier(tier.fryPrice), EggBoxes.FryName(tier).ToLower())) return;
             var tank = orderTarget.Tank;
-            foreach (var genome in EggBoxes.Roll(tier, Progression.Fishkeeping, false, tank.SizeIndex))
+            foreach (var genome in EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), false, tank.SizeIndex))
                 FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {EggBoxes.FryName(tier).ToLower()} delivered to {orderTarget.Title}. You'll see what they are when they grow.");

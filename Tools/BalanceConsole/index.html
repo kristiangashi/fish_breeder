@@ -1981,7 +1981,7 @@ function renderEggs() {
 // open, and kept when a table is redrawn. Rows that start with a heading cell (group titles,
 // totals) stay where they are and the rows between them sort on their own.
 const sortState = {};
-let sorting = false;
+let tableObserver = null;
 
 function cellValue(td) {
   if (!td) return "";
@@ -2024,9 +2024,10 @@ function applySort(table) {
     else group.push(row);
   }
   flush();
-  sorting = true;
+  if (ordered.every((row, i) => body.rows[i] === row)) return;
   ordered.forEach((row) => body.appendChild(row));
-  sorting = false;
+  // Our own moves would come back to the observer (it runs later), so drop them here.
+  if (tableObserver) tableObserver.takeRecords();
 }
 
 function makeSortable(root) {
@@ -2052,14 +2053,14 @@ function makeSortable(root) {
 
 // Tables drawn later (simulator results) become sortable too, and a redrawn table body
 // (a row added or removed) keeps its order. Typing in a cell never moves rows.
-new MutationObserver((mutations) => {
-  if (sorting) return;
+tableObserver = new MutationObserver((mutations) => {
   makeSortable($("#view"));
   const redrawn = new Set();
   for (const m of mutations)
     if (m.target.tagName === "TBODY" && m.target.parentNode && m.target.parentNode._sortKey) redrawn.add(m.target.parentNode);
   redrawn.forEach(applySort);
-}).observe($("#view"), { childList: true, subtree: true });
+});
+tableObserver.observe($("#view"), { childList: true, subtree: true });
 
 function render() {
   indexPaths();

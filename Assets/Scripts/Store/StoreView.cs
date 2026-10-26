@@ -347,10 +347,13 @@ namespace FishBreeder.Store
                 return;
             }
 
-            topBar = new Rect(10f, 8f, width - 20f, 42f);
-            statusBar = new Rect(10f, 54f, width - 20f, 32f);
-            DrawTopBar();
-            DrawStatusBar();
+            // In a narrow window the bars take two rows each, so nothing runs off the right.
+            bool narrow = width < NarrowWidth;
+            topBar = new Rect(10f, 8f, width - 20f, narrow ? 76f : 42f);
+            statusBar = new Rect(10f, topBar.yMax + 4f, width - 20f, UiCheck.Height("Status bar", narrow ? 58f : 32f));
+            DrawTopBar(narrow);
+            DrawStatusBar(narrow);
+            float belowBars = statusBar.yMax + 8f;
             if (panel == Panel.None)
             {
                 if (following < 0) DrawWorldLabels(scale, height);
@@ -358,12 +361,12 @@ namespace FishBreeder.Store
             }
             DrawMoneyPopups(scale, height);
             DrawLog(height);
-            todoBar = new Rect(width * 0.5f - 280f, 94f, 560f, todoHeight);
+            todoBar = new Rect(width * 0.5f - 280f, belowBars, 560f, todoHeight);
             milestoneRect = Rect.zero;
             if (panel == Panel.None)
             {
                 DrawToDoBar();
-                DrawMilestones(width);
+                DrawMilestones(width, belowBars);
             }
             DrawLevelUps(width, 200f);
 
@@ -382,7 +385,9 @@ namespace FishBreeder.Store
 
         static Rect Centered(float width, float height, float w, float h) => new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
 
-        void DrawTopBar()
+        const float NarrowWidth = 1100f;
+
+        void DrawTopBar(bool narrow)
         {
             UiCheck.Begin("Top bar", topBar, UiTheme.Bar);
             GUILayout.BeginHorizontal();
@@ -404,6 +409,12 @@ namespace FishBreeder.Store
                 var today = shopDay.Today;
                 GUILayout.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}   Visitors {today.visitors}   Sold {today.fishSold}   +{Economy.Format(today.earnings)}", Rich());
                 GUILayout.FlexibleSpace();
+                if (narrow)
+                {
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    GUILayout.FlexibleSpace();
+                }
                 DrawDevControls();
             }
             else
@@ -414,6 +425,12 @@ namespace FishBreeder.Store
                 if (morning && setup > 0) phase += $"  <size=12>opening in {setup} day{(setup == 1 ? "" : "s")}</size>";
                 GUILayout.Label(phase, Rich(), GUILayout.ExpandWidth(false));
                 GUILayout.FlexibleSpace();
+                if (narrow)
+                {
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    GUILayout.FlexibleSpace();
+                }
                 if (GUILayout.Button("Journal (J)", GUILayout.Width(92f))) JournalView.Toggle();
                 if (GUILayout.Button(ResearchView.ButtonLabel(), PerkButtonStyle(), GUILayout.Width(118f))) ResearchView.Toggle();
                 if (GUILayout.Button(PerksButtonLabel(), PerkButtonStyle(), GUILayout.Width(Perks.TotalAvailable > 0 ? 104f : 84f))) PerksView.Toggle();
@@ -477,7 +494,7 @@ namespace FishBreeder.Store
         static string ColorHex(Color color) => "#" + ColorUtility.ToHtmlStringRGB(color);
 
         /// <summary>The three levels with their XP bars, and today's goals.</summary>
-        void DrawStatusBar()
+        void DrawStatusBar(bool narrow)
         {
             UiCheck.Begin("Status bar", statusBar, UiTheme.Bar);
             GUILayout.BeginHorizontal();
@@ -496,6 +513,11 @@ namespace FishBreeder.Store
                 if (GUILayout.Button($"★ {Perks.TotalAvailable} perk point{(Perks.TotalAvailable == 1 ? "" : "s")}!", UiTheme.Primary, GUILayout.Width(132f))) PerksView.Open();
                 GUI.color = old;
                 GUILayout.Space(10f);
+            }
+            if (narrow)
+            {
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
             }
             var goals = new List<string>();
             foreach (var goal in Progression.Goals)
@@ -521,12 +543,12 @@ namespace FishBreeder.Store
         }
 
         /// <summary>The next few milestones down the right side, with progress and what each pays.</summary>
-        void DrawMilestones(float width)
+        void DrawMilestones(float width, float top)
         {
             var upcoming = Milestones.Upcoming(3);
             if (upcoming.Count == 0) return;
             float h = UiCheck.Height("Milestones", 38f + upcoming.Count * 58f);
-            milestoneRect = new Rect(width - 290f, 94f, 280f, h);
+            milestoneRect = new Rect(width - 290f, top, 280f, h);
             UiCheck.Begin("Milestones", milestoneRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
             GUILayout.Label("MILESTONES", UiTheme.Heading);

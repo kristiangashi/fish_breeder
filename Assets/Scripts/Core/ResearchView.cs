@@ -109,7 +109,7 @@ namespace FishBreeder.Core
             if (GUILayout.Button("Close (R / Esc)", GUILayout.Width(120f))) Close();
             GUILayout.EndHorizontal();
             var data = Balance.Data.research;
-            GUILayout.Label($"<size=12>Do a bounty to unlock its research, then start it at the bench. Every night the bench earns {data.basePointsPerDay:0} research points, plus {data.pointsPerDollar:0.##} for every dollar of your daily budget (paid each night), times your research speed. One project at a time; switching keeps its points. Finished research makes the game tell you more about your fish.</size>", Rich());
+            GUILayout.Label($"<size=12>Do a bounty to unlock its research, then start it at the bench. Every night the bench earns {data.basePointsPerDay:0} research points, plus {data.pointsPerDollar:0.##} for every dollar of your daily budget (paid each night, never while the bench is empty), times your research speed. One project at a time, with up to {Research.QueueSize} more queued behind it; switching keeps its points. Finished research makes the game tell you more about your fish.</size>", Rich());
             GUILayout.Space(4f);
         }
 
@@ -128,6 +128,7 @@ namespace FishBreeder.Core
                 GUILayout.EndVertical();
             }
             else GUILayout.Label("<i>The bench is free. Start a project once its bounty is done.</i>", Rich());
+            DrawQueue();
             DrawBudget(current);
 
             foreach (var project in Research.Projects)
@@ -142,14 +143,50 @@ namespace FishBreeder.Core
                 GUILayout.Label($"<size=11>{project.teaches}</size>", Rich());
                 GUILayout.EndVertical();
                 int nights = Research.NightsFor(project);
-                string label = current == null ? "Start" : "Switch";
-                string tip = current == null ? $"About {nights} nights" : $"{current.name} goes back on the shelf, keeping its points";
-                if (GUILayout.Button(new GUIContent(label, tip), UiTheme.Primary, GUILayout.Width(96f), GUILayout.Height(32f)))
-                    Research.Start(project);
+                if (current == null)
+                {
+                    if (GUILayout.Button(new GUIContent("Start", $"About {nights} nights"), UiTheme.Primary, GUILayout.Width(96f), GUILayout.Height(32f)))
+                        Research.Start(project);
+                }
+                else
+                {
+                    GUILayout.BeginVertical(GUILayout.Width(96f));
+                    GUI.enabled = Research.Queue.Count < Research.QueueSize;
+                    if (GUILayout.Button(new GUIContent("Queue", GUI.enabled ? "Starts by itself when the projects ahead of it finish" : $"The queue is full ({Research.QueueSize})"), UiTheme.Primary)) Research.Enqueue(project);
+                    GUI.enabled = true;
+                    if (GUILayout.Button(new GUIContent("Switch", $"{current.name} goes back on the shelf, keeping its points"))) Research.Start(project);
+                    GUILayout.EndVertical();
+                }
                 GUILayout.EndHorizontal();
                 if (done > 0f) ProgressBar(Research.Fraction(project), UiTheme.Sun);
                 GUILayout.Label($"<size=11>{(done > 0f ? $"{done:0} / " : "")}{Research.Cost(project)} points: about {nights} night{(nights == 1 ? "" : "s")} at today's budget.</size>", Rich());
                 GUILayout.EndVertical();
+            }
+        }
+
+        /// <summary>The projects lined up behind the bench, next first, with buttons to reorder or take one out.</summary>
+        static void DrawQueue()
+        {
+            var queue = Research.Queue;
+            if (Research.Current == null || Research.QueueSize <= 0) return;
+            GUILayout.Space(4f);
+            GUILayout.Label($"<b>Up next</b>  <size=11>{queue.Count} of {Research.QueueSize} in the queue</size>", Rich());
+            if (queue.Count == 0)
+            {
+                GUILayout.Label("<size=11><i>Queue ready projects and they start by themselves, one after another.</i></size>", Rich());
+                return;
+            }
+            for (int i = 0; i < queue.Count; i++)
+            {
+                var project = queue[i];
+                int nights = Research.NightsUntilDone(project);
+                GUILayout.BeginHorizontal(UiTheme.Card);
+                GUILayout.Label($"<b>{i + 1}. {project.name}</b>\n<size=11>{Research.Progress(project):0} / {Research.Cost(project)} points · done in about {nights} night{(nights == 1 ? "" : "s")}</size>", Rich());
+                GUI.enabled = i > 0;
+                if (GUILayout.Button(new GUIContent("▲", "Move up"), GUILayout.Width(30f))) Research.MoveUp(project);
+                GUI.enabled = true;
+                if (GUILayout.Button(new GUIContent("x", "Take it out of the queue"), GUILayout.Width(30f))) Research.Dequeue(project);
+                GUILayout.EndHorizontal();
             }
         }
 
@@ -180,7 +217,7 @@ namespace FishBreeder.Core
             string what = budget > 0
                 ? $"+{extra:0} points a night for {Economy.Format(budget)}, taken from your money every night while something is being researched."
                 : "Put money in to research faster. It's paid every night, only while a project is at the bench.";
-            if (current == null && budget > 0) what += " (Nothing is at the bench, so nothing is paid.)";
+            if (current == null && budget > 0) what += " <color=#ffd27f>Nothing is at the bench, so nothing is paid tonight.</color>";
             GUILayout.Label($"<size=11>{what}</size>", Rich());
             GUILayout.EndVertical();
         }

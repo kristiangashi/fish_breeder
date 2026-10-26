@@ -19,7 +19,6 @@ namespace FishBreeder.Core
         public static float Reputation { get; set; } = 0.5f;
         public static int WaterConditionerDoses { get; set; }
         /// <summary>Each fixes one broken filter, heater or bubbler.</summary>
-        public static int RepairKits { get; set; }
         public static IReadOnlyList<string> Ledger => ledger;
         /// <summary>What Grandma sent last night, for the morning banner (null if nothing).</summary>
         public static string GrandmaNote { get; private set; }
@@ -32,7 +31,6 @@ namespace FishBreeder.Core
             GrandmaNote = null;
             Reputation = Balance.Data.shop.startingReputation;
             WaterConditionerDoses = 0;
-            RepairKits = 0;
             food.Clear();
             ledger.Clear();
             if (store.starterFlakeFeedings > 0) AddFood(FoodType.Flakes, store.starterFlakeFeedings);

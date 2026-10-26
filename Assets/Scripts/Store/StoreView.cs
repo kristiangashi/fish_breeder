@@ -159,13 +159,15 @@ namespace FishBreeder.Store
                 FinancesView.Close();
                 escape = false;
             }
+            // A right click zooms out one level too: from a fish or a close-up to the tank, from the tank or a person to the store.
+            bool zoomOut = Input.GetMouseButtonDown(1) && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
             if (focused != null && focused.Tank == null) ExitTank();
-            else if (focused != null && escape)
+            else if (focused != null && (escape || zoomOut))
             {
                 if (hud.HasSelection || hud.ZoomPoint.HasValue) hud.ClearSelection();
                 else ExitTank();
             }
-            else if (focused == null && escape && following >= 0) following = -1;
+            else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && GUIUtility.keyboardControl == 0) following++;
             var person = focused == null ? FollowedPerson() : null;
@@ -1197,7 +1199,7 @@ namespace FishBreeder.Store
                 GUILayout.Label($"Day {report.day} is over", UiTheme.Title);
                 GUILayout.Label($"Visitors: {report.visitors}     Fish sold: {report.fishSold}     Earned: <b><color={UiTheme.LeafHex}>{Economy.Format(report.earnings)}</color></b>", Rich());
                 GUILayout.Label($"Reactions: {report.happy} happy, {report.grossed} grossed out, {report.sad} upset, {report.mad} angry about prices", Rich());
-                GUILayout.Label($"Reviews: <size=18><color={UiTheme.SunHex}>{Stars(report.stars)}</color></size> ({report.stars:0.#} / 5)   Reputation {(report.reputationChange >= 0f ? "+" : "")}{report.reputationChange * 100f:0}%", Rich());
+                GUILayout.Label($"Reviews: <size=18><color={UiTheme.SunHex}>{Stars(report.stars)}</color></size> ({report.stars:0.#} / 5)   Reputation {(report.reputationChange >= 0f ? "+" : "")}{report.reputationChange * 5f:0.00} stars (now {StoreLayout.Stars:0.0})", Rich());
                 if (report.visitors == 0) GUILayout.Label("<i>Nobody came in today. More tanks, especially display tanks, bring in more people.</i>", Rich());
                 foreach (var review in report.reviews) GUILayout.Label($"<i>\"{review}\"</i>", Rich());
                 GUILayout.Label("<size=11>See what's helping and hurting your reputation: click the stars or press Y.</size>", Rich());
@@ -1516,14 +1518,7 @@ namespace FishBreeder.Store
             var tank = orderTarget != null ? orderTarget.Tank : null;
             string where = orderTarget != null ? orderTarget.Title : "a tank";
             GUILayout.Label("<b>Care</b>", Rich());
-            int repairPrice = Perks.Supplier(supplier.repairKitPrice);
             int conditionerPrice = Perks.Supplier(supplier.waterConditionerPrice);
-            string repairDetails = $"One kit fixes one broken filter, heater or bubbler. Repairs take off only a little wear, so old equipment keeps breaking more often. {supplier.repairKitSaveChance * 100f:0}% of repairs don't use the kit up.\nYou have {Economy.RepairKits} kits.";
-            if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Repair, new Color(0.85f, 0.6f, 0.25f)), "Repair kits", repairDetails, XpTrack.Fishkeeping, supplier.repairKitLevel,
-                    $"{supplier.repairKitsPerPack} kits  {Economy.Format(repairPrice)}", Economy.CanAfford(repairPrice))
-                && Economy.TrySpend(repairPrice, "repair kits", MoneyKind.Care))
-                Economy.RepairKits += supplier.repairKitsPerPack;
-
             string details = $"Resets the pH and gets rid of snails and worms. Use it from the tank view.\nYou have {Economy.WaterConditionerDoses} doses.";
             if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Conditioner, new Color(0.35f, 0.65f, 0.85f)), "Water conditioner", details, XpTrack.Fishkeeping, supplier.waterConditionerLevel,
                     $"{supplier.waterConditionerDoses} doses  {Economy.Format(conditionerPrice)}", Economy.CanAfford(conditionerPrice))

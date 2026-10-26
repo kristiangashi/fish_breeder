@@ -46,6 +46,20 @@ namespace FishBreeder.Core
         [Range(0f, 0.95f)] public float memory = 0.6f;
         [Tooltip("Reviews kept on the reputation screen.")]
         public int reviewsKept = 12;
+        [Tooltip("Reputation a perfect day adds near zero stars (reputation runs 0..1, so 0.02 is a tenth of a star).")]
+        public float gainPerDay = 0.02f;
+        [Tooltip("Gains shrink as the shop gets better known: gain x (1 - reputation) to this power.")]
+        public float gainFalloff = 1.5f;
+        [Tooltip("Reputation a terrible day takes off.")]
+        public float lossPerDay = 0.04f;
+        [Tooltip("Share of good reactions (happy shoppers, and sales counted twice) a day needs before reputation goes up; below it, it goes down.")]
+        [Range(0.05f, 0.95f)] public float neutralScore = 0.6f;
+        [Tooltip("A day with fewer visitors than this moves reputation less, in proportion.")]
+        public int fullDayVisitors = 15;
+        [Tooltip("Foot traffic is multiplied by the first number at 0 stars and the second at 5 stars.")]
+        public float trafficAtNoStars = 0.75f, trafficAtFiveStars = 1.75f;
+        [Tooltip("Customer wishes (\"Wish they had more catfish\") the day's reviews can carry.")]
+        public int wishesPerDay = 1;
         public List<ComplaintBalance> complaints = ComplaintBalance.CreateDefaults();
     }
 
@@ -78,6 +92,7 @@ namespace FishBreeder.Core
         {
             Array.Clear(heat, 0, heat.Length);
             reviews.Clear();
+            LatestWishes.Clear();
         }
 
         public static ComplaintBalance Info(Complaint complaint)
@@ -146,9 +161,12 @@ namespace FishBreeder.Core
         /// The day's reviews: one for each of the most common complaints (most first), then praise
         /// if the day went well. At most <paramref name="max"/>.
         /// </summary>
-        public static List<string> Write(int visitors, int sold, int happy, int[] complaints, int max = 3)
+        public static List<string> Write(int visitors, int sold, int happy, int[] complaints, Dictionary<string, int> wishes = null, int max = 3)
         {
             var result = new List<string>();
+            LatestWishes.Clear();
+            if (wishes != null) foreach (var pair in wishes) LatestWishes.Add(new KeyValuePair<string, int>(pair.Key, pair.Value));
+            LatestWishes.Sort((a, b) => b.Value.CompareTo(a.Value));
             if (visitors == 0) return result;
             var order = new List<int>();
             for (int i = 0; i < Count; i++) if (complaints[i] > 0) order.Add(i);
@@ -159,8 +177,37 @@ namespace FishBreeder.Core
             int complaintSlots = goodDay ? max - 1 : max;
             for (int k = 0; k < order.Count && k < complaintSlots; k++) result.Add(Pick(ComplaintReviews((Complaint)order[k]), result));
             if (goodDay || result.Count == 0) result.Insert(0, Pick(sold > 0 ? Praise : Meh, result));
+
+            // What people came for and couldn't find: the most wished-for kinds, in their words.
+            int wishLines = Mathf.Max(0, Data.wishesPerDay);
+            for (int k = 0; k < LatestWishes.Count && k < wishLines; k++)
+            {
+                var species = Genetics.Species.Find(LatestWishes[k].Key);
+                if (species == null) continue;
+                string line = Pick(Wishes, result);
+                result.Add(line.Replace("{many}", Research.Plural(species).ToLower()).Replace("{one}", species.displayName.ToLower()));
+            }
             return result;
         }
+
+        /// <summary>The last day's wishes: species id and how many shoppers left without one, most first.</summary>
+        public static readonly List<KeyValuePair<string, int>> LatestWishes = new List<KeyValuePair<string, int>>();
+
+        static readonly string[] Wishes =
+        {
+            "Wish they had more {many}.",
+            "Came in looking for {many}. Not a single one for sale.",
+            "Would love to see some {many} here one day.",
+            "Any chance of getting {many} in? I'd buy one tomorrow.",
+            "Nice shop, but no {many}? Come on!",
+            "My daughter really wanted a {one}. Maybe next time.",
+            "I'll be back when they've got {many}.",
+            "Great tanks. Now they just need {many}.",
+            "Asked about a {one} and got a shrug. Please stock them!",
+            "Drove over just for {many}. Left empty-handed.",
+            "If they ever sell {many}, I'm their first customer.",
+            "Lovely fish, but I had my heart set on a {one}.",
+        };
 
         static string Pick(string[] options, List<string> already)
         {

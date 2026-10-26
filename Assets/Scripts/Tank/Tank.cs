@@ -442,26 +442,24 @@ namespace FishBreeder
         }
 
         /// <summary>
-        /// Fixes broken equipment with a repair kit. It keeps most of its wear. Sometimes the kit
-        /// isn't used up (<see cref="SupplierBalance.repairKitSaveChance"/>).
+        /// Pays for a broken piece of equipment to be fixed (the price was set by what went wrong
+        /// when it broke). It keeps most of its wear.
         /// </summary>
         public bool Repair(EquipmentKind kind)
         {
             var item = GetEquipment(kind);
             if (item == null || !item.broken) return false;
-            if (Economy.RepairKits <= 0)
-            {
-                GameLog.Add("No repair kits. Order some at the supplier computer.");
-                return false;
-            }
-            bool kept = GameRandom.Chance(Balance.Data.supplier.repairKitSaveChance);
-            if (!kept) Economy.RepairKits--;
+            int price = item.RepairPrice;
+            if (!Economy.TrySpend(price, $"repairing the {item.Name.ToLower()} in {Title}", MoneyKind.Care)) return false;
+            string fault = item.fault;
             item.broken = false;
+            item.fault = null;
+            item.repairCost = 0;
             item.wear *= 1f - Mathf.Clamp01(Balance.Data.supplier.repairWearRemoved + Perks.Value(PerkEffect.BetterRepairs));
             if (kind == EquipmentKind.Heater) temperature = heaterSetting;
             UpdateEquipmentLook();
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpRepairEquipment);
-            GameLog.Add($"Repaired the {item.Name.ToLower()} in {Title}." + (kept ? " The repair kit wasn't used up!" : "") + $" {Economy.RepairKits} repair kits left.");
+            GameLog.Add($"Repaired the {item.Name.ToLower()} in {Title} for {Economy.Format(price)}" + (string.IsNullOrEmpty(fault) ? "." : $" ({fault.ToLower()})."));
             Milestones.Add(MilestoneKind.RepairEquipment);
             return true;
         }
@@ -476,8 +474,8 @@ namespace FishBreeder
                 item.ageSteps++;
                 item.wear += 1f;
                 if (!GameRandom.Chance(item.BreakChance)) continue;
-                item.broken = true;
-                GameLog.Add($"The {item.Name.ToLower()} in {Title} broke down! Fix it with a repair kit.");
+                item.Break();
+                GameLog.Add($"The {item.Name.ToLower()} in {Title} broke down: {item.fault.ToLower()}. Repairing it costs {Economy.Format(item.RepairPrice)}.");
             }
             UpdateEquipmentLook();
         }

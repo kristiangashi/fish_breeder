@@ -24,6 +24,8 @@ namespace FishBreeder.Core
         MoreCustomers, ReputationGain, ReputationShield, GrossTolerance, DeadFishTolerance, ExtraTankVisits, DailyReputation,
         // Finances (added later, so saved files keep their numbers)
         Bookkeeping,
+        // Breeding (added later)
+        StockBook,
     }
 
     /// <summary>One perk in a skill tree. Each rank bought adds <see cref="perRank"/> to its effect.</summary>
@@ -55,7 +57,7 @@ namespace FishBreeder.Core
             Make("algae_control", PerkTree.Aquariums, 2, "Algae control", "Algae grows {0} slower", 5, 0.08f, PerkEffect.SlowerAlgae),
             Make("aquascaper", PerkTree.Aquariums, 2, "Aquascaper", "{0} more decoration spots in every tank", 3, 2f, PerkEffect.DecorationSpots, false),
             Make("tinkerer", PerkTree.Aquariums, 3, "Tinkerer", "Equipment breaks down {0} less often", 5, 0.08f, PerkEffect.SturdierEquipment),
-            Make("handyman", PerkTree.Aquariums, 3, "Handyman", "Repair kits take off {0} more wear", 3, 0.15f, PerkEffect.BetterRepairs),
+            Make("handyman", PerkTree.Aquariums, 3, "Handyman", "Repairs cost {0} less", 3, 0.15f, PerkEffect.BetterRepairs),
             Make("roomy_tanks", PerkTree.Aquariums, 4, "Roomy tanks", "Tanks hold {0} more fish", 3, 0.1f, PerkEffect.RoomierTanks),
             Make("tireless", PerkTree.Aquariums, 4, "Tireless", "{0} extra wipe for every tank each session", 1, 1f, PerkEffect.ExtraWipes, false),
 
@@ -71,6 +73,7 @@ namespace FishBreeder.Core
 
             // Breeding: more, faster and stranger fry.
             Make("matchmaker", PerkTree.Breeding, 1, "Matchmaker", "Fish are {0} more likely to breed", 5, 0.06f, PerkEffect.BreedingChance),
+            Make("stock_book", PerkTree.Breeding, 1, "Stock book", "The Breeding tab lists every fish in the tank by kind, sex and age, and you can pick fish from the list", 1, 1f, PerkEffect.StockBook, false),
             Make("quick_recovery", PerkTree.Breeding, 1, "Quick recovery", "Parents rest {0} fewer time step between broods", 1, 1f, PerkEffect.ShorterRest, false),
             Make("big_families", PerkTree.Breeding, 2, "Big families", "Litters and clutches are {0} bigger", 5, 0.08f, PerkEffect.BiggerLitters),
             Make("hardy_eggs", PerkTree.Breeding, 2, "Hardy eggs", "Eggs are {0} less likely to die in dirty water", 3, 0.25f, PerkEffect.HardyEggs),
@@ -108,7 +111,7 @@ namespace FishBreeder.Core
             Make("damage_control", PerkTree.PublicRelations, 3, "Damage control", "Dead fish upset customers {0} less", 3, 0.25f, PerkEffect.DeadFishTolerance),
             Make("window_shoppers", PerkTree.PublicRelations, 3, "Window shoppers", "Customers look at {0} more tank each", 2, 1f, PerkEffect.ExtraTankVisits, false),
             Make("loyal_regulars", PerkTree.PublicRelations, 4, "Loyal regulars", "{0} more customers come in", 3, 0.08f, PerkEffect.MoreCustomers),
-            Make("local_celebrity", PerkTree.PublicRelations, 4, "Local celebrity", "Your reputation climbs {0} every night on its own", 1, 0.02f, PerkEffect.DailyReputation),
+            Make("local_celebrity", PerkTree.PublicRelations, 4, "Local celebrity", "Your reputation climbs {0} every night on its own", 1, 0.005f, PerkEffect.DailyReputation),
         };
 
         static PerkBalance Make(string id, PerkTree tree, int tier, string name, string text, int maxRank, float perRank, PerkEffect effect, bool percent = true)

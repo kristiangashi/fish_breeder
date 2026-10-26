@@ -179,7 +179,6 @@ namespace FishBreeder.Core
                 foreach (var food in supplier.food) if (food.unlockLevel == lvl) list.Add(food.name);
                 foreach (var tiers in new[] { supplier.filters, supplier.heaters, supplier.bubblers })
                     foreach (var model in tiers) if (model.unlockLevel == lvl) list.Add(model.name.ToLower() + "s");
-                if (supplier.repairKitLevel == lvl) list.Add("repair kits");
                 if (supplier.waterConditionerLevel == lvl) list.Add("water conditioner");
                 if (supplier.medicineLevel == lvl) list.Add("medicine");
                 if (supplier.marineSaltLevel == lvl) list.Add("salt water tanks");

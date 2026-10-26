@@ -12,7 +12,7 @@ namespace FishBreeder.Core
     public enum ResearchUnlock { HealthDetails, Temperature, TankMates, WaterTesting, FavouriteFoods, Breeding, Shoaling, Pathology, Plants, Ph, Lifespan }
 
     /// <summary>Where a research project is up to.</summary>
-    public enum ResearchState { Locked, Bounty, Ready, Researching, Done }
+    public enum ResearchState { Locked, Bounty, Ready, Queued, Researching, Done }
 
     /// <summary>
     /// Research projects. Each project posts a bounty (feed fish 8 times, cure 2 sick fish, keep 15
@@ -20,7 +20,9 @@ namespace FishBreeder.Core
     /// bounty makes the project ready; the player then starts it in the research window. Like in
     /// Civilization, the bench earns research points every night towards the project it's on (one
     /// at a time; switching keeps what's been done): a base amount, plus more for the daily
-    /// research budget, which is paid each night, all faster at a higher Research level. A
+    /// research budget, which is paid each night (never while the bench is empty), all faster at
+    /// a higher Research level. Up to three more ready projects can wait in a queue: when one
+    /// finishes, the next goes on the bench by itself, with any points left over. A
     /// finished project makes the game tell you more: what temperature fish
     /// like, who they fight with, why they won't breed, how much each thing does to their health.
     /// Until then those messages stay vague. Bounties and research both give Research XP, and every
@@ -38,6 +40,7 @@ namespace FishBreeder.Core
         static readonly HashSet<string> favouritesSeen = new HashSet<string>();
         static readonly Dictionary<string, float> progress = new Dictionary<string, float>();
         static string current;
+        static readonly List<string> queue = new List<string>();
 
         static ResearchBalance Data => Balance.Data.research;
 
@@ -57,6 +60,7 @@ namespace FishBreeder.Core
             favouritesSeen.Clear();
             progress.Clear();
             current = null;
+            queue.Clear();
             DailyBudget = 0;
         }
 
@@ -130,6 +134,7 @@ namespace FishBreeder.Core
             if (project == null) return ResearchState.Locked;
             if (done.Contains(project.id)) return ResearchState.Done;
             if (current == project.id) return ResearchState.Researching;
+            if (queue.Contains(project.id)) return ResearchState.Queued;
             if (ready.Contains(project.id)) return ResearchState.Ready;
             return posted.Contains(project.id) ? ResearchState.Bounty : ResearchState.Locked;
         }
@@ -203,6 +208,70 @@ namespace FishBreeder.Core
             GameLog.Add($"Research started: {project.name}. About {NightsFor(project)} night{(NightsFor(project) == 1 ? "" : "s")} at {PointsPerNight():0} points a night.");
             Changed?.Invoke();
             return true;
+        }
+
+        /// <summary>Most projects that can wait in the queue behind the bench.</summary>
+        public static int QueueSize => Mathf.Max(0, Data.queueSize);
+
+        /// <summary>The projects waiting behind the bench, next first.</summary>
+        public static List<ResearchProjectBalance> Queue
+        {
+            get
+            {
+                var list = new List<ResearchProjectBalance>();
+                foreach (var id in queue)
+                {
+                    var project = Find(id);
+                    if (project != null) list.Add(project);
+                }
+                return list;
+            }
+        }
+
+        /// <summary>Lines a ready project up behind the bench (or starts it if the bench is free).</summary>
+        public static bool Enqueue(ResearchProjectBalance project)
+        {
+            if (project == null || !ready.Contains(project.id)) return false;
+            if (current == null) return Start(project);
+            if (queue.Count >= QueueSize) return false;
+            ready.Remove(project.id);
+            queue.Add(project.id);
+            GameLog.Add($"{project.name} is queued for research ({queue.Count} waiting).");
+            Changed?.Invoke();
+            return true;
+        }
+
+        /// <summary>Takes a project out of the queue, back onto the shelf.</summary>
+        public static void Dequeue(ResearchProjectBalance project)
+        {
+            if (project == null || !queue.Remove(project.id)) return;
+            ready.Add(project.id);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Moves a queued project one place nearer the bench.</summary>
+        public static void MoveUp(ResearchProjectBalance project)
+        {
+            int index = project == null ? -1 : queue.IndexOf(project.id);
+            if (index <= 0) return;
+            queue.RemoveAt(index);
+            queue.Insert(index - 1, project.id);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Nights until a queued project would be done, counting the ones ahead of it.</summary>
+        public static int NightsUntilDone(ResearchProjectBalance project)
+        {
+            float points = Mathf.Max(0.01f, PointsPerNight());
+            float needed = Current != null ? Cost(Current) - Progress(Current) : 0f;
+            foreach (var id in queue)
+            {
+                var next = Find(id);
+                if (next == null) continue;
+                needed += Cost(next) - Progress(next);
+                if (next == project) break;
+            }
+            return Mathf.Max(1, Mathf.CeilToInt(needed / points));
         }
 
         /// <summary>Posts the bounties whose Research level and earlier project are done, and checks finished bounties.</summary>
@@ -282,7 +351,29 @@ namespace FishBreeder.Core
             float points = PointsPerNight(paid);
             progress[project.id] = Progress(project) + points;
             GameLog.Add($"Research: +{points:0} points on {project.name} ({Mathf.Min(Progress(project), Cost(project)):0}/{Cost(project)})" + (paid > 0 ? $", {Economy.Format(paid)} spent." : "."));
-            if (Progress(project) >= Cost(project)) Finish(project);
+            if (Progress(project) < Cost(project)) return;
+            float spare = Progress(project) - Cost(project);
+            Finish(project);
+            StartNextInQueue(spare);
+        }
+
+        /// <summary>The bench is free: the next queued project goes on it, with the night's spare points.</summary>
+        static void StartNextInQueue(float spare)
+        {
+            if (current != null || queue.Count == 0) return;
+            var next = Find(queue[0]);
+            queue.RemoveAt(0);
+            if (next == null) return;
+            current = next.id;
+            progress[next.id] = Progress(next) + spare;
+            GameLog.Add($"Next up at the research bench: {next.name}.");
+            Changed?.Invoke();
+            if (Progress(next) >= Cost(next))
+            {
+                float more = Progress(next) - Cost(next);
+                Finish(next);
+                StartNextInQueue(more);
+            }
         }
 
         static void Finish(ResearchProjectBalance project)
@@ -301,7 +392,11 @@ namespace FishBreeder.Core
         /// <summary>Developer: finishes the project at the bench, or every ready one, straight away.</summary>
         public static void DevFinish()
         {
-            if (Current != null) Finish(Current);
+            if (Current != null)
+            {
+                Finish(Current);
+                StartNextInQueue(0f);
+            }
             else
                 foreach (var id in new List<string>(ready))
                 {

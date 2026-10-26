@@ -40,8 +40,10 @@ namespace FishBreeder.Shop
     /// <summary>
     /// What a shopper thinks of a tank. Shared by walking customers and the dev "skip day"
     /// simulation, so both follow the same rules.
-    /// Dead fish make them sad, bad water and sick fish gross them out, fish fighting upsets them,
-    /// overpriced fish make them mad, an almost empty sale tank leaves them wanting, and a nice
+    /// Dead fish make them sad, bad water and sick fish gross them out (each sick fish they can see
+    /// makes it likelier, and sick fish never sell), fish fighting upsets them,
+    /// overpriced fish make them mad, an almost empty sale tank leaves them wanting, attractive
+    /// fish catch their eye (and sell more easily), and a nice
     /// tank (or a fish they want to buy) makes them happy. Each complaint is remembered by
     /// <see cref="Reputation"/>, which turns it into fewer visitors or fewer sales.
     /// </summary>
@@ -60,9 +62,15 @@ namespace FishBreeder.Shop
             float averageHealth = AverageHealth(tank);
             float tolerance = Perks.Value(PerkEffect.GrossTolerance);
             bool dirty = tank.WaterHealth < shop.grossWaterQuality * (1f - tolerance) || tank.Algae > shop.grossAlgae * (1f + tolerance);
-            bool sick = tank.Residents.Count > 0 && averageHealth < 0.45f;
-            if ((dirty || sick) && GameRandom.Chance(0.85f))
-                return Reaction.Complain(Mood.Grossed, dirty ? Complaint.DirtyWater : Complaint.SickFish);
+            if (dirty && GameRandom.Chance(0.85f)) return Reaction.Complain(Mood.Grossed, Complaint.DirtyWater);
+
+            // Sick fish put people off too, more of them the more sick fish they can see.
+            int sickCount = SickCount(tank);
+            bool poorly = tank.Residents.Count > 0 && averageHealth < 0.45f;
+            float sickChance = Mathf.Min(shop.maxSickChance, shop.sickChancePerFish * sickCount);
+            if (poorly) sickChance = Mathf.Max(sickChance, 0.85f);
+            if (sickChance > 0f && GameRandom.Chance(sickChance * Perks.Less(PerkEffect.GrossTolerance)))
+                return Reaction.Complain(Mood.Grossed, Complaint.SickFish);
 
             // Fish chasing and biting each other in a public tank upset people.
             bool fighting = TankMates.IsFighting(tank);
@@ -73,8 +81,9 @@ namespace FishBreeder.Shop
             {
                 var candidates = new List<Fish>();
                 // Fry are too young to sell: only juveniles and adults go home with customers.
+                // Nobody buys a fish that looks ill.
                 foreach (var fish in tank.Residents)
-                    if (!fish.IsDead && !fish.Reserved && fish.Price > 0 && fish.Stage != LifeStage.Fry) candidates.Add(fish);
+                    if (!fish.IsDead && !fish.Reserved && fish.Price > 0 && fish.Stage != LifeStage.Fry && !fish.Health.IsSick) candidates.Add(fish);
                 if (candidates.Count < shop.fewFishBelow && GameRandom.Chance(shop.fewFishComplaintChance))
                 {
                     reaction.complained = true;
@@ -86,7 +95,8 @@ namespace FishBreeder.Shop
                     return reaction;
                 }
 
-                var pick = candidates[GameRandom.Range(0, candidates.Count)];
+                // The eye goes to the most attractive fish first; a favourite kind can still win them over.
+                var pick = PickByAttention(candidates, shop.attentionPower);
                 foreach (var fish in candidates)
                     if (fish.Species.id == shopper.favoriteSpecies && GameRandom.Chance(0.6f)) pick = fish;
 
@@ -102,6 +112,8 @@ namespace FishBreeder.Shop
                                * (pick.Species.id == shopper.favoriteSpecies ? 1.5f : 1f)
                                * (tank.Corpses.Count > 0 ? shop.deadFishPurchaseMultiplier : 1f)
                                * (fighting ? shop.fightingPurchaseMultiplier : 1f)
+                               * (sickCount > 0 ? shop.sickFishPurchaseMultiplier : 1f)
+                               * Mathf.Lerp(shop.plainFishPurchase, shop.stunningFishPurchase, pick.Attractiveness)
                                * Reputation.SalesMultiplier;
                 if (GameRandom.Chance(chance))
                 {
@@ -118,6 +130,34 @@ namespace FishBreeder.Shop
             float happyChance = storeTank.Role == TankRole.Display ? 0.7f : 0.45f;
             if (lovely && GameRandom.Chance(happyChance)) reaction.mood = Mood.Happy;
             return reaction;
+        }
+
+        /// <summary>Living fish in the tank with an illness.</summary>
+        public static int SickCount(Tank tank)
+        {
+            int count = 0;
+            foreach (var fish in tank.Residents)
+                if (!fish.IsDead && fish.Health.IsSick) count++;
+            return count;
+        }
+
+        /// <summary>A fish chosen with weight attractiveness^power: the eye-catching ones get looked at most.</summary>
+        static Fish PickByAttention(List<Fish> candidates, float power)
+        {
+            float total = 0f;
+            var weights = new float[candidates.Count];
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                weights[i] = Mathf.Pow(Mathf.Max(0.02f, candidates[i].Attractiveness), Mathf.Max(0f, power));
+                total += weights[i];
+            }
+            float roll = GameRandom.Range(0f, total);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                roll -= weights[i];
+                if (roll <= 0f) return candidates[i];
+            }
+            return candidates[candidates.Count - 1];
         }
 
         public static float AverageHealth(Tank tank)

@@ -7,9 +7,10 @@ namespace FishBreeder
 {
     /// <summary>
     /// A filter, heater or bubbler installed in a tank. It wears with every time step it runs and
-    /// may break down; a broken one does nothing until it's repaired with a repair kit. Repairs
-    /// take off only part of the wear, so old equipment keeps breaking more often until it's
-    /// replaced with a new (or better) model.
+    /// may break down; a broken one does nothing until it's repaired. Each breakdown is a fault
+    /// ("The circuit got wet") with its own price: the model's repair cost times the fault's, give
+    /// or take a little. Better models break less often but cost more to fix. Repairs take off
+    /// only part of the wear, so old equipment keeps breaking more often until it's replaced.
     /// </summary>
     [Serializable]
     public class InstalledEquipment
@@ -21,6 +22,25 @@ namespace FishBreeder
         /// <summary>Time steps of wear, which drives the breakdown chance. Repairs take some off.</summary>
         public float wear;
         public bool broken;
+        /// <summary>What went wrong, while it's broken.</summary>
+        public string fault;
+        /// <summary>What fixing it costs, set when it breaks.</summary>
+        public int repairCost;
+
+        /// <summary>The repair price after perks.</summary>
+        public int RepairPrice => Mathf.Max(1, Mathf.RoundToInt(repairCost * Perks.Less(PerkEffect.BetterRepairs)));
+
+        /// <summary>Breaks down: picks what went wrong and what it'll cost to fix.</summary>
+        public void Break()
+        {
+            broken = true;
+            var info = Info;
+            var faultInfo = Equipment.PickFault(kind);
+            fault = faultInfo != null ? faultInfo.text : "It stopped working";
+            float spread = Mathf.Clamp01(Balance.Data.supplier.repairPriceSpread);
+            float baseCost = info != null ? info.repairCost : 15f;
+            repairCost = Mathf.Max(1, Mathf.RoundToInt(baseCost * (faultInfo != null ? faultInfo.cost : 1f) * GameRandom.Range(1f - spread, 1f + spread)));
+        }
 
         public EquipmentTierBalance Info => Equipment.Tier(kind, tier);
         public string Name => Info != null ? Info.name : Equipment.KindName(kind);
@@ -67,5 +87,25 @@ namespace FishBreeder
         }
 
         public static string KindName(EquipmentKind kind) => kind.ToString().ToLower();
+
+        /// <summary>A fault for this kind of equipment, picked by weight (null if none are set up).</summary>
+        public static EquipmentFaultBalance PickFault(EquipmentKind kind)
+        {
+            var faults = Balance.Data.supplier.faults;
+            if (faults == null) return null;
+            float total = 0f;
+            foreach (var f in faults) if (f != null && f.equipment == kind) total += Mathf.Max(0f, f.weight);
+            if (total <= 0f) return null;
+            float roll = GameRandom.Range(0f, total);
+            EquipmentFaultBalance last = null;
+            foreach (var f in faults)
+            {
+                if (f == null || f.equipment != kind) continue;
+                last = f;
+                roll -= Mathf.Max(0f, f.weight);
+                if (roll <= 0f) return f;
+            }
+            return last;
+        }
     }
 }

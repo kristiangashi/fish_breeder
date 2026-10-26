@@ -60,17 +60,17 @@ namespace FishBreeder.Core
 
         public static List<ResearchProjectBalance> CreateDefaults() => new List<ResearchProjectBalance>
         {
-            Make("health_checkup", "Health check-ups", "The fish window shows how much each thing adds to or takes from a fish's health.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 8, 30, 1),
-            Make("temperature", "Temperature preferences", "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.", ResearchUnlock.Temperature, MilestoneKind.KeepFish, 6, 30, 1),
-            Make("tank_mates", "Tank mate behaviour", "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.", ResearchUnlock.TankMates, MilestoneKind.DiscoverSpecies, 3, 45, 1),
-            Make("water_testing", "Water testing kit", "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.", ResearchUnlock.WaterTesting, MilestoneKind.CleanTank, 6, 45, 2, "", 25, 50),
-            Make("feeding", "Feeding study", "A fish shows it loves a food the first time it eats one of its favourites, and favourites you've seen already are written up.", ResearchUnlock.FavouriteFoods, MilestoneKind.HatchEggs, 5, 35, 2, "", 25, 50),
-            Make("breeding", "Breeding biology", "The breeding tab explains why each fish isn't ready to breed, and you learn which kinds lay eggs and which give birth.", ResearchUnlock.Breeding, MilestoneKind.BreedFish, 5, 50, 2, "", 25, 50),
-            Make("shoaling", "Shoaling behaviour", "Learn how many of its own kind each fish wants around it.", ResearchUnlock.Shoaling, MilestoneKind.GrowUp, 3, 35, 2, "", 25, 50),
-            Make("pathology", "Fish pathology", "Sick fish show how far along their illness is and which medicine cures it.", ResearchUnlock.Pathology, MilestoneKind.CureFish, 2, 60, 3, "", 30, 60),
-            Make("plants", "Plant preferences", "Learn which fish love plants in their tank.", ResearchUnlock.Plants, MilestoneKind.BuyDecoration, 3, 40, 3, "", 30, 60),
-            Make("ph", "pH preferences", "Learn the pH range every fish you've discovered likes.", ResearchUnlock.Ph, MilestoneKind.KeepFish, 15, 80, 3, "water_testing", 30, 60),
-            Make("lifespan", "Ageing study", "Learn how long each kind of fish lives before it starts to slow down.", ResearchUnlock.Lifespan, MilestoneKind.GrowUp, 8, 100, 4, "", 40, 80),
+            Make("health_checkup", "Health check-ups", "The fish window shows how much each thing adds to or takes from a fish's health.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 40, 30, 1),
+            Make("temperature", "Temperature preferences", "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.", ResearchUnlock.Temperature, MilestoneKind.KeepFish, 12, 30, 1),
+            Make("tank_mates", "Tank mate behaviour", "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.", ResearchUnlock.TankMates, MilestoneKind.DiscoverSpecies, 5, 45, 1),
+            Make("water_testing", "Water testing kit", "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.", ResearchUnlock.WaterTesting, MilestoneKind.CleanTank, 30, 45, 2, "", 25, 50),
+            Make("feeding", "Feeding study", "A fish shows it loves a food the first time it eats one of its favourites, and favourites you've seen already are written up.", ResearchUnlock.FavouriteFoods, MilestoneKind.HatchEggs, 40, 35, 2, "", 25, 50),
+            Make("breeding", "Breeding biology", "The breeding tab explains why each fish isn't ready to breed, and you learn which kinds lay eggs and which give birth.", ResearchUnlock.Breeding, MilestoneKind.BreedFish, 30, 50, 2, "", 25, 50),
+            Make("shoaling", "Shoaling behaviour", "Learn how many of its own kind each fish wants around it.", ResearchUnlock.Shoaling, MilestoneKind.GrowUp, 15, 35, 2, "", 25, 50),
+            Make("pathology", "Fish pathology", "Sick fish show how far along their illness is and which medicine cures it.", ResearchUnlock.Pathology, MilestoneKind.CureFish, 8, 60, 3, "", 30, 60),
+            Make("plants", "Plant preferences", "Learn which fish love plants in their tank.", ResearchUnlock.Plants, MilestoneKind.BuyDecoration, 12, 40, 3, "", 30, 60),
+            Make("ph", "pH preferences", "Learn the pH range every fish you've discovered likes.", ResearchUnlock.Ph, MilestoneKind.KeepFish, 30, 80, 3, "water_testing", 30, 60),
+            Make("lifespan", "Ageing study", "Learn how long each kind of fish lives before it starts to slow down.", ResearchUnlock.Lifespan, MilestoneKind.GrowUp, 50, 100, 4, "", 40, 80),
         };
     }
 
@@ -95,6 +95,8 @@ namespace FishBreeder.Core
         public float speedPerLevel = 0.2f;
         [Tooltip("Research XP each kind of fish you keep earns per time step.")]
         public int xpPerSpeciesPerStep = 2;
+        [Tooltip("Ready projects that can wait in line behind the one at the bench.")]
+        public int queueSize = 3;
         public List<ResearchProjectBalance> projects = ResearchProjectBalance.CreateDefaults();
     }
 
@@ -112,11 +114,11 @@ namespace FishBreeder.Core
         public static List<SectionBalance> CreateDefaults() => new List<SectionBalance>
         {
             new SectionBalance { name = "Main floor", price = 0 },
-            new SectionBalance { name = "East wing", price = 2500, starsNeeded = 2.8f },
-            new SectionBalance { name = "Garden room", price = 5000, starsNeeded = 3.2f },
-            new SectionBalance { name = "Coral lounge", price = 9000, starsNeeded = 3.6f },
-            new SectionBalance { name = "Lagoon hall", price = 15000, starsNeeded = 4f },
-            new SectionBalance { name = "Grand hall", price = 25000, starsNeeded = 4.4f },
+            new SectionBalance { name = "East wing", price = 2500, starsNeeded = 1.5f },
+            new SectionBalance { name = "Garden room", price = 5000, starsNeeded = 2f },
+            new SectionBalance { name = "Coral lounge", price = 9000, starsNeeded = 2.5f },
+            new SectionBalance { name = "Lagoon hall", price = 15000, starsNeeded = 3f },
+            new SectionBalance { name = "Grand hall", price = 25000, starsNeeded = 3.5f },
         };
     }
 
@@ -245,6 +247,46 @@ namespace FishBreeder.Core
         [Tooltip("Added to the chance for every time step it has been running.")]
         public float breakChancePerStep = 0.004f;
         [Range(0f, 1f)] public float maxBreakChance = 0.3f;
+        [Tooltip("What a typical repair costs ($), before the fault and a bit of luck. Better models break less but cost more to fix.")]
+        public int repairCost = 15;
+    }
+
+    /// <summary>Something that can go wrong with a filter, heater or bubbler, and how dear it is to fix.</summary>
+    [Serializable]
+    public class EquipmentFaultBalance
+    {
+        public EquipmentKind equipment;
+        [Tooltip("What broke, as the game says it (\"The circuit got wet\").")]
+        public string text;
+        [Tooltip("Repair price is the model's repair cost times this.")]
+        public float cost = 1f;
+        [Tooltip("How often this fault comes up compared with the others for the same equipment.")]
+        public float weight = 1f;
+
+        static EquipmentFaultBalance Make(EquipmentKind equipment, string text, float cost, float weight = 1f)
+            => new EquipmentFaultBalance { equipment = equipment, text = text, cost = cost, weight = weight };
+
+        public static List<EquipmentFaultBalance> CreateDefaults() => new List<EquipmentFaultBalance>
+        {
+            Make(EquipmentKind.Filter, "The sponge needed replacing", 0.6f, 1.5f),
+            Make(EquipmentKind.Filter, "Gunk jammed the impeller", 1f),
+            Make(EquipmentKind.Filter, "Snail shells clogged the intake", 0.5f),
+            Make(EquipmentKind.Filter, "The intake tube cracked", 0.8f),
+            Make(EquipmentKind.Filter, "A seal started leaking", 1.1f),
+            Make(EquipmentKind.Filter, "The motor burned out", 1.7f, 0.5f),
+            Make(EquipmentKind.Heater, "The circuit got wet", 1.4f),
+            Make(EquipmentKind.Heater, "The thermostat stuck", 1f, 1.5f),
+            Make(EquipmentKind.Heater, "The glass tube cracked", 1.2f),
+            Make(EquipmentKind.Heater, "The power cord frayed", 0.7f),
+            Make(EquipmentKind.Heater, "Loose wiring in the plug", 0.5f),
+            Make(EquipmentKind.Heater, "The heating element burned out", 1.7f, 0.5f),
+            Make(EquipmentKind.Bubbler, "The air stone clogged up", 0.5f, 1.5f),
+            Make(EquipmentKind.Bubbler, "The air line split", 0.4f),
+            Make(EquipmentKind.Bubbler, "The check valve stuck", 0.6f),
+            Make(EquipmentKind.Bubbler, "The pump diaphragm tore", 1f),
+            Make(EquipmentKind.Bubbler, "The power switch broke", 0.8f),
+            Make(EquipmentKind.Bubbler, "The motor started rattling apart", 1.4f, 0.5f),
+        };
     }
 
     /// <summary>A decoration the supplier sells. The id is the model's name in Resources/Decor.</summary>
@@ -363,35 +405,34 @@ namespace FishBreeder.Core
         [Tooltip("Share of a decoration's price you get back when you take it out of a tank.")]
         [Range(0f, 1f)] public float decorationSellBack = 0.5f;
         [Tooltip("Fishkeeping level needed for care products.")]
-        public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10, repairKitLevel = 1;
+        public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
         public List<EquipmentTierBalance> filters = new List<EquipmentTierBalance>
         {
-            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f },
-            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f },
-            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f },
-            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f },
+            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 12 },
+            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 30 },
+            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 75 },
+            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 170 },
         };
         public List<EquipmentTierBalance> heaters = new List<EquipmentTierBalance>
         {
-            new EquipmentTierBalance { name = "Basic heater", blurb = "The water drifts a little either side of the setting.", price = 120, unlockLevel = 1, effect = 1.5f, breakChance = 0.025f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f },
-            new EquipmentTierBalance { name = "Adjustable heater", blurb = "Steadier, and it lasts longer.", price = 280, unlockLevel = 6, effect = 1f, breakChance = 0.015f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f },
-            new EquipmentTierBalance { name = "Titanium heater", blurb = "Very steady, rarely breaks.", price = 650, unlockLevel = 14, effect = 0.5f, breakChance = 0.008f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f },
-            new EquipmentTierBalance { name = "Smart heater controller", blurb = "Holds the exact temperature.", price = 1500, unlockLevel = 26, effect = 0f, breakChance = 0.004f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f },
+            new EquipmentTierBalance { name = "Basic heater", blurb = "The water drifts a little either side of the setting.", price = 120, unlockLevel = 1, effect = 1.5f, breakChance = 0.025f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 15 },
+            new EquipmentTierBalance { name = "Adjustable heater", blurb = "Steadier, and it lasts longer.", price = 280, unlockLevel = 6, effect = 1f, breakChance = 0.015f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 35 },
+            new EquipmentTierBalance { name = "Titanium heater", blurb = "Very steady, rarely breaks.", price = 650, unlockLevel = 14, effect = 0.5f, breakChance = 0.008f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 85 },
+            new EquipmentTierBalance { name = "Smart heater controller", blurb = "Holds the exact temperature.", price = 1500, unlockLevel = 26, effect = 0f, breakChance = 0.004f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 200 },
         };
         public List<EquipmentTierBalance> bubblers = new List<EquipmentTierBalance>
         {
-            new EquipmentTierBalance { name = "Air stone", blurb = "Enough air for a small group.", price = 80, unlockLevel = 1, effect = 14f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f },
-            new EquipmentTierBalance { name = "Twin-outlet air pump", blurb = "Air for a busy tank.", price = 220, unlockLevel = 5, effect = 22f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f },
-            new EquipmentTierBalance { name = "Silent air pump", blurb = "Air for a crowded tank, rarely breaks.", price = 520, unlockLevel = 12, effect = 34f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f },
-            new EquipmentTierBalance { name = "Oxygen reactor", blurb = "Air for any tank.", price = 1300, unlockLevel = 24, effect = 60f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f },
+            new EquipmentTierBalance { name = "Air stone", blurb = "Enough air for a small group.", price = 80, unlockLevel = 1, effect = 14f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 8 },
+            new EquipmentTierBalance { name = "Twin-outlet air pump", blurb = "Air for a busy tank.", price = 220, unlockLevel = 5, effect = 22f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 20 },
+            new EquipmentTierBalance { name = "Silent air pump", blurb = "Air for a crowded tank, rarely breaks.", price = 520, unlockLevel = 12, effect = 34f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 55 },
+            new EquipmentTierBalance { name = "Oxygen reactor", blurb = "Air for any tank.", price = 1300, unlockLevel = 24, effect = 60f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 130 },
         };
-        [Tooltip("A pack of repair kits; one kit fixes one broken piece of equipment.")]
-        public int repairKitPrice = 30;
-        public int repairKitsPerPack = 3;
         [Tooltip("Share of the equipment's wear (age) a repair takes off. Old equipment keeps breaking more often until replaced.")]
         [Range(0f, 1f)] public float repairWearRemoved = 0.25f;
-        [Tooltip("Chance a repair doesn't use up the repair kit (0.3 = 30%).")]
-        [Range(0f, 1f)] public float repairKitSaveChance = 0.3f;
+        [Tooltip("Repair prices vary by up to this much either way (0.15 = 15%).")]
+        [Range(0f, 1f)] public float repairPriceSpread = 0.15f;
+        [Tooltip("What can go wrong with each kind of equipment, and how dear each fault is to fix.")]
+        public List<EquipmentFaultBalance> faults = EquipmentFaultBalance.CreateDefaults();
         [Tooltip("What a bought fry is worth while it's still too small to tell what it is.")]
         public int unknownFryValue = 4;
         public int waterConditionerPrice = 20;
@@ -437,9 +478,19 @@ namespace FishBreeder.Core
         [Tooltip("A shopper at a For Sale tank with fewer fish they could buy than this may complain there's not much for sale.")]
         public int fewFishBelow = 3;
         [Range(0f, 1f)] public float fewFishComplaintChance = 0.5f;
-        [Tooltip("Reputation (0..1) the shop starts with. Reviews move it up or down each day.")]
-        [Range(0f, 1f)] public float startingReputation = 0.5f;
-        public float reputationChangePerDay = 0.15f;
+        [Tooltip("Chance a shopper is put off by a tank, for each sick fish they can see in it (up to the max).")]
+        [Range(0f, 1f)] public float sickChancePerFish = 0.2f;
+        [Range(0f, 1f)] public float maxSickChance = 0.75f;
+        [Tooltip("Purchase chance is multiplied by this in a For Sale tank with any sick fish in it. Sick fish themselves never sell.")]
+        [Range(0f, 1f)] public float sickFishPurchaseMultiplier = 0.6f;
+        [Tooltip("Purchase chance is multiplied by the first number for a fish with no attractiveness and by the second for the most attractive.")]
+        public float plainFishPurchase = 0.6f, stunningFishPurchase = 1.5f;
+        [Tooltip("How strongly attractiveness steers which fish a shopper looks at (0 = all alike, 2 = the eye-catching ones get most of the looks).")]
+        public float attentionPower = 2f;
+        [Tooltip("Foot traffic from eye-catching fish in the shop-floor tanks: +this at average attractiveness 100, nothing at 50, minus below.")]
+        public float attractivenessTraffic = 0.2f;
+        [Tooltip("Reputation (0..1, a fifth of it per star) the shop starts with. Reviews move it up or down each day (Reputation tab).")]
+        [Range(0f, 1f)] public float startingReputation = 0.1f;
     }
 
     /// <summary>Everything that happens at each time step (shop opening and closing).</summary>
@@ -599,6 +650,8 @@ namespace FishBreeder.Core
         [Tooltip("A tank is 'dirty' below this water health (0..1).")]
         [Range(0f, 1f)] public float dirtyWaterBelow = 0.6f;
         [Range(0f, 1f)] public float algaeAbove = 0.45f;
+        [Tooltip("Last on the list: a tank this dirty or more (0.1 = 10% dirty, from its water health) gets a 'give it a wipe' suggestion.")]
+        [Range(0f, 1f)] public float grimyAbove = 0.1f;
         [Tooltip("Fish are 'hungry' at this hunger (0..1).")]
         [Range(0f, 1f)] public float hungryAbove = 0.35f;
     }
@@ -699,8 +752,10 @@ namespace FishBreeder.Core
         /// 3: favourite foods and new foods, no starting decorations, one wipe per tank.
         /// 4: research projects, aquarium quality gates tank sizes (not levels), smallest tank per species.
         /// 5: research points and budgets, five expansion rooms unlocked by reputation, egg hatch tables.
+        /// 6: much bigger bounties, reputation starts at half a star and climbs slowly (rooms need
+        ///    fewer stars), priced repairs with faults instead of repair kits.
         /// </summary>
-        public const int CurrentDataVersion = 5;
+        public const int CurrentDataVersion = 6;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -746,6 +801,7 @@ namespace FishBreeder.Core
                 if (parsed.reputation == null) parsed.reputation = new ReputationBalance();
                 if (parsed.reputation.complaints == null || parsed.reputation.complaints.Count == 0) parsed.reputation.complaints = ComplaintBalance.CreateDefaults();
                 if (parsed.finances == null) parsed.finances = new FinanceBalance();
+                if (parsed.supplier != null && (parsed.supplier.faults == null || parsed.supplier.faults.Count == 0)) parsed.supplier.faults = EquipmentFaultBalance.CreateDefaults();
                 if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
                 return parsed;
             }
@@ -875,7 +931,45 @@ namespace FishBreeder.Core
                 }
                 if (data.store != null) data.store.sections = SectionBalance.CreateDefaults();
             }
+            if (fromVersion < 6)
+            {
+                // Bounties ask for much more.
+                var targets = new Dictionary<string, int>();
+                foreach (var p in ResearchProjectBalance.CreateDefaults()) targets[p.id] = p.target;
+                if (data.research != null && data.research.projects != null)
+                    foreach (var p in data.research.projects)
+                        if (p != null && p.id != null && targets.TryGetValue(p.id, out var target)) p.target = target;
+                // Reputation starts at half a star and every star is harder; rooms need fewer stars.
+                if (data.shop != null) data.shop.startingReputation = new ShopBalance().startingReputation;
+                if (data.store != null && data.store.sections != null)
+                {
+                    var rooms = SectionBalance.CreateDefaults();
+                    for (int i = 0; i < data.store.sections.Count && i < rooms.Count; i++)
+                        if (data.store.sections[i] != null) data.store.sections[i].starsNeeded = rooms[i].starsNeeded;
+                }
+                // Repairs are paid for: each model gets its repair cost.
+                var fresh = new SupplierBalance();
+                if (data.supplier != null)
+                {
+                    CopyRepairCosts(data.supplier.filters, fresh.filters);
+                    CopyRepairCosts(data.supplier.heaters, fresh.heaters);
+                    CopyRepairCosts(data.supplier.bubblers, fresh.bubblers);
+                }
+                if (data.perks != null)
+                    foreach (var p in data.perks)
+                    {
+                        if (p != null && p.id == "handyman") p.text = "Repairs cost {0} less";
+                        if (p != null && p.id == "local_celebrity") p.perRank = 0.005f;
+                    }
+            }
             data.dataVersion = CurrentDataVersion;
+        }
+
+        static void CopyRepairCosts(List<EquipmentTierBalance> saved, List<EquipmentTierBalance> defaults)
+        {
+            if (saved == null || defaults == null) return;
+            for (int i = 0; i < saved.Count; i++)
+                if (saved[i] != null) saved[i].repairCost = defaults[Mathf.Min(i, defaults.Count - 1)].repairCost;
         }
 
         /// <summary>Applies new balance JSON right away (the console calls this while playing).</summary>

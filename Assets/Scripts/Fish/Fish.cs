@@ -34,6 +34,8 @@ namespace FishBreeder
         [Tooltip("Hidden: the fish's true value relative to its appraised price.")]
         [SerializeField] float valueFactor = 1f;
         [SerializeField] FishSize size = FishSize.Medium;
+        [Tooltip("Its own bit of charm (-1..1): two fish that look alike can still catch the eye differently.")]
+        [SerializeField] float charm;
 
         public string FishName => fishName;
         public int Generation => generation;
@@ -113,6 +115,7 @@ namespace FishBreeder
             valueFactor = GameRandom.Range(0.8f, 1.25f);
             float sizeRoll = GameRandom.Value;
             size = sizeRoll < 0.25f ? FishSize.Small : sizeRoll < 0.75f ? FishSize.Medium : FishSize.Large;
+            charm = GameRandom.Range(-1f, 1f);
             ParentNames = parents;
             fishName = string.IsNullOrEmpty(customName) ? FishNames.Random() : customName;
             gameObject.name = $"Fish - {fishName}";
@@ -208,6 +211,30 @@ namespace FishBreeder
             Health.OnAte(pellet, wasStarving);
             Research.OnAte(this, pellet.Type);
         }
+
+        /// <summary>
+        /// How eye-catching it is, 0..1: fancier fins, tails and patterns, a rarer kind of fish, a
+        /// bigger body, being grown up and a bit of its own charm help; poor health and illness
+        /// hurt. Attractive fish draw more people into the shop, get looked at more by shoppers
+        /// and are likelier to be bought.
+        /// </summary>
+        public float Attractiveness
+        {
+            get
+            {
+                if (IsDead) return 0f;
+                if (IdentityHidden) return 0.15f;
+                float looks = 0.35f + 0.045f * Phenotype.RarityScore + 0.04f * (int)Species.rarity;
+                looks += size == FishSize.Small ? -0.06f : size == FishSize.Large ? 0.06f : 0f;
+                looks += Stage == LifeStage.Fry ? -0.3f : Stage == LifeStage.Juvenile ? -0.1f : 0f;
+                looks += charm * 0.08f;
+                looks *= Mathf.Lerp(0.55f, 1f, Health.Current) * (Health.IsSick ? 0.7f : 1f);
+                return Mathf.Clamp(looks, 0.02f, 1f);
+            }
+        }
+
+        /// <summary>Attractiveness as a 0-100 rating.</summary>
+        public int AttractivenessRating => Mathf.RoundToInt(Attractiveness * 100f);
 
         /// <summary>Market value of a typical fish like this one: species, looks, age and health. Shown to the player.</summary>
         public int AppraisedValue
@@ -345,6 +372,22 @@ namespace FishBreeder
             Visual.ShowIllness(null, 0f);
             Visual.SetTint(new Color(0.75f, 0.75f, 0.7f));
             StartCoroutine(FloatUp());
+        }
+
+        /// <summary>
+        /// Euthanised: a sick fish is put to sleep humanely and taken out of the tank straight
+        /// away, so it can't spread its illness or rot in the water.
+        /// </summary>
+        public void PutToSleep()
+        {
+            if (IsDead) return;
+            if (IsPregnant) unborn.Clear();
+            IsDead = true;
+            CauseOfDeath = "being put to sleep";
+            Reserved = false;
+            GameLog.Add($"You gently put {fishName} the {SpeciesLabel} to sleep.");
+            if (Tank != null) Fx.Bubbles(transform.position, 4, Tank.SurfaceY, 0.02f);
+            RemoveFromTank();
         }
 
         /// <summary>Caught and eaten by a predator in its tank: gone without a trace.</summary>

@@ -28,6 +28,8 @@ namespace FishBreeder.Shop
         public List<string> reviews = new List<string>();
         /// <summary>How many shoppers complained about each thing (indexed by <see cref="Complaint"/>).</summary>
         public int[] complaints = new int[Reputation.Count];
+        /// <summary>Shoppers who left without their favourite kind of fish because none was for sale, by species id.</summary>
+        public Dictionary<string, int> wishes = new Dictionary<string, int>();
         /// <summary>What happened in the tanks: during the day for an evening report, overnight for a morning one.</summary>
         public string tanks;
         public float reputationChange;
@@ -83,9 +85,11 @@ namespace FishBreeder.Shop
             /// <summary>Extra from display tanks, other shop-floor tanks and decorations (0.15 = +15%).</summary>
             public float display, otherTanks, decorations;
             public int displayCount, otherCount, decorationCount;
+            /// <summary>Extra (or less) from how eye-catching the fish on the shop floor are, and their average attractiveness (0..1).</summary>
+            public float attractiveness, attractivenessAverage;
             /// <summary>Multipliers: reputation (stars), perks, and complaints.</summary>
             public float reputation, perks, complaints;
-            public float PerHour => baseRate * (1f + display + otherTanks + decorations) * reputation * perks * complaints;
+            public float PerHour => baseRate * Mathf.Max(0.1f, 1f + display + otherTanks + decorations + attractiveness) * reputation * perks * complaints;
         }
 
         public Traffic TrafficParts
@@ -100,7 +104,9 @@ namespace FishBreeder.Shop
                 t.display = t.displayCount * shop.trafficPerDisplayTank * Perks.More(PerkEffect.TankTraffic);
                 t.otherTanks = t.otherCount * shop.trafficPerOtherTank * Perks.More(PerkEffect.TankTraffic);
                 t.decorations = t.decorationCount * shop.trafficPerDecoration * Perks.More(PerkEffect.DecorTraffic);
-                t.reputation = Mathf.Lerp(0.5f, 1.5f, Economy.Reputation);
+                var rep = Balance.Data.reputation;
+                t.reputation = Mathf.Lerp(rep.trafficAtNoStars, rep.trafficAtFiveStars, Economy.Reputation);
+                t.attractiveness = AttractivenessTraffic(out t.attractivenessAverage);
                 t.perks = Perks.More(PerkEffect.MoreCustomers);
                 t.complaints = Reputation.TrafficMultiplier;
                 return t;
@@ -108,6 +114,22 @@ namespace FishBreeder.Shop
         }
 
         public float CustomersPerHour => TrafficParts.PerHour;
+
+        /// <summary>Foot traffic from the looks of the juveniles and adults in the shop-floor tanks (0 with none).</summary>
+        float AttractivenessTraffic(out float average)
+        {
+            float sum = 0f;
+            int count = 0;
+            foreach (var storeTank in layout.PublicTanks)
+                foreach (var fish in storeTank.Tank.Residents)
+                    if (!fish.IsDead && fish.Stage != LifeStage.Fry)
+                    {
+                        sum += fish.Attractiveness;
+                        count++;
+                    }
+            average = count > 0 ? sum / count : 0f;
+            return count > 0 ? (average - 0.5f) * 2f * Balance.Data.shop.attractivenessTraffic : 0f;
+        }
 
         float SpawnInterval => 3600f / Mathf.Max(1f, CustomersPerHour);
 
@@ -199,6 +221,7 @@ namespace FishBreeder.Shop
                 var profile = ShopperProfile.Random();
                 int visits = GameRandom.Range(shop.minTankVisits, shop.maxTankVisits + 1) + Perks.Count(PerkEffect.ExtraTankVisits);
                 var tanks = layout.PublicTanks;
+                bool bought = false;
                 for (int v = 0; v < visits && tanks.Count > 0; v++)
                 {
                     var reaction = ShopperBrain.Evaluate(profile, tanks[GameRandom.Range(0, tanks.Count)]);
@@ -206,9 +229,11 @@ namespace FishBreeder.Shop
                     if (reaction.purchase != null)
                     {
                         Sell(reaction.purchase, layout.RegisterPoint);
+                        bought = true;
                         break;
                     }
                 }
+                RecordWish(profile, bought);
             }
             Close();
         }
@@ -247,6 +272,22 @@ namespace FishBreeder.Shop
                     today.visitors++;
                 }
             }
+        }
+
+        /// <summary>
+        /// A shopper is leaving. If they bought nothing and their favourite kind of fish wasn't for
+        /// sale anywhere, they wish it had been (it may turn up in a review).
+        /// </summary>
+        public void RecordWish(ShopperProfile profile, bool bought)
+        {
+            if (today == null || bought || profile == null || string.IsNullOrEmpty(profile.favoriteSpecies)) return;
+            foreach (var storeTank in layout.PublicTanks)
+            {
+                if (storeTank.Role != TankRole.ForSale) continue;
+                foreach (var fish in storeTank.Tank.Residents)
+                    if (!fish.IsDead && fish.Price > 0 && fish.Stage != LifeStage.Fry && !fish.IdentityHidden && fish.Species.id == profile.favoriteSpecies) return;
+            }
+            today.wishes[profile.favoriteSpecies] = (today.wishes.TryGetValue(profile.favoriteSpecies, out var n) ? n : 0) + 1;
         }
 
         /// <summary>A shopper's reaction to a tank: their mood, and anything they'll complain about.</summary>
@@ -325,18 +366,35 @@ namespace FishBreeder.Shop
             yield return new WaitForSeconds(0.3f);
         }
 
+        /// <summary>
+        /// How much a day moves reputation. A day has to be better than the neutral score to help
+        /// at all, and gains get smaller the better known the shop is, so every star is harder than
+        /// the last; a bad day costs more than a good day earns. Quiet days count for less.
+        /// </summary>
+        public static float ReputationChange(float score, int visitors)
+        {
+            var rep = Balance.Data.reputation;
+            float neutral = Mathf.Clamp(rep.neutralScore, 0.05f, 0.95f);
+            float weight = rep.fullDayVisitors > 0 ? Mathf.Clamp01(visitors / (float)rep.fullDayVisitors) : 1f;
+            float change;
+            if (score >= neutral)
+                change = (score - neutral) / (1f - neutral) * rep.gainPerDay * Mathf.Pow(Mathf.Clamp01(1f - Economy.Reputation), Mathf.Max(0f, rep.gainFalloff)) * Perks.More(PerkEffect.ReputationGain);
+            else
+                change = -(neutral - score) / neutral * rep.lossPerDay * Perks.Less(PerkEffect.ReputationShield);
+            return change * weight;
+        }
+
         void FinishReport(DayReport report)
         {
-            var shop = Balance.Data.shop;
             int good = report.happy + report.fishSold * 2;
             int bad = report.grossed + report.sad + report.mad;
             float score = good + bad == 0 ? 0.5f : good / (float)(good + bad);
             report.stars = Mathf.Round(Mathf.Lerp(1f, 5f, score) * 2f) / 2f;
-            report.reputationChange = (score - 0.5f) * 2f * shop.reputationChangePerDay;
-            report.reputationChange *= report.reputationChange > 0f ? Perks.More(PerkEffect.ReputationGain) : Perks.Less(PerkEffect.ReputationShield);
+            // A day nobody reacted to either way leaves reputation where it was.
+            report.reputationChange = good + bad == 0 ? 0f : ReputationChange(score, report.visitors);
             Economy.ChangeReputation(report.reputationChange);
 
-            report.reviews = Reputation.Write(report.visitors, report.fishSold, report.happy, report.complaints);
+            report.reviews = Reputation.Write(report.visitors, report.fishSold, report.happy, report.complaints, report.wishes);
             Reputation.EndOfDay(report.visitors, report.complaints, report.stars, report.reviews, report.day);
         }
     }

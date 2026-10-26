@@ -78,6 +78,8 @@ namespace FishBreeder
         float yaw, pitch, yawVelocity, pitchVelocity;
         bool headingInitialised;
         FoodPellet targetFood;
+        /// <summary>The piece of food it's swimming after, if any.</summary>
+        public FoodPellet TargetFood => targetFood;
         FishSchool school;
 
         // A short burst: a predator bolting at prey, or prey darting away.

@@ -145,9 +145,10 @@ const ENUMS = {
     "SupplierDiscount", "PriceTolerance", "SaleTips", "BiggerAllowance", "PurchaseChance", "Interest",
     "BuildDiscount", "DecorDiscount", "MoreShopTanks", "TankTraffic", "DecorTraffic", "UpgradeDiscount", "BiggerCrowds",
     "MoreCustomers", "ReputationGain", "ReputationShield", "GrossTolerance", "DeadFishTolerance", "ExtraTankVisits", "DailyReputation",
-    "Bookkeeping",
+    "Bookkeeping", "StockBook",
   ],
   complaint: ["DeadFish", "DirtyWater", "SickFish", "HighPrices", "FewFish", "Fighting"],
+  equipment: ["Filter", "Heater", "Bubbler"],
 };
 
 // Friendly labels and help text. Anything missing gets a label made from its name.
@@ -181,7 +182,6 @@ const META = {
   gestationSteps: ["Pregnancy length (time steps)", "Livebearers: half days from getting pregnant to giving birth."],
   eggHatchSteps: ["Eggs hatch after (time steps)", "Egg-layers: half days from laying to hatching."],
   eatsAlgae: ["Eats algae", "Grazes algae down at every time step."],
-  weight: ["Relative chance", "How often this is the disease that strikes."],
   progressionPerStep: ["Worsens per step", "Severity gained each time step (0..1)."],
   lethality: ["Lethality", "Share of the illness health weight taken at full severity."],
   recoveryChancePerStep: ["Heals on its own (chance per step)", ""],
@@ -280,13 +280,34 @@ const META = {
   healthChangePerStep: ["Health change per step", "How far health moves toward its target at each time step."],
   favouriteFoodNutrition: ["Favourite food nutrition (x)", ""], favouriteFoodComfort: ["Favourite food comfort", "Comfort bonus for a step after eating a favourite."],
   // Repairs
-  repairKitPrice: ["Repair kit pack price ($)", ""], repairKitsPerPack: ["Kits per pack", ""],
   repairWearRemoved: ["Wear removed by a repair", "0.25 = a repair takes off a quarter of the wear, so old kit keeps breaking more."],
-  repairKitLevel: ["Level for repair kits", "Fishkeeping level."], xpRepairEquipment: ["XP per repair", "Fishkeeping XP."],
-  repairKitSaveChance: ["Chance a kit survives", "Chance a repair doesn't use up the repair kit (0.3 = 30%)."],
+  xpRepairEquipment: ["XP per repair", "Fishkeeping XP."],
+  repairCost: ["Repair cost ($)", "A typical repair for this model, before the fault's multiplier and a bit of luck. Better models break less but cost more to fix."],
+  repairPriceSpread: ["Repair price spread", "Repair prices vary by up to this much either way (0.15 = 15%)."],
+  faults: ["Faults", "What can go wrong with each kind of equipment."],
+  cost: ["Cost (x)", "Repair price = the model's repair cost × this."],
+  weight: ["Relative chance", "How often this one comes up compared with the others: the disease that strikes, the fault when equipment of that kind breaks, the fish in an egg box."],
+  // Phase D: shoppers, attractiveness, reputation, research queue, to-do
+  sickChancePerFish: ["Put off per sick fish (chance)", "Chance a shopper is put off by a tank for each sick fish they can see in it, up to the max."],
+  maxSickChance: ["Most put off by sick fish", ""],
+  sickFishPurchaseMultiplier: ["Buying with sick fish (x)", "Purchase chance multiplier in a For Sale tank with any sick fish. Sick fish themselves never sell."],
+  plainFishPurchase: ["Purchase x at attractiveness 0", "Purchase chance multiplier for the plainest fish."],
+  stunningFishPurchase: ["Purchase x at attractiveness 100", "Purchase chance multiplier for the most eye-catching fish."],
+  attentionPower: ["Attention power", "How strongly attractiveness steers which fish a shopper looks at: 0 = all alike, 2 = the eye-catching ones get most of the looks."],
+  attractivenessTraffic: ["Traffic from attractive fish", "Foot traffic bonus when the shop-floor fish average 100 attractiveness (nothing at 50, a penalty below)."],
+  startingReputation: ["Starting reputation", "0..1, a fifth per star: 0.1 = half a star."],
+  gainPerDay: ["Reputation gain per perfect day", "Near zero stars. Reputation runs 0..1, so 0.02 is a tenth of a star."],
+  gainFalloff: ["Gain falloff", "Gains shrink as the shop gets better known: gain × (1 - reputation)^this. Higher = later stars are much harder."],
+  lossPerDay: ["Reputation loss per terrible day", ""],
+  neutralScore: ["Neutral day score", "Share of good reactions (happy shoppers, sales count twice) a day needs before reputation goes up. Below it goes down."],
+  fullDayVisitors: ["Full day visitors", "A day with fewer visitors moves reputation less, in proportion."],
+  trafficAtNoStars: ["Traffic at 0 stars (x)", ""], trafficAtFiveStars: ["Traffic at 5 stars (x)", ""],
+  wishesPerDay: ["Wishes in reviews", "How many \"Wish they had more ...\" lines (the most wanted kinds nobody could buy) a day's reviews carry."],
+  queueSize: ["Research queue", "Ready projects that can wait in line behind the one at the bench."],
+  grimyAbove: ["Wipe suggestion above (dirt)", "Last item on the evening list: tanks at least this dirty (0.1 = 10%) get a wipe suggestion."],
   tree: ["Tree", "Aquariums, Biology and Breeding spend Fishkeeping points; Finances, Construction and Public Relations spend Shopkeeping points."],
   tier: ["Tier", "1 is open from the start. Each later tier opens once enough points (Points per tier) are spent in the tiers above it in the same tree."],
-  text: ["Text", "What the perk does. {0} is replaced by its value at the current rank."],
+  text: ["Text", "What the perk does ({0} is replaced by its value at the current rank), or for a fault, what broke."],
   maxRank: ["Max rank", "How many points the perk can take."],
   perRank: ["Per rank", "Added to the effect for each rank. For percentages, 0.05 = 5%."],
   percent: ["Percent", "Show the value as a percentage."],
@@ -297,7 +318,7 @@ const META = {
   maxInterestPerNight: ["Most interest per night ($)", "Cap on what the Savings account perk pays each night."],
 };
 
-const REPAIR_SUPPLIER = ["repairKitPrice", "repairKitsPerPack", "repairWearRemoved", "repairKitLevel", "repairKitSaveChance"];
+const REPAIR_SUPPLIER = ["repairWearRemoved", "repairPriceSpread"];
 const FOOD_NAMES = ["Flakes", "Premium pellets", "Algae wafers", "Frozen bloodworms", "Frozen brine shrimp"];
 
 const TABS = [
@@ -439,12 +460,16 @@ async function save() {
 
 // ---------------------------------------------------------------- inputs
 
+// A filter, heater or bubbler's "effect" is a number, not the perk effect list.
+const enumFor = (obj, key) => (key === "effect" && obj && "breakChance" in obj ? null : ENUMS[key]);
+
 function input(obj, key, onChange) {
   const value = obj[key];
   const changed = (v) => { obj[key] = v; markDirty(); if (onChange) onChange(); };
-  if (ENUMS[key]) {
+  const options = enumFor(obj, key);
+  if (options) {
     const select = el("select", { onchange: (e) => changed(parseInt(e.target.value, 10)) },
-      ENUMS[key].map((name, i) => el("option", { value: i }, name)));
+      options.map((name, i) => el("option", { value: i }, name)));
     select.value = value;
     return select;
   }
@@ -735,14 +760,14 @@ function renderDiseases() {
 }
 
 const SECTION_HINTS = {
-  shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank and decoration) × reputation × perks × complaints (Reputation tab).",
+  shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank and decoration + attractive fish) × reputation × perks × complaints (Reputation tab). Each fish has an attractiveness (looks, kind, size, age, health and a bit of charm): shoppers look at eye-catching fish more and buy them more readily. Sick fish put shoppers off and never sell.",
   timeStep: "What happens at each time step: once when the shop opens and once when it closes (a day with the shop kept shut runs both). Nothing changes while you work in the closed shop.",
   health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step. Below: what tank mate relationships do, and how medicine works (it goes into the whole tank).",
   store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
   stock: "Egg and fry boxes, decorations, tank sizes and aquarium quality. Which fish each box hatches, and how likely, is on the Egg hatching tab (the pool and rare chance settings here only build a hatch table that's empty). Decorations bring customers (Shop tab) but too many speed up algae. A tank's quality comes from its equipment and decorations; reaching a size's quality lets it be upgraded.",
   progression: "Two tracks, each up to the max level. XP to reach level n+1 = XP for level 2 × growth^(n-1). Daily goals: one per track each day; the target grows per level and finishing it gives the goal XP. Closing notifications are at the bottom.",
-  equipment: "Filters, heaters and bubblers, and repairs. Equipment breaks at a time step with its break chance, which grows by the extra chance for every step of wear, up to the highest break chance. A repair kit fixes a broken piece and takes off some of its wear. 'Expected life' is how long a new piece runs on average before its first breakdown (2 time steps a day).",
-  research: "Research (R in game): each project posts a bounty once the Research level allows. Doing the bounty lets the player start the project at the research bench (one at a time; switching keeps a project's points). Like Civilization, the bench earns points every night: (points per night + daily budget × points per budget dollar) × research speed. The budget is paid each night. Finished projects make the game show more: health numbers, ranges, tank mate details, pH and so on.",
+  equipment: "Filters, heaters and bubblers, and repairs. Equipment breaks at a time step with its break chance, which grows by the extra chance for every step of wear, up to the highest break chance. A broken piece gets a fault (Faults table) and is fixed for a price: its repair cost × the fault's cost; the repair takes off some of its wear. 'Expected life' is how long a new piece runs on average before its first breakdown (2 time steps a day).",
+  research: "Research (R in game): each project posts a bounty once the Research level allows. Doing the bounty lets the player start the project at the research bench (one at a time; switching keeps a project's points). Like Civilization, the bench earns points every night: (points per night + daily budget × points per budget dollar) × research speed. The budget is paid each night, never while the bench is empty. Up to Research queue more projects wait in line and start by themselves. Bounty targets (Target column) are how many times the player must do the thing. Finished projects make the game show more: health numbers, ranges, tank mate details, pH and so on.",
   reputation: "Reputation (Y in game) and finances (F). Every complaint a shopper makes is counted; at closing, the share of visitors who made it joins a fading memory (Complaint memory), and that share × Penalty per share, up to Most it takes off, comes off foot traffic or the chance of a sale. Rooms are on the Store & supplier tab (Stars needed). The finances screen opens up in parts, set below.",
   rules: "General rules: feeding and disease from meals, water basics, breeding.",
 };
@@ -755,7 +780,7 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Medicine"), objectForm(data.medicine)));
   } else if (key === "store") {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, ["tankSizes"])));
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers", ...REPAIR_SUPPLIER])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers", "faults", ...REPAIR_SUPPLIER])));
   } else if (key === "stock") {
     cards.push(el("div", { class: "card" }, listTable("Egg and fry boxes", data.supplier.eggTiers)));
     cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
@@ -770,10 +795,42 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, listTable("Filters", data.supplier.filters, life)));
     cards.push(el("div", { class: "card" }, listTable("Heaters", data.supplier.heaters, life)));
     cards.push(el("div", { class: "card" }, listTable("Bubblers", data.supplier.bubblers, life)));
+    if (!data.supplier.faults) data.supplier.faults = [];
+    const priceOf = (f) => {
+      const tiers = [data.supplier.filters, data.supplier.heaters, data.supplier.bubblers][f.equipment] || [];
+      return tiers.map((t) => "$" + Math.round((t.repairCost || 0) * f.cost)).join(" / ");
+    };
+    if (data.supplier.faults.length) cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, "When equipment breaks, one of its faults is picked by weight. The repair price is the model's repair cost × the fault's cost, give or take the price spread. Repairs cost less with the Handyman perk."), listTable("Faults", data.supplier.faults, [["Price by model", priceOf]])));
   } else if (key === "reputation") {
     if (!data.reputation) data.reputation = { memory: 0.6, reviewsKept: 12, complaints: [] };
     if (!data.finances) data.finances = { spendingLevel: 2, incomeAfterSales: 1, historyLevel: 3, historyDays: 7, perTankAfterEarning: 1000 };
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Reputation"), objectForm(data.reputation, ["complaints"])));
+    // How long each star takes at a steady quality of day, from the settings above.
+    const climb = el("div");
+    const drawClimb = () => {
+      const r = data.reputation;
+      const daysTo = (score) => {
+        const n = Math.min(0.95, Math.max(0.05, r.neutralScore ?? 0.6));
+        if (score <= n) return null;
+        let rep = data.shop.startingReputation ?? 0.1, day = 0;
+        const out = [];
+        for (let star = Math.floor(rep * 5) + 1; star <= 5 && day < 5000; star++) {
+          while (rep < star / 5 && day < 5000) { rep += (score - n) / (1 - n) * (r.gainPerDay ?? 0.02) * Math.pow(Math.max(0, 1 - rep), r.gainFalloff ?? 1.5); day++; }
+          out.push(day < 5000 ? day : "never");
+        }
+        return out;
+      };
+      const rows = [0.7, 0.8, 0.9, 1].map((score) => {
+        const days = daysTo(score);
+        return el("tr", {}, el("td", {}, `${Math.round(score * 100)}% good reactions`), ...(days || []).map((d) => el("td", {}, String(d))));
+      });
+      const first = Math.floor((data.shop.startingReputation ?? 0.1) * 5) + 1;
+      const heads = [];
+      for (let star = first; star <= 5; star++) heads.push(el("th", {}, `${star}★`));
+      climb.replaceChildren(el("p", { class: "hint" }, "Days open (with a full day's visitors) to reach each star from the starting reputation, if every day goes this well. Perks and bad days not counted."),
+        el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "Every day"), ...heads)), el("tbody", {}, ...rows)));
+    };
+    drawClimb();
+    cards.push(el("div", { class: "card", oninput: drawClimb }, el("h2", {}, "Reputation"), objectForm(data.reputation, ["complaints"]), el("h2", { style: "margin-top:14px" }, "How fast stars come"), climb));
     if (data.reputation.complaints.length) cards.push(el("div", { class: "card" }, listTable("Complaints", data.reputation.complaints, [["At 10% of shoppers", (c) => `-${Math.round(Math.min(c.maxPenalty, 0.1 * c.perShare) * 100)}% ${c.sales ? "sales" : "traffic"}`]])));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Finances screen"), el("p", { class: "hint" }, "The daily summary is always shown; these open the rest. Best-selling fish come with the Bookkeeper perk."), objectForm(data.finances)));
   } else if (key === "research") {
@@ -1070,11 +1127,11 @@ function simulate(setup, B, seed) {
     const sizes = store.tankSizes || [];
     const size = sizes[Math.min(cfg.size, sizes.length - 1)] || { capacity: 24, decorationSlots: 12 };
     const capacity = Math.max(1, Math.round(size.capacity));
-    const eq = (list, tier) => (tier >= 0 && list && list[tier] ? { info: list[tier], wear: 0, broken: false } : null);
+    const eq = (list, tier, kind) => (tier >= 0 && list && list[tier] ? { info: list[tier], kind, wear: 0, broken: false } : null);
     const t = {
       cfg, index, capacity, hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
       wq: 1, algae: 0, temp: rules.roomTemperature, ph: cfg.salt ? 8.1 : rules.startingPh, salinity: cfg.salt ? 35 : 0, pests: false,
-      filter: eq(sup.filters, cfg.filter), heater: eq(sup.heaters, cfg.heater), bubbler: eq(sup.bubblers, cfg.bubbler),
+      filter: eq(sup.filters, cfg.filter, 0), heater: eq(sup.heaters, cfg.heater, 1), bubbler: eq(sup.bubblers, cfg.bubbler, 2),
       residents: [], corpses: 0, clutches: [], wipesLeft: wipesPerSession, decor: Math.max(0, Math.min(cfg.decorations, size.decorationSlots || 99)),
     };
     for (const row of cfg.fish) {
@@ -1312,16 +1369,24 @@ function simulate(setup, B, seed) {
     t.wq = clamp01(t.wq - pellets * rules.waterQualityLossPerRottenPellet);
   };
 
+  // A breakdown picks one of that equipment's faults by weight; the repair costs the model's repair cost × the fault's cost, give or take the spread.
+  const repairPrice = (item) => {
+    const faults = (sup.faults || []).filter((f) => f.equipment === item.kind && f.weight > 0);
+    let pickCost = 1;
+    if (faults.length) {
+      let roll = rnd() * faults.reduce((n, f) => n + f.weight, 0);
+      for (const f of faults) { roll -= f.weight; if (roll <= 0) { pickCost = f.cost; break; } }
+    }
+    const spread = clamp01(sup.repairPriceSpread || 0);
+    return Math.max(1, Math.round((item.info.repairCost || 15) * pickCost * range(1 - spread, 1 + spread)));
+  };
+
   const routine = (t) => {
     const cfg = t.cfg;
     if (cfg.removeDead) t.corpses = 0;
     if (cfg.repair) for (const item of [t.filter, t.heater, t.bubbler]) {
       if (!item || !item.broken) continue;
-      if (stock.kits <= 0) {
-        if (!spend(sup.repairKitPrice, "repair kits", "repairs")) continue;
-        stock.kits += Math.max(1, sup.repairKitsPerPack);
-      }
-      stock.kits--;
+      if (!spend(item.repairCost || item.info.repairCost || 15, "repairs", "repairs")) continue;
       item.broken = false;
       item.wear *= 1 - clamp01(sup.repairWearRemoved);
       if (item === t.heater) t.temp = t.heaterSetting;
@@ -1403,7 +1468,7 @@ function simulate(setup, B, seed) {
         if (!item || item.broken) continue;
         item.wear += 1;
         const info = item.info;
-        if (chance(clamp01(Math.min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * item.wear)))) { item.broken = true; out.breakdowns++; }
+        if (chance(clamp01(Math.min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * item.wear)))) { item.broken = true; item.repairCost = repairPrice(item); out.breakdowns++; }
       }
       if (t.heater && !t.heater.broken) t.temp = Math.round((t.heaterSetting + range(-t.heater.info.effect, t.heater.info.effect)) * 10) / 10;
       else t.temp = rules.roomTemperature;
@@ -1692,7 +1757,7 @@ function renderSimResults(r) {
   const causeRows = Object.entries(r.causes).sort((a, b) => b[1] - a[1]).map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, fmt1(v))));
   const money = [
     ["Starting fish", r.cost.fish], ["Tanks and upgrades", r.cost.tanks], ["Equipment", r.cost.equipment], ["Food", r.cost.food],
-    ["Medicine", r.cost.medicine], ["Water conditioner", r.cost.conditioner], ["Repair kits", r.cost.repairs],
+    ["Medicine", r.cost.medicine], ["Water conditioner", r.cost.conditioner], ["Repairs", r.cost.repairs],
   ].filter(([, v]) => v > 0);
   const moneyRows = [
     ...money.map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, `-${money$(v)}`))),

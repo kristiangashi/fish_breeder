@@ -141,6 +141,7 @@ namespace FishBreeder.Shop
                 watching = null;
             }
 
+            day.RecordWish(profile, purchase != null);
             if (purchase != null) yield return BuyAtRegister();
             yield return Leave();
         }

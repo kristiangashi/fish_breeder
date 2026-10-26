@@ -69,7 +69,8 @@ namespace FishBreeder.Store
 #endif
             if (GUILayout.Button("Close (Y / Esc)", GUILayout.Width(120f))) Close();
             GUILayout.EndHorizontal();
-            GUILayout.Label("<size=12>Every day's reviews move your stars up or down. More stars bring more people in and open bigger rooms. What shoppers complain about is remembered for a few days, and costs you visitors or sales until it fades.</size>", Rich());
+            var rep = Balance.Data.reputation;
+            GUILayout.Label($"<size=12>Stars are slow to earn. A day open goes up only when more than {rep.neutralScore * 100f:0}% of shoppers' reactions are good (a sale counts twice), and each star is harder than the last; a bad day costs about twice what a good day earns. More stars bring more people in and open bigger rooms. What shoppers complain about is remembered for a few days, and costs you visitors or sales until it fades.</size>", Rich());
             GUILayout.Space(4f);
 
             float column = (w - UiStyles.Window.padding.horizontal - 16f) * 0.5f;
@@ -78,6 +79,7 @@ namespace FishBreeder.Store
             leftScroll = UiCheck.BeginScroll("Reputation: effects and reviews", leftScroll);
             DrawTraffic();
             DrawComplaints();
+            DrawWishes();
             DrawReviews();
             UiCheck.EndScroll();
             GUILayout.EndVertical();
@@ -109,6 +111,7 @@ namespace FishBreeder.Store
             Effect($"{t.displayCount} display tank{(t.displayCount == 1 ? "" : "s")}", t.display);
             Effect($"{t.otherCount} other tank{(t.otherCount == 1 ? "" : "s")} on the shop floor", t.otherTanks);
             Effect($"{t.decorationCount} decoration{(t.decorationCount == 1 ? "" : "s")} in those tanks", t.decorations);
+            if (t.attractivenessAverage > 0f) Effect($"How eye-catching the fish are (average {t.attractivenessAverage * 100f:0}/100)", t.attractiveness);
             Effect($"{StoreLayout.Stars:0.0} star reputation", t.reputation - 1f);
             if (t.perks > 1.001f) Effect("Perks", t.perks - 1f);
             if (t.complaints < 0.999f) Effect("Complaints (below)", t.complaints - 1f);
@@ -149,6 +152,22 @@ namespace FishBreeder.Store
                 case Complaint.HighPrices: return "Lower prices nearer what fish are worth.";
                 case Complaint.FewFish: return "Keep more juveniles and adults priced for sale.";
                 default: return "Separate fish that don't get on.";
+            }
+        }
+
+        /// <summary>What shoppers came for yesterday and couldn't find.</summary>
+        static void DrawWishes()
+        {
+            var wishes = Reputation.LatestWishes;
+            if (wishes.Count == 0) return;
+            GUILayout.Space(8f);
+            Heading("WHAT SHOPPERS WANTED");
+            GUILayout.Label("<size=11>Shoppers who left with nothing because their favourite kind wasn't for sale, on the last day open.</size>", Rich());
+            for (int i = 0; i < wishes.Count && i < 5; i++)
+            {
+                var species = Genetics.Species.Find(wishes[i].Key);
+                if (species == null) continue;
+                GUILayout.Label($"• {species.displayName}: <b>{wishes[i].Value}</b> shopper{(wishes[i].Value == 1 ? "" : "s")}", Rich());
             }
         }
 

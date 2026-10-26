@@ -8,8 +8,8 @@ namespace FishBreeder.Shop
     /// <summary>One problem waiting after closing: a tank (and maybe a fish) that needs seeing to.</summary>
     public class ToDo
     {
-        /// <summary>In the order the list goes through them: feeding first, then sickness, then cleanliness, then repairs.</summary>
-        public enum Kind { HungryFish, SickFish, DeadFish, DirtyWater, BrokenEquipment }
+        /// <summary>In the order the list goes through them: feeding first, then sickness, then cleanliness, then repairs, then tanks that could do with a wipe.</summary>
+        public enum Kind { HungryFish, SickFish, DeadFish, DirtyWater, BrokenEquipment, GrimyTank }
 
         public Kind kind;
         public StoreTank tank;
@@ -34,6 +34,7 @@ namespace FishBreeder.Shop
                         bool doneAllYouCan = t.WipesLeft == 0 && (!t.HasPests || Economy.WaterConditionerDoses == 0);
                         return clean || doneAllYouCan;
                     case Kind.BrokenEquipment: return t.BrokenEquipment.Count == 0;
+                    case Kind.GrimyTank: return 1f - t.WaterHealth <= settings.grimyAbove || t.WipesLeft == 0;
                     default: return t.FedSinceTimeStep || t.Residents.Count == 0;
                 }
             }
@@ -42,7 +43,8 @@ namespace FishBreeder.Shop
 
     /// <summary>
     /// The list of problems to sort through after closing the shop: always feeding first, then sick
-    /// fish, then cleanliness (dead fish, dirty water), then broken equipment; tank by tank within
+    /// fish, then cleanliness (dead fish, dirty water), then broken equipment, and last any tank
+    /// more than a little dirty (10% by default) that could use a wipe; tank by tank within
     /// each. The store view takes the player to each one in turn and moves on by itself once it's
     /// dealt with.
     /// </summary>
@@ -116,7 +118,19 @@ namespace FishBreeder.Shop
                 var names = new List<string>();
                 foreach (var item in broken) names.Add(item.Name.ToLower());
                 Add(ToDo.Kind.BrokenEquipment, storeTank, null, $"The {string.Join(" and ", names)} in {storeTank.Title} broke down.",
-                    "Repair it on the left with a repair kit (buy kits at the supplier computer), or replace it.");
+                    "Repair it on the left (the price depends on what went wrong), or replace it.");
+            }
+
+            // Last of all: tanks that aren't dirty enough to bother anyone yet, but could do with a wipe.
+            foreach (var storeTank in tanks)
+            {
+                var tank = storeTank.Tank;
+                float dirt = 1f - tank.WaterHealth;
+                if (dirt <= settings.grimyAbove || tank.WipesLeft == 0) continue;
+                bool listed = false;
+                foreach (var item in items) if (item.kind == ToDo.Kind.DirtyWater && item.tank == storeTank) listed = true;
+                if (!listed)
+                    Add(ToDo.Kind.GrimyTank, storeTank, null, $"{storeTank.Title} is {dirt * 100f:0}% dirty.", "Give it a wipe before it gets worse and customers notice.");
             }
             return items.Count;
         }

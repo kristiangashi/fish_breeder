@@ -20,6 +20,8 @@ namespace FishBreeder.Shop
         public static string Run(IReadOnlyList<StoreTank> tanks)
         {
             var balance = Balance.Data.timeStep;
+            // Food still falling when time moves on gets eaten (or rots) in the time we don't see.
+            Feeding.FoodPellet.SettleAll();
             int hatched = EggClutch.AdvanceAll();
             var mothers = new List<Fish>();
             foreach (var storeTank in tanks) mothers.AddRange(storeTank.Tank.Residents);

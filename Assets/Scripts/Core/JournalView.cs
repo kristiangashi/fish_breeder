@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using FishBreeder.Feeding;
 using FishBreeder.Genetics;
+using FishBreeder.Shop;
+using FishBreeder.Store;
 using UnityEngine;
 
 namespace FishBreeder.Core
@@ -274,6 +276,8 @@ namespace FishBreeder.Core
         {
             GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
             pageScroll = UiCheck.BeginScroll("Journal: research notes", pageScroll);
+            DrawPrices(species);
+            GUILayout.Space(8f);
             GUILayout.Label("RESEARCH NOTES", UiTheme.Heading);
             GUILayout.Label("<size=11>Research projects (R) teach you more about every fish you've discovered.</size>", Rich());
 
@@ -346,6 +350,81 @@ namespace FishBreeder.Core
 
             UiCheck.EndScroll();
             GUILayout.EndVertical();
+        }
+
+        // ------------------------------------------------------------ prices
+
+        /// <summary>Percent of the appraised price that "Price them all" sets.</summary>
+        static int markup = 100;
+        static ShopDay shopDay;
+
+        static bool ShopOpen
+        {
+            get
+            {
+                if (shopDay == null) shopDay = FindAnyObjectByType<ShopDay>();
+                return shopDay != null && shopDay.IsOpen;
+            }
+        }
+
+        /// <summary>
+        /// What this kind of fish is worth, and every one you own with its appraised value. Fish in
+        /// a For Sale tank can be priced from here, one by one or all at once.
+        /// </summary>
+        void DrawPrices(Species species)
+        {
+            GUILayout.Label("PRICES", UiTheme.Heading);
+            int adult = CrossBreeding.BaseValue(species, species, species);
+            GUILayout.Label($"<size=12>A healthy one with plain looks is appraised at <b>{Economy.Format(adult)}</b> grown up, about {Economy.Format(Mathf.Max(1, Mathf.RoundToInt(adult * 0.6f)))} as a juvenile and {Economy.Format(Mathf.Max(1, Mathf.RoundToInt(adult * 0.3f)))} as fry. Uncommon to exotic looks are worth 1.5x to 4x; poor health brings it down.</size>", Rich());
+
+            var owned = new List<KeyValuePair<Fish, StoreTank>>();
+            foreach (var storeTank in FindObjectsByType<StoreTank>(FindObjectsSortMode.None))
+                if (storeTank.Tank != null)
+                    foreach (var fish in storeTank.Tank.Residents)
+                        if (!fish.IsDead && !fish.IdentityHidden && fish.Species == species) owned.Add(new KeyValuePair<Fish, StoreTank>(fish, storeTank));
+            if (owned.Count == 0) return;
+            owned.Sort((a, b) => b.Key.AppraisedValue.CompareTo(a.Key.AppraisedValue));
+
+            bool locked = ShopOpen;
+            int forSale = 0;
+            foreach (var pair in owned) if (pair.Value.Role == TankRole.ForSale && pair.Key.Stage != LifeStage.Fry) forSale++;
+            GUI.enabled = !locked;
+            if (forSale > 0)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"<size=12>Price all {forSale} for sale at</size>", Rich(), GUILayout.ExpandWidth(false));
+                if (GUILayout.Button("-", GUILayout.Width(26f))) markup = Mathf.Max(10, markup - 10);
+                GUILayout.Label($"<b>{markup}%</b>", Rich(), GUILayout.Width(44f));
+                if (GUILayout.Button("+", GUILayout.Width(26f))) markup = Mathf.Min(300, markup + 10);
+                GUILayout.Label("<size=12>of appraised</size>", Rich(), GUILayout.ExpandWidth(false));
+                if (GUILayout.Button("Apply", GUILayout.Width(64f)))
+                    foreach (var pair in owned)
+                        if (pair.Value.Role == TankRole.ForSale && pair.Key.Stage != LifeStage.Fry)
+                            pair.Key.Price = Mathf.Max(1, Mathf.RoundToInt(pair.Key.AppraisedValue * markup / 100f));
+                GUILayout.FlexibleSpace();
+                GUILayout.EndHorizontal();
+            }
+            if (locked) GUILayout.Label("<size=11><i>Prices are set while the shop is closed.</i></size>", Rich());
+
+            foreach (var pair in owned)
+            {
+                var fish = pair.Key;
+                bool sellable = pair.Value.Role == TankRole.ForSale && fish.Stage != LifeStage.Fry;
+                GUILayout.BeginHorizontal(UiTheme.Card);
+                GUILayout.Label($"<b>{fish.FishName}</b>\n<size=11>{pair.Value.Title} · {fish.Stage.ToString().ToLower()}{(fish.Health.IsSick ? " · <color=#ff8080>sick</color>" : "")}</size>", Rich(), GUILayout.Width(170f));
+                GUILayout.Label($"<size=11>appraised</size>\n<b>{Economy.Format(fish.AppraisedValue)}</b>", Rich(), GUILayout.Width(74f));
+                if (sellable)
+                {
+                    string color = fish.Price <= 0 ? UiTheme.CoralHex : fish.Price > fish.AppraisedValue * 1.3f ? UiTheme.SunHex : "#ffffff";
+                    GUILayout.Label($"<size=11>price</size>\n<b><color={color}>{(fish.Price > 0 ? Economy.Format(fish.Price) : "none")}</color></b>", Rich(), GUILayout.Width(64f));
+                    if (GUILayout.Button("-5", GUILayout.Width(34f))) fish.Price = Mathf.Max(1, fish.Price - 5);
+                    if (GUILayout.Button("+5", GUILayout.Width(34f))) fish.Price += 5;
+                    if (GUILayout.Button("Appraised", GUILayout.Width(84f))) fish.Price = fish.AppraisedValue;
+                }
+                else GUILayout.Label(fish.Stage == LifeStage.Fry ? "<size=11><i>Too young to sell.</i></size>" : "<size=11><i>Not in a For Sale tank.</i></size>", Rich());
+                GUILayout.EndHorizontal();
+            }
+            GUI.enabled = true;
         }
 
         static void Unknown(Species species, ResearchFact fact) => GUILayout.Label("<color=#8fb3bd>???</color>", Rich());

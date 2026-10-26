@@ -26,6 +26,7 @@ namespace FishBreeder.Feeding
         public float Contamination { get; private set; }
         public bool IsSpoiled { get; private set; }
         public bool IsConsumed { get; private set; }
+        public Tank Tank => tank;
 
         public void Initialize(Tank tank, FoodType type)
         {
@@ -81,6 +82,38 @@ namespace FishBreeder.Feeding
             IsConsumed = true;
             Destroy(gameObject);
             return true;
+        }
+
+        /// <summary>
+        /// Time is about to pass while food is still in the water. What we didn't get to watch is
+        /// filled in: each piece goes to a hungry fish in its tank (the one already chasing it
+        /// first, otherwise the nearest), and pieces no fish wants rot on the floor.
+        /// </summary>
+        public static void SettleAll()
+        {
+            foreach (var pellet in new List<FoodPellet>(active))
+            {
+                if (pellet == null || pellet.IsConsumed || pellet.tank == null) continue;
+                Fish eater = null;
+                float best = float.MaxValue;
+                foreach (var fish in pellet.tank.Residents)
+                {
+                    if (fish == null || fish.IsDead || !fish.WantsFood) continue;
+                    float distance = fish.Swimmer != null && fish.Swimmer.TargetFood == pellet ? -1f
+                        : (fish.transform.position - pellet.transform.position).sqrMagnitude;
+                    if (distance < best)
+                    {
+                        best = distance;
+                        eater = fish;
+                    }
+                }
+                if (eater != null) eater.Eat(pellet);
+                else
+                {
+                    pellet.tank.Pollute(GameConfig.Active.waterQualityLossPerRottenPellet);
+                    pellet.TryConsume();
+                }
+            }
         }
 
         /// <summary>Nearest uneaten pellet within <paramref name="maxDistance"/> and no higher than <paramref name="maxHeight"/>.</summary>

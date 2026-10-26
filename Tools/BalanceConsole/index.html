@@ -68,6 +68,13 @@
   .crumbs { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
   .foods { display: flex; flex-wrap: wrap; gap: 4px 14px; }
   td.readout { color: var(--muted); white-space: nowrap; }
+  table.sortable th.sorthead { cursor: pointer; user-select: none; }
+  table.sortable th.sorthead:hover { color: var(--ink); }
+  table.sortable th.sorthead::after { content: " ↕"; opacity: .35; }
+  table.sortable th.sorthead.asc::after { content: " ▲"; opacity: .9; }
+  table.sortable th.sorthead.desc::after { content: " ▼"; opacity: .9; }
+  td.pct { font-variant-numeric: tabular-nums; }
+  tr.off td { opacity: .5; }
   .pin { border: none; background: none; padding: 0 2px; font-size: 13px; line-height: 1; color: var(--muted); opacity: .45; cursor: pointer; }
   .pin:hover { opacity: 1; color: var(--accent); }
   .pin.on { opacity: 1; color: #d4a017; }
@@ -138,7 +145,9 @@ const ENUMS = {
     "SupplierDiscount", "PriceTolerance", "SaleTips", "BiggerAllowance", "PurchaseChance", "Interest",
     "BuildDiscount", "DecorDiscount", "MoreShopTanks", "TankTraffic", "DecorTraffic", "UpgradeDiscount", "BiggerCrowds",
     "MoreCustomers", "ReputationGain", "ReputationShield", "GrossTolerance", "DeadFishTolerance", "ExtraTankVisits", "DailyReputation",
+    "Bookkeeping",
   ],
+  complaint: ["DeadFish", "DirtyWater", "SickFish", "HighPrices", "FewFish", "Fighting"],
 };
 
 // Friendly labels and help text. Anything missing gets a label made from its name.
@@ -217,14 +226,35 @@ const META = {
   sinkSpeed: ["Sink speed (m/s)", "Flakes float a while; wafers drop to the bottom-feeders."],
   color: ["Colour", ""],
   // Research
-  speedPerLevel: ["Speed per level", "Research speed = 1 + this x (Research level - 1). The bench gets through this many time steps of research per time step."],
+  speedPerLevel: ["Speed per level", "Research speed = 1 + this x (Research level - 1). Every night's research points are multiplied by it."],
   xpPerSpeciesPerStep: ["Research XP per kept species per step", "Every kind of fish you keep earns this much Research XP each time step."],
   projects: ["Research projects", ""],
   name: ["Name", ""],
   teaches: ["Teaches", "What finishing it teaches, shown to the player."],
   unlock: ["Shows", "What the game starts showing once it's done."],
   bounty: ["Bounty", "What the player has to do before the research can start. KeepFish, DiscoverSpecies and FishkeepingLevel count what you have at once; the rest count from when the bounty is posted."],
-  steps: ["Research steps", "Time steps at the bench at speed 1 (two time steps a day)."],
+  points: ["Research points", "Points the project needs once started. The bench earns points every night."],
+  basePointsPerDay: ["Points per night", "Research points the bench earns every night with no money put in."],
+  pointsPerDollar: ["Points per budget dollar", "Extra points a night for every dollar of the player's daily research budget (paid each night while a project is at the bench)."],
+  maxDailyBudget: ["Highest daily budget ($)", ""],
+  budgetStep: ["Budget step ($)", "How much the +/- buttons change the budget."],
+  starsNeeded: ["Stars needed", "Reputation (0 to 5 stars) the shop needs before this room can be bought. Rooms open in order."],
+  fightingUpsetChance: ["Upset by fighting (chance)", "Chance a shopper is upset (and complains) when fish are fighting in a tank they look at: a grown predator with its prey, or fish that don't get on in a crowded tank."],
+  fightingPurchaseMultiplier: ["Buying with fighting fish (x)", "Purchase chance multiplier in a For Sale tank where fish are fighting."],
+  fewFishBelow: ["Few fish below", "A shopper at a For Sale tank with fewer fish they could buy than this may complain there's not much for sale."],
+  fewFishComplaintChance: ["Few fish complaint chance", ""],
+  memory: ["Complaint memory", "Share of yesterday's complaints still remembered today. 0.6 means a bad day fades over three or four days."],
+  reviewsKept: ["Reviews kept", "Reviews listed on the reputation screen."],
+  complaint: ["Complaint", ""],
+  label: ["Label", "What the reputation screen calls it."],
+  sales: ["Hurts sales", "Ticked: lowers the chance shoppers buy. Unticked: lowers foot traffic."],
+  perShare: ["Penalty per share", "Penalty for each share of visitors complaining: 1 means 10% of shoppers complaining takes off 10%."],
+  maxPenalty: ["Most it takes off", ""],
+  spendingLevel: ["Spending by category at", "Shopkeeping level."],
+  incomeAfterSales: ["Income by category after", "Fish sold in total."],
+  historyLevel: ["Day-by-day history at", "Shopkeeping level."],
+  historyDays: ["History days", ""],
+  perTankAfterEarning: ["Earnings per tank after ($)", "Money earned from sales in total."],
   level: ["Research level", "Research level needed before the bounty is posted."],
   requires: ["Needs project", "Id of a project that has to be finished first (empty for none)."],
   xpBounty: ["XP for the bounty", "Research XP."], xpResearch: ["XP for finishing", "Research XP."],
@@ -283,6 +313,8 @@ const TABS = [
   ["stock", "Eggs, decor & tanks"],
   ["equipment", "Equipment & repairs"],
   ["research", "Research"],
+  ["eggs", "Egg hatching"],
+  ["reputation", "Reputation & finances"],
   ["progression", "Levels & XP"],
   ["perks", "Perks"],
   ["sim", "Simulator"],
@@ -487,7 +519,7 @@ function listField(obj, key) {
 
 /** A list of objects as an editable table; extra columns are [heading, item => text] read-outs. */
 function listTable(title, list, extra = []) {
-  const keys = Object.keys(list[0]);
+  const keys = Object.keys(list[0]).filter((k) => !Array.isArray(list[0][k]));
   const wrap = el("div", { class: "scroll" });
   const body = el("tbody");
   const draw = () => {
@@ -703,14 +735,15 @@ function renderDiseases() {
 }
 
 const SECTION_HINTS = {
-  shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank) × reputation.",
+  shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank and decoration) × reputation × perks × complaints (Reputation tab).",
   timeStep: "What happens at each time step: once when the shop opens and once when it closes (a day with the shop kept shut runs both). Nothing changes while you work in the closed shop.",
   health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step. Below: what tank mate relationships do, and how medicine works (it goes into the whole tank).",
   store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
-  stock: "Egg and fry boxes, decorations, tank sizes and aquarium quality. Each egg in a box is rare with the rare chance, multiplied by the falloff for every rare egg already in that box (boxes only hold fish that fit the tank they're for). Decorations bring customers (Shop tab) but too many speed up algae. A tank's quality comes from its equipment and decorations; reaching a size's quality lets it be upgraded.",
+  stock: "Egg and fry boxes, decorations, tank sizes and aquarium quality. Which fish each box hatches, and how likely, is on the Egg hatching tab (the pool and rare chance settings here only build a hatch table that's empty). Decorations bring customers (Shop tab) but too many speed up algae. A tank's quality comes from its equipment and decorations; reaching a size's quality lets it be upgraded.",
   progression: "Two tracks, each up to the max level. XP to reach level n+1 = XP for level 2 × growth^(n-1). Daily goals: one per track each day; the target grows per level and finishing it gives the goal XP. Closing notifications are at the bottom.",
   equipment: "Filters, heaters and bubblers, and repairs. Equipment breaks at a time step with its break chance, which grows by the extra chance for every step of wear, up to the highest break chance. A repair kit fixes a broken piece and takes off some of its wear. 'Expected life' is how long a new piece runs on average before its first breakdown (2 time steps a day).",
-  research: "Research (R in game): each project posts a bounty once the Research level allows. Doing the bounty lets the player start the project at the research bench (one at a time), which then takes its research steps divided by the research speed. Finished projects make the game show more: health numbers, ranges, tank mate details, pH and so on.",
+  research: "Research (R in game): each project posts a bounty once the Research level allows. Doing the bounty lets the player start the project at the research bench (one at a time; switching keeps a project's points). Like Civilization, the bench earns points every night: (points per night + daily budget × points per budget dollar) × research speed. The budget is paid each night. Finished projects make the game show more: health numbers, ranges, tank mate details, pH and so on.",
+  reputation: "Reputation (Y in game) and finances (F). Every complaint a shopper makes is counted; at closing, the share of visitors who made it joins a fading memory (Complaint memory), and that share × Penalty per share, up to Most it takes off, comes off foot traffic or the chance of a sale. Rooms are on the Store & supplier tab (Stars needed). The finances screen opens up in parts, set below.",
   rules: "General rules: feeding and disease from meals, water basics, breeding.",
 };
 
@@ -737,6 +770,12 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, listTable("Filters", data.supplier.filters, life)));
     cards.push(el("div", { class: "card" }, listTable("Heaters", data.supplier.heaters, life)));
     cards.push(el("div", { class: "card" }, listTable("Bubblers", data.supplier.bubblers, life)));
+  } else if (key === "reputation") {
+    if (!data.reputation) data.reputation = { memory: 0.6, reviewsKept: 12, complaints: [] };
+    if (!data.finances) data.finances = { spendingLevel: 2, incomeAfterSales: 1, historyLevel: 3, historyDays: 7, perTankAfterEarning: 1000 };
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Reputation"), objectForm(data.reputation, ["complaints"])));
+    if (data.reputation.complaints.length) cards.push(el("div", { class: "card" }, listTable("Complaints", data.reputation.complaints, [["At 10% of shoppers", (c) => `-${Math.round(Math.min(c.maxPenalty, 0.1 * c.perShare) * 100)}% ${c.sales ? "sales" : "traffic"}`]])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Finances screen"), el("p", { class: "hint" }, "The daily summary is always shown; these open the rest. Best-selling fish come with the Bookkeeper perk."), objectForm(data.finances)));
   } else if (key === "research") {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Research"), objectForm(data.research || {})));
   } else if (key === "progression") {
@@ -1688,10 +1727,10 @@ function renderSimResults(r) {
       el("div", { class: "card" }, el("h2", {}, "Fish by species (average per run)"), el("div", { class: "scroll" }, el("table", {},
         el("thead", {}, el("tr", {}, ["Species", "Started", "Born", "Died", "Eaten", "Sold", "Alive at end"].map((h) => el("th", {}, h)))),
         el("tbody", {}, speciesRows)))),
-      el("div", { class: "card" }, el("h2", {}, "Money (average per run)"), el("table", {}, el("tbody", {}, moneyRows)))),
+      el("div", { class: "card" }, el("h2", {}, "Money (average per run)"), el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "What"), el("th", {}, "Amount"))), el("tbody", {}, moneyRows)))),
     el("div", { class: "split2" },
       el("div", { class: "card" }, el("h2", {}, "Causes of death (average per run)"),
-        causeRows.length ? el("table", {}, el("tbody", {}, causeRows)) : el("p", { class: "hint" }, "No fish died.")),
+        causeRows.length ? el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "Cause"), el("th", {}, "Fish"))), el("tbody", {}, causeRows)) : el("p", { class: "hint" }, "No fish died.")),
       el("div", { class: "card" }, el("h2", {}, "Diary of the first run"),
         el("div", { class: "diary" }, r.diary.length ? r.diary.map((line) => el("div", {}, line)) : "Nothing happened worth noting."))),
   ];
@@ -1819,6 +1858,209 @@ function renderRaw() {
     } }, "Apply")))];
 }
 
+// ---------------------------------------------------------------- egg hatching
+
+let eggTier = 0;
+const eggCheck = { level: 1, day: 30 };
+
+/** The game's rule for filling an empty hatch table from a tier's rarity settings (see EggTierBalance.FillHatchTables). */
+function fillHatch(tier) {
+  const falloff = Math.max(0.001, tier.normalRarityFalloff);
+  const normals = data.species.filter((s) => s.rarity >= tier.normalMin && s.rarity <= tier.normalMax);
+  const rares = data.species.filter((s) => !(s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) && s.rarity === tier.rarePool);
+  const total = normals.reduce((n, s) => n + Math.pow(falloff, s.rarity - tier.normalMin), 0);
+  tier.hatch = [];
+  for (const s of data.species) {
+    let w = 0;
+    if (normals.includes(s) && total > 0) w = (1 - tier.rareChance) * Math.pow(falloff, s.rarity - tier.normalMin) / total;
+    else if (rares.includes(s)) w = tier.rareChance / rares.length;
+    if (w > 0) tier.hatch.push({ species: s.id, weight: Math.round(w * 1000) / 10, fromLevel: s.unlockLevel, fromDay: 0 });
+  }
+}
+
+/** Chance each species hatches from one egg (the first in a box) at the check level and day. */
+function hatchOdds(tier, eggsOnly) {
+  const rows = (tier.hatch || []).filter((h) => {
+    const s = speciesById(h.species);
+    return s && h.weight > 0 && h.fromLevel <= eggCheck.level && h.fromDay <= eggCheck.day && (!eggsOnly || s.reproduction === 0);
+  });
+  const total = rows.reduce((n, h) => n + h.weight, 0);
+  const odds = {};
+  for (const h of rows) odds[h.species] = total > 0 ? h.weight / total : 0;
+  return odds;
+}
+
+const pct = (p) => (p === undefined ? "–" : p < 0.001 ? "<0.1%" : `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`);
+
+function renderEggs() {
+  const tiers = data.supplier.eggTiers;
+  eggTier = Math.min(eggTier, tiers.length - 1);
+  tiers.forEach((t) => { if (!t.hatch || !t.hatch.length) fillHatch(t); });
+  const tier = tiers[eggTier];
+
+  const check = el("div", { class: "row" },
+    el("label", { class: "field", title: "Fishkeeping level the odds below are worked out for." }, el("span", {}, "Check odds at Fishkeeping level"),
+      el("input", { type: "number", value: eggCheck.level, oninput: (e) => { eggCheck.level = parseInt(e.target.value, 10) || 1; refresh(); } })),
+    el("label", { class: "field", title: "Game day the odds below are worked out for." }, el("span", {}, "on day"),
+      el("input", { type: "number", value: eggCheck.day, oninput: (e) => { eggCheck.day = parseInt(e.target.value, 10) || 1; refresh(); } })));
+
+  // Overview: every species against every tier, as the chance one egg (or fry) is that fish.
+  const overviewBody = el("tbody");
+  const drawOverview = () => {
+    const eggOdds = tiers.map((t) => hatchOdds(t, true));
+    const fryOdds = tiers.map((t) => hatchOdds(t, false));
+    overviewBody.replaceChildren(...data.species.map((s) => el("tr", {},
+      el("td", {}, s.displayName), el("td", {}, ENUMS.rarity[s.rarity]), el("td", {}, s.reproduction === 0 ? "Eggs" : "Fry only"),
+      tiers.map((t, i) => el("td", { class: "pct readout", title: `${t.name}: eggs ${pct(eggOdds[i][s.id])}, fry boxes ${pct(fryOdds[i][s.id])}` },
+        `${pct(eggOdds[i][s.id])} / ${pct(fryOdds[i][s.id])}`)))));
+  };
+  const overview = el("div", { class: "card" },
+    el("h2", {}, "Which box hatches what"),
+    el("p", { class: "hint" }, "The chance one egg / one fry from each box is that fish, at the level and day above (before any rare fish in the box: each rare one makes the next less likely by the tier's rare falloff). Livebearers only come in fry boxes. Boxes also only hold fish that fit the tank they're bought for."),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "Rarity"), el("th", {}, "Comes as"), tiers.map((t) => el("th", {}, t.name)))),
+      overviewBody)));
+
+  // Editor for one tier: every species, with its weight and when it can turn up.
+  const tierButtons = el("div", { class: "list", style: "flex-direction:row;flex-wrap:wrap;display:flex;gap:6px" }, tiers.map((t, i) =>
+    el("button", { class: i === eggTier ? "active" : "", onclick: () => { eggTier = i; render(); } }, t.name)));
+  const editBody = el("tbody");
+  const entry = (s) => tier.hatch.find((h) => h.species === s.id);
+  const readouts = [];
+  // Rows are built once, so typing keeps its place; only the percentages update.
+  editBody.replaceChildren(...data.species.map((s) => {
+    const h = entry(s) || { species: s.id, weight: 0, fromLevel: s.unlockLevel, fromDay: 0 };
+    const num = (key, step) => el("input", { type: "number", step, value: h[key], oninput: (e) => {
+      const n = parseFloat(e.target.value);
+      if (isNaN(n)) return;
+      h[key] = key === "weight" ? Math.max(0, n) : Math.round(n);
+      if (!entry(s)) tier.hatch.push(h);
+      markDirty();
+      refresh();
+    } });
+    const rare = s.rarity >= tier.rarePool;
+    const egg = el("td", { class: "pct readout" }), fry = el("td", { class: "pct readout" });
+    const row = el("tr", {},
+      el("td", {}, s.displayName), el("td", {}, ENUMS.rarity[s.rarity] + (rare ? " (rare)" : "")),
+      el("td", {}, num("weight", "0.1")), el("td", {}, num("fromLevel", "1")), el("td", {}, num("fromDay", "1")), egg, fry);
+    readouts.push({ s, h: () => entry(s), row, egg, fry });
+    return row;
+  }));
+  const refresh = () => {
+    drawOverview();
+    const eggOdds = hatchOdds(tier, true), fryOdds = hatchOdds(tier, false);
+    for (const r of readouts) {
+      const h = r.h();
+      r.row.classList.toggle("off", !h || h.weight <= 0);
+      r.egg.textContent = r.s.reproduction === 0 ? pct(eggOdds[r.s.id]) : "fry only";
+      r.fry.textContent = pct(fryOdds[r.s.id]);
+    }
+  };
+  refresh();
+  const editor = el("div", { class: "card" },
+    el("h2", {}, "Edit a box"),
+    tierButtons,
+    el("p", { class: "hint", style: "margin-top:8px" }, `${tier.name}: ${tier.eggs} per box, $${tier.price} as eggs, $${tier.fryPrice} as fry, from Fishkeeping level ${tier.unlockLevel}. Chance is relative: a fish with chance 20 is twice as likely as one with 10. 0 means never. Fish of ${ENUMS.rarity[tier.rarePool]} rarity or rarer count as rare in this box (rare falloff ${tier.rareFalloff}). The percentages are for the level and day above.`),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "Rarity"), el("th", { title: "Relative chance against the other fish this box can hatch right now." }, "Chance"),
+        el("th", { title: "Fishkeeping level from which it can hatch." }, "From level"), el("th", { title: "Game day from which it can hatch (0 = from the start)." }, "From day"),
+        el("th", {}, "Per egg"), el("th", {}, "Per fry"))),
+      editBody)),
+    el("div", { class: "row", style: "margin-top:8px" },
+      el("button", { class: "small", title: "Throw this box's table away and build it again from its pool and rare chance settings (Eggs, decor & tanks tab).", onclick: () => {
+        if (!confirm(`Rebuild the ${tier.name} table from its rarity settings?`)) return;
+        fillHatch(tier); markDirty(); render();
+      } }, "Rebuild from rarity settings")));
+  return [el("p", { class: "hint" }, "Which fish come in each egg and fry box, how likely each one is, and from when (Fishkeeping level and game day). Edits apply to the game when you Save."), el("div", { class: "card" }, check), overview, editor];
+}
+
+// ---------------------------------------------------------------- sorting
+
+// Every table (except the relationship and cross-breeding grids) sorts by a click on a column
+// heading; click again to flip it. The order is remembered per tab and table while the page is
+// open, and kept when a table is redrawn. Rows that start with a heading cell (group titles,
+// totals) stay where they are and the rows between them sort on their own.
+const sortState = {};
+let sorting = false;
+
+function cellValue(td) {
+  if (!td) return "";
+  const control = td.querySelector("select, input");
+  if (control) {
+    if (control.tagName === "SELECT") return (control.options[control.selectedIndex] || { text: "" }).text.toLowerCase();
+    if (control.type === "checkbox") return control.checked ? 1 : 0;
+    if (control.type === "number") { const n = parseFloat(control.value); return isNaN(n) ? -Infinity : n; }
+    return control.value.toLowerCase();
+  }
+  const text = td.textContent.trim();
+  const cleaned = text.replace(/[$,%+\s]|days?|sales|traffic/g, "").replace(/^−/, "-");
+  const n = parseFloat(cleaned);
+  return !isNaN(n) && /^-?[\d.]+$/.test(cleaned) ? n : text.toLowerCase();
+}
+
+function compareValues(a, b) {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  if (typeof a === "number") return -1;
+  if (typeof b === "number") return 1;
+  return String(a).localeCompare(String(b), undefined, { numeric: true });
+}
+
+function applySort(table) {
+  const state = sortState[table._sortKey];
+  const heads = table._sortHeads || [];
+  heads.forEach((th, i) => th.classList.toggle("asc", !!state && state.col === i && state.dir > 0));
+  heads.forEach((th, i) => th.classList.toggle("desc", !!state && state.col === i && state.dir < 0));
+  const body = table.tBodies[0];
+  if (!state || !body) return;
+  const ordered = [];
+  let group = [];
+  const flush = () => {
+    group.sort((a, b) => compareValues(cellValue(a.cells[state.col]), cellValue(b.cells[state.col])) * state.dir);
+    ordered.push(...group);
+    group = [];
+  };
+  for (const row of [...body.rows]) {
+    if (row.cells[0] && row.cells[0].tagName === "TH") { flush(); ordered.push(row); }
+    else group.push(row);
+  }
+  flush();
+  sorting = true;
+  ordered.forEach((row) => body.appendChild(row));
+  sorting = false;
+}
+
+function makeSortable(root) {
+  root.querySelectorAll("table").forEach((table, index) => {
+    if (table._sortKey || table.classList.contains("matrix") || !table.tHead || !table.tBodies[0]) return;
+    const row = table.tHead.rows[table.tHead.rows.length - 1];
+    const heads = [...row.cells];
+    table._sortKey = `${tab}#${index}:${heads.map((th) => th.textContent).join("|")}`;
+    table._sortHeads = heads;
+    table.classList.add("sortable");
+    heads.forEach((th, col) => {
+      if (!th.textContent.trim()) return;
+      th.classList.add("sorthead");
+      th.addEventListener("click", () => {
+        const old = sortState[table._sortKey];
+        sortState[table._sortKey] = { col, dir: old && old.col === col ? -old.dir : 1 };
+        applySort(table);
+      });
+    });
+    applySort(table);
+  });
+}
+
+// Tables drawn later (simulator results) become sortable too, and a redrawn table body
+// (a row added or removed) keeps its order. Typing in a cell never moves rows.
+new MutationObserver((mutations) => {
+  if (sorting) return;
+  makeSortable($("#view"));
+  const redrawn = new Set();
+  for (const m of mutations)
+    if (m.target.tagName === "TBODY" && m.target.parentNode && m.target.parentNode._sortKey) redrawn.add(m.target.parentNode);
+  redrawn.forEach(applySort);
+}).observe($("#view"), { childList: true, subtree: true });
+
 function render() {
   indexPaths();
   $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
@@ -1838,9 +2080,11 @@ function render() {
     case "raw": content = renderRaw(); break;
     case "pinned": content = renderPinned(); break;
     case "sim": content = renderSim(); break;
+    case "eggs": content = renderEggs(); break;
     default: content = renderSection(tab);
   }
   $("#view").replaceChildren(...content);
+  makeSortable($("#view"));
 }
 
 $("#save").onclick = save;

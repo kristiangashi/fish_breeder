@@ -104,6 +104,15 @@ namespace FishBreeder.Genetics
             return all.Count > 0 ? all[0] : null;
         }
 
+        /// <summary>The species with this id, or null.</summary>
+        public static Species Find(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            foreach (var species in All)
+                if (species.id == id) return species;
+            return null;
+        }
+
         public override string ToString() => displayName;
 
         static Species Make(string id, string name, string scientific, string family, FishCategory category, SpeciesRarity rarity, int value, int fryPrice,

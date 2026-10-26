@@ -114,7 +114,7 @@ namespace FishBreeder
             var phenotype = Owner.Phenotype;
             var species = phenotype.species;
             bool bottomDweller = species.style == SwimStyle.Bottom;
-            float bodyLength = Owner.BodyLength;
+            float bodyLength = Owner.VisualLength;
             float speedScale = species.speed
                                * Mathf.Lerp(0.8f, 1.2f, phenotype.swimSpeed)
                                * Owner.Health.SwimSpeedMultiplier

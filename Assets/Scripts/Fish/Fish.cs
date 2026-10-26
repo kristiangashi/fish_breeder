@@ -17,6 +17,9 @@ namespace FishBreeder
     /// (shop opening and closing) and when fed. Dead fish stay in the tank, floating at the top,
     /// until the player removes them.
     /// </summary>
+    /// <summary>How big a fish is for its species. Only for looks.</summary>
+    public enum FishSize { Small, Medium, Large }
+
     [RequireComponent(typeof(FishHealth), typeof(FishSwimmer), typeof(FishVisual))]
     public class Fish : MonoBehaviour
     {
@@ -30,6 +33,7 @@ namespace FishBreeder
         [SerializeField] int price;
         [Tooltip("Hidden: the fish's true value relative to its appraised price.")]
         [SerializeField] float valueFactor = 1f;
+        [SerializeField] FishSize size = FishSize.Medium;
 
         public string FishName => fishName;
         public int Generation => generation;
@@ -51,8 +55,16 @@ namespace FishBreeder
         /// <summary>The species name, or "mystery fry" while that can't be told yet.</summary>
         public string SpeciesLabel => IdentityHidden ? "mystery fry" : Phenotype.SpeciesName;
 
-        /// <summary>Length in the water right now (fry are about 3 cm whatever they grow into), for who can eat whom.</summary>
-        public float BodyLength => Stage == LifeStage.Fry ? FishVisual.FryLength * transform.localScale.x : Phenotype.lengthMeters * transform.localScale.x;
+        /// <summary>Length in the water right now (fry are about 3 cm whatever they grow into), for who can eat whom. Its size (small, medium, large) is only for looks, so it doesn't count here.</summary>
+        public float BodyLength => (Stage == LifeStage.Fry ? FishVisual.FryLength : Phenotype.lengthMeters) * GrowthScale;
+
+        /// <summary>How long it looks, size included: for swimming room.</summary>
+        public float VisualLength => BodyLength * SizeScale;
+
+        /// <summary>Small, medium or large for its species, rolled at birth. Only for looks.</summary>
+        public FishSize Size => size;
+        public float SizeScale => size == FishSize.Small ? 0.85f : size == FishSize.Large ? 1.18f : 1f;
+        float GrowthScale => Mathf.Lerp(0.5f, 1f, growth);
         public bool IsDead { get; private set; }
         public string CauseOfDeath { get; private set; }
         public bool IsStarving => hunger >= GameConfig.Active.starvingThreshold;
@@ -99,6 +111,8 @@ namespace FishBreeder
             hunger = GameRandom.Range(0f, 0.2f);
             sex = GameRandom.Chance(0.5f) ? Sex.Male : Sex.Female;
             valueFactor = GameRandom.Range(0.8f, 1.25f);
+            float sizeRoll = GameRandom.Value;
+            size = sizeRoll < 0.25f ? FishSize.Small : sizeRoll < 0.75f ? FishSize.Medium : FishSize.Large;
             ParentNames = parents;
             fishName = string.IsNullOrEmpty(customName) ? FishNames.Random() : customName;
             gameObject.name = $"Fish - {fishName}";
@@ -154,6 +168,9 @@ namespace FishBreeder
             if (Tank != null) Fx.Bubbles(transform.position, 5, Tank.SurfaceY, 0.03f);
         }
 
+        /// <summary>Developer: picks the fish's sex (for making breeding pairs).</summary>
+        public void DevSetSex(Sex value) => sex = value;
+
         /// <summary>Developer shortcut: makes the fish an adult right away (for testing looks and breeding).</summary>
         public void DevGrowUp()
         {
@@ -170,7 +187,7 @@ namespace FishBreeder
 
         void ApplyGrowthScale()
         {
-            transform.localScale = Vector3.one * Mathf.Lerp(0.5f, 1f, growth);
+            transform.localScale = Vector3.one * (GrowthScale * SizeScale);
         }
 
         public void Eat(FoodPellet pellet)

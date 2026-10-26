@@ -7,10 +7,12 @@ namespace FishBreeder.Store
 {
     /// <summary>
     /// The supplier's egg and fry boxes. A box holds a few eggs (egg-laying fish only) or fry (any
-    /// fish) of mixed species. Each egg comes from the
-    /// tier's normal pool, or from its rare pool with a chance that is multiplied by the tier's
-    /// falloff for every rare egg already rolled, so each extra rare fish in a box is harder to get
-    /// than the one before. Only species unlocked at the player's Fishkeeping level can hatch.
+    /// fish) of mixed species. Each tier has a hatch table (set in the balance console's Eggs tab):
+    /// every fish it can hatch, with a relative chance and the Fishkeeping level and day from which
+    /// it can turn up. Each egg picks from the fish available right now by those chances; fish of
+    /// the tier's rare rarity or rarer get less likely for every rare one already in the box
+    /// (the tier's rare falloff), so each extra rare fish in a box is harder to get than the one
+    /// before. The seller only packs fish that will live in the tank the box is for.
     /// </summary>
     public static class EggBoxes
     {
@@ -23,65 +25,94 @@ namespace FishBreeder.Store
             return name.EndsWith(" eggs") ? name.Substring(0, name.Length - 5) + " fry" : name + " (fry)";
         }
 
+        /// <summary>The day used for "from day" in hatch tables (dev mode opens everything).</summary>
+        static int Today => DevMode.On ? int.MaxValue : Economy.Day;
+
+        public static bool IsRare(EggTierBalance tier, Species species) => species.rarity >= tier.rarePool;
+
+        /// <summary>One fish a box can hatch right now, with its chance weight.</summary>
+        public struct Entry
+        {
+            public Species species;
+            public float weight;
+            public bool rare;
+        }
+
+        /// <summary>
+        /// What a box of this tier can hatch at this level and day: egg-layers only for egg boxes,
+        /// and only fish that will live in a tank of <paramref name="tankSize"/>.
+        /// </summary>
+        public static List<Entry> Available(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
+        {
+            var list = new List<Entry>();
+            if (tier.hatch == null) return list;
+            int day = Today;
+            foreach (var row in tier.hatch)
+            {
+                if (row == null || row.weight <= 0f || row.fromLevel > fishkeepingLevel || row.fromDay > day) continue;
+                var species = Species.Find(row.species);
+                if (species == null || species.minTankSize > tankSize || (eggLayersOnly && species.reproduction != Reproduction.EggLayer)) continue;
+                list.Add(new Entry { species = species, weight = row.weight, rare = IsRare(tier, species) });
+            }
+            return list;
+        }
+
+        /// <summary>The species in <see cref="Available"/>, the rare ones or the others.</summary>
+        public static List<Species> Pool(EggTierBalance tier, bool rare, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
+        {
+            var pool = new List<Species>();
+            foreach (var entry in Available(tier, fishkeepingLevel, eggLayersOnly, tankSize))
+                if (entry.rare == rare) pool.Add(entry.species);
+            return pool;
+        }
+
         /// <summary>The fish in one box, only of kinds that will live in a tank of <paramref name="tankSize"/>.</summary>
         public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
         {
-            var normal = Pool(tier.normalMin, tier.normalMax, fishkeepingLevel, eggLayersOnly, tankSize);
-            var rare = Pool(tier.rarePool, tier.rarePool, fishkeepingLevel, eggLayersOnly, tankSize);
+            var entries = Available(tier, fishkeepingLevel, eggLayersOnly, tankSize);
             var eggs = new List<Genome>();
+            if (entries.Count == 0) return eggs;
             int rares = 0;
             for (int i = 0; i < tier.eggs; i++)
             {
-                float chance = tier.rareChance * Mathf.Pow(tier.rareFalloff, rares);
-                Species species;
-                if (rare.Count > 0 && (normal.Count == 0 || GameRandom.Chance(chance)))
+                float rareFactor = Mathf.Pow(Mathf.Clamp01(tier.rareFalloff), rares);
+                float total = 0f;
+                foreach (var e in entries) total += e.weight * (e.rare ? rareFactor : 1f);
+                if (total <= 0f) break;
+                float roll = GameRandom.Range(0f, total);
+                var pick = entries[entries.Count - 1];
+                foreach (var e in entries)
                 {
-                    species = rare[GameRandom.Range(0, rare.Count)];
-                    rares++;
+                    roll -= e.weight * (e.rare ? rareFactor : 1f);
+                    if (roll <= 0f) { pick = e; break; }
                 }
-                else species = PickWeighted(normal, tier.normalMin, tier.normalRarityFalloff);
-                if (species == null && normal.Count == 0 && rare.Count == 0) break;
-                if (species == null) species = Species.Get(null);
-                eggs.Add(Genome.CreateRandom(species));
+                if (pick.rare) rares++;
+                eggs.Add(Genome.CreateRandom(pick.species));
             }
             return eggs;
         }
 
-        /// <summary>
-        /// Species of these rarities that can come in a box at this level (only egg-layers for egg
-        /// boxes), for a tank of this size: the seller won't put fish in a tank too small for them.
-        /// </summary>
-        public static List<Species> Pool(SpeciesRarity min, SpeciesRarity max, int fishkeepingLevel, bool eggLayersOnly = false, int tankSize = int.MaxValue)
+        /// <summary>Chance one egg hatches into each species right now, before any rare fish is in the box (sums to 1).</summary>
+        public static Dictionary<Species, float> FirstEggOdds(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
         {
-            var pool = new List<Species>();
-            foreach (var species in Species.All)
-                if (species.rarity >= min && species.rarity <= max && species.unlockLevel <= fishkeepingLevel && species.minTankSize <= tankSize
-                    && (!eggLayersOnly || species.reproduction == Reproduction.EggLayer)) pool.Add(species);
-            return pool;
-        }
-
-        static Species PickWeighted(List<Species> pool, SpeciesRarity min, float falloff)
-        {
-            if (pool.Count == 0) return null;
+            var odds = new Dictionary<Species, float>();
+            var entries = Available(tier, fishkeepingLevel, eggLayersOnly, tankSize);
             float total = 0f;
-            foreach (var species in pool) total += Weight(species, min, falloff);
-            float roll = GameRandom.Range(0f, total);
-            foreach (var species in pool)
-            {
-                roll -= Weight(species, min, falloff);
-                if (roll <= 0f) return species;
-            }
-            return pool[pool.Count - 1];
+            foreach (var e in entries) total += e.weight;
+            if (total > 0f) foreach (var e in entries) odds[e.species] = e.weight / total;
+            return odds;
         }
-
-        static float Weight(Species species, SpeciesRarity min, float falloff) => Mathf.Pow(Mathf.Max(0.001f, falloff), species.rarity - min);
 
         /// <summary>
         /// Chance of at least 1, 2, 3... rare fish in one box (index 0 = at least one), from the
         /// same rule <see cref="Roll"/> uses. Shown in the supplier so the odds are clear.
         /// </summary>
-        public static float[] AtLeastRareOdds(EggTierBalance tier)
+        public static float[] AtLeastRareOdds(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
         {
+            float normal = 0f, rare = 0f;
+            foreach (var e in Available(tier, fishkeepingLevel, eggLayersOnly, tankSize))
+                if (e.rare) rare += e.weight;
+                else normal += e.weight;
             // exactly[k] = chance of exactly k rare eggs so far.
             var exactly = new float[tier.eggs + 1];
             exactly[0] = 1f;
@@ -90,7 +121,8 @@ namespace FishBreeder.Store
                 var next = new float[tier.eggs + 1];
                 for (int k = 0; k <= i; k++)
                 {
-                    float chance = Mathf.Clamp01(tier.rareChance * Mathf.Pow(tier.rareFalloff, k));
+                    float r = rare * Mathf.Pow(Mathf.Clamp01(tier.rareFalloff), k);
+                    float chance = r + normal > 0f ? r / (r + normal) : 0f;
                     next[k] += exactly[k] * (1f - chance);
                     next[k + 1] += exactly[k] * chance;
                 }
@@ -100,6 +132,21 @@ namespace FishBreeder.Store
             for (int k = tier.eggs; k >= 1; k--)
                 atLeast[k - 1] = exactly[k] + (k < tier.eggs ? atLeast[k] : 0f);
             return atLeast;
+        }
+
+        /// <summary>When the first rare fish of this box can hatch, for boxes that can't hatch one yet.</summary>
+        public static string RareUnlockText(EggTierBalance tier, bool eggLayersOnly)
+        {
+            int level = int.MaxValue, day = int.MaxValue;
+            if (tier.hatch != null)
+                foreach (var row in tier.hatch)
+                {
+                    var species = row != null && row.weight > 0f ? Species.Find(row.species) : null;
+                    if (species == null || !IsRare(tier, species) || (eggLayersOnly && species.reproduction != Reproduction.EggLayer)) continue;
+                    if (row.fromLevel < level || (row.fromLevel == level && row.fromDay < day)) { level = row.fromLevel; day = row.fromDay; }
+                }
+            if (level == int.MaxValue) return "none in this box";
+            return day > Economy.Day ? $"from Fishkeeping level {level}, day {day}" : $"from Fishkeeping level {level}";
         }
     }
 }

@@ -39,12 +39,19 @@ namespace FishBreeder.Core
         public Fish Focus => selected.Count > 0 ? selected[selected.Count - 1] : null;
         public bool HasSelection => selected.Count > 0;
         public StoreTank Current => storeTank;
+        /// <summary>A spot in the water the camera zooms in on (clicked with no fish there), or null.</summary>
+        public Vector3? ZoomPoint { get; private set; }
 
-        public void ClearSelection() => selected.Clear();
+        public void ClearSelection()
+        {
+            selected.Clear();
+            ZoomPoint = null;
+        }
 
         public void Select(Fish fish)
         {
             selected.Clear();
+            ZoomPoint = null;
             if (fish != null && fish.Tank == tank) selected.Add(fish);
         }
 
@@ -79,6 +86,7 @@ namespace FishBreeder.Core
             onBack = back;
             shopIsOpen = isShopOpen;
             selected.Clear();
+            ZoomPoint = null;
         }
 
         void Update()
@@ -153,17 +161,20 @@ namespace FishBreeder.Core
 
         // ------------------------------------------------------------ tank panel
 
-        enum TankTab { Tank, Care, Breeding, Setup }
+        enum TankTab { Tank, Care, Breeding, Setup, Dev }
 
-        static readonly string[] TabNames = { "Tank", "Care", "Breeding", "Setup" };
+        static readonly string[] TabNames = { "Tank", "Care", "Breeding", "Setup", "Dev" };
         TankTab tab;
+
+        /// <summary>The Dev tab shows in the editor, and in dev mode (F10) in a development build.</summary>
+        static bool ShowsDevTab => Application.isEditor || DevMode.On;
 
         /// <summary>Opens the tank on a tab (the to-do list opens on Care).</summary>
         public void ShowCare() => tab = TankTab.Care;
 
-        public int TabCount => TabNames.Length;
+        public int TabCount => ShowsDevTab ? TabNames.Length : TabNames.Length - 1;
 
-        public void ShowTab(int index) => tab = (TankTab)Mathf.Clamp(index, 0, TabNames.Length - 1);
+        public void ShowTab(int index) => tab = (TankTab)Mathf.Clamp(index, 0, TabCount - 1);
 
         /// <summary>
         /// The tank panel, in four tabs: Tank (fish count, water, temperature), Care (feeding,
@@ -176,7 +187,8 @@ namespace FishBreeder.Core
             UiCheck.Begin("Tank panel", leftPanel, UiStyles.Window);
             GUILayout.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
             if (ReadOnly) GUILayout.Label("<color=#ffd27f>The shop is open: you can look, but tank work waits until closing.</color>", Rich());
-            var labels = new string[TabNames.Length];
+            if ((int)tab >= TabCount) tab = TankTab.Tank;
+            var labels = new string[TabCount];
             for (int i = 0; i < labels.Length; i++)
                 labels[i] = TabNames[i] + (TabNeedsYou((TankTab)i) ? $" <color={UiTheme.CoralHex}>●</color>" : "");
             tab = (TankTab)GUILayout.SelectionGrid((int)tab, labels, labels.Length, TabStyle());
@@ -187,6 +199,7 @@ namespace FishBreeder.Core
                 case TankTab.Tank: DrawTankTab(); break;
                 case TankTab.Care: DrawCareTab(); break;
                 case TankTab.Breeding: DrawBreedingTab(); break;
+                case TankTab.Dev: DrawDevTab(); break;
                 default: DrawSetupTab(); break;
             }
             UiCheck.EndScroll();
@@ -325,8 +338,108 @@ namespace FishBreeder.Core
 #endif
         }
 
-        static GUIStyle tabStyle;
-        static GUIStyle TabStyle() => tabStyle != null ? tabStyle : tabStyle = new GUIStyle(GUI.skin.button) { richText = true, fontSize = 12, padding = new RectOffset(3, 3, 4, 5) };
+        bool devShowFish = true, devShowDecor;
+
+        /// <summary>
+        /// Developer: set the tank up directly, free. Water, equipment models (or none), any
+        /// decoration in or out, and any fish (adult, a male and female pair, or a handful of fry).
+        /// </summary>
+        void DrawDevTab()
+        {
+            GUILayout.Label("<size=11><color=#ffd27f>Developer tools: everything here is free and instant.</color></size>", Rich());
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Clean water")) tank.DevMakeClean();
+            if (GUILayout.Button("Dirty water")) tank.DevMakeDirty();
+            GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Grow all up"))
+                foreach (var fish in new List<Fish>(tank.Residents)) fish.DevGrowUp();
+            if (GUILayout.Button("Remove all fish"))
+            {
+                foreach (var fish in new List<Fish>(tank.Residents)) fish.RemoveFromTank();
+                foreach (var corpse in new List<Fish>(tank.Corpses)) corpse.RemoveFromTank();
+                selected.Clear();
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(4f);
+            GUILayout.Label("<b>Equipment</b>", Rich());
+            foreach (var kind in Equipment.Kinds)
+            {
+                var item = tank.GetEquipment(kind);
+                int current = item != null ? item.tier : -1;
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(kind.ToString(), GUILayout.Width(56f));
+                if (GUILayout.Button(new GUIContent("None", "Take it out"), current < 0 ? UiTheme.Primary : GUI.skin.button)) tank.DevRemoveEquipment(kind);
+                var tiers = Equipment.Tiers(kind);
+                for (int t = 0; t < tiers.Count; t++)
+                    if (GUILayout.Button(new GUIContent((t + 1).ToString(), tiers[t].name), current == t ? UiTheme.Primary : GUI.skin.button)) tank.Install(kind, t);
+                GUILayout.EndHorizontal();
+            }
+            if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich());
+
+            GUILayout.Space(4f);
+            var decor = tank.Decor;
+            devShowDecor = GUILayout.Toggle(devShowDecor, $" <b>Decorations</b> {(decor != null ? $"{decor.Count} / {decor.Capacity}" : "")}", RichToggle());
+            if (devShowDecor && decor != null)
+            {
+                var ids = decor.Ids;
+                for (int i = 0; i < ids.Count; i++)
+                {
+                    var placed = TankDecor.Find(ids[i]);
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label(placed != null ? placed.name : ids[i]);
+                    if (GUILayout.Button("x", GUILayout.Width(26f)))
+                    {
+                        decor.RemoveAt(i);
+                        GUILayout.EndHorizontal();
+                        break;
+                    }
+                    GUILayout.EndHorizontal();
+                }
+                GUILayout.Label("<size=11>Add:</size>", Rich());
+                foreach (var item in SupplierCatalog.Decorations)
+                {
+                    GUI.enabled = !decor.IsFull;
+                    if (GUILayout.Button($"+ {item.name}{(item.plant ? " (plant)" : "")}")) decor.Add(item.id);
+                    GUI.enabled = true;
+                }
+            }
+
+            GUILayout.Space(4f);
+            devShowFish = GUILayout.Toggle(devShowFish, $" <b>Add fish</b>  <size=11>{tank.Residents.Count} / {tank.Capacity}</size>", RichToggle());
+            if (!devShowFish) return;
+            foreach (var species in Species.All)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"<size=11>{species.displayName}</size>", Rich(), GUILayout.Width(118f));
+                if (GUILayout.Button(new GUIContent("+1", "One adult"), GUILayout.Width(34f))) DevSpawn(species, 1f, null);
+                if (GUILayout.Button(new GUIContent("+♂♀", "A grown male and female"), GUILayout.Width(44f)))
+                {
+                    DevSpawn(species, 1f, Sex.Male);
+                    DevSpawn(species, 1f, Sex.Female);
+                }
+                if (GUILayout.Button(new GUIContent("+5 fry", "Five fry of this kind (bred, so you can tell what they are)"), GUILayout.Width(56f)))
+                    for (int i = 0; i < 5; i++) DevSpawn(species, 0.05f, null);
+                GUILayout.EndHorizontal();
+            }
+        }
+
+        void DevSpawn(Species species, float growth, Sex? sex)
+        {
+            // Generation 2 counts as bred here, so fry show what they are straight away.
+            var fish = FishFactory.Spawn(Genome.CreateRandom(species), growth < 1f ? 2 : 1, growth, tank, tank.RandomFreePoint(0.1f));
+            if (sex.HasValue) fish.DevSetSex(sex.Value);
+        }
+
+        static GUIStyle richToggle;
+        static GUIStyle RichToggle() => richToggle != null ? richToggle : richToggle = new GUIStyle(GUI.skin.toggle) { richText = true };
+
+        static GUIStyle tabStyle, narrowTabStyle;
+        // Five tabs (with Dev) need a slightly smaller font to fit the panel.
+        GUIStyle TabStyle() => TabCount > 4
+            ? (narrowTabStyle != null ? narrowTabStyle : narrowTabStyle = new GUIStyle(GUI.skin.button) { richText = true, fontSize = 11, padding = new RectOffset(2, 2, 4, 5) })
+            : (tabStyle != null ? tabStyle : tabStyle = new GUIStyle(GUI.skin.button) { richText = true, fontSize = 12, padding = new RectOffset(3, 3, 4, 5) });
 
         /// <summary>
         /// How many fish live here against the tank's limit. Going over the limit is allowed, up to
@@ -686,6 +799,7 @@ namespace FishBreeder.Core
                 case LifeStage.Juvenile: UiGauges.Badge("JUVENILE", new Color(0.75f, 0.55f, 0.15f)); break;
                 default: UiGauges.Badge("FRY", new Color(0.45f, 0.47f, 0.5f)); break;
             }
+            if (fish.Stage != LifeStage.Fry) UiGauges.Badge(fish.Size.ToString().ToUpper(), new Color(0.3f, 0.45f, 0.55f));
             if (fish.Health.IsSick && !fish.IsDead) UiGauges.Badge("+ SICK", Color.Lerp(SickRed, new Color(1f, 0.45f, 0.4f), Mathf.PingPong(Time.unscaledTime * 1.5f, 1f)));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
@@ -1009,6 +1123,7 @@ namespace FishBreeder.Core
             if (fish == null || fish.Tank != tank) fish = NearestFishOnScreen(new Vector2(guiToScreen.x, Screen.height - guiToScreen.y));
             if (fish != null)
             {
+                ZoomPoint = null;
                 if (selected.Contains(fish)) selected.Remove(fish);
                 else
                 {
@@ -1018,8 +1133,22 @@ namespace FishBreeder.Core
                 e.Use();
                 return;
             }
+            // Empty water: zoom in on that spot, as close as following a fish. Anywhere else zooms back out.
             selected.Clear();
+            ZoomPoint = WaterPoint(ray);
             e.Use();
+        }
+
+        /// <summary>Where a click ray meets the water, on the upright plane through the tank's middle (null if it misses the water).</summary>
+        Vector3? WaterPoint(Ray ray)
+        {
+            var bounds = tank.InnerBounds;
+            var plane = new Plane(tank.Front, bounds.center);
+            if (!plane.Raycast(ray, out float distance)) return null;
+            var point = ray.GetPoint(distance);
+            bounds.Expand(0.04f);
+            if (!bounds.Contains(point)) return null;
+            return tank.Clamp(point, 0.12f, 0.08f);
         }
 
         /// <summary>Small fish and fry are hard to hit with a ray, so a click near one on screen also selects it.</summary>

@@ -247,6 +247,27 @@ namespace FishBreeder
         }
 
         /// <summary>Developer shortcut: makes the water filthy to check how dirty tanks look and how shoppers react.</summary>
+        /// <summary>Developer: takes this kind of equipment out.</summary>
+        public void DevRemoveEquipment(EquipmentKind kind)
+        {
+            switch (kind)
+            {
+                case EquipmentKind.Filter: filter = null; break;
+                case EquipmentKind.Heater: heater = null; break;
+                default: bubbler = null; break;
+            }
+            if (visuals != null) BuildEquipment(kind);
+            UpdateEquipmentLook();
+        }
+
+        /// <summary>Developer: crystal clear water, no algae or pests.</summary>
+        public void DevMakeClean()
+        {
+            waterQuality = 1f;
+            algae = 0f;
+            pests = false;
+        }
+
         public void DevMakeDirty()
         {
             waterQuality = 0.15f;

@@ -95,6 +95,7 @@ namespace FishBreeder.Store
             float dt = Time.unscaledDeltaTime;
 
             HandleDevKeys();
+            UpdateNightLook(dt);
             FishSeller.ShopOpen = shopDay.IsOpen;
             foreach (var levelUp in Progression.LevelUps) levelUp.age += dt;
             Progression.LevelUps.RemoveAll(l => l.age > 6f);
@@ -161,7 +162,7 @@ namespace FishBreeder.Store
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && escape)
             {
-                if (hud.HasSelection) hud.ClearSelection();
+                if (hud.HasSelection || hud.ZoomPoint.HasValue) hud.ClearSelection();
                 else ExitTank();
             }
             else if (focused == null && escape && following >= 0) following = -1;
@@ -170,7 +171,7 @@ namespace FishBreeder.Store
             var person = focused == null ? FollowedPerson() : null;
             if (focused != null)
             {
-                GetTankPose(focused, hud.Focus, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                GetTankPose(focused, hud.Focus, hud.ZoomPoint, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
             {
@@ -254,13 +255,14 @@ namespace FishBreeder.Store
 
         /// <summary>
         /// The whole tank fills the view (bigger tanks are seen from further back). With a fish
-        /// selected the camera follows it at half the distance, keeping it centred.
+        /// selected the camera follows it at half the distance, keeping it centred; a clicked spot of
+        /// empty water (<paramref name="zoom"/>) is looked at the same way.
         /// While the tank menu covers the left of the screen (<paramref name="menuCover"/>, a share of
         /// its width), the view slides over so the tank sits in the middle of the space right of
         /// the menu, as far as it can without the tank going off the right edge (backing off a
         /// little to make room when it's tight).
         /// </summary>
-        static void GetTankPose(StoreTank tank, Fish follow, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
+        static void GetTankPose(StoreTank tank, Fish follow, Vector3? zoom, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
         {
             var bounds = tank.Tank.InnerBounds;
             var size = tank.Tank.InnerSize;
@@ -268,12 +270,12 @@ namespace FishBreeder.Store
             float back = Mathf.Max(1.9f, 1.9f * size.x / 1.6f, size.y * 2.1f);
             // Half the view's width one metre away.
             float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect;
-            if (follow != null && follow.Tank == tank.Tank)
+            if ((follow != null && follow.Tank == tank.Tank) || zoom.HasValue)
             {
-                var target = follow.transform.position;
+                var target = follow != null && follow.Tank == tank.Tank ? follow.transform.position : zoom.Value;
                 position = target + front * (back * 0.5f) + Vector3.up * 0.05f;
                 rotation = Quaternion.LookRotation(target - position);
-                // Keep the fish in the middle of the uncovered part.
+                // Keep the fish (or spot) in the middle of the uncovered part.
                 position -= rotation * Vector3.right * (menuCover * back * 0.5f * halfWidth);
                 return;
             }
@@ -356,7 +358,47 @@ namespace FishBreeder.Store
         {
             RenderSettings.fog = false;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = StoreBackground;
+            cam.backgroundColor = Color.Lerp(StoreBackground, NightBackground, night);
+        }
+
+        // ---------------------------------------------------------------- evening light
+
+        static readonly Color NightBackground = new Color(0.03f, 0.05f, 0.14f);
+        static readonly Color NightSun = new Color(0.45f, 0.55f, 1f);
+        Light sun;
+        float sunIntensity = -1f, reflectionIntensity;
+        Color sunColor;
+        UnityEngine.Rendering.SphericalHarmonicsL2 ambientProbe;
+        /// <summary>0 in daylight, 1 at night: the evening fades in after closing and out again in the morning.</summary>
+        float night;
+
+        /// <summary>
+        /// In the evening the sky outside goes dark blue, the sun becomes cool moonlight and the room
+        /// dims. Morning brings the day back.
+        /// </summary>
+        void UpdateNightLook(float dt)
+        {
+            if (sun == null)
+            {
+                sun = RenderSettings.sun;
+                if (sun == null)
+                    foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                        if (light.type == LightType.Directional && light.name != "Studio light") { sun = light; break; }
+                if (sun == null) return;
+                sunIntensity = sun.intensity;
+                sunColor = sun.color;
+                ambientProbe = RenderSettings.ambientProbe;
+                reflectionIntensity = RenderSettings.reflectionIntensity;
+            }
+            float target = shopDay.Phase == DayPhase.Evening ? 1f : 0f;
+            if (Mathf.Approximately(night, target) && Time.frameCount > 2) return;
+            night = Mathf.MoveTowards(night, target, dt / 2.5f);
+            float eased = night * night * (3f - 2f * night);
+            sun.intensity = Mathf.Lerp(sunIntensity, sunIntensity * 0.3f, eased);
+            sun.color = Color.Lerp(sunColor, NightSun, eased);
+            RenderSettings.ambientProbe = ambientProbe * Mathf.Lerp(1f, 0.4f, eased);
+            RenderSettings.reflectionIntensity = Mathf.Lerp(reflectionIntensity, reflectionIntensity * 0.35f, eased);
+            cam.backgroundColor = Color.Lerp(StoreBackground, NightBackground, eased);
         }
 
         // ---------------------------------------------------------------- GUI
@@ -1323,22 +1365,22 @@ namespace FishBreeder.Store
             DrawBiggerTankFish(tankSize);
             foreach (var tier in EggBoxes.Tiers)
             {
-                var normal = EggBoxes.Pool(tier.normalMin, tier.normalMax, level, eggLayersOnly, tankSize);
-                var rare = EggBoxes.Pool(tier.rarePool, tier.rarePool, level, eggLayersOnly, tankSize);
+                var normal = EggBoxes.Pool(tier, false, level, eggLayersOnly, tankSize);
+                var rare = EggBoxes.Pool(tier, true, level, eggLayersOnly, tankSize);
                 bool unlocked = Progression.IsUnlocked(XpTrack.Fishkeeping, tier.unlockLevel);
                 bool anyFish = normal.Count + rare.Count > 0 || !unlocked;
                 string details = tier.blurb;
                 if (unlocked && normal.Count + rare.Count == 0)
-                    details += EggBoxes.Pool(tier.normalMin, tier.rarePool, level, eggLayersOnly).Count > 0
+                    details += EggBoxes.Available(tier, level, eggLayersOnly).Count > 0
                         ? "\n<color=#ffd27f>Every fish in this box needs a bigger tank than this one.</color>"
                         : "\n<color=#ffd27f>No fish of this kind in the game yet.</color>";
                 else if (unlocked)
                 {
-                    var odds = EggBoxes.AtLeastRareOdds(tier);
+                    var odds = EggBoxes.AtLeastRareOdds(tier, level, eggLayersOnly, tankSize);
                     var oddsText = new List<string>();
                     for (int k = 0; k < odds.Length && k < 3; k++) oddsText.Add($"{k + 1}+ {Percent(odds[k])}");
                     details += $"\n{tier.eggs} {(fry ? "fry" : "eggs")}. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText)
-                        : EggBoxes.Pool(tier.rarePool, tier.rarePool, level, eggLayersOnly).Count > 0 ? "only for a bigger tank" : RareUnlockText(tier, eggLayersOnly));
+                        : EggBoxes.Pool(tier, true, level, eggLayersOnly).Count > 0 ? "only for a bigger tank" : EggBoxes.RareUnlockText(tier, eggLayersOnly));
                 }
                 int price = Perks.Supplier(fry ? tier.fryPrice : tier.price);
                 string what = fry ? "fry" : "eggs";
@@ -1350,7 +1392,7 @@ namespace FishBreeder.Store
                     if (fry) OrderFryBox(tier);
                     else OrderEggs(tier);
                 }
-                if (unlocked && normal.Count + rare.Count > 0) DrawPoolPictures(normal, rare);
+                if (unlocked && normal.Count + rare.Count > 0) DrawPoolPictures(normal, rare, EggBoxes.FirstEggOdds(tier, level, eggLayersOnly, tankSize));
             }
         }
 
@@ -1370,17 +1412,8 @@ namespace FishBreeder.Store
             GUILayout.Label($"<size=11><color={UiTheme.SunHex}>Some fish need more room than a {TankQuality.SizeName(tankSize).ToLower()} tank, so they only come for bigger ones. Raise a tank's quality to upgrade it.</color>\n" + string.Join("\n", lines) + "</size>", Rich());
         }
 
-        /// <summary>When the first species of the tier's rare pool unlocks, for boxes that can't hatch one yet.</summary>
-        static string RareUnlockText(EggTierBalance tier, bool eggLayersOnly)
-        {
-            int first = int.MaxValue;
-            foreach (var species in Species.All)
-                if (species.rarity == tier.rarePool && (!eggLayersOnly || species.reproduction == Reproduction.EggLayer)) first = Mathf.Min(first, species.unlockLevel);
-            return first == int.MaxValue ? "none in the game yet" : $"from Fishkeeping level {first}";
-        }
-
         /// <summary>Little pictures of the fish a box can hatch at the player's level (rare ones marked).</summary>
-        void DrawPoolPictures(List<Species> normal, List<Species> rare)
+        void DrawPoolPictures(List<Species> normal, List<Species> rare, Dictionary<Species, float> odds)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Space(80f);
@@ -1395,7 +1428,8 @@ namespace FishBreeder.Store
                         list == rare ? new Color(0.45f, 0.35f, 0.15f, 0.9f) : new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
                     var photo = ItemPreviews.Fish(species);
                     if (photo != null) GUI.DrawTexture(rect, photo, ScaleMode.ScaleToFit);
-                    GUI.Label(rect, new GUIContent("", $"{species.displayName} ({species.rarity})"));
+                    string chance = odds.TryGetValue(species, out var p) ? $", about {Percent(p)} of eggs" : "";
+                    GUI.Label(rect, new GUIContent("", $"{species.displayName} ({species.rarity}{chance})"));
                 }
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();

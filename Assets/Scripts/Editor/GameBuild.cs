@@ -43,6 +43,7 @@ namespace FishBreeder.EditorTools
                 var scenes = EditorBuildSettings.scenes.Where(s => s.path != MainScene).ToList();
                 scenes.Insert(0, new EditorBuildSettingsScene(MainScene, true));
                 EditorBuildSettings.scenes = scenes.ToArray();
+                AssetDatabase.SaveAssets();
                 Debug.Log($"[FishBreeder] Added {MainScene} to the build.");
             }
             if (IsUntouchedUntitled(SceneManager.GetActiveScene())) EditorSceneManager.OpenScene(MainScene);

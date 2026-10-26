@@ -53,8 +53,8 @@ namespace FishBreeder.Core
         /// <summary>Always true in <see cref="DevMode"/>.</summary>
         public static bool CanAfford(int amount) => DevMode.On || Money >= amount;
 
-        /// <summary>Pays for something; in <see cref="DevMode"/> it's free.</summary>
-        public static bool TrySpend(int amount, string what)
+        /// <summary>Pays for something; in <see cref="DevMode"/> it's free. The kind sorts it on the finances screen.</summary>
+        public static bool TrySpend(int amount, string what, MoneyKind kind = MoneyKind.Other)
         {
             if (DevMode.On)
             {
@@ -68,13 +68,15 @@ namespace FishBreeder.Core
             }
             Money -= amount;
             ledger.Add($"Day {Day}: -{Format(amount)} {what}");
+            Finance.Record(amount, kind, false);
             return true;
         }
 
-        public static void Earn(int amount, string what)
+        public static void Earn(int amount, string what, MoneyKind kind = MoneyKind.Other)
         {
             Money += amount;
             ledger.Add($"Day {Day}: +{Format(amount)} {what}");
+            Finance.Record(amount, kind, true);
         }
 
         public static int FoodPortions(FoodType type) => food.TryGetValue(type, out var count) ? count : 0;
@@ -105,7 +107,7 @@ namespace FishBreeder.Core
             int interest = Mathf.Min(Perks.MaxInterestPerNight, Mathf.FloorToInt(Mathf.Max(0, Money) * Perks.Value(PerkEffect.Interest)));
             if (interest > 0)
             {
-                Earn(interest, "interest on savings");
+                Earn(interest, "interest on savings", MoneyKind.Interest);
                 GameLog.Add($"Your savings earned {Format(interest)} interest overnight.");
             }
             float buzz = Perks.Value(PerkEffect.DailyReputation);
@@ -115,13 +117,13 @@ namespace FishBreeder.Core
             if (gift <= 0) return;
             if (settingUp)
             {
-                Earn(gift, "gift from Grandma");
+                Earn(gift, "gift from Grandma", MoneyKind.Grandma);
                 GameLog.Add($"Grandma sent {Format(gift)} with a note: \"I believe in you!\" You now have {Format(Money)}.");
                 GrandmaNote = $"Grandma sent {Format(gift)}";
             }
             else if (Money < store.brokeBelow)
             {
-                Earn(gift, "Grandma's rescue");
+                Earn(gift, "Grandma's rescue", MoneyKind.Grandma);
                 GameLog.Add($"You were broke, so Grandma saved the day with {Format(gift)} to get you back on your feet. You now have {Format(Money)}.");
                 GrandmaNote = $"Grandma saved the day with {Format(gift)}";
             }

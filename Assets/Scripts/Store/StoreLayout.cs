@@ -11,7 +11,8 @@ namespace FishBreeder.Store
     /// The shop building: a sunny beach-shack fish shop of rooms in a row (seafoam walls, wooden
     /// floors, a bamboo counter, palms and surfboards). The main floor (with the one entrance, the
     /// register and the supplier computer) is open from the start; the other sections are bought
-    /// with money and each adds room for more display and for sale tanks. Tanks stand round the
+    /// with money once the shop's reputation is high enough (five expansions, each needing more
+    /// stars), and each adds room for more display and for sale tanks. Tanks stand round the
     /// walls, facing into the room, which leaves the middle free to walk about. Breeder and
     /// quarantine tanks live in the back room to the west, which customers never see. The fish
     /// seller parks his van on the pavement outside, west of the door. Every spot has room for the
@@ -19,7 +20,7 @@ namespace FishBreeder.Store
     /// </summary>
     public class StoreLayout : MonoBehaviour
     {
-        public const float SectionWidth = 12f;
+        public const float SectionWidth = 14f;
         public const float SectionDepth = 10f;
         public const float WallHeight = 4f;
         public const float StandHeight = 0.85f;
@@ -29,12 +30,15 @@ namespace FishBreeder.Store
         const float EntranceWidth = 2.2f;
         const float StaffDoorWidth = 1.6f;
 
-        static readonly float[] SlotColumns = { -4f, 0f, 4f };
+        static readonly float[] SlotColumns = { -4.5f, 0f, 4.5f };
+        // The main floor's back row sits a little east, clear of the tanks along its west wall.
+        static readonly float[] MainSlotColumns = { -3.8f, 0.35f, 4.5f };
         // Far enough off the back wall for the biggest tank to clear the palms in the corners.
         const float BackSlotZ = 3.7f;
         const float FrontSlotZ = -4.3f;
         const float WestSlotX = -SectionWidth * 0.5f + 0.7f;
-        static readonly float[] WestSlotZ = { 2.05f, -1.15f };
+        // Grand tanks are 3 m long: these leave a gap between the two and keep clear of the staff door.
+        static readonly float[] WestSlotZ = { 2.15f, -1.05f };
         static readonly float[] BackRoomRows = { 3.4f, 0.2f };
         static readonly float[] BackRoomColumns = { -2.2f, 2.2f };
 
@@ -148,7 +152,7 @@ namespace FishBreeder.Store
                 if (section.index == 0)
                     for (int i = WestSlotZ.Length - 1; i >= 0; i--)
                         slots.Add(new Slot { section = section, position = new Vector3(cx + WestSlotX, StandHeight, WestSlotZ[i]), yaw = -90f });
-                foreach (var column in SlotColumns)
+                foreach (var column in section.index == 0 ? MainSlotColumns : SlotColumns)
                     slots.Add(new Slot { section = section, position = new Vector3(cx + column, StandHeight, BackSlotZ) });
                 if (section.index > 0)
                     for (int i = SlotColumns.Length - 1; i >= 0; i--)
@@ -203,20 +207,36 @@ namespace FishBreeder.Store
             return section.index < list.Count ? list[section.index].unlockLevel : 1;
         }
 
+        /// <summary>Reputation (in stars) the shop needs before this room can be bought.</summary>
+        public static float SectionStars(Section section)
+        {
+            var list = Balance.Data.store.sections;
+            return section.index < list.Count ? list[section.index].starsNeeded : 0f;
+        }
+
+        public static float Stars => Economy.Reputation * 5f;
+
+        /// <summary>Why this room can't be bought yet (not counting money), or null if it can.</summary>
+        public string WhyLocked(Section section)
+        {
+            if (section == null || section.unlocked) return "It's already open.";
+            var next = NextLockedSection;
+            if (section != next) return $"Unlock the {next.name} first.";
+            if (!Progression.IsUnlocked(XpTrack.Shopkeeping, SectionLevel(section))) return $"Needs {Progression.LockText(XpTrack.Shopkeeping, SectionLevel(section))}.";
+            if (!DevMode.On && Stars + 0.001f < SectionStars(section)) return $"Needs a {SectionStars(section):0.0} star reputation (you have {Stars:0.0}).";
+            return null;
+        }
+
         public bool TryUnlock(Section section)
         {
             if (section == null || section.unlocked) return false;
-            if (section != NextLockedSection)
+            var why = WhyLocked(section);
+            if (why != null)
             {
-                GameLog.Add($"Unlock the {NextLockedSection.name} first.");
+                GameLog.Add($"The {section.name}: {why}");
                 return false;
             }
-            if (!Progression.IsUnlocked(XpTrack.Shopkeeping, SectionLevel(section)))
-            {
-                GameLog.Add($"The {section.name} needs {Progression.LockText(XpTrack.Shopkeeping, SectionLevel(section))}.");
-                return false;
-            }
-            if (!Economy.TrySpend(section.Price, $"unlocking the {section.name}")) return false;
+            if (!Economy.TrySpend(section.Price, $"unlocking the {section.name}", MoneyKind.Rooms)) return false;
             section.unlocked = true;
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpUnlockSection);
             BuildShell();
@@ -261,7 +281,7 @@ namespace FishBreeder.Store
                 return false;
             }
             var info = Balance.Data.store.tankSizes[size];
-            if (!Economy.TrySpend(Perks.Upgrade(info.upgradePrice), $"upgrading {tank.Title} to a {info.name.ToLower()} tank")) return false;
+            if (!Economy.TrySpend(Perks.Upgrade(info.upgradePrice), $"upgrading {tank.Title} to a {info.name.ToLower()} tank", MoneyKind.Tanks)) return false;
             tank.Tank.Resize(size);
             BuildStand(tank);
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpTankUpgrade);
@@ -276,7 +296,7 @@ namespace FishBreeder.Store
                 GameLog.Add(reason);
                 return null;
             }
-            if (!Economy.TrySpend(SupplierCatalog.TankPrice(role), $"a {StoreTank.RoleName(role).ToLower()} tank")) return null;
+            if (!Economy.TrySpend(SupplierCatalog.TankPrice(role), $"a {StoreTank.RoleName(role).ToLower()} tank", MoneyKind.Tanks)) return null;
             var tank = PlaceTank(slot, role, null);
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyTank);
             GameLog.Add($"Your new {tank.Title.ToLower()} is set up and ready for fish.");
@@ -449,7 +469,7 @@ namespace FishBreeder.Store
         {
             var root = new GameObject("Register").transform;
             root.SetParent(transform, false);
-            var counter = new Vector3(4.5f, 0f, -3.1f);
+            var counter = new Vector3(SectionWidth * 0.5f - 1.5f, 0f, -3.1f);
             Wall(root, "Counter", counter + new Vector3(0f, 0.5f, 0f), new Vector3(0.6f, 1f, 2f), CounterColor);
             Wall(root, "CounterTop", counter + new Vector3(0f, 1.02f, 0f), new Vector3(0.66f, 0.04f, 2.08f), CounterTopColor);
             // Bamboo canes up the customers' side of the counter.

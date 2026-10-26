@@ -12,6 +12,27 @@ namespace FishBreeder.Health
     /// </summary>
     public static class TankMates
     {
+        /// <summary>
+        /// Fish are fighting in this tank: a grown predator shares it with prey, or (when it's
+        /// crowded) grown fish that don't get on nip at each other. Shoppers can see it.
+        /// </summary>
+        public static bool IsFighting(Tank tank)
+        {
+            var rules = Balance.Data.tankMates;
+            bool crowded = tank.Residents.Count > tank.Capacity * rules.crowdedAbove;
+            foreach (var a in tank.Residents)
+            {
+                if (a == null || a.IsDead || a.Stage != LifeStage.Adult) continue;
+                foreach (var b in tank.Residents)
+                {
+                    if (b == a || b == null || b.IsDead) continue;
+                    if (Relationships.Get(a.Species, b.Species) == Relationship.Predator) return true;
+                    if (crowded && b.Stage == LifeStage.Adult && Relationships.AreCompetitive(a.Species, b.Species)) return true;
+                }
+            }
+            return false;
+        }
+
         public static void Run(Tank tank, ref int eaten, ref int wounded)
         {
             var rules = Balance.Data.tankMates;
@@ -55,8 +76,9 @@ namespace FishBreeder.Health
     }
 
     /// <summary>
-    /// What you see of a predator in the tank: every few seconds it bolts a little way at one of its
-    /// prey, which darts away. Only for show; the real hunting happens at time steps.
+    /// What you see of a predator in the tank (or of fish that don't get on, in a crowded tank):
+    /// every few seconds one bolts a little way at another, which darts away. Only for show; the
+    /// real hunting and nipping happen at time steps. Shoppers notice it, though.
     /// </summary>
     public class TankMateBehaviour : MonoBehaviour
     {
@@ -75,11 +97,13 @@ namespace FishBreeder.Health
             nextLunge = Time.time + GameRandom.Range(3f, 8f);
 
             var pairs = new List<Fish>();
+            bool crowded = tank.Residents.Count > tank.Capacity * Balance.Data.tankMates.crowdedAbove;
             foreach (var hunter in tank.Residents)
             {
                 if (hunter == null || hunter.IsDead || hunter.Stage != LifeStage.Adult) continue;
                 foreach (var prey in tank.Residents)
-                    if (prey != hunter && !prey.IsDead && Relationships.Get(hunter.Species, prey.Species) == Relationship.Predator)
+                    if (prey != hunter && !prey.IsDead && (Relationships.Get(hunter.Species, prey.Species) == Relationship.Predator
+                        || (crowded && prey.Stage == LifeStage.Adult && Relationships.AreCompetitive(hunter.Species, prey.Species))))
                     {
                         pairs.Add(hunter);
                         pairs.Add(prey);

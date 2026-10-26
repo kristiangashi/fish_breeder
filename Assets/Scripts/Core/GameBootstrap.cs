@@ -32,6 +32,8 @@ namespace FishBreeder.Core
             Economy.Reset();
             Progression.Reset();
             Research.Reset();
+            Reputation.Reset();
+            Finance.Reset();
             Journal.Reset();
             Milestones.Reset();
             Research.Refresh();
@@ -50,6 +52,8 @@ namespace FishBreeder.Core
             shopDay.Initialize(store);
             var hud = gameObject.AddComponent<FishTankHUD>();
             gameObject.AddComponent<StoreView>().Initialize(store, shopDay, hud, cam);
+            gameObject.AddComponent<ReputationView>().Initialize(store, shopDay);
+            gameObject.AddComponent<FinancesView>();
             gameObject.AddComponent<JournalView>();
             gameObject.AddComponent<PerksView>();
             gameObject.AddComponent<ResearchView>();

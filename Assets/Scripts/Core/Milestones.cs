@@ -142,7 +142,7 @@ namespace FishBreeder.Core
             {
                 if (milestone == null || IsDone(milestone) || Progress(milestone.goal) < milestone.target) continue;
                 done.Add(milestone.title);
-                if (milestone.reward > 0) Economy.Earn(milestone.reward, $"milestone: {milestone.title}");
+                if (milestone.reward > 0) Economy.Earn(milestone.reward, $"milestone: {milestone.title}", MoneyKind.Milestones);
                 if (milestone.xp > 0) Progression.Award(milestone.track, milestone.xp);
                 GameLog.Add($"Milestone reached: {milestone.title}! +{Economy.Format(milestone.reward)}" + (milestone.xp > 0 ? $" and {milestone.xp} {Progression.TrackName(milestone.track)} XP." : "."));
                 Fx.Milestone(milestone);

@@ -17,9 +17,11 @@ namespace FishBreeder.Core
     /// <summary>
     /// Research projects. Each project posts a bounty (feed fish 8 times, cure 2 sick fish, keep 15
     /// fish at once...) once the Research level and any project it builds on allow. Doing the
-    /// bounty makes the project ready; the player then starts it in the research window, and it
-    /// takes a few time steps at the research bench (one project at a time, faster at a higher
-    /// Research level). A finished project makes the game tell you more: what temperature fish
+    /// bounty makes the project ready; the player then starts it in the research window. Like in
+    /// Civilization, the bench earns research points every night towards the project it's on (one
+    /// at a time; switching keeps what's been done): a base amount, plus more for the daily
+    /// research budget, which is paid each night, all faster at a higher Research level. A
+    /// finished project makes the game tell you more: what temperature fish
     /// like, who they fight with, why they won't breed, how much each thing does to their health.
     /// Until then those messages stay vague. Bounties and research both give Research XP, and every
     /// kind of fish you keep earns a little at each time step.
@@ -34,8 +36,8 @@ namespace FishBreeder.Core
         static readonly HashSet<string> done = new HashSet<string>();
         static readonly HashSet<ResearchUnlock> unlocked = new HashSet<ResearchUnlock>();
         static readonly HashSet<string> favouritesSeen = new HashSet<string>();
+        static readonly Dictionary<string, float> progress = new Dictionary<string, float>();
         static string current;
-        static float currentProgress;
 
         static ResearchBalance Data => Balance.Data.research;
 
@@ -53,12 +55,30 @@ namespace FishBreeder.Core
             done.Clear();
             unlocked.Clear();
             favouritesSeen.Clear();
+            progress.Clear();
             current = null;
-            currentProgress = 0f;
+            DailyBudget = 0;
         }
 
-        /// <summary>Research progress per time step: 1 at Research level 1, more at higher levels.</summary>
+        /// <summary>Money put into research every night (paid only while a project is at the bench).</summary>
+        public static int DailyBudget { get; private set; }
+
+        public static void SetBudget(int dollars) => DailyBudget = Mathf.Clamp(dollars, 0, Mathf.Max(0, Data.maxDailyBudget));
+
+        /// <summary>Multiplies every night's points: 1 at Research level 1, more at higher levels and with perks.</summary>
         public static float Speed => (1f + Data.speedPerLevel * (Progression.Level(XpTrack.Research) - 1)) * Perks.More(PerkEffect.FasterResearch);
+
+        /// <summary>Research points a night brings with this budget.</summary>
+        public static float PointsPerNight(int budget) => (Data.basePointsPerDay + Mathf.Max(0, budget) * Data.pointsPerDollar) * Speed;
+
+        public static float PointsPerNight() => PointsPerNight(DailyBudget);
+
+        /// <summary>Points earned so far on a project (kept when you switch away from it).</summary>
+        public static float Progress(ResearchProjectBalance project) => project != null && progress.TryGetValue(project.id, out var p) ? p : 0f;
+
+        public static int Cost(ResearchProjectBalance project) => project == null ? 0 : Mathf.Max(1, project.points);
+
+        public static float Fraction(ResearchProjectBalance project) => project == null ? 0f : Mathf.Clamp01(Progress(project) / Cost(project));
 
         public static bool Has(ResearchUnlock unlock) => unlocked.Contains(unlock);
 
@@ -91,26 +111,19 @@ namespace FishBreeder.Core
         public static ResearchProjectBalance Current => current != null ? Find(current) : null;
 
         /// <summary>How far the project at the research bench is, 0..1.</summary>
-        public static float CurrentFraction
+        public static float CurrentFraction => Fraction(Current);
+
+        /// <summary>Nights until a project is done at this budget.</summary>
+        public static int NightsFor(ResearchProjectBalance project, int budget)
         {
-            get
-            {
-                var project = Current;
-                return project == null ? 0f : Mathf.Clamp01(currentProgress / Mathf.Max(0.01f, project.steps));
-            }
+            if (project == null) return 0;
+            return Mathf.Max(1, Mathf.CeilToInt((Cost(project) - Progress(project)) / Mathf.Max(0.01f, PointsPerNight(budget))));
         }
 
-        /// <summary>Time steps until the project at the bench is done, at today's speed.</summary>
-        public static int StepsLeft
-        {
-            get
-            {
-                var project = Current;
-                return project == null ? 0 : Mathf.Max(1, Mathf.CeilToInt((project.steps - currentProgress) / Mathf.Max(0.01f, Speed)));
-            }
-        }
+        public static int NightsFor(ResearchProjectBalance project) => NightsFor(project, DailyBudget);
 
-        public static int StepsFor(ResearchProjectBalance project) => Mathf.Max(1, Mathf.CeilToInt(project.steps / Mathf.Max(0.01f, Speed)));
+        /// <summary>Nights until the project at the bench is done, at today's budget.</summary>
+        public static int NightsLeft => NightsFor(Current);
 
         public static ResearchState State(ResearchProjectBalance project)
         {
@@ -172,14 +185,22 @@ namespace FishBreeder.Core
         /// <summary>Running totals (fish kept, kinds discovered, levels) count as they stand, not since the bounty went up.</summary>
         static bool IsTotal(MilestoneKind kind) => kind == MilestoneKind.KeepFish || kind == MilestoneKind.DiscoverSpecies || kind == MilestoneKind.FishkeepingLevel;
 
-        /// <summary>Starts a ready project at the research bench, if the bench is free.</summary>
+        /// <summary>
+        /// Puts a ready project on the research bench. If another project is there it goes back on
+        /// the shelf with its points kept, to pick up again later.
+        /// </summary>
         public static bool Start(ResearchProjectBalance project)
         {
-            if (project == null || current != null || !ready.Contains(project.id)) return false;
+            if (project == null || !ready.Contains(project.id)) return false;
+            var previous = Current;
+            if (previous != null)
+            {
+                ready.Add(previous.id);
+                GameLog.Add($"{previous.name} goes back on the shelf with {Progress(previous):0}/{Cost(previous)} points.");
+            }
             ready.Remove(project.id);
             current = project.id;
-            currentProgress = 0f;
-            GameLog.Add($"Research started: {project.name}. About {StepsFor(project)} time steps to go.");
+            GameLog.Add($"Research started: {project.name}. About {NightsFor(project)} night{(NightsFor(project) == 1 ? "" : "s")} at {PointsPerNight():0} points a night.");
             Changed?.Invoke();
             return true;
         }
@@ -232,7 +253,7 @@ namespace FishBreeder.Core
             Refresh();
         }
 
-        /// <summary>Time step: the research bench moves on, and every kind of fish kept earns a little Research XP.</summary>
+        /// <summary>Time step: every kind of fish kept earns a little Research XP.</summary>
         public static void OnTimeStep(IEnumerable<Tank> tanks)
         {
             var kept = new HashSet<string>();
@@ -240,20 +261,34 @@ namespace FishBreeder.Core
                 foreach (var fish in tank.Residents)
                     if (fish != null && !fish.IsDead && !fish.IdentityHidden) kept.Add(fish.Species.id);
             if (kept.Count > 0) Progression.Award(XpTrack.Research, Data.xpPerSpeciesPerStep * kept.Count);
-
-            var project = Current;
-            if (project != null)
-            {
-                currentProgress += Speed;
-                if (currentProgress >= project.steps) Finish(project);
-            }
             Refresh();
+        }
+
+        /// <summary>
+        /// The night's research: the budget is paid (never so much that it leaves you broke) and
+        /// the bench earns its points. Nothing is paid while the bench is empty.
+        /// </summary>
+        public static void OnNight()
+        {
+            var project = Current;
+            if (project == null) return;
+            int paid = 0;
+            if (DailyBudget > 0)
+            {
+                int affordable = DevMode.On ? DailyBudget : Mathf.Clamp(Economy.Money - Balance.Data.store.brokeBelow, 0, DailyBudget);
+                if (affordable > 0 && Economy.TrySpend(affordable, $"research on {project.name}", MoneyKind.Research)) paid = affordable;
+                if (paid < DailyBudget) GameLog.Add($"Money was short, so only {Economy.Format(paid)} of the {Economy.Format(DailyBudget)} research budget went in.");
+            }
+            float points = PointsPerNight(paid);
+            progress[project.id] = Progress(project) + points;
+            GameLog.Add($"Research: +{points:0} points on {project.name} ({Mathf.Min(Progress(project), Cost(project)):0}/{Cost(project)})" + (paid > 0 ? $", {Economy.Format(paid)} spent." : "."));
+            if (Progress(project) >= Cost(project)) Finish(project);
         }
 
         static void Finish(ResearchProjectBalance project)
         {
             current = null;
-            currentProgress = 0f;
+            progress.Remove(project.id);
             done.Add(project.id);
             unlocked.Add(project.unlock);
             Progression.Award(XpTrack.Research, project.xpResearch);

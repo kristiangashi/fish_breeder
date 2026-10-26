@@ -30,8 +30,8 @@ namespace FishBreeder.Core
 
     /// <summary>
     /// One research project. Its bounty is posted once the Research level (and any project it
-    /// builds on) allows; doing the bounty lets you start the research, which then takes a number of
-    /// time steps (fewer at a higher Research level) and teaches what it says.
+    /// builds on) allows; doing the bounty lets you start the research, which then needs this many
+    /// research points (earned every night, more with a research budget) and teaches what it says.
     /// </summary>
     [Serializable]
     public class ResearchProjectBalance
@@ -46,8 +46,8 @@ namespace FishBreeder.Core
         public MilestoneKind bounty;
         [Tooltip("How many times (for fish kept, kinds discovered and levels: how many at once).")]
         public int target = 1;
-        [Tooltip("Time steps of research once started, at research speed 1 (there are two time steps a day).")]
-        public float steps = 2f;
+        [Tooltip("Research points the project needs once started. The bench earns points every night (see the research settings).")]
+        public int points = 40;
         [Tooltip("Research level needed before the bounty is posted.")]
         public int level = 1;
         [Tooltip("Id of a project that has to be finished first (empty for none).")]
@@ -55,39 +55,50 @@ namespace FishBreeder.Core
         public int xpBounty = 20;
         public int xpResearch = 40;
 
-        static ResearchProjectBalance Make(string id, string name, string teaches, ResearchUnlock unlock, MilestoneKind bounty, int target, float steps, int level, string requires = "", int xpBounty = 20, int xpResearch = 40)
-            => new ResearchProjectBalance { id = id, name = name, teaches = teaches, unlock = unlock, bounty = bounty, target = target, steps = steps, level = level, requires = requires, xpBounty = xpBounty, xpResearch = xpResearch };
+        static ResearchProjectBalance Make(string id, string name, string teaches, ResearchUnlock unlock, MilestoneKind bounty, int target, int points, int level, string requires = "", int xpBounty = 20, int xpResearch = 40)
+            => new ResearchProjectBalance { id = id, name = name, teaches = teaches, unlock = unlock, bounty = bounty, target = target, points = points, level = level, requires = requires, xpBounty = xpBounty, xpResearch = xpResearch };
 
         public static List<ResearchProjectBalance> CreateDefaults() => new List<ResearchProjectBalance>
         {
-            Make("health_checkup", "Health check-ups", "The fish window shows how much each thing adds to or takes from a fish's health.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 8, 2f, 1),
-            Make("temperature", "Temperature preferences", "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.", ResearchUnlock.Temperature, MilestoneKind.KeepFish, 6, 2f, 1),
-            Make("tank_mates", "Tank mate behaviour", "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.", ResearchUnlock.TankMates, MilestoneKind.DiscoverSpecies, 3, 3f, 1),
-            Make("water_testing", "Water testing kit", "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.", ResearchUnlock.WaterTesting, MilestoneKind.CleanTank, 6, 3f, 2, "", 25, 50),
-            Make("feeding", "Feeding study", "A fish shows it loves a food the first time it eats one of its favourites, and favourites you've seen already are written up.", ResearchUnlock.FavouriteFoods, MilestoneKind.HatchEggs, 5, 2f, 2, "", 25, 50),
-            Make("breeding", "Breeding biology", "The breeding tab explains why each fish isn't ready to breed, and you learn which kinds lay eggs and which give birth.", ResearchUnlock.Breeding, MilestoneKind.BreedFish, 5, 3f, 2, "", 25, 50),
-            Make("shoaling", "Shoaling behaviour", "Learn how many of its own kind each fish wants around it.", ResearchUnlock.Shoaling, MilestoneKind.GrowUp, 3, 2f, 2, "", 25, 50),
-            Make("pathology", "Fish pathology", "Sick fish show how far along their illness is and which medicine cures it.", ResearchUnlock.Pathology, MilestoneKind.CureFish, 2, 3f, 3, "", 30, 60),
-            Make("plants", "Plant preferences", "Learn which fish love plants in their tank.", ResearchUnlock.Plants, MilestoneKind.BuyDecoration, 3, 2f, 3, "", 30, 60),
-            Make("ph", "pH preferences", "Learn the pH range every fish you've discovered likes.", ResearchUnlock.Ph, MilestoneKind.KeepFish, 15, 4f, 3, "water_testing", 30, 60),
-            Make("lifespan", "Ageing study", "Learn how long each kind of fish lives before it starts to slow down.", ResearchUnlock.Lifespan, MilestoneKind.GrowUp, 8, 4f, 4, "", 40, 80),
+            Make("health_checkup", "Health check-ups", "The fish window shows how much each thing adds to or takes from a fish's health.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 8, 30, 1),
+            Make("temperature", "Temperature preferences", "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.", ResearchUnlock.Temperature, MilestoneKind.KeepFish, 6, 30, 1),
+            Make("tank_mates", "Tank mate behaviour", "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.", ResearchUnlock.TankMates, MilestoneKind.DiscoverSpecies, 3, 45, 1),
+            Make("water_testing", "Water testing kit", "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.", ResearchUnlock.WaterTesting, MilestoneKind.CleanTank, 6, 45, 2, "", 25, 50),
+            Make("feeding", "Feeding study", "A fish shows it loves a food the first time it eats one of its favourites, and favourites you've seen already are written up.", ResearchUnlock.FavouriteFoods, MilestoneKind.HatchEggs, 5, 35, 2, "", 25, 50),
+            Make("breeding", "Breeding biology", "The breeding tab explains why each fish isn't ready to breed, and you learn which kinds lay eggs and which give birth.", ResearchUnlock.Breeding, MilestoneKind.BreedFish, 5, 50, 2, "", 25, 50),
+            Make("shoaling", "Shoaling behaviour", "Learn how many of its own kind each fish wants around it.", ResearchUnlock.Shoaling, MilestoneKind.GrowUp, 3, 35, 2, "", 25, 50),
+            Make("pathology", "Fish pathology", "Sick fish show how far along their illness is and which medicine cures it.", ResearchUnlock.Pathology, MilestoneKind.CureFish, 2, 60, 3, "", 30, 60),
+            Make("plants", "Plant preferences", "Learn which fish love plants in their tank.", ResearchUnlock.Plants, MilestoneKind.BuyDecoration, 3, 40, 3, "", 30, 60),
+            Make("ph", "pH preferences", "Learn the pH range every fish you've discovered likes.", ResearchUnlock.Ph, MilestoneKind.KeepFish, 15, 80, 3, "water_testing", 30, 60),
+            Make("lifespan", "Ageing study", "Learn how long each kind of fish lives before it starts to slow down.", ResearchUnlock.Lifespan, MilestoneKind.GrowUp, 8, 100, 4, "", 40, 80),
         };
     }
 
     /// <summary>
     /// Research: bounties (breed this, cure that) unlock research projects, and finished research
-    /// makes the game tell you more. Research speed grows with the Research level.
+    /// makes the game tell you more. Like Civilization, the bench earns research points every night
+    /// towards the project you're on: a base amount, plus more for the money you put in (the daily
+    /// budget, paid each night), all sped up by the Research level.
     /// </summary>
     [Serializable]
     public class ResearchBalance
     {
-        [Tooltip("Research speed = 1 + this x (Research level - 1). Research progresses this much per time step.")]
+        [Tooltip("Research points the bench earns every night with no money put in.")]
+        public float basePointsPerDay = 10f;
+        [Tooltip("Extra research points per dollar of the daily research budget.")]
+        public float pointsPerDollar = 0.2f;
+        [Tooltip("Most the player can put into research each day.")]
+        public int maxDailyBudget = 500;
+        [Tooltip("How much each +/- click changes the daily budget.")]
+        public int budgetStep = 10;
+        [Tooltip("Research speed = 1 + this x (Research level - 1): every night's points are multiplied by it.")]
         public float speedPerLevel = 0.2f;
         [Tooltip("Research XP each kind of fish you keep earns per time step.")]
         public int xpPerSpeciesPerStep = 2;
         public List<ResearchProjectBalance> projects = ResearchProjectBalance.CreateDefaults();
     }
 
+    /// <summary>A room of the shop. The first is open from the start; the rest are expansions, bought in order once reputation is high enough.</summary>
     [Serializable]
     public class SectionBalance
     {
@@ -95,6 +106,18 @@ namespace FishBreeder.Core
         public int price;
         [Tooltip("Shopkeeping level needed to unlock it.")]
         public int unlockLevel = 1;
+        [Tooltip("Reputation (in stars, 0 to 5) the shop needs before this room can be bought.")]
+        public float starsNeeded;
+
+        public static List<SectionBalance> CreateDefaults() => new List<SectionBalance>
+        {
+            new SectionBalance { name = "Main floor", price = 0 },
+            new SectionBalance { name = "East wing", price = 2500, starsNeeded = 2.8f },
+            new SectionBalance { name = "Garden room", price = 5000, starsNeeded = 3.2f },
+            new SectionBalance { name = "Coral lounge", price = 9000, starsNeeded = 3.6f },
+            new SectionBalance { name = "Lagoon hall", price = 15000, starsNeeded = 4f },
+            new SectionBalance { name = "Grand hall", price = 25000, starsNeeded = 4.4f },
+        };
     }
 
     /// <summary>A size a tank can be, from the one every tank starts as to the biggest upgrade.</summary>
@@ -147,6 +170,56 @@ namespace FishBreeder.Core
         public bool speckled;
         [Tooltip("Price of the same tier as a box of fry (as many fry as eggs). Fry boxes can hold any fish, egg boxes only egg-layers.")]
         public int fryPrice = 45;
+        [Tooltip("Which fish this box can hatch, how likely each is, and from when. Made from the rarity settings above when empty.")]
+        public List<EggHatchBalance> hatch = new List<EggHatchBalance>();
+
+        /// <summary>
+        /// Fills empty hatch tables from the rarity settings, so the defaults play like the old
+        /// rarity rules: normal-pool species share (1 - rare chance) by rarity falloff, and rare-pool
+        /// species share the rare chance. Each species can hatch from its unlock level.
+        /// </summary>
+        public static void FillHatchTables(List<EggTierBalance> tiers, List<Species> species)
+        {
+            if (tiers == null || species == null) return;
+            foreach (var tier in tiers)
+            {
+                if (tier == null) continue;
+                if (tier.hatch == null) tier.hatch = new List<EggHatchBalance>();
+                if (tier.hatch.Count > 0) continue;
+                float normalTotal = 0f;
+                int rareCount = 0;
+                foreach (var s in species)
+                {
+                    if (s == null) continue;
+                    if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) normalTotal += Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin);
+                    else if (s.rarity == tier.rarePool) rareCount++;
+                }
+                foreach (var s in species)
+                {
+                    if (s == null) continue;
+                    float weight = 0f;
+                    if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax && normalTotal > 0f)
+                        weight = (1f - tier.rareChance) * Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin) / normalTotal;
+                    else if (s.rarity == tier.rarePool && rareCount > 0) weight = tier.rareChance / rareCount;
+                    if (weight <= 0f) continue;
+                    tier.hatch.Add(new EggHatchBalance { species = s.id, weight = Mathf.Round(weight * 1000f) / 10f, fromLevel = s.unlockLevel });
+                }
+            }
+        }
+    }
+
+    /// <summary>One fish an egg or fry box can hatch: how likely it is (against the others in the box) and from when.</summary>
+    [Serializable]
+    public class EggHatchBalance
+    {
+        [Tooltip("Species id.")]
+        public string species;
+        [Tooltip("Relative chance: an egg hatches into this fish with its weight out of the total of every fish it can be right now.")]
+        public float weight = 10f;
+        [Tooltip("Fishkeeping level from which it can hatch.")]
+        public int fromLevel = 1;
+        [Tooltip("Day from which it can hatch (0 = from the start).")]
+        public int fromDay;
     }
 
     public enum EquipmentKind { Filter, Heater, Bubbler }
@@ -228,13 +301,7 @@ namespace FishBreeder.Core
         public int forSaleTankLevel = 1, displayTankLevel = 2;
         [Tooltip("Fishkeeping level to buy another tank of this kind (they live in the back room).")]
         public int breederTankLevel = 4, quarantineTankLevel = 3;
-        public List<SectionBalance> sections = new List<SectionBalance>
-        {
-            new SectionBalance { name = "Main floor", price = 0, unlockLevel = 1 },
-            new SectionBalance { name = "East wing", price = 2500, unlockLevel = 4 },
-            new SectionBalance { name = "Garden room", price = 6000, unlockLevel = 10 },
-            new SectionBalance { name = "Grand hall", price = 12000, unlockLevel = 18 },
-        };
+        public List<SectionBalance> sections = SectionBalance.CreateDefaults();
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
         {
             new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
@@ -363,6 +430,13 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float maxSadChance = 0.9f;
         [Tooltip("Purchase chance is multiplied by this in a For Sale tank with dead fish in it.")]
         [Range(0f, 1f)] public float deadFishPurchaseMultiplier = 0.6f;
+        [Tooltip("Chance a shopper is upset by fish fighting in a tank they look at.")]
+        [Range(0f, 1f)] public float fightingUpsetChance = 0.6f;
+        [Tooltip("Purchase chance is multiplied by this in a For Sale tank where fish are fighting.")]
+        [Range(0f, 1f)] public float fightingPurchaseMultiplier = 0.5f;
+        [Tooltip("A shopper at a For Sale tank with fewer fish they could buy than this may complain there's not much for sale.")]
+        public int fewFishBelow = 3;
+        [Range(0f, 1f)] public float fewFishComplaintChance = 0.5f;
         [Tooltip("Reputation (0..1) the shop starts with. Reviews move it up or down each day.")]
         [Range(0f, 1f)] public float startingReputation = 0.5f;
         public float reputationChangePerDay = 0.15f;
@@ -604,6 +678,8 @@ namespace FishBreeder.Core
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
         public ResearchBalance research = new ResearchBalance();
+        public ReputationBalance reputation = new ReputationBalance();
+        public FinanceBalance finances = new FinanceBalance();
         public QualityBalance quality = new QualityBalance();
         public List<MilestoneBalance> milestones = MilestoneBalance.CreateDefaults();
         public CrossBreedingBalance crossBreeding = new CrossBreedingBalance();
@@ -622,8 +698,9 @@ namespace FishBreeder.Core
         /// 2: real-world species data (names, families, temperature and pH ranges, schools).
         /// 3: favourite foods and new foods, no starting decorations, one wipe per tank.
         /// 4: research projects, aquarium quality gates tank sizes (not levels), smallest tank per species.
+        /// 5: research points and budgets, five expansion rooms unlocked by reputation, egg hatch tables.
         /// </summary>
-        public const int CurrentDataVersion = 4;
+        public const int CurrentDataVersion = 5;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -666,6 +743,10 @@ namespace FishBreeder.Core
                 if (parsed.research == null) parsed.research = new ResearchBalance();
                 if (parsed.research.projects == null) parsed.research.projects = new List<ResearchProjectBalance>();
                 AddMissingProjects(parsed.research.projects);
+                if (parsed.reputation == null) parsed.reputation = new ReputationBalance();
+                if (parsed.reputation.complaints == null || parsed.reputation.complaints.Count == 0) parsed.reputation.complaints = ComplaintBalance.CreateDefaults();
+                if (parsed.finances == null) parsed.finances = new FinanceBalance();
+                if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
                 return parsed;
             }
             catch (Exception e)
@@ -776,6 +857,24 @@ namespace FishBreeder.Core
                         data.store.tankSizes[i].unlockLevel = 1;
                     }
             }
+            if (fromVersion < 5)
+            {
+                // Research needs points instead of time steps, and five expansion rooms open with reputation.
+                var projects = new Dictionary<string, int>();
+                foreach (var p in ResearchProjectBalance.CreateDefaults()) projects[p.id] = p.points;
+                if (data.research != null && data.research.projects != null)
+                    foreach (var p in data.research.projects)
+                        if (p != null) p.points = p.id != null && projects.TryGetValue(p.id, out var points) ? points : Mathf.Max(p.points, 40);
+                if (data.research != null)
+                {
+                    var fresh = new ResearchBalance();
+                    data.research.basePointsPerDay = fresh.basePointsPerDay;
+                    data.research.pointsPerDollar = fresh.pointsPerDollar;
+                    data.research.maxDailyBudget = fresh.maxDailyBudget;
+                    data.research.budgetStep = fresh.budgetStep;
+                }
+                if (data.store != null) data.store.sections = SectionBalance.CreateDefaults();
+            }
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -795,6 +894,7 @@ namespace FishBreeder.Core
         {
             var defaults = new BalanceData();
             CrossBreeding.FillCombos(defaults.crossBreeding, defaults.species);
+            EggTierBalance.FillHatchTables(defaults.supplier.eggTiers, defaults.species);
             return defaults;
         }
     }

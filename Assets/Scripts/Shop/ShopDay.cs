@@ -24,7 +24,10 @@ namespace FishBreeder.Shop
         public int visitors, fishSold, earnings;
         public int happy, grossed, sad, mad;
         public float stars;
-        public string review;
+        /// <summary>The day's reviews, worst complaint first (praise first on a good day).</summary>
+        public List<string> reviews = new List<string>();
+        /// <summary>How many shoppers complained about each thing (indexed by <see cref="Complaint"/>).</summary>
+        public int[] complaints = new int[Reputation.Count];
         /// <summary>What happened in the tanks: during the day for an evening report, overnight for a morning one.</summary>
         public string tanks;
         public float reputationChange;
@@ -73,20 +76,38 @@ namespace FishBreeder.Shop
 
         public void Initialize(StoreLayout store) => layout = store;
 
-        public float CustomersPerHour
+        /// <summary>The parts foot traffic is made of, for the reputation screen.</summary>
+        public struct Traffic
+        {
+            public float baseRate;
+            /// <summary>Extra from display tanks, other shop-floor tanks and decorations (0.15 = +15%).</summary>
+            public float display, otherTanks, decorations;
+            public int displayCount, otherCount, decorationCount;
+            /// <summary>Multipliers: reputation (stars), perks, and complaints.</summary>
+            public float reputation, perks, complaints;
+            public float PerHour => baseRate * (1f + display + otherTanks + decorations) * reputation * perks * complaints;
+        }
+
+        public Traffic TrafficParts
         {
             get
             {
                 var shop = Balance.Data.shop;
-                int display = layout.CountTanks(TankRole.Display);
-                int other = layout.PublicTanks.Count - display;
-                int decorations = 0;
-                foreach (var tank in layout.PublicTanks) decorations += tank.Tank.DecorCount;
-                float traffic = 1f + (display * shop.trafficPerDisplayTank + other * shop.trafficPerOtherTank) * Perks.More(PerkEffect.TankTraffic)
-                                + decorations * shop.trafficPerDecoration * Perks.More(PerkEffect.DecorTraffic);
-                return shop.customersPerHour * traffic * Mathf.Lerp(0.5f, 1.5f, Economy.Reputation) * Perks.More(PerkEffect.MoreCustomers);
+                var t = new Traffic { baseRate = shop.customersPerHour };
+                t.displayCount = layout.CountTanks(TankRole.Display);
+                t.otherCount = layout.PublicTanks.Count - t.displayCount;
+                foreach (var tank in layout.PublicTanks) t.decorationCount += tank.Tank.DecorCount;
+                t.display = t.displayCount * shop.trafficPerDisplayTank * Perks.More(PerkEffect.TankTraffic);
+                t.otherTanks = t.otherCount * shop.trafficPerOtherTank * Perks.More(PerkEffect.TankTraffic);
+                t.decorations = t.decorationCount * shop.trafficPerDecoration * Perks.More(PerkEffect.DecorTraffic);
+                t.reputation = Mathf.Lerp(0.5f, 1.5f, Economy.Reputation);
+                t.perks = Perks.More(PerkEffect.MoreCustomers);
+                t.complaints = Reputation.TrafficMultiplier;
+                return t;
             }
         }
+
+        public float CustomersPerHour => TrafficParts.PerHour;
 
         float SpawnInterval => 3600f / Mathf.Max(1f, CustomersPerHour);
 
@@ -120,6 +141,8 @@ namespace FishBreeder.Shop
             var report = new DayReport { day = Economy.Day, stayedClosed = true };
             GameLog.Add(Economy.CanOpenShop ? "You keep the shop closed today. During the day in the tanks:" : "Another day of getting ready. During the day in the tanks:");
             report.tanks = TimeStep.Run(layout.Tanks);
+            // Nobody came in, so yesterday's complaints fade a little.
+            Reputation.EndOfDay(0, null, 0f, null, report.day);
             StartEvening(report);
         }
 
@@ -157,6 +180,7 @@ namespace FishBreeder.Shop
             if (Phase != DayPhase.Evening) return;
             GameLog.Add("You turn the lights off for the night. Overnight in the tanks:");
             string night = TimeStep.Run(layout.Tanks);
+            Research.OnNight();
             Economy.NextDay();
             Progression.NewDailyGoals();
             Phase = DayPhase.Morning;
@@ -178,7 +202,7 @@ namespace FishBreeder.Shop
                 for (int v = 0; v < visits && tanks.Count > 0; v++)
                 {
                     var reaction = ShopperBrain.Evaluate(profile, tanks[GameRandom.Range(0, tanks.Count)]);
-                    RecordMood(reaction.mood);
+                    Record(reaction);
                     if (reaction.purchase != null)
                     {
                         Sell(reaction.purchase, layout.RegisterPoint);
@@ -225,10 +249,12 @@ namespace FishBreeder.Shop
             }
         }
 
-        public void RecordMood(Mood mood)
+        /// <summary>A shopper's reaction to a tank: their mood, and anything they'll complain about.</summary>
+        public void Record(Reaction reaction)
         {
             if (today == null) return;
-            switch (mood)
+            if (reaction.complained) today.complaints[(int)reaction.complaint]++;
+            switch (reaction.mood)
             {
                 case Mood.Happy:
                     today.happy++;
@@ -245,10 +271,11 @@ namespace FishBreeder.Shop
         {
             int price = fish.Price;
             string name = $"{fish.FishName} the {fish.SpeciesLabel}";
+            Finance.RecordSale(fish.SpeciesLabel, fish.Tank != null ? fish.Tank.Title : "?", price);
             fish.RemoveFromTank();
-            Economy.Earn(price, $"sold {name}");
+            Economy.Earn(price, $"sold {name}", MoneyKind.Sales);
             int tip = Mathf.RoundToInt(price * Perks.Value(PerkEffect.SaleTips));
-            if (tip > 0) Economy.Earn(tip, $"tip for {name}");
+            if (tip > 0) Economy.Earn(tip, $"tip for {name}", MoneyKind.Tips);
             var progression = Balance.Data.progression;
             Progression.Award(XpTrack.Shopkeeping, progression.xpSaleBase + Mathf.RoundToInt(price * progression.xpPerSaleDollar));
             Progression.Count(GoalKind.SellFish);
@@ -309,12 +336,8 @@ namespace FishBreeder.Shop
             report.reputationChange *= report.reputationChange > 0f ? Perks.More(PerkEffect.ReputationGain) : Perks.Less(PerkEffect.ReputationShield);
             Economy.ChangeReputation(report.reputationChange);
 
-            if (report.visitors == 0) report.review = "Nobody came in today. More tanks, especially display tanks, bring in more people.";
-            else if (bad == 0 && report.fishSold > 0) report.review = "\"Lovely little shop, healthy fish. Will be back!\"";
-            else if (report.sad >= report.grossed && report.sad >= report.mad && report.sad > 0) report.review = "\"There were dead fish floating in the tanks. So sad.\"";
-            else if (report.grossed >= report.mad && report.grossed > 0) report.review = "\"The water looked filthy. Do they ever clean those tanks?\"";
-            else if (report.mad > 0) report.review = "\"Nice fish, but the prices are ridiculous.\"";
-            else report.review = "\"Nice enough. Not much for sale though.\"";
+            report.reviews = Reputation.Write(report.visitors, report.fishSold, report.happy, report.complaints);
+            Reputation.EndOfDay(report.visitors, report.complaints, report.stars, report.reviews, report.day);
         }
     }
 }

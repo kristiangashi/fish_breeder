@@ -198,6 +198,10 @@ namespace FishBreeder.Core
             if (GUILayout.Button(Perks.TotalAvailable > 0 ? $"Perks (P) ●{Perks.TotalAvailable}" : "Perks (P)")) PerksView.Toggle();
             if (GUILayout.Button("Watch (V)")) ViewMode.Set(true);
             GUILayout.EndHorizontal();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Finances (F)")) FinancesView.Toggle();
+            if (GUILayout.Button("Reputation (Y)")) ReputationView.Toggle();
+            GUILayout.EndHorizontal();
             if (onBack != null && GUILayout.Button("Back to store (Esc)")) onBack();
             UiCheck.End();
         }
@@ -310,7 +314,7 @@ namespace FishBreeder.Core
                 string label = tank.IsSaltwater ? $"Change to fresh water ({Economy.Format(salt)})" : $"Change to salt water ({Economy.Format(salt)})";
                 if (!tank.IsSaltwater && !Progression.IsUnlocked(XpTrack.Fishkeeping, supplier.marineSaltLevel))
                     GUILayout.Label($"<i>Salt water tanks: {Progression.LockText(XpTrack.Fishkeeping, supplier.marineSaltLevel)}</i>", Rich());
-                else if (GUILayout.Button(label) && Economy.TrySpend(salt, "changing a tank's water")) tank.SetSaltwater(!tank.IsSaltwater);
+                else if (GUILayout.Button(label) && Economy.TrySpend(salt, "changing a tank's water", MoneyKind.Care)) tank.SetSaltwater(!tank.IsSaltwater);
             }
             DrawDecorations();
             GUI.enabled = true;
@@ -461,7 +465,7 @@ namespace FishBreeder.Core
         void DoseTank(Medicine medicine)
         {
             int price = Perks.Supplier(Balance.Data.supplier.medicinePrice);
-            if (!Economy.TrySpend(price, $"{medicine.ToString().ToLower()} for {storeTank.Title}")) return;
+            if (!Economy.TrySpend(price, $"{medicine.ToString().ToLower()} for {storeTank.Title}", MoneyKind.Care)) return;
             int cured = 0, stressed = 0;
             foreach (var fish in new List<Fish>(tank.Residents))
                 if (fish.Health.ReceiveMedicine(medicine) == FishHealth.MedicineResult.Cured) cured++;
@@ -537,7 +541,7 @@ namespace FishBreeder.Core
                 if (GUILayout.Button(refund > 0 ? $"Remove +{Economy.Format(refund)}" : "Remove"))
                 {
                     decor.RemoveAt(i);
-                    if (refund > 0) Economy.Earn(refund, $"sold back a {(item != null ? item.name.ToLower() : "decoration")}");
+                    if (refund > 0) Economy.Earn(refund, $"sold back a {(item != null ? item.name.ToLower() : "decoration")}", MoneyKind.Refunds);
                     GUILayout.EndHorizontal();
                     break;
                 }

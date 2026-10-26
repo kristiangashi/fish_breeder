@@ -132,7 +132,7 @@ namespace FishBreeder.Shop
                 yield return new WaitForSeconds(GameRandom.Range(0.8f, 1.6f));
 
                 var reaction = ShopperBrain.Evaluate(profile, tank);
-                day.RecordMood(reaction.mood);
+                day.Record(reaction);
                 if (reaction.mood != Mood.None) ShowMood(reaction.mood);
                 purchase = reaction.purchase;
                 React(reaction.mood, tank.Tank, reaction.purchase);

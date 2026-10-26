@@ -22,6 +22,8 @@ namespace FishBreeder.Core
         BuildDiscount, DecorDiscount, MoreShopTanks, TankTraffic, DecorTraffic, UpgradeDiscount, BiggerCrowds,
         // Public relations
         MoreCustomers, ReputationGain, ReputationShield, GrossTolerance, DeadFishTolerance, ExtraTankVisits, DailyReputation,
+        // Finances (added later, so saved files keep their numbers)
+        Bookkeeping,
     }
 
     /// <summary>One perk in a skill tree. Each rank bought adds <see cref="perRank"/> to its effect.</summary>
@@ -82,6 +84,7 @@ namespace FishBreeder.Core
             Make("sweet_talker", PerkTree.Finances, 1, "Sweet talker", "Customers pay up to {0} more before a price puts them off", 3, 0.04f, PerkEffect.PriceTolerance),
             Make("tip_jar", PerkTree.Finances, 2, "Tip jar", "Every sale brings a {0} tip on top", 5, 0.03f, PerkEffect.SaleTips),
             Make("safety_net", PerkTree.Finances, 2, "Safety net", "Grandma's gifts are ${0} bigger", 3, 50f, PerkEffect.BiggerAllowance, false),
+            Make("bookkeeper", PerkTree.Finances, 2, "Bookkeeper", "The finances screen (F) shows your best-selling fish and what each kind earns", 1, 1f, PerkEffect.Bookkeeping, false),
             Make("closer", PerkTree.Finances, 3, "Closer", "Customers are {0} more likely to buy", 5, 0.05f, PerkEffect.PurchaseChance),
             Make("savings", PerkTree.Finances, 3, "Savings account", "Your money earns {0} interest every night", 3, 0.01f, PerkEffect.Interest),
             Make("premium_brand", PerkTree.Finances, 4, "Premium brand", "Customers pay up to {0} more before a price puts them off", 3, 0.05f, PerkEffect.PriceTolerance),

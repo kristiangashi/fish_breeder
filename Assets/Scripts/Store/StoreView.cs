@@ -148,6 +148,16 @@ namespace FishBreeder.Store
                 ResearchView.Close();
                 escape = false;
             }
+            if (escape && ReputationView.IsOpen)
+            {
+                ReputationView.Close();
+                escape = false;
+            }
+            if (escape && FinancesView.IsOpen)
+            {
+                FinancesView.Close();
+                escape = false;
+            }
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && escape)
             {
@@ -185,7 +195,7 @@ namespace FishBreeder.Store
             }
             else
             {
-                if (panel == Panel.None && !JournalView.IsOpen && !PerksView.IsOpen && !ResearchView.IsOpen) HandleStoreCameraInput(dt);
+                if (panel == Panel.None && !AnyWindowOpen) HandleStoreCameraInput(dt);
                 GetStorePose(out targetPosition, out targetRotation);
             }
             if (ViewMode.Watching)
@@ -201,6 +211,8 @@ namespace FishBreeder.Store
                 Vector3.Lerp(cam.transform.position, targetPosition, blend),
                 Quaternion.Slerp(cam.transform.rotation, targetRotation, blend));
         }
+
+        static bool AnyWindowOpen => JournalView.IsOpen || PerksView.IsOpen || ResearchView.IsOpen || ReputationView.IsOpen || FinancesView.IsOpen;
 
         /// <summary>The person the people camera follows, or null (stepping past the last one turns it off).</summary>
         Transform FollowedPerson()
@@ -404,7 +416,7 @@ namespace FishBreeder.Store
                 case Panel.Supplier: panelRect = Centered(width, height, 760f, Mathf.Min(700f, height - 100f)); DrawSupplier(); break;
                 case Panel.Unlock: panelRect = Centered(width, height, 380f, 170f); DrawUnlock(); break;
                 case Panel.BuyTank: panelRect = Centered(width, height, 440f, 250f); DrawBuyTank(); break;
-                case Panel.DayReport: panelRect = Centered(width, height, 460f, 360f); DrawDayReport(); break;
+                case Panel.DayReport: panelRect = Centered(width, height, 520f, 440f); DrawDayReport(); break;
                 case Panel.Owner: panelRect = Centered(width, height, 480f, 400f); DrawOwnerPick(); break;
             }
 
@@ -429,7 +441,7 @@ namespace FishBreeder.Store
             string moneyColor = moneyFlash > 0.01f ? ColorHex(Color.Lerp(UiTheme.Sand, UiTheme.Leaf, moneyFlash))
                 : moneyFlash < -0.01f ? ColorHex(Color.Lerp(UiTheme.Sand, UiTheme.Coral, -moneyFlash)) : UiTheme.SandHex;
             string moneyText = DevMode.On ? $"<size=14><color={UiTheme.SunHex}>DEV MODE</color></size>" : $"<color={moneyColor}>{Economy.Format(Mathf.RoundToInt(shownMoney))}</color>";
-            GUILayout.Label($"<size=17><b>{moneyText}</b></size>", Rich(), GUILayout.Width(96f));
+            if (GUILayout.Button(new GUIContent($"<size=17><b>{moneyText}</b></size>", "Finances (F)"), FlatButton(), GUILayout.Width(96f))) FinancesView.Toggle();
             if (Event.current.type == EventType.Repaint && coinBurst)
             {
                 coinBurst = false;
@@ -437,7 +449,7 @@ namespace FishBreeder.Store
                 Fx.ScreenBurst(new Vector2(topBar.x + last.x + 40f, topBar.y + last.center.y), UiTheme.Sun, 14, false, 0.8f);
             }
             GUILayout.Label($"<b>Day {Economy.Day}</b>", Rich(), GUILayout.Width(58f));
-            GUILayout.Label($"<color={UiTheme.SunHex}>{Stars(Economy.Reputation * 5f)}</color>", Rich(), GUILayout.Width(78f));
+            if (GUILayout.Button(new GUIContent($"<color={UiTheme.SunHex}>{Stars(Economy.Reputation * 5f)}</color>", "Reputation (Y)"), FlatButton(), GUILayout.Width(78f))) ReputationView.Toggle();
             GUILayout.Label(FoodSummary(), Rich(), GUILayout.Width(118f));
             if (shopDay.IsOpen)
             {
@@ -516,6 +528,18 @@ namespace FishBreeder.Store
         }
 
         static string PerksButtonLabel() => Perks.TotalAvailable > 0 ? $"Perks (P) <color={UiTheme.SunHex}>●{Perks.TotalAvailable}</color>" : "Perks (P)";
+
+        static GUIStyle flatButton;
+
+        /// <summary>Looks like a label, lights up under the mouse: the money and stars open their windows.</summary>
+        static GUIStyle FlatButton()
+        {
+            if (flatButton != null) return flatButton;
+            flatButton = new GUIStyle(GUI.skin.label) { richText = true, alignment = TextAnchor.MiddleLeft };
+            flatButton.hover.background = UiTheme.Rounded(new Color(1f, 1f, 1f, 0.14f), new Color(1f, 1f, 1f, 0.08f), new Color(1f, 1f, 1f, 0.2f), 6, 1);
+            flatButton.hover.textColor = Color.white;
+            return flatButton;
+        }
 
         static GUIStyle perkButton;
         static GUIStyle PerkButtonStyle() => perkButton != null ? perkButton : perkButton = new GUIStyle(GUI.skin.button) { richText = true };
@@ -970,8 +994,9 @@ namespace FishBreeder.Store
             foreach (var section in store.Sections)
                 if (!section.unlocked)
                 {
-                    int level = StoreLayout.SectionLevel(section);
-                    string requirement = Progression.IsUnlocked(XpTrack.Shopkeeping, level) ? $"Unlock for {Economy.Format(section.Price)}" : $"Needs {Progression.LockText(XpTrack.Shopkeeping, level)}";
+                    var why = store.WhyLocked(section);
+                    string requirement = why == null ? $"Unlock for {Economy.Format(section.Price)}"
+                        : section == store.NextLockedSection ? why : $"{StoreLayout.SectionStars(section):0.0} stars and {Economy.Format(section.Price)}";
                     WorldLabel(section.LabelPoint, $"<b>{section.name}</b> (locked)\n{requirement}", scale, height);
                 }
         }
@@ -1119,9 +1144,11 @@ namespace FishBreeder.Store
             {
                 GUILayout.Label($"Day {report.day} is over", UiTheme.Title);
                 GUILayout.Label($"Visitors: {report.visitors}     Fish sold: {report.fishSold}     Earned: <b><color={UiTheme.LeafHex}>{Economy.Format(report.earnings)}</color></b>", Rich());
-                GUILayout.Label($"Reactions: {report.happy} happy, {report.grossed} grossed out, {report.sad} sad, {report.mad} angry about prices", Rich());
+                GUILayout.Label($"Reactions: {report.happy} happy, {report.grossed} grossed out, {report.sad} upset, {report.mad} angry about prices", Rich());
                 GUILayout.Label($"Reviews: <size=18><color={UiTheme.SunHex}>{Stars(report.stars)}</color></size> ({report.stars:0.#} / 5)   Reputation {(report.reputationChange >= 0f ? "+" : "")}{report.reputationChange * 100f:0}%", Rich());
-                GUILayout.Label($"<i>{report.review}</i>", Rich());
+                if (report.visitors == 0) GUILayout.Label("<i>Nobody came in today. More tanks, especially display tanks, bring in more people.</i>", Rich());
+                foreach (var review in report.reviews) GUILayout.Label($"<i>\"{review}\"</i>", Rich());
+                GUILayout.Label("<size=11>See what's helping and hurting your reputation: click the stars or press Y.</size>", Rich());
             }
             GUILayout.Space(6f);
             GUILayout.Label(report.morning ? "OVERNIGHT IN THE TANKS" : "TODAY IN THE TANKS", UiTheme.Heading);
@@ -1377,7 +1404,7 @@ namespace FishBreeder.Store
 
         void OrderEggs(EggTierBalance tier)
         {
-            if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower())) return;
+            if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower(), MoneyKind.FishAndEggs)) return;
             var eggs = EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), true, orderTarget.Tank.SizeIndex);
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
@@ -1386,7 +1413,7 @@ namespace FishBreeder.Store
 
         void OrderFryBox(EggTierBalance tier)
         {
-            if (!Economy.TrySpend(Perks.Supplier(tier.fryPrice), EggBoxes.FryName(tier).ToLower())) return;
+            if (!Economy.TrySpend(Perks.Supplier(tier.fryPrice), EggBoxes.FryName(tier).ToLower(), MoneyKind.FishAndEggs)) return;
             var tank = orderTarget.Tank;
             foreach (var genome in EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), false, tank.SizeIndex))
                 FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
@@ -1409,7 +1436,7 @@ namespace FishBreeder.Store
                 int price = Perks.Decoration(item.price);
                 string label = full ? "No room in this tank" : $"Add  {Economy.Format(price)}";
                 if (OfferRow(ItemPreviews.Decoration(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, label, !full && Economy.CanAfford(price))
-                    && Economy.TrySpend(price, $"a {item.name.ToLower()} for {orderTarget.Title}"))
+                    && Economy.TrySpend(price, $"a {item.name.ToLower()} for {orderTarget.Title}", MoneyKind.Decorations))
                 {
                     if (tank.Decor.Add(item.id))
                     {
@@ -1417,7 +1444,7 @@ namespace FishBreeder.Store
                         Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
                         Progression.Count(GoalKind.BuyDecorations);
                     }
-                    else Economy.Earn(price, "refund: no room for a decoration");
+                    else Economy.Earn(price, "refund: no room for a decoration", MoneyKind.Refunds);
                 }
             }
         }
@@ -1431,7 +1458,7 @@ namespace FishBreeder.Store
                 int price = Perks.Supplier(offer.price);
                 if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Food, tint), offer.name, details, XpTrack.Fishkeeping, offer.unlockLevel,
                         $"{offer.feedings} feedings  {Economy.Format(price)}", Economy.CanAfford(price))
-                    && Economy.TrySpend(price, offer.name.ToLower()))
+                    && Economy.TrySpend(price, offer.name.ToLower(), MoneyKind.Food))
                 {
                     Economy.AddFood(offer.type, offer.feedings);
                     GameLog.Add($"Bought {offer.name.ToLower()}: {offer.feedings} more feedings.");
@@ -1450,13 +1477,13 @@ namespace FishBreeder.Store
             string repairDetails = $"One kit fixes one broken filter, heater or bubbler. Repairs take off only a little wear, so old equipment keeps breaking more often. {supplier.repairKitSaveChance * 100f:0}% of repairs don't use the kit up.\nYou have {Economy.RepairKits} kits.";
             if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Repair, new Color(0.85f, 0.6f, 0.25f)), "Repair kits", repairDetails, XpTrack.Fishkeeping, supplier.repairKitLevel,
                     $"{supplier.repairKitsPerPack} kits  {Economy.Format(repairPrice)}", Economy.CanAfford(repairPrice))
-                && Economy.TrySpend(repairPrice, "repair kits"))
+                && Economy.TrySpend(repairPrice, "repair kits", MoneyKind.Care))
                 Economy.RepairKits += supplier.repairKitsPerPack;
 
             string details = $"Resets the pH and gets rid of snails and worms. Use it from the tank view.\nYou have {Economy.WaterConditionerDoses} doses.";
             if (OfferRow(ItemPreviews.Filler(ItemPreviews.Icon.Conditioner, new Color(0.35f, 0.65f, 0.85f)), "Water conditioner", details, XpTrack.Fishkeeping, supplier.waterConditionerLevel,
                     $"{supplier.waterConditionerDoses} doses  {Economy.Format(conditionerPrice)}", Economy.CanAfford(conditionerPrice))
-                && Economy.TrySpend(conditionerPrice, "water conditioner"))
+                && Economy.TrySpend(conditionerPrice, "water conditioner", MoneyKind.Care))
                 Economy.WaterConditionerDoses += supplier.waterConditionerDoses;
             GUILayout.Space(6f);
             GUILayout.Label("<b>Equipment</b>  <size=11>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you fix it with a repair kit. Better models work better and break less.</size>", Rich());
@@ -1491,7 +1518,7 @@ namespace FishBreeder.Store
                 var tint = Color.Lerp(new Color(0.55f, 0.6f, 0.68f), new Color(0.95f, 0.8f, 0.35f), tiers.Count > 1 ? i / (float)(tiers.Count - 1) : 0f);
                 if (OfferRow(ItemPreviews.Equipment(kind, i) ?? ItemPreviews.Filler(icon, tint), info.name, details, XpTrack.Fishkeeping, info.unlockLevel, label,
                         tank != null && Economy.CanAfford(price), 56f)
-                    && Economy.TrySpend(price, $"a {info.name.ToLower()} for {where}"))
+                    && Economy.TrySpend(price, $"a {info.name.ToLower()} for {where}", MoneyKind.Equipment))
                 {
                     tank.Install(kind, tier);
                     Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyEquipment);
@@ -1552,7 +1579,7 @@ namespace FishBreeder.Store
 
         void OrderFry(Species species)
         {
-            if (!Economy.TrySpend(species.fryPrice, $"a {species} fry")) return;
+            if (!Economy.TrySpend(species.fryPrice, $"a {species} fry", MoneyKind.FishAndEggs)) return;
             var tank = orderTarget.Tank;
             var fish = FishFactory.Spawn(Genome.CreateRandom(species), 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
             GameLog.Add($"{fish.FishName} the {species} fry arrived in {orderTarget.Title}.");
@@ -1563,17 +1590,14 @@ namespace FishBreeder.Store
             var section = pendingSection;
             UiCheck.Begin("Unlock section", panelRect, UiStyles.Window);
             GUILayout.Label($"Unlock the {section.name}?", UiTheme.Title);
-            GUILayout.Label("Opens up room for more display or for sale tanks.", Rich());
-            var next = store.NextLockedSection;
-            int level = StoreLayout.SectionLevel(section);
-            bool levelOk = Progression.IsUnlocked(XpTrack.Shopkeeping, level);
+            GUILayout.Label("Opens up room for more display or for sale tanks. Bigger rooms open as your reputation grows (see Reputation, Y).", Rich());
+            var why = store.WhyLocked(section);
             if (shopDay.IsOpen) GUILayout.Label("<i>Building work has to wait until the shop is closed.</i>", Rich());
-            else if (next != section) GUILayout.Label($"<i>Unlock the {next.name} first.</i>", Rich());
-            else if (!levelOk) GUILayout.Label($"<i>Needs {Progression.LockText(XpTrack.Shopkeeping, level)}.</i>", Rich());
+            else if (why != null) GUILayout.Label($"<i>{why}</i>", Rich());
             else if (!Economy.CanAfford(section.Price)) GUILayout.Label($"<i>You need {Economy.Format(section.Price - Economy.Money)} more.</i>", Rich());
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
-            GUI.enabled = !shopDay.IsOpen && next == section && levelOk && Economy.CanAfford(section.Price);
+            GUI.enabled = !shopDay.IsOpen && why == null && Economy.CanAfford(section.Price);
             if (GUILayout.Button($"Unlock for {Economy.Format(section.Price)}") && store.TryUnlock(section)) panel = Panel.None;
             GUI.enabled = true;
             if (GUILayout.Button("Cancel")) panel = Panel.None;

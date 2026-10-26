@@ -81,7 +81,7 @@ namespace FishBreeder.Core
             Make("bargain_hunter", PerkTree.Finances, 1, "Bargain hunter", "Supplier prices are {0} lower", 5, 0.03f, PerkEffect.SupplierDiscount),
             Make("sweet_talker", PerkTree.Finances, 1, "Sweet talker", "Customers pay up to {0} more before a price puts them off", 3, 0.04f, PerkEffect.PriceTolerance),
             Make("tip_jar", PerkTree.Finances, 2, "Tip jar", "Every sale brings a {0} tip on top", 5, 0.03f, PerkEffect.SaleTips),
-            Make("safety_net", PerkTree.Finances, 2, "Safety net", "The daily allowance is ${0} higher", 3, 50f, PerkEffect.BiggerAllowance, false),
+            Make("safety_net", PerkTree.Finances, 2, "Safety net", "Grandma's gifts are ${0} bigger", 3, 50f, PerkEffect.BiggerAllowance, false),
             Make("closer", PerkTree.Finances, 3, "Closer", "Customers are {0} more likely to buy", 5, 0.05f, PerkEffect.PurchaseChance),
             Make("savings", PerkTree.Finances, 3, "Savings account", "Your money earns {0} interest every night", 3, 0.01f, PerkEffect.Interest),
             Make("premium_brand", PerkTree.Finances, 4, "Premium brand", "Customers pay up to {0} more before a price puts them off", 3, 0.05f, PerkEffect.PriceTolerance),

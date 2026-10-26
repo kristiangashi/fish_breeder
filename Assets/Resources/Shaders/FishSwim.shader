@@ -23,7 +23,9 @@ Shader "FishBreeder/FishSwim"
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        // No batching: batched meshes arrive pre-transformed to world space, and the spine
+        // bends object-space vertices, so small batched parts (fins) were flung across the room.
+        Tags { "RenderType"="Opaque" "DisableBatching"="True" }
         LOD 200
 
         CGPROGRAM

@@ -217,8 +217,10 @@ namespace FishBreeder.Core
     public class StoreBalance
     {
         public int startingMoney = 1000;
-        [Tooltip("If money is below this when the shop closes, you get topped up to it.")]
-        public int dailyAllowance = 100;
+        [Tooltip("Grandma believes in you: she sends this every night before the grand opening, and again whenever you go broke after it.")]
+        public int grandmaGift = 100;
+        [Tooltip("After the grand opening, going to sleep with less money than this counts as broke, and Grandma bails you out.")]
+        public int brokeBelow = 10;
         public int starterFlakeFeedings = 10;
         public int breederTankPrice = 350, forSaleTankPrice = 250, displayTankPrice = 500, quarantineTankPrice = 200;
         public int maxBreederTanks = 3, maxForSaleTanks = 6, maxDisplayTanks = 6, maxQuarantineTanks = 1;

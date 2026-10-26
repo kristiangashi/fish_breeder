@@ -21,12 +21,15 @@ namespace FishBreeder.Core
         /// <summary>Each fixes one broken filter, heater or bubbler.</summary>
         public static int RepairKits { get; set; }
         public static IReadOnlyList<string> Ledger => ledger;
+        /// <summary>What Grandma sent last night, for the morning banner (null if nothing).</summary>
+        public static string GrandmaNote { get; private set; }
 
         public static void Reset()
         {
             var store = Balance.Data.store;
             Money = store.startingMoney;
             Day = 1;
+            GrandmaNote = null;
             Reputation = Balance.Data.shop.startingReputation;
             WaterConditionerDoses = 0;
             RepairKits = 0;
@@ -90,10 +93,15 @@ namespace FishBreeder.Core
             return true;
         }
 
-        /// <summary>Called when the shop closes: the next day starts, and a broke player gets bailed out.</summary>
+        /// <summary>
+        /// Called when you go to sleep: the next day starts. Before the grand opening Grandma sends
+        /// a gift every night; after it you have to make a profit, and she only steps in when you're broke.
+        /// </summary>
         public static void NextDay()
         {
+            bool settingUp = DaysUntilOpening > 0;
             Day++;
+            GrandmaNote = null;
             int interest = Mathf.Min(Perks.MaxInterestPerNight, Mathf.FloorToInt(Mathf.Max(0, Money) * Perks.Value(PerkEffect.Interest)));
             if (interest > 0)
             {
@@ -102,11 +110,20 @@ namespace FishBreeder.Core
             }
             float buzz = Perks.Value(PerkEffect.DailyReputation);
             if (buzz > 0f) ChangeReputation(buzz);
-            int allowance = Balance.Data.store.dailyAllowance + Perks.Count(PerkEffect.BiggerAllowance);
-            if (Money < allowance)
+            var store = Balance.Data.store;
+            int gift = store.grandmaGift + Perks.Count(PerkEffect.BiggerAllowance);
+            if (gift <= 0) return;
+            if (settingUp)
             {
-                Earn(allowance - Money, "daily allowance");
-                GameLog.Add($"Money was tight, so you got the daily allowance: you now have {Format(Money)}.");
+                Earn(gift, "gift from Grandma");
+                GameLog.Add($"Grandma sent {Format(gift)} with a note: \"I believe in you!\" You now have {Format(Money)}.");
+                GrandmaNote = $"Grandma sent {Format(gift)}";
+            }
+            else if (Money < store.brokeBelow)
+            {
+                Earn(gift, "Grandma's rescue");
+                GameLog.Add($"You were broke, so Grandma saved the day with {Format(gift)} to get you back on your feet. You now have {Format(Money)}.");
+                GrandmaNote = $"Grandma saved the day with {Format(gift)}";
             }
         }
 

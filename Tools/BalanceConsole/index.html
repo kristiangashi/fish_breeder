@@ -892,7 +892,8 @@ function renderPinned() {
 // Fish.OnTimeStep, FishHealth, TankMates, BreedingSystem, EggClutch), run on the numbers in
 // this console without the game. Each simulated day: your routine while the shop is closed
 // (remove dead fish, repair, treat water, medicine, wipes, feeding, selling), then the two time
-// steps (opening and closing), then the next morning (allowance). Perks, research,
+// steps (opening and closing), then the night (Grandma's gift before the grand opening, or her
+// rescue when broke after it). Perks, research,
 // customers and decorations' looks are left out; selling surplus fish is at their appraised value.
 const SIM_KEY = "fishBreederSimSetup";
 const SIM_STAGES = ["Fry", "Juvenile", "Adult"];
@@ -1456,10 +1457,10 @@ function simulate(setup, B, seed) {
     for (const t of tanks) routine(t);
     timeStep();
     timeStep();
-    const allowance = store.dailyAllowance;
-    if (money < allowance) {
-      if (setup.allowance) { out.income.allowance += allowance - money; money = allowance; out.bailouts++; }
-    }
+    // Grandma: a gift every night before the grand opening; after it, only when you're broke.
+    const gift = store.grandmaGift ?? 100;
+    if (day <= (data.shop.setupDays ?? 0)) { out.income.allowance += gift; money += gift; }
+    else if (money < (store.brokeBelow ?? 10) && setup.allowance) { out.income.allowance += gift; money += gift; out.bailouts++; }
     record();
     const notes = [];
     if (out.born > before.born) notes.push(`${out.born - before.born} born`);
@@ -1608,7 +1609,7 @@ function renderSim() {
       simInput(setup, "level", { label: "Fishkeeping level", min: 1, rerender: true, help: "More wipes per day and stronger wipes at higher levels." }),
       simInput(setup, "seed", { label: "Luck seed", help: "The same seed gives the same results; change it to see other luck." }),
       simInput(setup, "payUpfront", { label: "Pay for the starting fish, tanks and equipment", help: "Fish cost their fry price. The first For sale tank is free, like in the game." }),
-      simInput(setup, "allowance", { label: "Daily allowance bails you out", help: `The game tops you up to $${data.store.dailyAllowance} every morning. Untick to see when you'd really go broke.` })),
+      simInput(setup, "allowance", { label: "Grandma bails you out", help: `After the grand opening Grandma sends $${data.store.grandmaGift} whenever you go to sleep with under $${data.store.brokeBelow}. Untick to see when you'd really go broke.` })),
     el("div", { class: "row", style: "margin-top:12px;margin-bottom:0" },
       el("button", { class: "primary", onclick: () => {
         if (simRunning) return;
@@ -1657,7 +1658,7 @@ function renderSimResults(r) {
   const moneyRows = [
     ...money.map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, `-${money$(v)}`))),
     r.income.sales ? el("tr", {}, el("td", {}, "Fish sold"), el("td", {}, `+${money$(r.income.sales)}`)) : null,
-    r.income.allowance ? el("tr", {}, el("td", {}, "Daily allowance"), el("td", {}, `+${money$(r.income.allowance)}`)) : null,
+    r.income.allowance ? el("tr", {}, el("td", {}, "From Grandma"), el("td", {}, `+${money$(r.income.allowance)}`)) : null,
     el("tr", {}, el("th", {}, "Spent in all"), el("th", {}, money$(spend))),
   ];
   const nameOf = (id) => (data.species.find((x) => x.id === id) || { displayName: id }).displayName;

@@ -587,18 +587,35 @@ namespace FishBreeder
             piece.transform.localRotation = Quaternion.FromToRotation(Vector3.up, to - from);
         }
 
-        /// <summary>The bubbler on the sand towards the back on the left; its bubbles rise from the top.</summary>
+        /// <summary>Bubbles from each bubbler model, by tier: better ones bubble more.</summary>
+        static readonly int[] BubblesForTier = { 8, 14, 20, 26 };
+        /// <summary>Outlets along the long air stone, by tier (the better pump pushes air out of more of it).</summary>
+        static readonly int[] OutletsAlongForTier = { 1, 5, 7, 1 };
+
+        /// <summary>
+        /// The bubbler on the sand towards the back on the left. Bubbles rise from its outlets: the
+        /// top of the air stone, all along the long stone, or every point of the oxygen reactor.
+        /// </summary>
         void BuildBubbler(Transform holder, int tier)
         {
             var b = innerSize;
             var anchor = new Vector3(-b.x * 0.2f, 0f, b.z * 0.38f);
-            var origin = new Vector3(anchor.x, 0.02f, anchor.z);
-            if (PlaceModel(EquipmentModels.Design(EquipmentKind.Bubbler, tier), holder, FaceFront, anchor, new Vector3(0f, -1f, 0f), out var bounds) != null)
-                origin = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+            var outlets = new List<Vector3>();
+            int t = Mathf.Clamp(tier, 0, BubblesForTier.Length - 1);
+            string design = EquipmentModels.Design(EquipmentKind.Bubbler, tier);
+            var piece = PlaceModel(design, holder, FaceFront, anchor, new Vector3(0f, -1f, 0f), out var bounds);
+            if (piece != null)
+            {
+                outlets = EquipmentModels.BubbleOutlets(piece, holder, design, OutletsAlongForTier[t]);
+                if (outlets.Count == 0) outlets.Add(new Vector3(bounds.center.x, bounds.max.y, bounds.center.z));
+            }
             else
+            {
                 MaterialFactory.Decor(PrimitiveType.Cylinder, "Bubbler", holder, new Vector3(anchor.x, 0.01f, anchor.z), new Vector3(0.1f, 0.01f, 0.1f), new Color(0.3f, 0.32f, 0.35f));
+                outlets.Add(new Vector3(anchor.x, 0.02f, anchor.z));
+            }
             bubbles = holder.gameObject.AddComponent<TankBubbles>();
-            bubbles.Initialize(this, origin, b.y);
+            bubbles.Initialize(outlets, BubblesForTier[t], b.y);
         }
 
         /// <summary>Builds a new tank of the given size with these decorations (ids from the balance file).</summary>

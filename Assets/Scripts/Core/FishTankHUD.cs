@@ -91,6 +91,18 @@ namespace FishBreeder.Core
             else switchTank?.Invoke(step);
         }
 
+        /// <summary>Share of the screen's width, from the left, that the tank menu covers (0 when the menus are hidden).</summary>
+        public float MenuCover
+        {
+            get
+            {
+                if (!enabled || tank == null || ViewMode.Watching || Screen.width <= 0) return 0f;
+                float scale = Mathf.Max(1f, Screen.height / 900f);
+                // The panel is 300 wide from 10 in (see OnGUI), plus a little breathing room.
+                return Mathf.Clamp01(320f * scale / Screen.width);
+            }
+        }
+
         void OnGUI()
         {
             if (tank == null) return;

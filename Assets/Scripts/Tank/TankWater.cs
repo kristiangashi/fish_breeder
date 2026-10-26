@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FishBreeder.Core;
 using UnityEngine;
 
@@ -60,26 +61,34 @@ namespace FishBreeder
         }
     }
 
-    /// <summary>A stream of bubbles from a bubbler: a handful of small spheres rising and looping.</summary>
+    /// <summary>
+    /// Streams of bubbles from a bubbler's outlets: small spheres rising and looping, shared out
+    /// over the outlets so each one keeps bubbling.
+    /// </summary>
     public class TankBubbles : MonoBehaviour
     {
         Transform[] bubbles;
+        Vector3[] from;
         float[] speeds;
-        Vector3 origin;
         float height;
 
-        public void Initialize(Tank tank, Vector3 localOrigin, float waterHeight)
+        /// <summary>Outlets are in the tank's visuals space; <paramref name="count"/> bubbles in all (at least one per outlet).</summary>
+        public void Initialize(List<Vector3> outlets, int count, float waterHeight)
         {
-            origin = localOrigin;
             height = waterHeight * 0.92f;
-            const int count = 14;
+            count = Mathf.Max(count, outlets.Count);
             bubbles = new Transform[count];
+            from = new Vector3[count];
             speeds = new float[count];
             var material = MaterialFactory.Create(new Color(0.85f, 0.95f, 1f), 0.95f);
             for (int i = 0; i < count; i++)
             {
-                var bubble = MaterialFactory.Decor(PrimitiveType.Sphere, "Bubble", transform, origin + Vector3.up * (height * i / count), Vector3.one * GameRandom.Range(0.006f, 0.014f), Color.white);
+                from[i] = outlets[i % outlets.Count];
+                // Spread out over the climb, so the streams start out steady.
+                var start = from[i] + Vector3.up * ((height - from[i].y) * GameRandom.Value);
+                var bubble = MaterialFactory.Decor(PrimitiveType.Sphere, "Bubble", transform, start, Vector3.one * GameRandom.Range(0.006f, 0.014f), Color.white);
                 bubble.GetComponent<Renderer>().sharedMaterial = material;
+                bubble.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 bubbles[i] = bubble.transform;
                 speeds[i] = GameRandom.Range(0.12f, 0.2f);
             }
@@ -103,9 +112,10 @@ namespace FishBreeder
             {
                 var p = bubbles[i].localPosition;
                 p.y += speeds[i] * Time.deltaTime;
-                if (p.y > height) p.y = origin.y;
-                p.x = origin.x + Mathf.Sin(t * 3f + i * 1.7f) * 0.008f * (p.y / height + 0.2f);
-                p.z = origin.z + Mathf.Cos(t * 2.3f + i) * 0.006f;
+                if (p.y > height) p.y = from[i].y;
+                float risen = Mathf.Clamp01((p.y - from[i].y) / Mathf.Max(0.01f, height - from[i].y));
+                p.x = from[i].x + Mathf.Sin(t * 3f + i * 1.7f) * 0.008f * (risen + 0.2f);
+                p.z = from[i].z + Mathf.Cos(t * 2.3f + i) * 0.006f * (risen + 0.2f);
                 bubbles[i].localPosition = p;
             }
         }

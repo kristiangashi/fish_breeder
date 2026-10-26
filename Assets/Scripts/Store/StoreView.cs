@@ -160,7 +160,7 @@ namespace FishBreeder.Store
             var person = focused == null ? FollowedPerson() : null;
             if (focused != null)
             {
-                GetTankPose(focused, hud.Focus, out targetPosition, out targetRotation);
+                GetTankPose(focused, hud.Focus, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
             {
@@ -243,23 +243,51 @@ namespace FishBreeder.Store
         /// <summary>
         /// The whole tank fills the view (bigger tanks are seen from further back). With a fish
         /// selected the camera follows it at half the distance, keeping it centred.
+        /// While the tank menu covers the left of the screen (<paramref name="menuCover"/>, a share of
+        /// its width), the view slides over so the tank sits in the middle of the space right of
+        /// the menu, as far as it can without the tank going off the right edge (backing off a
+        /// little to make room when it's tight).
         /// </summary>
-        static void GetTankPose(StoreTank tank, Fish follow, out Vector3 position, out Quaternion rotation)
+        static void GetTankPose(StoreTank tank, Fish follow, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
         {
             var bounds = tank.Tank.InnerBounds;
             var size = tank.Tank.InnerSize;
             var front = tank.Tank.Front;
             float back = Mathf.Max(1.9f, 1.9f * size.x / 1.6f, size.y * 2.1f);
+            // Half the view's width one metre away.
+            float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect;
             if (follow != null && follow.Tank == tank.Tank)
             {
                 var target = follow.transform.position;
                 position = target + front * (back * 0.5f) + Vector3.up * 0.05f;
                 rotation = Quaternion.LookRotation(target - position);
+                // Keep the fish in the middle of the uncovered part.
+                position -= rotation * Vector3.right * (menuCover * back * 0.5f * halfWidth);
                 return;
             }
             var center = bounds.center;
+            float shift = 0f;
+            if (menuCover > 0f && halfWidth > 1e-4f)
+            {
+                // The tank's middle goes to the middle of the uncovered part, if its right side (the
+                // front glass plus its frame, about 3 cm) can stay on screen.
+                float halfTank = size.x * 0.5f + 0.03f;
+                float frontGlass = size.z * 0.5f;
+                float wanted = menuCover * back * halfWidth;
+                float most = 0.97f * (back - frontGlass) * halfWidth - halfTank;
+                if (most < wanted && menuCover < 0.9f)
+                {
+                    // Step back a little (at most 15%) to make room beside the menu.
+                    float needed = (halfTank + 0.97f * frontGlass * halfWidth) / ((0.97f - menuCover) * halfWidth);
+                    back = Mathf.Min(needed, back * 1.15f);
+                    wanted = menuCover * back * halfWidth;
+                    most = 0.97f * (back - frontGlass) * halfWidth - halfTank;
+                }
+                shift = Mathf.Max(0f, Mathf.Min(wanted, most));
+            }
             position = center + front * back + Vector3.up * 0.1f;
             rotation = Quaternion.LookRotation(center - position);
+            position -= rotation * Vector3.right * shift;
         }
 
         void EnterTank(StoreTank tank)
@@ -629,6 +657,7 @@ namespace FishBreeder.Store
                 : setup == 1 ? "Tomorrow is the grand opening!"
                 : Economy.Day == Balance.Data.shop.setupDays + 1 ? "Grand opening day! Open the shop when you're ready."
                 : "A new day at the shop";
+            if (Economy.GrandmaNote != null) subtitle += $". {Economy.GrandmaNote}!";
             Fx.Day($"Day {Economy.Day}", subtitle);
         }
 

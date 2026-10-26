@@ -103,6 +103,20 @@ namespace FishBreeder
             return bounds;
         }
 
+        /// <summary>The vertices of a piece's visible meshes (not its colliders), in <paramref name="space"/>.</summary>
+        static List<Vector3> Vertices(GameObject piece, Transform space)
+        {
+            var points = new List<Vector3>();
+            foreach (var renderer in piece.GetComponentsInChildren<MeshRenderer>())
+            {
+                var filter = renderer.GetComponent<MeshFilter>();
+                if (filter == null || filter.sharedMesh == null || !filter.sharedMesh.isReadable || filter.name.EndsWith("_Collider")) continue;
+                foreach (var vertex in filter.sharedMesh.vertices)
+                    points.Add(space.InverseTransformPoint(renderer.transform.TransformPoint(vertex)));
+            }
+            return points;
+        }
+
         /// <summary>
         /// The middle of the lowest slice of a piece's mesh, in <paramref name="space"/>: the mouth
         /// of a filter's intake tube, which is the only part reaching that far down.
@@ -113,21 +127,91 @@ namespace FishBreeder
             float top = bounds.min.y + Mathf.Max(0.001f, bounds.size.y * slice);
             Vector3 sum = Vector3.zero;
             int count = 0;
-            foreach (var renderer in piece.GetComponentsInChildren<MeshRenderer>())
+            foreach (var p in Vertices(piece, space))
             {
-                var filter = renderer.GetComponent<MeshFilter>();
-                if (filter == null || filter.sharedMesh == null || !filter.sharedMesh.isReadable) continue;
-                foreach (var vertex in filter.sharedMesh.vertices)
-                {
-                    var p = space.InverseTransformPoint(renderer.transform.TransformPoint(vertex));
-                    if (p.y > top) continue;
-                    sum += p;
-                    count++;
-                }
+                if (p.y > top) continue;
+                sum += p;
+                count++;
             }
             if (count == 0) return bounds.center - Vector3.up * bounds.extents.y;
             var middle = sum / count;
             return new Vector3(middle.x, bounds.min.y, middle.z);
+        }
+
+        /// <summary>
+        /// Where a bubbler's bubbles come out, in <paramref name="space"/>: the top of the air stone
+        /// (Bubbler0), <paramref name="along"/> outlets spread over the top of the long stone
+        /// (Bubbler1), or the tip of each upright point of the oxygen reactor (Bubbler2).
+        /// Empty if the mesh can't be read.
+        /// </summary>
+        public static List<Vector3> BubbleOutlets(GameObject piece, Transform space, string design, int along)
+        {
+            var outlets = new List<Vector3>();
+            var points = Vertices(piece, space);
+            if (points.Count == 0) return outlets;
+            var bounds = new Bounds(points[0], Vector3.zero);
+            foreach (var p in points) bounds.Encapsulate(p);
+            float height = bounds.size.y;
+
+            if (design == "Bubbler2")
+            {
+                // A tip is the point furthest from the middle of the base within its own reach.
+                float reach = 0.12f * Mathf.Max(bounds.size.x, bounds.size.z);
+                var bottom = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+                var score = new float[points.Count];
+                for (int i = 0; i < points.Count; i++) score[i] = (points[i] - bottom).sqrMagnitude;
+                for (int i = 0; i < points.Count; i++)
+                {
+                    var p = points[i];
+                    if (p.y < bounds.min.y + 0.8f * height) continue;
+                    bool tip = true;
+                    for (int j = 0; j < points.Count && tip; j++)
+                        if (score[j] > score[i] && (points[j] - p).sqrMagnitude < reach * reach) tip = false;
+                    foreach (var outlet in outlets)
+                        if ((outlet - p).sqrMagnitude < reach * reach * 0.25f) tip = false;
+                    if (tip) outlets.Add(p);
+                }
+            }
+            else if (design == "Bubbler1")
+            {
+                // Evenly along the stone's length, each on top of the stone in its slice.
+                bool alongX = bounds.size.x >= bounds.size.z;
+                float start = alongX ? bounds.min.x : bounds.min.z;
+                float length = alongX ? bounds.size.x : bounds.size.z;
+                for (int k = 0; k < along; k++)
+                {
+                    float from = start + length * (0.05f + 0.9f * k / along);
+                    float to = start + length * (0.05f + 0.9f * (k + 1) / along);
+                    float top = float.MinValue, side = 0f;
+                    int count = 0;
+                    foreach (var p in points)
+                    {
+                        float at = alongX ? p.x : p.z;
+                        if (at < from || at > to) continue;
+                        top = Mathf.Max(top, p.y);
+                        side += alongX ? p.z : p.x;
+                        count++;
+                    }
+                    if (count == 0) continue;
+                    side /= count;
+                    float middle = (from + to) * 0.5f;
+                    outlets.Add(alongX ? new Vector3(middle, top, side) : new Vector3(side, top, middle));
+                }
+            }
+            if (outlets.Count == 0)
+            {
+                // The middle of the very top.
+                Vector3 sum = Vector3.zero;
+                int count = 0;
+                foreach (var p in points)
+                {
+                    if (p.y < bounds.max.y - 0.08f * height) continue;
+                    sum += p;
+                    count++;
+                }
+                outlets.Add(sum / count);
+            }
+            return outlets;
         }
 
         /// <summary>

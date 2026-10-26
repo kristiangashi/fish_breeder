@@ -12,7 +12,8 @@ namespace FishBreeder
     /// The fish always moves along its own forward axis and turns smoothly at a limited rate
     /// (turning on the spot when hovering). Obstacles are colliders marked with <see cref="TankObstacle"/>.
     /// Speeds are in body lengths per second, so small and big fish both look right.
-    /// Each species keeps to its own depth band and pace (see <see cref="Species"/>).
+    /// Each species keeps to its own depth band and pace (see <see cref="Species"/>). Schooling
+    /// species swim as a loose school once there are enough of them in the tank (<see cref="FishSchool"/>).
     ///
     /// Bottom dwellers (corydoras) follow what they do in real tanks instead: they move over the
     /// sand in short hops (a quick burst of tail beats, then a glide), stop to root nose-down in
@@ -77,6 +78,7 @@ namespace FishBreeder
         float yaw, pitch, yawVelocity, pitchVelocity;
         bool headingInitialised;
         FoodPellet targetFood;
+        FishSchool school;
 
         // A short burst: a predator bolting at prey, or prey darting away.
         float burstLeft, burstDelay;
@@ -153,6 +155,10 @@ namespace FishBreeder
             else if (bottomDweller)
             {
                 desiredSpeed = BottomActivity(bodyLength, dt, ref pitchLimit, ref extraPitch, ref fidget);
+            }
+            else if ((school = FishSchool.For(Owner)) != null)
+            {
+                desiredSpeed = Schooling(school, bodyLength);
             }
             else
             {
@@ -266,6 +272,47 @@ namespace FishBreeder
             // Afterwards, a moment to collect itself.
             StartActivity(Owner.Phenotype.species.style == SwimStyle.Bottom ? Activity.Rest : Activity.Hover, bodyLength);
             return false;
+        }
+
+        /// <summary>
+        /// Swims with the school: towards where it's going, closing up after straying, heading
+        /// roughly the way the others are and keeping a little room from its neighbours. Sets the
+        /// target and returns the speed it wants (body lengths per second).
+        /// </summary>
+        float Schooling(FishSchool school, float bodyLength)
+        {
+            if (activity != Activity.Potter)
+            {
+                activity = Activity.Potter;
+                activityStarted = Time.time;
+            }
+            var position = transform.position;
+            // Loose: about a body length and a half between fish, a wider group for a bigger school.
+            float radius = bodyLength * (1.2f + 0.45f * Mathf.Sqrt(school.Members.Count));
+            var toCenter = school.Center - position;
+            float strayed = Mathf.Clamp01((toCenter.magnitude - radius) / radius);
+
+            var toGoal = school.Destination - position;
+            var steer = (toGoal.sqrMagnitude > 1e-6f ? toGoal.normalized : transform.forward) * (school.Milling ? 0.25f : 0.9f);
+            steer += school.Heading * (school.Milling ? 0.25f : 0.6f);
+            if (toCenter.sqrMagnitude > 1e-6f) steer += toCenter.normalized * (0.15f + 1.6f * strayed);
+
+            float personal = bodyLength * 1.1f;
+            foreach (var mate in school.Members)
+            {
+                if (mate == Owner) continue;
+                var away = position - mate.transform.position;
+                float d = away.magnitude;
+                if (d < personal && d > 1e-4f) steer += away / d * (1f - d / personal) * 1.8f;
+            }
+            // Each fish wanders a touch on its own, so the school never looks drilled.
+            float t = Time.time * 0.4f + (GetInstanceID() % 1000) * 0.37f;
+            steer += new Vector3(Mathf.Sin(t), Mathf.Sin(t * 1.3f) * 0.3f, Mathf.Cos(t * 0.8f)) * 0.25f;
+            steer.y *= 0.5f;
+            if (steer.sqrMagnitude < 1e-6f) steer = transform.forward;
+            target = position + steer.normalized * bodyLength * 3f;
+            float pace = school.Milling ? 0.3f : potterSpeed * 1.15f;
+            return pace * (1f + 0.8f * strayed);
         }
 
         static bool IsBottomActivity(Activity a) => a >= Activity.Hop;

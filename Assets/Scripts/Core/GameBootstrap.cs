@@ -35,6 +35,7 @@ namespace FishBreeder.Core
             Reputation.Reset();
             Finance.Reset();
             Journal.Reset();
+            EggBoxes.Reset();
             Milestones.Reset();
             Research.Refresh();
             Fx.Reset();

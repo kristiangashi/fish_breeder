@@ -1399,9 +1399,14 @@ namespace FishBreeder.Store
                 }
                 int price = Perks.Supplier(fry ? tier.fryPrice : tier.price);
                 string what = fry ? "fry" : "eggs";
+                // Some boxes open with a goal instead of a level (wild tetras: raise neons or tiger barbs).
+                bool goalMet = EggBoxes.GoalMet(tier);
+                if (EggBoxes.HasGoal(tier))
+                    details += goalMet ? $"\n<color={UiTheme.AquaHex}>Unlocked: you raised {tier.raiseCount} fish for the fish seller.</color>"
+                        : $"\n<color=#ffd27f>To unlock: {EggBoxes.GoalText(tier)}.</color>";
                 bool away = FishSeller.Away;
-                string label = away ? "Back in the morning" : free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
-                bool canBuy = !away && anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
+                string label = away ? "Back in the morning" : !goalMet ? $"Raise {tier.raiseCount} fish first" : free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
+                bool canBuy = !away && goalMet && anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
                 var picture = fry ? ItemPreviews.FryBox(tier.color) : ItemPreviews.EggBox(tier.color, tier.speckled);
                 if (OfferRow(picture, fry ? EggBoxes.FryName(tier) : tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
                 {

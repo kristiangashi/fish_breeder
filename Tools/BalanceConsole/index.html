@@ -195,6 +195,9 @@ const META = {
   normalRarityFalloff: ["Normal pool falloff", "Each rarity step up in the normal pool is this many times as likely (0.3 = rarer kinds are uncommon)."],
   rarePool: ["Rare egg rarity", "The rarity a 'rare' egg hatches into."],
   rareChance: ["Rare chance (first egg)", "Chance an egg is rare while the box has no rare eggs yet."],
+  onlyInBox: ["Only in box", "Id of the only egg/fry box this fish comes in (e.g. WildTetra). Empty = any box whose rarity settings include it. A box with its own fish hatches nothing else."],
+  raiseSpecies: ["Raise species", "Species ids, comma separated (e.g. NeonTetra,TigerBarb): the box opens once you've raised 'Raise count' of these fish to adulthood. Empty = no goal."],
+  raiseCount: ["Raise count", "How many of the raise species you must raise to adulthood before the fish seller sells this box (0 = no goal)."],
   rareFalloff: ["Rare falloff", "The rare chance is multiplied by this for every rare egg already in the box, so 2 rares is much harder than 1."],
   speckled: ["Speckled", ""],
   blurb: ["Blurb", "Shown in the supplier."],
@@ -1929,8 +1932,11 @@ const eggCheck = { level: 1, day: 30 };
 /** The game's rule for filling an empty hatch table from a tier's rarity settings (see EggTierBalance.FillHatchTables). */
 function fillHatch(tier) {
   const falloff = Math.max(0.001, tier.normalRarityFalloff);
-  const normals = data.species.filter((s) => s.rarity >= tier.normalMin && s.rarity <= tier.normalMax);
-  const rares = data.species.filter((s) => !(s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) && s.rarity === tier.rarePool);
+  // A box with its own fish ("Only in box" = its id) hatches only those; other boxes leave them out.
+  const own = data.species.some((s) => s.onlyInBox === tier.id);
+  const pool = data.species.filter((s) => (s.onlyInBox || "") === (own ? tier.id : ""));
+  const normals = pool.filter((s) => s.rarity >= tier.normalMin && s.rarity <= tier.normalMax);
+  const rares = pool.filter((s) => !(s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) && s.rarity === tier.rarePool);
   const total = normals.reduce((n, s) => n + Math.pow(falloff, s.rarity - tier.normalMin), 0);
   tier.hatch = [];
   for (const s of data.species) {

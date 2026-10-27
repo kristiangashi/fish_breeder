@@ -45,6 +45,8 @@ namespace FishBreeder.Genetics
         public string scientificName = "";
         /// <summary>Fishkeeping level from which it can hatch from the supplier's egg boxes.</summary>
         public int unlockLevel = 1;
+        /// <summary>Id of the only egg/fry box this fish comes in (empty = any box whose rarity settings include it).</summary>
+        public string onlyInBox = "";
 
         // Money
         /// <summary>What a healthy, common-looking adult is worth. Fry and juveniles are worth less.</summary>
@@ -155,6 +157,23 @@ namespace FishBreeder.Genetics
             { "GreenTerror", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "BlueAcara", new[] { FoodType.Bloodworms, FoodType.Premium } },
             { "GoldenMbuna", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+            { "BloodfinTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "SerpaeTetra", new[] { FoodType.Flakes, FoodType.Bloodworms } },
+            { "XRayTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "BlackSkirtTetra", new[] { FoodType.Flakes, FoodType.Bloodworms } },
+            { "RedeyeTetra", new[] { FoodType.Flakes, FoodType.Bloodworms } },
+            { "LemonTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "BleedingHeartTetra", new[] { FoodType.Bloodworms, FoodType.Flakes } },
+            { "BuenosAiresTetra", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+            { "EmperorTetra", new[] { FoodType.BrineShrimp, FoodType.Flakes } },
+            { "FlameTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "CongoTetra", new[] { FoodType.Flakes, FoodType.Bloodworms } },
+            { "PenguinTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "GlowlightTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "BucktoothTetra", new[] { FoodType.Bloodworms, FoodType.Premium } },
+            { "RubyTetra", new[] { FoodType.BrineShrimp, FoodType.Flakes } },
+            { "SilvertipTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
+            { "RummyNoseTetra", new[] { FoodType.Flakes, FoodType.BrineShrimp } },
         };
 
         /// <summary>
@@ -165,12 +184,17 @@ namespace FishBreeder.Genetics
         static readonly Dictionary<string, int> MinTankSizes = new Dictionary<string, int>
         {
             { "Angelfish", 1 }, { "SilverDollar", 1 }, { "RedTailShark", 1 }, { "GreenTerror", 1 }, { "BlueAcara", 1 }, { "Oscar", 2 },
+            { "CongoTetra", 1 }, { "BucktoothTetra", 1 },
         };
 
         const string Carps = "Carps and minnows (Cyprinidae)";
         const string Danios = "Danios (Danionidae)";
         const string Cichlids = "Cichlids (Cichlidae)";
         const string Livebearers = "Livebearers (Poeciliidae)";
+        const string Tetras = "Tetras (Characidae)";
+
+        /// <summary>Id of the egg box the wild tetras come in.</summary>
+        public const string WildTetraBox = "WildTetra";
 
         /// <summary>
         /// Defaults used when there is no balance file yet. Temperatures and pH are the ranges
@@ -220,6 +244,49 @@ namespace FishBreeder.Genetics
                 if (s.id == "Clownfish") s.likesPlants = false;
                 if (s.category == FishCategory.FreshwaterCold) { s.lifespanDays = 120f; s.daysToAdult = 5f; }
                 if (s.rarity >= SpeciesRarity.Rare) s.daysToAdult = 6f;
+                if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
+                if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
+            }
+            list.AddRange(WildTetras());
+            return list;
+        }
+
+        /// <summary>
+        /// The wild tetras: they only come in wild tetra eggs, which open once you've raised enough
+        /// neon tetras or tiger barbs (see the egg box's goal). Real care-sheet ranges; Congo
+        /// tetras (from Africa) and the big, scale-eating bucktooth want a Large tank.
+        /// </summary>
+        static List<Species> WildTetras()
+        {
+            var tropical = FishCategory.FreshwaterTropical;
+            var u = SpeciesRarity.Uncommon; var r = SpeciesRarity.Rare; var x = SpeciesRarity.Exotic;
+            var list = new List<Species>
+            {
+                Make("BloodfinTetra", "Bloodfin Tetra", "Aphyocharax anisitsi", Tetras, tropical, u, 32, 18, 0.065f, 0.08f, 1.4f, 0.45f, 0.95f, 18f, 28f, 6f, 8f, 2f, 6),
+                Make("SerpaeTetra", "Serpae Tetra", "Hyphessobrycon eques", Tetras, tropical, u, 30, 16, 0.065f, 0.075f, 1.3f, 0.3f, 0.8f, 22f, 27f, 5f, 7.5f, 2f, 6),
+                Make("XRayTetra", "X-Ray Tetra", "Pristella maxillaris", Tetras, tropical, u, 35, 18, 0.065f, 0.08f, 1.2f, 0.3f, 0.8f, 24f, 28f, 6f, 8f, 2f, 6),
+                Make("BlackSkirtTetra", "Black Skirt Tetra", "Gymnocorymbus ternetzi", Tetras, tropical, u, 30, 16, 0.07f, 0.085f, 1f, 0.3f, 0.8f, 20f, 26f, 6f, 7.5f, 3f, 5),
+                Make("RedeyeTetra", "Redeye Tetra", "Moenkhausia sanctaefilomenae", Tetras, tropical, r, 55, 28, 0.08f, 0.1f, 1.1f, 0.3f, 0.8f, 22f, 28f, 5.5f, 8.5f, 3f, 5),
+                Make("LemonTetra", "Lemon Tetra", "Hyphessobrycon pulchripinnis", Tetras, tropical, u, 35, 18, 0.065f, 0.08f, 1.1f, 0.3f, 0.8f, 22f, 28f, 5.5f, 8f, 2f, 6),
+                Make("BleedingHeartTetra", "Bleeding Heart Tetra", "Hyphessobrycon erythrostigma", Tetras, tropical, r, 70, 35, 0.08f, 0.1f, 0.9f, 0.3f, 0.75f, 22f, 28f, 6f, 7.5f, 3f, 5),
+                Make("BuenosAiresTetra", "Buenos Aires Tetra", "Psalidodon anisitsi", Tetras, tropical, u, 30, 16, 0.08f, 0.1f, 1.3f, 0.3f, 0.85f, 18f, 28f, 5.8f, 8.5f, 3f, 6),
+                Make("EmperorTetra", "Emperor Tetra", "Nematobrycon palmeri", Tetras, tropical, r, 80, 40, 0.065f, 0.08f, 1f, 0.3f, 0.8f, 23f, 27f, 5f, 7.8f, 2f, 5),
+                Make("FlameTetra", "Flame Tetra", "Hyphessobrycon flammeus", Tetras, tropical, r, 60, 30, 0.055f, 0.065f, 1.2f, 0.3f, 0.8f, 22f, 28f, 6f, 7.5f, 2f, 6),
+                Make("CongoTetra", "Congo Tetra", "Phenacogrammus interruptus", "African tetras (Alestidae)", tropical, x, 140, 70, 0.09f, 0.11f, 1f, 0.35f, 0.85f, 24f, 27f, 6f, 7.5f, 3f, 6),
+                Make("PenguinTetra", "Penguin Tetra", "Thayeria boehlkei", Tetras, tropical, u, 35, 18, 0.07f, 0.085f, 1.2f, 0.5f, 0.95f, 22f, 28f, 5.8f, 8.5f, 2f, 6),
+                Make("GlowlightTetra", "Glowlight Tetra", "Hemigrammus erythrozonus", Tetras, tropical, u, 38, 20, 0.055f, 0.065f, 1.2f, 0.3f, 0.75f, 24f, 28f, 5.5f, 7.5f, 2f, 6),
+                Make("BucktoothTetra", "Bucktooth Tetra", "Exodon paradoxus", Tetras, tropical, x, 150, 75, 0.12f, 0.15f, 1.5f, 0.3f, 0.85f, 23f, 28f, 5.5f, 7.5f, 3f, 8),
+                Make("RubyTetra", "Ruby Tetra", "Axelrodia riesei", Tetras, tropical, x, 160, 80, 0.045f, 0.055f, 1.1f, 0.3f, 0.75f, 23f, 27f, 5f, 6.5f, 2f, 8),
+                Make("SilvertipTetra", "Silvertip Tetra", "Hasemania nana", Tetras, tropical, r, 55, 28, 0.065f, 0.075f, 1.4f, 0.3f, 0.8f, 22f, 28f, 6f, 8f, 2f, 6),
+                Make("RummyNoseTetra", "Rummy Nose Tetra", "Hemigrammus rhodostomus", Tetras, tropical, r, 70, 35, 0.065f, 0.075f, 1.3f, 0.3f, 0.75f, 24f, 27f, 5.5f, 7f, 2f, 8),
+            };
+            foreach (var s in list)
+            {
+                s.onlyInBox = WildTetraBox;
+                s.unlockLevel = 1;
+                s.daysToAdult = s.rarity == SpeciesRarity.Exotic ? 6f : s.rarity == SpeciesRarity.Rare ? 5f : 4.5f;
+                s.litterMin = 4; s.litterMax = 8;
+                if (s.id == "BuenosAiresTetra" || s.id == "BucktoothTetra") s.likesPlants = false;
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }

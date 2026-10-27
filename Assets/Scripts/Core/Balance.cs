@@ -174,6 +174,10 @@ namespace FishBreeder.Core
         public int fryPrice = 45;
         [Tooltip("Which fish this box can hatch, how likely each is, and from when. Made from the rarity settings above when empty.")]
         public List<EggHatchBalance> hatch = new List<EggHatchBalance>();
+        [Tooltip("Species ids, comma separated: the box opens once you've raised Raise count of these fish to adulthood (empty = no goal).")]
+        public string raiseSpecies = "";
+        [Tooltip("How many of the Raise species fish you must raise to adulthood before you can buy this box (0 = no goal).")]
+        public int raiseCount;
 
         /// <summary>
         /// Fills empty hatch tables from the rarity settings, so the defaults play like the old
@@ -190,15 +194,18 @@ namespace FishBreeder.Core
                 if (tier.hatch.Count > 0) continue;
                 float normalTotal = 0f;
                 int rareCount = 0;
+                // A box that has its own fish (species marked "only in box" with its id) hatches only
+                // those; every other box leaves them out.
+                bool ownFish = species.Exists(x => x != null && x.onlyInBox == tier.id);
                 foreach (var s in species)
                 {
-                    if (s == null) continue;
+                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "")) continue;
                     if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) normalTotal += Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin);
                     else if (s.rarity == tier.rarePool) rareCount++;
                 }
                 foreach (var s in species)
                 {
-                    if (s == null) continue;
+                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "")) continue;
                     float weight = 0f;
                     if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax && normalTotal > 0f)
                         weight = (1f - tier.rareChance) * Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin) / normalTotal;
@@ -380,6 +387,9 @@ namespace FishBreeder.Core
             new EggTierBalance { id = "Rare", name = "Rare eggs", blurb = "A mix of everyday and rare fish. Rare ones are much likelier than in simple eggs.", price = 120, fryPrice = 170, eggs = 5, unlockLevel = 5,
                 normalMin = SpeciesRarity.Common, normalMax = SpeciesRarity.Uncommon, normalRarityFalloff = 0.7f, rarePool = SpeciesRarity.Rare, rareChance = 0.6f, rareFalloff = 0.45f,
                 color = new Color(0.55f, 0.8f, 1f), speckled = true },
+            new EggTierBalance { id = Species.WildTetraBox, name = "Wild tetra eggs", blurb = "Caught in South American and African rivers: tetras you can't get anywhere else, some of them very rare.", price = 220, fryPrice = 300, eggs = 4, unlockLevel = 1,
+                normalMin = SpeciesRarity.Uncommon, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.55f, rarePool = SpeciesRarity.Exotic, rareChance = 0.15f, rareFalloff = 0.35f,
+                color = new Color(0.55f, 0.95f, 0.75f), speckled = true, raiseSpecies = "NeonTetra,TigerBarb", raiseCount = 50 },
             new EggTierBalance { id = "UltraRare", name = "Ultra rare eggs", blurb = "Rare fish, with a chance of something exotic.", price = 400, fryPrice = 560, eggs = 4, unlockLevel = 15,
                 normalMin = SpeciesRarity.Uncommon, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.5f, rareFalloff = 0.4f,
                 color = new Color(0.75f, 0.55f, 1f), speckled = true },
@@ -754,8 +764,9 @@ namespace FishBreeder.Core
         /// 5: research points and budgets, five expansion rooms unlocked by reputation, egg hatch tables.
         /// 6: much bigger bounties, reputation starts at half a star and climbs slowly (rooms need
         ///    fewer stars), priced repairs with faults instead of repair kits.
+        /// 7: wild tetras and the wild tetra egg box (opens after raising 50 neons or tiger barbs).
         /// </summary>
-        public const int CurrentDataVersion = 6;
+        public const int CurrentDataVersion = 7;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -962,7 +973,32 @@ namespace FishBreeder.Core
                         if (p != null && p.id == "local_celebrity") p.perRank = 0.005f;
                     }
             }
+            if (fromVersion < 7)
+            {
+                // Wild tetras: their egg box goes in after the rare eggs, and their tank mates join the table.
+                var fresh = new SupplierBalance();
+                if (data.supplier != null && data.supplier.eggTiers != null && !data.supplier.eggTiers.Exists(t => t != null && t.id == Species.WildTetraBox))
+                {
+                    int at = data.supplier.eggTiers.FindIndex(t => t != null && t.id == "Rare");
+                    var wild = fresh.eggTiers.Find(t => t.id == Species.WildTetraBox);
+                    data.supplier.eggTiers.Insert(at >= 0 ? at + 1 : data.supplier.eggTiers.Count, wild);
+                }
+                if (data.relationships != null)
+                {
+                    var known = new HashSet<string>();
+                    foreach (var r in data.relationships) if (r != null) known.Add(r.a + ">" + r.b);
+                    foreach (var r in Relationships.CreateDefaults())
+                        if ((IsWildTetra(data, r.a) || IsWildTetra(data, r.b)) && known.Add(r.a + ">" + r.b))
+                            data.relationships.Add(r);
+                }
+            }
             data.dataVersion = CurrentDataVersion;
+        }
+
+        static bool IsWildTetra(BalanceData data, string id)
+        {
+            foreach (var s in data.species) if (s != null && s.id == id) return s.onlyInBox == Species.WildTetraBox;
+            return false;
         }
 
         static void CopyRepairCosts(List<EquipmentTierBalance> saved, List<EquipmentTierBalance> defaults)

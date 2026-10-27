@@ -170,7 +170,7 @@ namespace FishBreeder.Core
             UiCheck.Label("Journal: card name", nameRect, name, Centered());
             var subRect = new Rect(rect.x + 4f, nameRect.yMax - 2f, rect.width - 8f, 16f);
             GUI.Label(subRect, known ? $"<size=10><color={RarityHex(species.rarity)}>{species.rarity}</color></size>"
-                : $"<size=10><color=#8fb3bd>Fishkeeping {species.unlockLevel}+</color></size>", Centered());
+                : $"<size=10><color=#8fb3bd>{(string.IsNullOrEmpty(species.onlyInBox) ? $"Fishkeeping {species.unlockLevel}+" : BoxName(species.onlyInBox))}</color></size>", Centered());
 
             if (known && Journal.IsNew(species))
             {
@@ -187,6 +187,13 @@ namespace FishBreeder.Core
                 pageScroll = Vector2.zero;
                 Journal.MarkSeen(species);
             }
+        }
+
+        /// <summary>The name of the egg box a fish only comes in, e.g. "Wild tetra eggs".</summary>
+        static string BoxName(string id)
+        {
+            foreach (var tier in EggBoxes.Tiers) if (tier != null && tier.id == id) return tier.name;
+            return id;
         }
 
         static string RarityHex(SpeciesRarity rarity)

@@ -167,6 +167,7 @@ namespace FishBreeder
         void GrewUp()
         {
             Milestones.Add(MilestoneKind.GrowUp);
+            FishBreeder.Store.EggBoxes.RecordGrownUp(Species);
             Fx.Text(transform.position + Vector3.up * 0.06f, "All grown up!", UiTheme.Sun, 18f, 2f);
             if (Tank != null) Fx.Bubbles(transform.position, 5, Tank.SurfaceY, 0.03f);
         }

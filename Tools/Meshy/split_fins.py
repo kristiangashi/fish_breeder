@@ -93,6 +93,10 @@ OVERRIDES = {
     "Corydoras": {"peduncle": 0.77}, "FancyGoldfish": {"peduncle": 0.62}, "GreenTerror": {"peduncle": 0.75},
     "Guppy": {"peduncle": 0.64, "rays": 0.03}, "Platy": {"peduncle": 0.67}, "RedTailShark": {"peduncle": 0.77},
     "SiameseAlgaeEater": {"peduncle": 0.76}, "SilverDollar": {"peduncle": 0.76, "thin": 0.1}, "TigerBarb": {"peduncle": 0.74},
+    # Wild tetras (2026-10-27).
+    "RedeyeTetra": {"peduncle": 0.70}, "PenguinTetra": {"peduncle": 0.72}, "SilvertipTetra": {"peduncle": 0.75},
+    "BleedingHeartTetra": {"peduncle": 0.76}, "SerpaeTetra": {"peduncle": 0.75}, "XRayTetra": {"peduncle": 0.73},
+    "LemonTetra": {"peduncle": 0.70}, "BloodfinTetra": {"peduncle": 0.68},
 }
 SID = ""
 

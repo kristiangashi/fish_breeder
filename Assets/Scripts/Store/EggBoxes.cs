@@ -30,6 +30,74 @@ namespace FishBreeder.Store
 
         public static bool IsRare(EggTierBalance tier, Species species) => species.rarity >= tier.rarePool;
 
+        static readonly Dictionary<string, int> raised = new Dictionary<string, int>();
+
+        public static void Reset() => raised.Clear();
+
+        /// <summary>How many fish of this species the player has raised to adulthood this game.</summary>
+        public static int Raised(string speciesId) => speciesId != null && raised.TryGetValue(speciesId, out var n) ? n : 0;
+
+        /// <summary>The species a box's goal counts ("raise N of these to adulthood").</summary>
+        public static List<Species> GoalSpecies(EggTierBalance tier)
+        {
+            var list = new List<Species>();
+            if (tier == null || string.IsNullOrEmpty(tier.raiseSpecies)) return list;
+            foreach (var id in tier.raiseSpecies.Split(','))
+            {
+                var species = Species.Find(id.Trim());
+                if (species != null) list.Add(species);
+            }
+            return list;
+        }
+
+        public static bool HasGoal(EggTierBalance tier) => tier != null && tier.raiseCount > 0 && GoalSpecies(tier).Count > 0;
+
+        /// <summary>Fish raised so far towards a box's goal.</summary>
+        public static int GoalProgress(EggTierBalance tier)
+        {
+            int n = 0;
+            foreach (var species in GoalSpecies(tier)) n += Raised(species.id);
+            return n;
+        }
+
+        /// <summary>True when the box has no goal, or its goal is reached (dev mode opens everything).</summary>
+        public static bool GoalMet(EggTierBalance tier) => !HasGoal(tier) || DevMode.On || GoalProgress(tier) >= tier.raiseCount;
+
+        /// <summary>"Raise 50 Neon Tetras or Tiger Barbs to adulthood (12/50)".</summary>
+        public static string GoalText(EggTierBalance tier)
+        {
+            var names = new List<string>();
+            foreach (var species in GoalSpecies(tier)) names.Add(species.displayName + "s");
+            string who = names.Count <= 1 ? string.Join("", names) : string.Join(", ", names.GetRange(0, names.Count - 1)) + " or " + names[names.Count - 1];
+            return $"Raise {tier.raiseCount} {who} to adulthood ({Mathf.Min(GoalProgress(tier), tier.raiseCount)}/{tier.raiseCount})";
+        }
+
+        /// <summary>A fish grew up: counts towards box goals, and announces a box that just opened.</summary>
+        public static void RecordGrownUp(Species species)
+        {
+            if (species == null) return;
+            var before = new List<EggTierBalance>();
+            foreach (var tier in Tiers) if (HasGoal(tier) && GoalProgress(tier) < tier.raiseCount) before.Add(tier);
+            raised[species.id] = Raised(species.id) + 1;
+            foreach (var tier in before)
+                if (GoalProgress(tier) >= tier.raiseCount)
+                {
+                    GameLog.Add($"You've raised {tier.raiseCount} fish for the fish seller's goal: {tier.name.ToLower()} are now at his van!");
+                    Fx.Card("NEW EGG BOX", tier.name, tier.blurb, "At the fish seller's van", UiTheme.Aqua);
+                }
+        }
+
+        /// <summary>
+        /// Whether the player can get this fish at all right now: false for fish that only come in
+        /// a box whose goal isn't reached yet (so shoppers don't ask for them).
+        /// </summary>
+        public static bool Obtainable(Species species)
+        {
+            if (species == null || string.IsNullOrEmpty(species.onlyInBox)) return true;
+            foreach (var tier in Tiers) if (tier != null && tier.id == species.onlyInBox) return GoalMet(tier);
+            return false;
+        }
+
         /// <summary>One fish a box can hatch right now, with its chance weight.</summary>
         public struct Entry
         {

@@ -91,6 +91,20 @@ namespace FishBreeder.Genetics
             Both(list, Relationship.Competitive, "GreenTerror", "GreenTerror", "BlueAcara", "Oscar");
             Both(list, Relationship.Competitive, "CometGoldfish", "FancyGoldfish");
 
+            // Wild tetras: the bucktooth eats small fish and bites scales, serpae and black skirt
+            // tetras nip long fins, and the big cichlids and angelfish eat the tiny ones.
+            Eats(list, "BucktoothTetra", "NeonTetra", "Guppy", "ZebraDanio", "Platy", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra");
+            Eats(list, "Oscar", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra", "EmperorTetra", "LemonTetra", "XRayTetra", "BloodfinTetra", "SerpaeTetra", "PenguinTetra");
+            Eats(list, "GreenTerror", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra");
+            Eats(list, "Angelfish", "RubyTetra", "GlowlightTetra");
+            Both(list, Relationship.Competitive, "SerpaeTetra", "Angelfish", "Betta", "FancyGoldfish", "Guppy", "CongoTetra");
+            Both(list, Relationship.Competitive, "BlackSkirtTetra", "Angelfish", "Betta", "Guppy");
+            Both(list, Relationship.Competitive, "BucktoothTetra", "Angelfish", "Betta", "CongoTetra", "BleedingHeartTetra");
+            foreach (var tetra in new[] { "BloodfinTetra", "SerpaeTetra", "XRayTetra", "BlackSkirtTetra", "RedeyeTetra", "LemonTetra", "BleedingHeartTetra", "BuenosAiresTetra",
+                "EmperorTetra", "FlameTetra", "CongoTetra", "PenguinTetra", "GlowlightTetra", "RubyTetra", "SilvertipTetra", "RummyNoseTetra" })
+                Both(list, Relationship.Preferred, tetra, tetra, "Corydoras");
+            Both(list, Relationship.Preferred, "BucktoothTetra", "BucktoothTetra");
+
             // Good company.
             Both(list, Relationship.Preferred, "NeonTetra", "NeonTetra", "Corydoras");
             Both(list, Relationship.Preferred, "ZebraDanio", "ZebraDanio", "FancyGoldfish");

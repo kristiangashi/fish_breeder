@@ -16,7 +16,9 @@ namespace FishBreeder.Shop
         public static ShopperProfile Random()
         {
             var shop = Balance.Data.shop;
-            var all = Genetics.Species.All;
+            // Shoppers only ask for fish the player could get: not wild fish from a box that's still locked.
+            var all = new List<Genetics.Species>();
+            foreach (var species in Genetics.Species.All) if (EggBoxes.Obtainable(species)) all.Add(species);
             return new ShopperProfile
             {
                 priceTolerance = GameRandom.Range(shop.minPriceTolerance, shop.maxPriceTolerance) * Mathf.Lerp(0.9f, 1.1f, Economy.Reputation) * Perks.More(PerkEffect.PriceTolerance),

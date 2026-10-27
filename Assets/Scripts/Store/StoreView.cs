@@ -1502,6 +1502,34 @@ namespace FishBreeder.Store
                     else Economy.Earn(price, "refund: no room for a decoration", MoneyKind.Refunds);
                 }
             }
+            DrawBackgroundOffers(tank);
+        }
+
+        /// <summary>Pictures for the back glass: one per tank, bought for the tank chosen above.</summary>
+        void DrawBackgroundOffers(Tank tank)
+        {
+            GUILayout.Space(6f);
+            GUILayout.Label("<b>Backgrounds</b>", Rich());
+            GUILayout.Label($"<i>A picture for the back glass of this tank. A tank shows one at a time; a new one replaces the old. Quality +{Balance.Data.quality.backgroundPoints:0}.</i>", Rich());
+            foreach (var item in TankBackgrounds.All)
+            {
+                if (item == null) continue;
+                bool onTank = tank != null && tank.BackgroundId == item.id;
+                int price = Perks.Decoration(item.price);
+                string label = tank == null ? "Pick a tank" : onTank ? "On this tank" : $"Put up  {Economy.Format(price)}";
+                if (OfferRow(TankBackgrounds.Texture(item.id), item.name, item.blurb, XpTrack.Shopkeeping, item.unlockLevel, label, tank != null && !onTank && Economy.CanAfford(price))
+                    && Economy.TrySpend(price, $"the {item.name.ToLower()} background for {orderTarget.Title}", MoneyKind.Decorations))
+                {
+                    tank.SetBackground(item.id);
+                    GameLog.Add($"Put the {item.name.ToLower()} background on {orderTarget.Title}.");
+                    Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
+                }
+            }
+            if (tank != null && TankBackgrounds.Find(tank.BackgroundId) != null && GUILayout.Button("Take the background down (plain glass)"))
+            {
+                tank.SetBackground("");
+                GameLog.Add($"Took the background down in {orderTarget.Title}.");
+            }
         }
 
         void DrawFoodOffers()

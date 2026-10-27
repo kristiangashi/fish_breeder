@@ -62,6 +62,12 @@ namespace FishBreeder
                     parts.Add(new Part { label = $"{kinds.Count} different kind{(kinds.Count == 1 ? "" : "s")}", points = Mathf.RoundToInt(variety) });
                 }
             }
+            var background = TankBackgrounds.Find(tank.BackgroundId);
+            if (background != null)
+            {
+                total += q.backgroundPoints;
+                if (parts != null) parts.Add(new Part { label = $"{background.name} background", points = Mathf.RoundToInt(q.backgroundPoints) });
+            }
             return total;
         }
 

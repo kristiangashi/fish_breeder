@@ -313,6 +313,19 @@ namespace FishBreeder.Core
         public bool back;
     }
 
+    /// <summary>A picture for the back glass of a tank. The id is the texture's name in Resources/Backgrounds.</summary>
+    [Serializable]
+    public class BackgroundBalance
+    {
+        public string id;
+        public string name;
+        public string blurb;
+        [Tooltip("Price to put this background on one tank.")]
+        public int price = 20;
+        [Tooltip("Shopkeeping level needed to buy it.")]
+        public int unlockLevel = 1;
+    }
+
     /// <summary>
     /// A tank's quality: what its equipment and decorations add up to. Reaching a size's quality
     /// lets the tank be upgraded to that size (for money), and bigger tanks can keep fish that
@@ -333,6 +346,8 @@ namespace FishBreeder.Core
         public float plantPoints = 2f;
         [Tooltip("Extra points for each different kind of decoration, since variety looks better.")]
         public float varietyPoints = 1f;
+        [Tooltip("Points for having a picture background on the back glass.")]
+        public float backgroundPoints = 4f;
     }
 
     [Serializable]
@@ -399,6 +414,15 @@ namespace FishBreeder.Core
             new EggTierBalance { id = "Ancient", name = "Ancient eggs", blurb = "Coming later.", price = 5000, fryPrice = 7000, eggs = 3, unlockLevel = 45,
                 normalMin = SpeciesRarity.Exotic, normalMax = SpeciesRarity.Legendary, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Ancient, rareChance = 0.4f, rareFalloff = 0.3f,
                 color = new Color(0.45f, 0.75f, 0.55f), speckled = true },
+        };
+        public List<BackgroundBalance> backgrounds = new List<BackgroundBalance>
+        {
+            new BackgroundBalance { id = "SandyShallows", name = "Sandy shallows", blurb = "Pale sand, dark rocks and a little seaweed in bright, shallow water.", price = 15, unlockLevel = 1 },
+            new BackgroundBalance { id = "OpenOcean", name = "Open ocean", blurb = "Deep blue water with sunbeams from far above.", price = 15, unlockLevel = 1 },
+            new BackgroundBalance { id = "PlantedStream", name = "Planted stream", blurb = "Lush green and red stem plants over smooth river stones.", price = 20, unlockLevel = 2 },
+            new BackgroundBalance { id = "DriftwoodForest", name = "Driftwood forest", blurb = "Tangled roots and fallen leaves in tea-coloured blackwater, like a tetra's home river.", price = 20, unlockLevel = 2 },
+            new BackgroundBalance { id = "CoralReef", name = "Coral reef", blurb = "A sunlit reef bursting with colourful corals.", price = 25, unlockLevel = 3 },
+            new BackgroundBalance { id = "Shipwreck", name = "Shipwreck", blurb = "An old wooden wreck on the sea floor, overgrown with coral.", price = 30, unlockLevel = 4 },
         };
         public List<DecorationBalance> decorations = new List<DecorationBalance>
         {

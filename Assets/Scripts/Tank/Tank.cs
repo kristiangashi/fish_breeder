@@ -25,6 +25,18 @@ namespace FishBreeder
         readonly List<Fish> residents = new List<Fish>();
         readonly List<Fish> corpses = new List<Fish>();
         Material backWallMaterial;
+        Material backgroundMaterial;
+        string backgroundId = "";
+
+        /// <summary>The picture on the back glass (a <see cref="BackgroundBalance"/> id), or "" for plain glass.</summary>
+        public string BackgroundId => backgroundId;
+
+        /// <summary>Puts a picture on the back glass ("" or null takes it down).</summary>
+        public void SetBackground(string id)
+        {
+            backgroundId = id ?? "";
+            BuildBackground();
+        }
         TankWater water;
         Transform visuals;
         TankDecor decor;
@@ -418,6 +430,8 @@ namespace FishBreeder
         {
             var color = WaterColor;
             if (backWallMaterial != null) backWallMaterial.color = color * 1.3f;
+            // A picture shows through the water: clean water barely tints it, dirty water more.
+            if (backgroundMaterial != null) backgroundMaterial.color = Color.Lerp(Color.white, color * 1.6f, Mathf.Lerp(0.6f, 0.15f, waterQuality));
             // Dirty water shows only inside the glass, through the water volume's murk.
             if (water != null) water.SetLook(color, waterQuality, algae);
         }
@@ -662,6 +676,31 @@ namespace FishBreeder
             foreach (var fish in corpses) fish.transform.position = Clamp(fish.transform.position, 0.05f);
         }
 
+        /// <summary>
+        /// The picture on the back glass: a quad just in front of the back wall, the texture cropped
+        /// (not stretched) to the tank's shape, keeping its middle.
+        /// </summary>
+        void BuildBackground()
+        {
+            if (visuals == null) return;
+            var old = visuals.Find("Background");
+            if (old != null) Destroy(old.gameObject);
+            backgroundMaterial = null;
+            var texture = TankBackgrounds.Texture(backgroundId);
+            if (texture == null) return;
+            var b = innerSize;
+            var quad = MaterialFactory.Decor(PrimitiveType.Quad, "Background", visuals, new Vector3(0f, b.y * 0.5f, b.z * 0.5f - 0.002f), new Vector3(b.x, b.y, 1f), Color.white);
+            var material = quad.GetComponent<Renderer>().material;
+            material.mainTexture = texture;
+            if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0f);
+            float tankAspect = b.x / Mathf.Max(0.01f, b.y), textureAspect = texture.width / (float)Mathf.Max(1, texture.height);
+            var scale = tankAspect > textureAspect ? new Vector2(1f, textureAspect / tankAspect) : new Vector2(tankAspect / textureAspect, 1f);
+            material.mainTextureScale = scale;
+            material.mainTextureOffset = new Vector2((1f - scale.x) * 0.5f, (1f - scale.y) * 0.5f);
+            backgroundMaterial = material;
+            ApplyWaterLook();
+        }
+
         /// <summary>Simple tank made of primitives. Replace with a Meshy or hand-made tank model later.</summary>
         void BuildVisuals()
         {
@@ -676,6 +715,7 @@ namespace FishBreeder
             MaterialFactory.Decor(PrimitiveType.Cube, "Base", root, new Vector3(0f, -BaseDepth + 0.01f, 0f), new Vector3(b.x + 0.05f, 0.02f, b.z + 0.05f), frame);
             var wall = MaterialFactory.Decor(PrimitiveType.Cube, "BackWall", root, new Vector3(0f, b.y * 0.5f, b.z * 0.5f + 0.01f), new Vector3(b.x + 0.04f, b.y, 0.02f), ClearWater);
             backWallMaterial = wall.GetComponent<Renderer>().sharedMaterial;
+            BuildBackground();
 
             // Glass frame: the 12 edges of the box, the bottom ones down at the base below the substrate.
             const float t = 0.02f;

@@ -765,8 +765,9 @@ namespace FishBreeder.Core
         /// 6: much bigger bounties, reputation starts at half a star and climbs slowly (rooms need
         ///    fewer stars), priced repairs with faults instead of repair kits.
         /// 7: wild tetras and the wild tetra egg box (opens after raising 50 neons or tiger barbs).
+        /// 8: where each species' body starts to wiggle (bendStart), set on the console's Swimming tab.
         /// </summary>
-        public const int CurrentDataVersion = 7;
+        public const int CurrentDataVersion = 8;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -992,6 +993,9 @@ namespace FishBreeder.Core
                             data.relationships.Add(r);
                 }
             }
+            if (fromVersion < 8)
+                foreach (var s in data.species)
+                    if (s != null) s.bendStart = Species.DefaultBendStart(s.id);
             data.dataVersion = CurrentDataVersion;
         }
 

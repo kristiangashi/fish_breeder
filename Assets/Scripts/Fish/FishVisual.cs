@@ -217,10 +217,28 @@ namespace FishBreeder
             {
                 wavesPerBody = entry.wavesPerBody,
                 tailTwistDegrees = entry.tailTwistDegrees,
-                stiffness = entry.bodyStiffness,
             };
+            ApplyBendStart(entry);
             float length = modelLength * transform.lossyScale.x;
             spine.Reset(transform.position + transform.forward * length * 0.5f, transform.forward, transform.up, length);
+        }
+
+        /// <summary>
+        /// Gives the spine the species' bend start (where its body starts to wiggle) and returns
+        /// how stiff that makes the fish (0 = snakes from the head, 1 = only the back half swings),
+        /// which tones down its kicks and curls. Models without a species keep their library stiffness.
+        /// </summary>
+        float ApplyBendStart(FishModelLibrary.Entry entry)
+        {
+            var species = Genetics.Species.Find(entry.species);
+            float bendStart = species != null ? Mathf.Clamp01(species.bendStart) : 0.1f + entry.bodyStiffness * 0.45f;
+            float stiffness = Mathf.Clamp01((bendStart - 0.1f) / 0.45f);
+            if (spine != null)
+            {
+                spine.bendStart = bendStart;
+                spine.stiffness = stiffness;
+            }
+            return stiffness;
         }
 
         /// <summary>A Meshy model that isn't split into parts, at this length and tint; without <paramref name="textured"/> it's a plain colour (fry).</summary>
@@ -537,7 +555,8 @@ namespace FishBreeder
                 float moving = Mathf.Clamp01(effort / 0.6f);
                 // Setting off or turning from still is where a stiff, deep body must not snake: it gets a
                 // smaller kick and keeps its front straight. Cruising is left alone.
-                float stiffness = modelEntry.bodyStiffness;
+                // Read every frame so a change on the console's Swimming tab shows straight away.
+                float stiffness = ApplyBendStart(modelEntry);
                 float startle = 1f - moving;
                 float kick = (0.6f * thrust + 0.3f * turning) * Mathf.Lerp(1f, 0.55f, stiffness * startle);
                 float targetStroke = Mathf.Clamp(IdleStroke + 0.45f * effort + kick, 0.02f, 1.3f);

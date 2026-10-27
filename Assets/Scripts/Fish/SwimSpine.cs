@@ -40,6 +40,18 @@ namespace FishBreeder
         public float tailTwistDegrees = 8f;
         /// <summary>0..1: how much of the front of the body stays straight (deep-bodied fish are stiff).</summary>
         public float stiffness;
+        /// <summary>Where the body starts to wiggle, as a fraction of its length from the nose (the species' bendStart).</summary>
+        public float bendStart = 0.2f;
+
+        /// <summary>
+        /// How much of the swimming wave reaches s (0 = nose, 1 = tail tip): none in front of
+        /// <paramref name="bendStart"/>, growing to full over the next <see cref="Genetics.Species.BendRamp"/> of the body.
+        /// </summary>
+        public static float BendMask(float s, float bendStart)
+        {
+            float end = Mathf.Min(1f, bendStart + Genetics.Species.BendRamp);
+            return end <= bendStart ? (s >= bendStart ? 1f : 0f) : Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(bendStart, end, s));
+        }
 
         public void Reset(Vector3 nose, Vector3 forward, Vector3 up, float length)
         {
@@ -107,7 +119,7 @@ namespace FishBreeder
         /// <param name="follow">How closely the body follows the head's path this frame (0 = straight body).</param>
         /// <param name="curl">Extra C-bend for turning on the spot: sideways tail offset as a fraction of
         /// body length, positive towards the fish's right.</param>
-        /// <param name="stiffen">0..1: how much of the body's <see cref="stiffness"/> applies right now.</param>
+        /// <param name="stiffen">0..1: how much of the body's <see cref="stiffness"/> applies right now (turning curl only).</param>
         public void Evaluate(Vector3 nose, Vector3 forward, Vector3 up, float length,
             float phase, float amplitude, float bankDegrees, float follow, float curl, float stiffen, Transform meshSpace)
         {
@@ -129,9 +141,10 @@ namespace FishBreeder
                 float s = i / (SampleCount - 1f);
                 var tangent = Tangent(spinePoints, i, forward);
                 var side = Vector3.Cross(spineUps[i], tangent).normalized;
-                // A stiff body keeps its front half straight: the wave and the curl live in the tail end.
-                float bend = Mathf.Lerp(1f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.3f, 0.85f, s)), stiff);
-                float curlShape = Mathf.Pow(s, Mathf.Lerp(2f, 3.5f, stiff));
+                // The body only wiggles behind its bend start; a turn on the spot curls the same part.
+                float bend = BendMask(s, bendStart);
+                float behind = Mathf.InverseLerp(bendStart, 1f, s);
+                float curlShape = Mathf.Pow(behind, Mathf.Lerp(2f, 3.5f, stiff));
                 float sway = Envelope(s) * length * amplitude * bend * Mathf.Sin(k * s - phase) + curl * length * curlShape;
                 midline[i] = spinePoints[i] + side * sway;
             }

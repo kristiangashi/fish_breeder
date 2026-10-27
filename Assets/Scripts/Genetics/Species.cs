@@ -62,6 +62,15 @@ namespace FishBreeder.Genetics
         /// <summary>Preferred depth band: 0 = the sand, 1 = the surface.</summary>
         public float depthMin = 0.2f, depthMax = 0.8f;
         public SwimStyle style;
+        /// <summary>
+        /// Where the body starts to wiggle when swimming, as a fraction of its length from the nose
+        /// (0 = the whole fish snakes, 0.5 = the front half stays stiff and only the back swings).
+        /// The wiggle grows over the next <see cref="BendRamp"/> of the body to full strength.
+        /// </summary>
+        public float bendStart = 0.2f;
+
+        /// <summary>How much of the body (fraction of its length) the wiggle takes to reach full strength after <see cref="bendStart"/>.</summary>
+        public const float BendRamp = 0.3f;
 
         // Needs
         public float tempMin = 20f, tempMax = 26f;
@@ -187,6 +196,24 @@ namespace FishBreeder.Genetics
             { "CongoTetra", 1 }, { "BucktoothTetra", 1 },
         };
 
+        /// <summary>
+        /// Where each body starts to wiggle (see <see cref="bendStart"/>): deep, short bodies
+        /// (goldfish, angelfish, silver dollars, cichlids) swim with the back half; slim fish
+        /// (danios, tetras, sharks) bend from just behind the head. Others use 0.2.
+        /// </summary>
+        static readonly Dictionary<string, float> BendStarts = new Dictionary<string, float>
+        {
+            { "CometGoldfish", 0.45f }, { "FancyGoldfish", 0.55f }, { "Angelfish", 0.55f }, { "SilverDollar", 0.55f },
+            { "Oscar", 0.48f }, { "GreenTerror", 0.43f }, { "BlueAcara", 0.43f }, { "Betta", 0.25f }, { "Clownfish", 0.35f },
+            { "BlackMolly", 0.33f }, { "Platy", 0.33f }, { "GoldenMbuna", 0.3f }, { "Guppy", 0.23f }, { "TigerBarb", 0.3f },
+            { "NeonTetra", 0.2f }, { "ZebraDanio", 0.15f }, { "Corydoras", 0.38f }, { "RedTailShark", 0.18f }, { "SiameseAlgaeEater", 0.15f },
+            { "BlackSkirtTetra", 0.35f }, { "BleedingHeartTetra", 0.33f }, { "RedeyeTetra", 0.3f }, { "SerpaeTetra", 0.28f }, { "FlameTetra", 0.28f },
+            { "LemonTetra", 0.28f }, { "XRayTetra", 0.23f }, { "EmperorTetra", 0.25f }, { "CongoTetra", 0.23f }, { "BucktoothTetra", 0.2f },
+        };
+
+        /// <summary>The default <see cref="bendStart"/> for a species id.</summary>
+        public static float DefaultBendStart(string id) => id != null && BendStarts.TryGetValue(id, out var b) ? b : 0.2f;
+
         const string Carps = "Carps and minnows (Cyprinidae)";
         const string Danios = "Danios (Danionidae)";
         const string Cichlids = "Cichlids (Cichlidae)";
@@ -248,6 +275,7 @@ namespace FishBreeder.Genetics
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }
             list.AddRange(WildTetras());
+            foreach (var s in list) s.bendStart = DefaultBendStart(s.id);
             return list;
         }
 

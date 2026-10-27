@@ -78,6 +78,21 @@
   .pin { border: none; background: none; padding: 0 2px; font-size: 13px; line-height: 1; color: var(--muted); opacity: .45; cursor: pointer; }
   .pin:hover { opacity: 1; color: var(--accent); }
   .pin.on { opacity: 1; color: #d4a017; }
+  .swim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 14px; }
+  .swim-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .swim-head h2 { margin: 0; }
+  .swim-head input { width: 70px; }
+  .swim-stage { position: relative; cursor: ew-resize; user-select: none; touch-action: none; border-radius: 6px; background: var(--bg); }
+  .swim-frame { width: fit-content; max-width: 100%; margin: 0 auto; }
+  .swim-stage img { display: block; max-width: 100%; max-height: 210px; pointer-events: none; }
+  .swim-stiff { position: absolute; top: 0; bottom: 0; left: 0; background: repeating-linear-gradient(135deg, rgba(120,130,140,.28) 0 6px, rgba(120,130,140,.12) 6px 12px); pointer-events: none; }
+  .swim-ramp { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+  .swim-line { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; }
+  .swim-line::after { content: ""; position: absolute; top: -5px; left: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+  .swim-ruler { position: relative; height: 22px; border-top: 1px solid var(--muted); margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .swim-ruler i { position: absolute; top: 0; width: 1px; background: var(--muted); }
+  .swim-ruler span { position: absolute; top: 7px; transform: translateX(-50%); white-space: nowrap; }
+  .swim-top { display: block; max-width: 100%; max-height: 120px; margin: 6px auto 0; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .tile { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
   .tile-label { font-size: 12px; color: var(--muted); }
@@ -195,6 +210,7 @@ const META = {
   normalRarityFalloff: ["Normal pool falloff", "Each rarity step up in the normal pool is this many times as likely (0.3 = rarer kinds are uncommon)."],
   rarePool: ["Rare egg rarity", "The rarity a 'rare' egg hatches into."],
   rareChance: ["Rare chance (first egg)", "Chance an egg is rare while the box has no rare eggs yet."],
+  bendStart: ["Wiggle starts at", "Where the body starts to wiggle when swimming, as a fraction of its length from the nose: 0 = the whole fish snakes, 0.5 = the front half stays stiff and only the back swings. Set it by eye on the Swimming tab."],
   onlyInBox: ["Only in box", "Id of the only egg/fry box this fish comes in (e.g. WildTetra). Empty = any box whose rarity settings include it. A box with its own fish hatches nothing else."],
   raiseSpecies: ["Raise species", "Species ids, comma separated (e.g. NeonTetra,TigerBarb): the box opens once you've raised 'Raise count' of these fish to adulthood. Empty = no goal."],
   raiseCount: ["Raise count", "How many of the raise species you must raise to adulthood before the fish seller sells this box (0 = no goal)."],
@@ -330,6 +346,7 @@ const TABS = [
   ["species", "Species"],
   ["compat", "Relationships"],
   ["cross", "Cross-breeding"],
+  ["swim", "Swimming"],
   ["diseases", "Diseases"],
   ["shop", "Shop & customers"],
   ["timeStep", "Time steps"],
@@ -353,7 +370,7 @@ const SPECIES_GROUPS = [
   ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "likesPlants", "schoolSize", "minTankSize"]],
   ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
-  ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style"]],
+  ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style", "bendStart"]],
 ];
 
 let data = null;
@@ -2131,6 +2148,81 @@ tableObserver = new MutationObserver((mutations) => {
 });
 tableObserver.observe($("#view"), { childList: true, subtree: true });
 
+// ---------------------------------------------------------------- swimming
+// Mirrors SwimSpine in the game: the body wave's envelope and where it starts (bendStart, plus a
+// fixed ramp to full strength), so the moving top view here is how the fish swims in the tank.
+const BEND_RAMP = 0.3;
+const swimEnvelope = (s) => 0.02 - 0.0825 * s + 0.1625 * s * s;
+const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+const bendMask = (s, start) => { const end = Math.min(1, start + BEND_RAMP); return end <= start ? (s >= start ? 1 : 0) : smooth((s - start) / (end - start)); };
+let swimAnimation = 0;
+
+function renderSwim() {
+  cancelAnimationFrame(swimAnimation);
+  const shown = data.species.filter((s) => !query || (s.displayName + " " + s.id).toLowerCase().includes(query.toLowerCase()));
+  const animated = [];
+  const cards = shown.map((s) => {
+    if (typeof s.bendStart !== "number") s.bendStart = 0.2;
+    const stiff = el("div", { class: "swim-stiff" });
+    const ramp = el("div", { class: "swim-ramp" });
+    const line = el("div", { class: "swim-line" });
+    const number = el("input", { type: "number", min: 0, max: 100, step: 1 });
+    const note = el("span", { class: "hint", style: "margin:0" });
+    const side = el("img", { src: `/fish/${s.id}_side.webp`, alt: s.displayName });
+    const stage = el("div", { class: "swim-stage", title: "Drag the line to where the body starts to wiggle" }, side, stiff, ramp, line);
+    side.onerror = () => stage.replaceChildren(el("p", { class: "hint", style: "padding:20px" }, "No picture for this fish (run Tools/Meshy/console_pictures.py)."), stiff, ramp, line);
+    const ruler = el("div", { class: "swim-ruler" }, [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((p) =>
+      [el("i", { style: `left:${p}%;height:${p % 50 === 0 ? 8 : 4}px` }), p % 25 === 0 ? el("span", { style: `left:${p}%` }, p === 0 ? "nose" : p === 100 ? "tail" : `${p}%`) : null]).flat());
+    const show = () => {
+      const p = s.bendStart * 100, end = Math.min(100, p + BEND_RAMP * 100);
+      stiff.style.width = `${p}%`;
+      ramp.style.left = `${p}%`; ramp.style.width = `${end - p}%`;
+      ramp.style.background = "linear-gradient(90deg, rgba(31,122,140,0) 0%, rgba(31,122,140,.14) 100%)";
+      line.style.left = `${p}%`;
+      if (document.activeElement !== number) number.value = Math.round(p);
+      note.textContent = p < 12 ? "wiggles from the head" : p < 30 ? "stiff head, wiggly body" : p < 45 ? "stiff front, tail end swings" : "stiff body, only the tail swings";
+    };
+    const set = (v) => { s.bendStart = Math.round(Math.min(0.95, Math.max(0, v)) * 100) / 100; show(); markDirty(); };
+    number.oninput = () => { const n = parseFloat(number.value); if (!isNaN(n)) set(n / 100); };
+    let dragging = false;
+    const fromPointer = (e) => { const r = stage.getBoundingClientRect(); set((e.clientX - r.left) / r.width); };
+    stage.addEventListener("pointerdown", (e) => { dragging = true; stage.setPointerCapture(e.pointerId); fromPointer(e); });
+    stage.addEventListener("pointermove", (e) => { if (dragging) fromPointer(e); });
+    stage.addEventListener("pointerup", () => { dragging = false; });
+    show();
+    // Moving top view: the picture cut into thin slices, each pushed sideways by the body wave.
+    const canvas = el("canvas", { class: "swim-top", width: 480, height: 150 });
+    const top = new Image();
+    top.onload = () => { canvas.height = Math.round(top.height + 0.26 * top.width); animated.push({ s, canvas, top }); };
+    top.src = `/fish/${s.id}_top.webp`;
+    return el("div", { class: "card" },
+      el("div", { class: "swim-head" }, el("h2", {}, s.displayName), el("label", { class: "row", style: "margin:0;gap:6px" }, note, number, "%")),
+      el("div", { class: "swim-frame" }, stage, ruler), canvas);
+  });
+  const t0 = performance.now();
+  const frame = (now) => {
+    if (tab !== "swim") return;
+    const phase = ((now - t0) / 1000) * Math.PI * 2 * 1.6;
+    for (const a of animated) {
+      if (!a.canvas.isConnected) continue;
+      const ctx = a.canvas.getContext("2d"), W = a.canvas.width, H = a.canvas.height;
+      const iw = a.top.width, ih = a.top.height, mid = (H - ih) / 2, strip = 3;
+      ctx.clearRect(0, 0, W, H);
+      for (let x = 0; x < iw; x += strip) {
+        const s = (x + strip / 2) / iw;
+        const sway = swimEnvelope(s) * iw * 0.8 * bendMask(s, a.s.bendStart) * Math.sin(Math.PI * 2 * s - phase);
+        ctx.drawImage(a.top, x, 0, strip + 0.5, ih, x * (W / iw), mid + sway, (strip + 0.5) * (W / iw), ih);
+      }
+    }
+    swimAnimation = requestAnimationFrame(frame);
+  };
+  swimAnimation = requestAnimationFrame(frame);
+  return [
+    el("p", { class: "hint" }, "Where each fish's body starts to wiggle when it swims. Drag the line across the side view (or type a %): everything in front of it (striped) stays stiff, and the wiggle grows to full strength over the next 30% of the body. Slim fish like danios and tetras bend from just behind the head; deep-bodied fish like goldfish, angelfish and cichlids keep their body stiff and swing the back. The top view below each fish swims with the setting, the way it does in the tank. Saving applies it to the running game straight away."),
+    el("div", { class: "swim-grid" }, cards),
+  ];
+}
+
 function render() {
   indexPaths();
   $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
@@ -2151,6 +2243,7 @@ function render() {
     case "pinned": content = renderPinned(); break;
     case "sim": content = renderSim(); break;
     case "eggs": content = renderEggs(); break;
+    case "swim": content = renderSwim(); break;
     default: content = renderSection(tab);
   }
   $("#view").replaceChildren(...content);

@@ -109,6 +109,18 @@ namespace FishBreeder.EditorTools
                 return;
             }
 
+            // Fish pictures for the Swimming tab (made by Tools/Meshy/console_pictures.py).
+            if (request.HttpMethod == "GET" && path.StartsWith("/fish/"))
+            {
+                string name = path.Substring("/fish/".Length);
+                var file = Path.Combine(projectRoot, "Tools", "BalanceConsole", "fish", name);
+                if (System.Text.RegularExpressions.Regex.IsMatch(name, @"^[A-Za-z0-9_]+\.webp$") && File.Exists(file))
+                    SendBytes(context, 200, "image/webp", File.ReadAllBytes(file));
+                else
+                    Send(context, 404, "text/plain", "Not found");
+                return;
+            }
+
             if (path == "/api/balance" && request.HttpMethod == "GET")
             {
                 // Parsed and written back out so species added since the last save are included.
@@ -158,9 +170,11 @@ namespace FishBreeder.EditorTools
             Send(context, 404, "text/plain", "Not found");
         }
 
-        static void Send(HttpListenerContext context, int status, string contentType, string body)
+        static void Send(HttpListenerContext context, int status, string contentType, string body) =>
+            SendBytes(context, status, contentType, Encoding.UTF8.GetBytes(body));
+
+        static void SendBytes(HttpListenerContext context, int status, string contentType, byte[] bytes)
         {
-            var bytes = Encoding.UTF8.GetBytes(body);
             var response = context.Response;
             response.StatusCode = status;
             response.ContentType = contentType;

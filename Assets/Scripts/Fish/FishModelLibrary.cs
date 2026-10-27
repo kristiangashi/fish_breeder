@@ -44,7 +44,7 @@ namespace FishBreeder
             public float tailTwistDegrees = 8f;
             [Tooltip("Tail beats per second at cruising speed.")]
             public float tailBeatsPerSecond = 2.4f;
-            [Tooltip("0 = slender fish that bend along most of their body; 1 = deep-bodied fish (goldfish, angelfish) whose front half stays stiff and only the tail end swings.")]
+            [Tooltip("Only for models without a species: 0 = slender fish that bend along most of their body; 1 = deep-bodied fish whose front half stays stiff. Species set where their body bends with bendStart (console Swimming tab).")]
             [Range(0f, 1f)] public float bodyStiffness = 0.3f;
         }
 

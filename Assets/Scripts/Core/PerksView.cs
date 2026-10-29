@@ -94,23 +94,23 @@ namespace FishBreeder.Core
         void DrawHeader()
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Skills & perks", UiTheme.Title, GUILayout.ExpandWidth(false));
+            Ui.Label("Skills & perks", UiTheme.Title, GUILayout.ExpandWidth(false));
             GUILayout.Space(16f);
             PageTab(XpTrack.Fishkeeping);
             PageTab(XpTrack.Shopkeeping);
             GUILayout.FlexibleSpace();
 #if UNITY_EDITOR
-            if (GUILayout.Button("Level up (dev)", GUILayout.Width(110f)))
+            if (Ui.Button("Level up (dev)", GUILayout.Width(110f)))
                 Progression.DevAward(page, Progression.XpToNext(Progression.Level(page)) - Progression.Xp(page));
-            if (GUILayout.Button("Refund (dev)", GUILayout.Width(96f))) Perks.DevRefund();
+            if (Ui.Button("Refund (dev)", GUILayout.Width(96f))) Perks.DevRefund();
 #endif
-            if (GUILayout.Button("Close (P / Esc)", GUILayout.Width(120f))) Close();
+            if (Ui.Button("Close (P / Esc)", GUILayout.Width(120f))) Close();
             GUILayout.EndHorizontal();
             int points = Perks.Available(page);
             string pointsText = points > 0
                 ? $"<color={UiTheme.SunHex}><b>{points} perk point{(points == 1 ? "" : "s")} to spend.</b></color> Pick a perk in any of the three trees."
                 : $"No points to spend right now. Every {Progression.TrackName(page)} level gives one.";
-            GUILayout.Label($"<size=12>{pointsText}  Each tier opens once {Balance.Data.perkSettings.pointsPerTier} points are spent in the tiers above it.</size>", Rich());
+            Ui.Label($"<size=12>{pointsText}  Each tier opens once {Balance.Data.perkSettings.pointsPerTier} points are spent in the tiers above it.</size>", Rich());
         }
 
         static void PageTab(XpTrack track)
@@ -119,7 +119,7 @@ namespace FishBreeder.Core
             string badge = points > 0 ? $"  <color={UiTheme.SunHex}>●{points}</color>" : "";
             string label = $"{Progression.TrackName(track)} {Progression.Level(track)}{badge}";
             var style = track == page ? UiTheme.Primary : UiTheme.Skin.button;
-            if (GUILayout.Button(label, style, GUILayout.Width(170f), GUILayout.Height(30f))) page = track;
+            if (Ui.Button(label, style, GUILayout.Width(170f), GUILayout.Height(30f))) page = track;
         }
 
         void DrawTrees(float windowWidth)
@@ -146,8 +146,8 @@ namespace FishBreeder.Core
         {
             var color = TreeColor(tree);
             string hex = "#" + ColorUtility.ToHtmlStringRGB(color);
-            GUILayout.Label($"<size=17><b><color={hex}>{Perks.TreeName(tree).ToUpper()}</color></b></size>", Rich());
-            GUILayout.Label($"<size=11>{Perks.TreeBlurb(tree)}  <b>{Perks.Spent(tree)}</b> spent.</size>", Rich());
+            Ui.Label($"<size=17><b><color={hex}>{Perks.TreeName(tree).ToUpper()}</color></b></size>", Rich());
+            Ui.Label($"<size=11>{Perks.TreeBlurb(tree)}  <b>{Perks.Spent(tree)}</b> spent.</size>", Rich());
             int tiers = Mathf.Max(1, Balance.Data.perkSettings.tiers);
             for (int tier = 1; tier <= tiers; tier++)
             {
@@ -167,9 +167,9 @@ namespace FishBreeder.Core
             int have = Mathf.Min(need, Perks.SpentAbove(tree, tier));
             GUILayout.Space(6f);
             string state = tier == 1 ? "" : unlocked ? $"  <color={UiTheme.LeafHex}>open</color>" : $"  <color=#9fb4bc>{have}/{need} points above</color>";
-            GUILayout.Label($"<size=12><b>TIER {tier}</b>{state}</size>", Rich());
+            Ui.Label($"<size=12><b>TIER {tier}</b>{state}</size>", Rich());
             if (tier == 1) return;
-            var bar = GUILayoutUtility.GetRect(width - 10f, 6f, GUILayout.ExpandWidth(true));
+            var bar = Ui.Slot("Bar", width - 10f, 6f, GUILayout.ExpandWidth(true));
             GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 3f);
             float fill = need > 0 ? have / (float)need : 1f;
             if (fill > 0f)
@@ -190,18 +190,18 @@ namespace FishBreeder.Core
             GUILayout.BeginHorizontal();
             GUILayout.BeginVertical();
             string pips = $"<color={hex}>{new string('●', rank)}</color><color=#4a6a74>{new string('●', Mathf.Max(0, perk.maxRank - rank))}</color>";
-            GUILayout.Label($"<b>{perk.name}</b>  <size=11>{pips}  {rank}/{perk.maxRank}</size>", Rich());
+            Ui.Label($"<b>{perk.name}</b>  <size=11>{pips}  {rank}/{perk.maxRank}</size>", Rich());
             string now = rank > 0 ? perk.Describe(rank) : perk.Describe(1);
             string next = rank > 0 && !maxed ? $"  <color=#9fb4bc>(next: {perk.FormatValue(perk.perRank * (rank + 1))})</color>" : "";
-            GUILayout.Label($"<size=11>{now}.{next}</size>", Rich());
+            Ui.Label($"<size=11>{now}.{next}</size>", Rich());
             GUILayout.EndVertical();
             GUI.enabled = why == null;
             string button = maxed ? "Max" : rank == 0 ? "Learn" : "+1";
-            if (GUILayout.Button(new GUIContent(button, why ?? $"Spend a point on {perk.name}"), GUILayout.Width(56f), GUILayout.Height(30f))) Perks.TrySpend(perk);
+            if (Ui.Button(new GUIContent(button, why ?? $"Spend a point on {perk.name}"), GUILayout.Width(56f), GUILayout.Height(30f))) Perks.TrySpend(perk);
             GUI.enabled = true;
             GUILayout.EndHorizontal();
             if (why != null && !maxed && tierOpen && Perks.Available(Perks.TrackOf(perk.tree)) > 0)
-                GUILayout.Label($"<size=10><color=#ffb0a0>{why}</color></size>", Rich());
+                Ui.Label($"<size=10><color=#ffb0a0>{why}</color></size>", Rich());
             GUILayout.EndVertical();
             GUI.color = old;
         }

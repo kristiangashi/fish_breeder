@@ -59,18 +59,18 @@ namespace FishBreeder.Store
 
             UiCheck.Begin("Reputation window", window, UiStyles.Window);
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Reputation", UiTheme.Title, GUILayout.ExpandWidth(false));
+            Ui.Label("Reputation", UiTheme.Title, GUILayout.ExpandWidth(false));
             GUILayout.Space(16f);
-            GUILayout.Label($"<size=22><color={UiTheme.SunHex}>{Stars(StoreLayout.Stars)}</color></size>  <b>{StoreLayout.Stars:0.0}</b> / 5", Rich(), GUILayout.ExpandWidth(false));
+            Ui.Label($"<size=22><color={UiTheme.SunHex}>{Stars(StoreLayout.Stars)}</color></size>  <b>{StoreLayout.Stars:0.0}</b> / 5", Rich(), GUILayout.ExpandWidth(false));
             GUILayout.FlexibleSpace();
 #if UNITY_EDITOR
-            if (GUILayout.Button("+0.5 star (dev)", GUILayout.Width(120f))) Economy.ChangeReputation(0.1f);
-            if (GUILayout.Button("-0.5 star (dev)", GUILayout.Width(120f))) Economy.ChangeReputation(-0.1f);
+            if (Ui.Button("+0.5 star (dev)", GUILayout.Width(120f))) Economy.ChangeReputation(0.1f);
+            if (Ui.Button("-0.5 star (dev)", GUILayout.Width(120f))) Economy.ChangeReputation(-0.1f);
 #endif
-            if (GUILayout.Button("Close (Y / Esc)", GUILayout.Width(120f))) Close();
+            if (Ui.Button("Close (Y / Esc)", GUILayout.Width(120f))) Close();
             GUILayout.EndHorizontal();
             var rep = Balance.Data.reputation;
-            GUILayout.Label($"<size=12>Stars are slow to earn. A day open goes up only when more than {rep.neutralScore * 100f:0}% of shoppers' reactions are good (a sale counts twice), and each star is harder than the last; a bad day costs about twice what a good day earns. More stars bring more people in and open bigger rooms. What shoppers complain about is remembered for a few days, and costs you visitors or sales until it fades.</size>", Rich());
+            Ui.Label($"<size=12>Stars are slow to earn. A day open goes up only when more than {rep.neutralScore * 100f:0}% of shoppers' reactions are good (a sale counts twice), and each star is harder than the last; a bad day costs about twice what a good day earns. More stars bring more people in and open bigger rooms. What shoppers complain about is remembered for a few days, and costs you visitors or sales until it fades.</size>", Rich());
             GUILayout.Space(4f);
 
             float column = (w - UiStyles.Window.padding.horizontal - 16f) * 0.5f;
@@ -107,7 +107,7 @@ namespace FishBreeder.Store
         {
             Heading("FOOT TRAFFIC");
             var t = shopDay.TrafficParts;
-            GUILayout.Label($"About <b>{t.PerHour:0}</b> customers an hour while open (from {t.baseRate:0} at the start).", Rich());
+            Ui.Label($"About <b>{t.PerHour:0}</b> customers an hour while open (from {t.baseRate:0} at the start).", Rich());
             Effect($"{t.displayCount} display tank{(t.displayCount == 1 ? "" : "s")}", t.display);
             Effect($"{t.otherCount} other tank{(t.otherCount == 1 ? "" : "s")} on the shop floor", t.otherTanks);
             Effect($"{t.decorationCount} decoration{(t.decorationCount == 1 ? "" : "s")} in those tanks", t.decorations);
@@ -133,13 +133,13 @@ namespace FishBreeder.Store
                 string target = Reputation.HurtsSales(complaint) ? "sales" : "foot traffic";
                 string color = penalty >= 0.1f ? UiTheme.CoralHex : UiTheme.SunHex;
                 GUILayout.BeginHorizontal(UiTheme.Card);
-                GUILayout.Label($"<b>{Reputation.Label(complaint)}</b>\n<size=11>{heat * 100f:0}% of shoppers lately. {Advice(complaint)}</size>", Rich());
-                GUILayout.Label($"<color={color}><b>-{penalty * 100f:0}%</b></color>\n<size=11>{target}</size>", Rich(), GUILayout.Width(86f));
+                Ui.Label($"<b>{Reputation.Label(complaint)}</b>\n<size=11>{heat * 100f:0}% of shoppers lately. {Advice(complaint)}</size>", Rich());
+                Ui.Label($"<color={color}><b>-{penalty * 100f:0}%</b></color>\n<size=11>{target}</size>", Rich(), GUILayout.Width(86f));
                 GUILayout.EndHorizontal();
             }
-            if (!any) GUILayout.Label("<i>No complaints lately. Keep it up!</i>", Rich());
+            if (!any) Ui.Label("<i>No complaints lately. Keep it up!</i>", Rich());
             float traffic = 1f - Reputation.TrafficMultiplier, sales = 1f - Reputation.SalesMultiplier;
-            if (any) GUILayout.Label($"<size=11>In all: <b>-{traffic * 100f:0}%</b> foot traffic, <b>-{sales * 100f:0}%</b> chance of a sale.</size>", Rich());
+            if (any) Ui.Label($"<size=11>In all: <b>-{traffic * 100f:0}%</b> foot traffic, <b>-{sales * 100f:0}%</b> chance of a sale.</size>", Rich());
         }
 
         static string Advice(Complaint complaint)
@@ -162,12 +162,12 @@ namespace FishBreeder.Store
             if (wishes.Count == 0) return;
             GUILayout.Space(8f);
             Heading("WHAT SHOPPERS WANTED");
-            GUILayout.Label("<size=11>Shoppers who left with nothing because their favourite kind wasn't for sale, on the last day open.</size>", Rich());
+            Ui.Label("<size=11>Shoppers who left with nothing because their favourite kind wasn't for sale, on the last day open.</size>", Rich());
             for (int i = 0; i < wishes.Count && i < 5; i++)
             {
                 var species = Genetics.Species.Find(wishes[i].Key);
                 if (species == null) continue;
-                GUILayout.Label($"• {species.displayName}: <b>{wishes[i].Value}</b> shopper{(wishes[i].Value == 1 ? "" : "s")}", Rich());
+                Ui.Label($"• {species.displayName}: <b>{wishes[i].Value}</b> shopper{(wishes[i].Value == 1 ? "" : "s")}", Rich());
             }
         }
 
@@ -176,16 +176,16 @@ namespace FishBreeder.Store
             GUILayout.Space(8f);
             Heading("LATEST REVIEWS");
             var reviews = Reputation.Reviews;
-            if (reviews.Count == 0) GUILayout.Label("<i>No reviews yet. Open the shop to get some.</i>", Rich());
+            if (reviews.Count == 0) Ui.Label("<i>No reviews yet. Open the shop to get some.</i>", Rich());
             foreach (var review in reviews)
-                GUILayout.Label($"<size=11><color={UiTheme.SunHex}>{Stars(review.stars)}</color>  Day {review.day}</size>\n<i>\"{review.text}\"</i>", Rich());
+                Ui.Label($"<size=11><color={UiTheme.SunHex}>{Stars(review.stars)}</color>  Day {review.day}</size>\n<i>\"{review.text}\"</i>", Rich());
         }
 
         /// <summary>The expansion rooms in order, with the stars and money each needs.</summary>
         void DrawRooms()
         {
             Heading("EXPANSION ROOMS");
-            GUILayout.Label("<size=11>Each new room adds space for three or six more tanks. They open in order, as your stars climb.</size>", Rich());
+            Ui.Label("<size=11>Each new room adds space for three or six more tanks. They open in order, as your stars climb.</size>", Rich());
             var next = store.NextLockedSection;
             foreach (var section in store.Sections)
             {
@@ -195,9 +195,9 @@ namespace FishBreeder.Store
                 GUILayout.BeginHorizontal();
                 string state = section.unlocked ? $"<color={UiTheme.LeafHex}>open</color>"
                     : StoreLayout.Stars + 0.001f >= need ? $"<color={UiTheme.LeafHex}>reputation reached</color>" : $"<color=#9fb4bc>needs {need:0.0} stars</color>";
-                GUILayout.Label($"<b>{section.name}</b>  <size=11>{state}</size>", Rich());
+                Ui.Label($"<b>{section.name}</b>  <size=11>{state}</size>", Rich());
                 GUILayout.FlexibleSpace();
-                if (!section.unlocked) GUILayout.Label($"<b>{Economy.Format(section.Price)}</b>", Rich(), GUILayout.ExpandWidth(false));
+                if (!section.unlocked) Ui.Label($"<b>{Economy.Format(section.Price)}</b>", Rich(), GUILayout.ExpandWidth(false));
                 GUILayout.EndHorizontal();
                 if (!section.unlocked)
                 {
@@ -207,9 +207,9 @@ namespace FishBreeder.Store
                         var why = store.WhyLocked(section);
                         GUI.enabled = why == null && !shopDay.IsOpen && Economy.CanAfford(section.Price);
                         string label = shopDay.IsOpen ? "Wait until closing" : why != null ? "Not yet" : Economy.CanAfford(section.Price) ? $"Open it for {Economy.Format(section.Price)}" : $"Need {Economy.Format(section.Price - Economy.Money)} more";
-                        if (GUILayout.Button(label, UiTheme.Primary)) store.TryUnlock(section);
+                        if (Ui.Button(label, UiTheme.Primary)) store.TryUnlock(section);
                         GUI.enabled = true;
-                        if (why != null) GUILayout.Label($"<size=11>{why}</size>", Rich());
+                        if (why != null) Ui.Label($"<size=11>{why}</size>", Rich());
                     }
                 }
                 GUILayout.EndVertical();
@@ -220,8 +220,8 @@ namespace FishBreeder.Store
         {
             string color = change > 0.0005f ? UiTheme.LeafHex : change < -0.0005f ? UiTheme.CoralHex : "#9fb4bc";
             GUILayout.BeginHorizontal();
-            GUILayout.Label(what, Rich());
-            GUILayout.Label($"<color={color}><b>{(change >= 0f ? "+" : "")}{change * 100f:0}%</b></color>", Rich(), GUILayout.Width(64f));
+            Ui.Label(what, Rich());
+            Ui.Label($"<color={color}><b>{(change >= 0f ? "+" : "")}{change * 100f:0}%</b></color>", Rich(), GUILayout.Width(64f));
             GUILayout.EndHorizontal();
         }
 
@@ -231,11 +231,11 @@ namespace FishBreeder.Store
             return new string('★', full) + "<color=#5f8a92>" + new string('★', 5 - full) + "</color>";
         }
 
-        static void Heading(string text) => GUILayout.Label($"<b><color={UiTheme.SunHex}>{text}</color></b>", Rich());
+        static void Heading(string text) => Ui.Label($"<b><color={UiTheme.SunHex}>{text}</color></b>", Rich());
 
         static void ProgressBar(float fill, Color color)
         {
-            var bar = GUILayoutUtility.GetRect(100f, 8f, GUILayout.ExpandWidth(true));
+            var bar = Ui.Slot("Bar", 100f, 8f, GUILayout.ExpandWidth(true));
             GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 4f);
             if (fill > 0f) GUI.DrawTexture(new Rect(bar.x, bar.y, Mathf.Max(8f, bar.width * Mathf.Clamp01(fill)), bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, color, 0f, 4f);
             GUILayout.Space(2f);

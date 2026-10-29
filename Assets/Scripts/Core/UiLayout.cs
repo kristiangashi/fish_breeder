@@ -168,6 +168,7 @@ namespace FishBreeder.Core
             moved = Apply(id, rect);
             Record(id, moved, null);
             currentWindow = id;
+            autoCounts.Clear();
             return moved;
         }
 
@@ -194,11 +195,16 @@ namespace FishBreeder.Core
         // ------------------------------------------------------------ items
 
         /// <summary>
-        /// A named piece inside a window (an XP bar, a label) with its saved nudge. While editing
-        /// (with items shown) it gets a thin outline and takes drags itself.
+        /// A piece inside a window (a button, label, toggle, bar, picture) with its saved nudge.
+        /// Every button and label drawn through <see cref="Ui"/> comes through here with a name made
+        /// from its window and text (see <see cref="AutoId"/>); bars and pictures pass their own.
+        /// While editing (with pieces shown) it gets a thin outline: a plain click still clicks it
+        /// (so tabs and buttons keep working), dragging it moves it, Shift-drag resizes it, and
+        /// right-click puts it back.
         /// </summary>
         public static Rect Item(string id, Rect rect)
         {
+            if (!Editing && offsets != null && offsets.Count == 0) return rect;
             var moved = Apply(id, rect);
             if (!Editing || !ShowItems) return moved;
             string parent = currentWindow ?? "";
@@ -212,19 +218,83 @@ namespace FishBreeder.Core
                     e.Use();
                     return rect;
                 }
-                if (e.button == 0) StartDrag(id, e.shift, e);
+                if (e.button == 0 && e.shift) StartDrag(id, true, e);
+                else if (e.button == 0)
+                {
+                    // Not used yet: if the mouse lets go without moving, the button under it clicks
+                    // as normal. Pieces drawn later are on top, so the last one hit wins.
+                    pressed = id;
+                    pressedFrom = e.mousePosition;
+                    LastTouched = id;
+                }
             }
+            if (e.type == EventType.MouseDrag && pressed == id && dragging == null && (e.mousePosition - pressedFrom).sqrMagnitude > 9f)
+            {
+                dragging = id;
+                resizing = false;
+                dragFrom = pressedFrom;
+                dragStart = Offsets.TryGetValue(id, out var o) ? o : Rect.zero;
+                pressed = null;
+                // A button that took the press lets go of it, so it doesn't click when the drag ends.
+                GUIUtility.hotControl = 0;
+            }
+            if (e.rawType == EventType.MouseUp && pressed == id) pressed = null;
             HandleDrag(id, rect, parent, e);
             moved = Apply(id, rect);
             Record(id, moved, parent);
             if (e.type == EventType.Repaint)
             {
                 var r = new Rect(moved.x - 1f, moved.y - 1f, moved.width + 2f, moved.height + 2f);
-                Outline(r, dragging == id ? UiTheme.Sun : new Color(0.4f, 1f, 0.9f, 0.85f), 1f);
+                bool hot = dragging == id || LastTouched == id;
+                bool over = r.Contains(e.mousePosition);
+                Outline(r, hot ? UiTheme.Sun : over ? new Color(0.4f, 1f, 0.9f, 0.95f) : new Color(0.4f, 1f, 0.9f, 0.3f), 1f);
                 if (dragging == id) DrawGuides();
             }
             return moved;
         }
+
+        // A press on a piece that hasn't turned into a drag yet.
+        static string pressed;
+        static Vector2 pressedFrom;
+
+        // How many pieces with the same name the current window has drawn so far this pass.
+        static readonly Dictionary<string, int> autoCounts = new Dictionary<string, int>();
+        static readonly System.Text.StringBuilder idBuilder = new System.Text.StringBuilder();
+
+        /// <summary>
+        /// A name for a piece from its window and its text, with numbers, prices and markup left out
+        /// so it stays the same as the numbers change ("Tank panel / Move decorations (top view)").
+        /// A second piece with the same text in the same window gets " #2", and so on.
+        /// </summary>
+        public static string AutoId(string kind, string text)
+        {
+            string scope = currentWindow ?? "Screen";
+            idBuilder.Clear();
+            bool inTag = false, space = false;
+            if (text != null)
+                foreach (char c in text)
+                {
+                    if (c == '<') { inTag = true; continue; }
+                    if (c == '>' && inTag) { inTag = false; continue; }
+                    if (inTag) continue;
+                    if (char.IsDigit(c) || c == '$' || c == '%' || c == ',' || c == '.' || c == '/' || c == '+' || c == '-' || c == ':')
+                        continue;
+                    if (char.IsWhiteSpace(c)) { space = idBuilder.Length > 0; continue; }
+                    if (space) idBuilder.Append(' ');
+                    space = false;
+                    idBuilder.Append(c);
+                    if (idBuilder.Length >= 40) break;
+                }
+            string name = idBuilder.Length > 0 ? idBuilder.ToString() : kind;
+            string id = scope + " / " + name;
+            if (currentWindow == null) return id;
+            autoCounts.TryGetValue(id, out int n);
+            autoCounts[id] = n + 1;
+            return n == 0 ? id : id + " #" + (n + 1);
+        }
+
+        /// <summary>Whether pieces need their names at all (something is nudged, or the editor is open).</summary>
+        public static bool Active => Editing || Offsets.Count > 0;
 
         // ------------------------------------------------------------ dragging
 
@@ -404,9 +474,9 @@ namespace FishBreeder.Core
             }
             if (UiLayout.ShowGrid && e.type == EventType.Repaint) DrawGrid(width, height);
 
-            var bar = new Rect(Mathf.Max(10f, width * 0.5f - 340f), height - 100f, Mathf.Min(680f, width - 20f), 90f);
+            var bar = new Rect(Mathf.Max(10f, width * 0.5f - 360f), height - 104f, Mathf.Min(720f, width - 20f), 94f);
             GUILayout.BeginArea(bar, UiStyles.Window);
-            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Drag a teal outline to move that piece, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Right-click resets. Saved as you go.</size>", Rich());
+            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Every button, label and bar has a teal outline: click it to pick it (it still clicks), drag it to move it, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Right-click resets. Saved as you go.</size>", Rich());
             GUILayout.BeginHorizontal();
             UiLayout.ShowItems = GUILayout.Toggle(UiLayout.ShowItems, " Pieces", GUILayout.Width(70f));
             UiLayout.Snap = GUILayout.Toggle(UiLayout.Snap, " Snap", GUILayout.Width(62f));

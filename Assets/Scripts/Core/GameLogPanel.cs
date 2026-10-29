@@ -27,7 +27,7 @@ namespace FishBreeder.Core
             }
             var rect = new Rect(space.x, space.yMax - Mathf.Min(used, space.height), space.width, Mathf.Min(used, space.height));
             UiCheck.Begin(id, rect, box);
-            for (int i = first; i < entries.Count; i++) GUILayout.Label(Line(entries, i), Style());
+            for (int i = first; i < entries.Count; i++) Ui.Label(Line(entries, i), Style());
             UiCheck.End();
         }
 

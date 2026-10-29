@@ -540,20 +540,20 @@ namespace FishBreeder.Store
             string moneyColor = moneyFlash > 0.01f ? ColorHex(Color.Lerp(UiTheme.Sand, UiTheme.Leaf, moneyFlash))
                 : moneyFlash < -0.01f ? ColorHex(Color.Lerp(UiTheme.Sand, UiTheme.Coral, -moneyFlash)) : UiTheme.SandHex;
             string moneyText = DevMode.On ? $"<size=14><color={UiTheme.SunHex}>DEV MODE</color></size>" : $"<color={moneyColor}>{Economy.Format(Mathf.RoundToInt(shownMoney))}</color>";
-            if (GUILayout.Button(new GUIContent($"<size=17><b>{moneyText}</b></size>", "Finances (F)"), FlatButton(), GUILayout.Width(96f))) FinancesView.Toggle();
+            if (Ui.Button(new GUIContent($"<size=17><b>{moneyText}</b></size>", "Finances (F)"), FlatButton(), GUILayout.Width(96f))) FinancesView.Toggle();
             if (Event.current.type == EventType.Repaint && coinBurst)
             {
                 coinBurst = false;
                 var last = GUILayoutUtility.GetLastRect();
                 Fx.ScreenBurst(new Vector2(topBar.x + last.x + 40f, topBar.y + last.center.y), UiTheme.Sun, 14, false, 0.8f);
             }
-            GUILayout.Label($"<b>Day {Economy.Day}</b>", Rich(), GUILayout.Width(58f));
-            if (GUILayout.Button(new GUIContent($"<color={UiTheme.SunHex}>{Stars(Economy.Reputation * 5f)}</color>", "Reputation (Y)"), FlatButton(), GUILayout.Width(78f))) ReputationView.Toggle();
-            GUILayout.Label(FoodSummary(), Rich(), GUILayout.Width(118f));
+            Ui.Label($"<b>Day {Economy.Day}</b>", Rich(), GUILayout.Width(58f));
+            if (Ui.Button(new GUIContent($"<color={UiTheme.SunHex}>{Stars(Economy.Reputation * 5f)}</color>", "Reputation (Y)"), FlatButton(), GUILayout.Width(78f))) ReputationView.Toggle();
+            Ui.Label(FoodSummary(), Rich(), GUILayout.Width(118f));
             if (shopDay.IsOpen)
             {
                 var today = shopDay.Today;
-                GUILayout.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}   Visitors {today.visitors}   Sold {today.fishSold}   +{Economy.Format(today.earnings)}", Rich());
+                Ui.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}   Visitors {today.visitors}   Sold {today.fishSold}   +{Economy.Format(today.earnings)}", Rich());
                 GUILayout.FlexibleSpace();
                 if (narrow)
                 {
@@ -569,7 +569,7 @@ namespace FishBreeder.Store
                 bool morning = shopDay.Phase == DayPhase.Morning;
                 string phase = morning ? $"<color={UiTheme.SunHex}><b>MORNING</b></color>" : $"<color={UiTheme.HibiscusHex}><b>EVENING</b></color>";
                 if (morning && setup > 0) phase += $"  <size=12>opening in {setup} day{(setup == 1 ? "" : "s")}</size>";
-                GUILayout.Label(phase, Rich(), GUILayout.ExpandWidth(false));
+                Ui.Label(phase, Rich(), GUILayout.ExpandWidth(false));
                 GUILayout.FlexibleSpace();
                 if (narrow)
                 {
@@ -577,10 +577,10 @@ namespace FishBreeder.Store
                     GUILayout.BeginHorizontal();
                     GUILayout.FlexibleSpace();
                 }
-                if (GUILayout.Button("Journal (J)", GUILayout.Width(92f))) JournalView.Toggle();
-                if (GUILayout.Button(ResearchView.ButtonLabel(), PerkButtonStyle(), GUILayout.Width(118f))) ResearchView.Toggle();
-                if (GUILayout.Button(PerksButtonLabel(), PerkButtonStyle(), GUILayout.Width(Perks.TotalAvailable > 0 ? 104f : 84f))) PerksView.Toggle();
-                if (GUILayout.Button("Watch (V)", GUILayout.Width(84f))) ToggleWatch();
+                if (Ui.Button("Journal (J)", GUILayout.Width(92f))) JournalView.Toggle();
+                if (Ui.Button(ResearchView.ButtonLabel(), PerkButtonStyle(), GUILayout.Width(118f))) ResearchView.Toggle();
+                if (Ui.Button(PerksButtonLabel(), PerkButtonStyle(), GUILayout.Width(Perks.TotalAvailable > 0 ? 104f : 84f))) PerksView.Toggle();
+                if (Ui.Button("Watch (V)", GUILayout.Width(84f))) ToggleWatch();
                 DrawPhaseButtons(false);
             }
             GUILayout.EndHorizontal();
@@ -596,17 +596,17 @@ namespace FishBreeder.Store
             var width = wide ? GUILayout.ExpandWidth(true) : GUILayout.Width(118f);
             if (shopDay.Phase == DayPhase.Evening)
             {
-                if (GUILayout.Button(new GUIContent("Go to sleep", "The night passes: fish grow, eggs hatch, babies are born, water gets dirtier."), UiTheme.Primary, width)) Sleep();
+                if (Ui.Button(new GUIContent("Go to sleep", "The night passes: fish grow, eggs hatch, babies are born, water gets dirtier."), UiTheme.Primary, width)) Sleep();
                 return;
             }
             if (shopDay.Phase != DayPhase.Morning) return;
             if (!Economy.CanOpenShop)
             {
-                if (GUILayout.Button(new GUIContent("Let the day pass", "Time passes until evening, with the shop shut: fish grow, eggs hatch, water gets dirtier."), UiTheme.Primary, wide ? width : GUILayout.Width(130f))) StayClosed();
+                if (Ui.Button(new GUIContent("Let the day pass", "Time passes until evening, with the shop shut: fish grow, eggs hatch, water gets dirtier."), UiTheme.Primary, wide ? width : GUILayout.Width(130f))) StayClosed();
                 return;
             }
-            if (GUILayout.Button(new GUIContent("Stay closed", "Let the day pass without opening: no customers, no sales."), wide ? width : GUILayout.Width(100f))) StayClosed();
-            if (GUILayout.Button(new GUIContent("Open Shop", "Nothing changes in the tanks until you close: time passes while customers are in."), UiTheme.Primary, wide ? width : GUILayout.Width(110f)))
+            if (Ui.Button(new GUIContent("Stay closed", "Let the day pass without opening: no customers, no sales."), wide ? width : GUILayout.Width(100f))) StayClosed();
+            if (Ui.Button(new GUIContent("Open Shop", "Nothing changes in the tanks until you close: time passes while customers are in."), UiTheme.Primary, wide ? width : GUILayout.Width(110f)))
             {
                 panel = Panel.None;
                 shopDay.Open();
@@ -668,7 +668,7 @@ namespace FishBreeder.Store
                 float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 4f);
                 var old = GUI.color;
                 GUI.color = Color.Lerp(Color.white, UiTheme.Sun, pulse);
-                if (GUILayout.Button($"★ {Perks.TotalAvailable} perk point{(Perks.TotalAvailable == 1 ? "" : "s")}!", UiTheme.Primary, GUILayout.Width(132f))) PerksView.Open();
+                if (Ui.Button($"★ {Perks.TotalAvailable} perk point{(Perks.TotalAvailable == 1 ? "" : "s")}!", UiTheme.Primary, GUILayout.Width(132f))) PerksView.Open();
                 GUI.color = old;
                 GUILayout.Space(10f);
             }
@@ -680,7 +680,7 @@ namespace FishBreeder.Store
             var goals = new List<string>();
             foreach (var goal in Progression.Goals)
                 goals.Add(goal.Done ? $"<color={UiTheme.LeafHex}>{goal.Describe()} ✔</color>" : $"{goal.Describe()} <b>{goal.progress}/{goal.target}</b>");
-            GUILayout.Label($"<b><color={UiTheme.SunHex}>Today:</color></b> " + (goals.Count > 0 ? string.Join("   ", goals) : "no goals"), Rich());
+            Ui.Label($"<b><color={UiTheme.SunHex}>Today:</color></b> " + (goals.Count > 0 ? string.Join("   ", goals) : "no goals"), Rich());
             GUILayout.EndHorizontal();
             UiCheck.End();
         }
@@ -724,20 +724,20 @@ namespace FishBreeder.Store
             milestoneRect = new Rect(width - 290f, top, 280f, h);
             UiCheck.Begin("Milestones", milestoneRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
-            GUILayout.Label("MILESTONES", UiTheme.Heading);
+            Ui.Label("MILESTONES", UiTheme.Heading);
             GUILayout.FlexibleSpace();
-            GUILayout.Label($"<size=11>{Milestones.DoneCount}/{Milestones.Total}</size>", Rich());
+            Ui.Label($"<size=11>{Milestones.DoneCount}/{Milestones.Total}</size>", Rich());
             GUILayout.EndHorizontal();
             foreach (var milestone in upcoming)
             {
                 int have = Mathf.Min(Milestones.Progress(milestone.goal), milestone.target);
                 GUILayout.BeginHorizontal();
-                GUILayout.Label($"<b>{milestone.title}</b>", Rich());
+                Ui.Label($"<b>{milestone.title}</b>", Rich());
                 GUILayout.FlexibleSpace();
-                GUILayout.Label($"<color={UiTheme.LeafHex}><b>+{Economy.Format(milestone.reward)}</b></color>", Rich());
+                Ui.Label($"<color={UiTheme.LeafHex}><b>+{Economy.Format(milestone.reward)}</b></color>", Rich());
                 GUILayout.EndHorizontal();
-                GUILayout.Label($"<size=11>{milestone.Describe()}</size>", Rich());
-                var bar = GUILayoutUtility.GetRect(200f, 7f, GUILayout.ExpandWidth(true));
+                Ui.Label($"<size=11>{milestone.Describe()}</size>", Rich());
+                var bar = Ui.Slot("Bar", 200f, 7f, GUILayout.ExpandWidth(true));
                 GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 3f);
                 float fill = have / (float)Mathf.Max(1, milestone.target);
                 if (fill > 0f) GUI.DrawTexture(new Rect(bar.x, bar.y, Mathf.Max(7f, bar.width * fill), bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, UiTheme.Sun, 0f, 3f);
@@ -761,13 +761,13 @@ namespace FishBreeder.Store
                 var old = GUI.color;
                 GUI.color = new Color(1f, 1f, 1f, Mathf.Clamp01(3.5f - since));
                 var hint = new Rect(width * 0.5f - 230f, height - 60f, 460f, 36f);
-                GUI.Box(hint, "Watch mode. Press <b>V</b> or <b>Esc</b> to bring the menus back.", WorldLabelStyle());
+                Ui.Box(hint, "Watch mode. Press <b>V</b> or <b>Esc</b> to bring the menus back.", WorldLabelStyle());
                 GUI.color = old;
             }
             if (Time.unscaledTime - mouseMovedAt < 2.5f || since < 3.5f)
             {
                 watchButton = new Rect(width - 150f, 12f, 138f, 32f);
-                if (GUI.Button(watchButton, "Show menus (V)")) ViewMode.Set(false);
+                if (Ui.Button(watchButton, "Show menus (V)")) ViewMode.Set(false);
             }
         }
 
@@ -820,7 +820,7 @@ namespace FishBreeder.Store
                 float w = Mathf.Min(620f, width - 40f);
                 float h = Banner().CalcHeight(content, w);
                 var rect = new Rect((width - w) * 0.5f, y + drop, w, h);
-                GUI.Box(rect, content, Banner());
+                Ui.Box(rect, content, Banner());
                 GUI.color = old;
                 if (celebratedLevelUps.Add(levelUp)) Fx.ScreenBurst(rect.center, null, 40, false, 1.4f);
                 y += h + 6f;
@@ -887,18 +887,18 @@ namespace FishBreeder.Store
                 if (todoFinishedTime >= 0f && Time.unscaledTime - todoFinishedTime < 3f)
                 {
                     var done = new Rect(todoBar.x, todoBar.y, todoBar.width, 34f);
-                    GUI.Box(done, "<b><color=#9fe39f>All caught up!</color></b> Every problem from closing is dealt with.", Banner());
+                    Ui.Box(done, "<b><color=#9fe39f>All caught up!</color></b> Every problem from closing is dealt with.", Banner());
                 }
                 else if (!shopDay.IsOpen && todo.Count > 0 && todo.Remaining > 0)
                 {
                     UiCheck.Begin("To-do bar (paused)", new Rect(todoBar.x, todoBar.y, todoBar.width, 40f), UiStyles.Window);
                     GUILayout.BeginHorizontal();
-                    GUILayout.Label(todo.Remaining == 1 ? "One thing still needs seeing to." : $"{todo.Remaining} things still need seeing to.", Rich());
-                    if (GUILayout.Button("Resume", GUILayout.Width(90f)))
+                    Ui.Label(todo.Remaining == 1 ? "One thing still needs seeing to." : $"{todo.Remaining} things still need seeing to.", Rich());
+                    if (Ui.Button("Resume", GUILayout.Width(90f)))
                     {
                         if (todo.Next()) GoToCurrent();
                     }
-                    if (GUILayout.Button("Dismiss", GUILayout.Width(80f))) todo.Dismiss();
+                    if (Ui.Button("Dismiss", GUILayout.Width(80f))) todo.Dismiss();
                     GUILayout.EndHorizontal();
                     UiCheck.End();
                 }
@@ -914,17 +914,17 @@ namespace FishBreeder.Store
             todoBar.height = todoHeight;
             UiCheck.Begin("To-do bar", todoBar, window);
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"<b>To do {todo.Index + 1} of {todo.Count}</b>   {item.tank.Title}", Rich());
+            Ui.Label($"<b>To do {todo.Index + 1} of {todo.Count}</b>   {item.tank.Title}", Rich());
             GUILayout.FlexibleSpace();
-            if (resolved) GUILayout.Label("<color=#9fe39f><b>Done!</b></color>", Rich());
+            if (resolved) Ui.Label("<color=#9fe39f><b>Done!</b></color>", Rich());
             GUILayout.EndHorizontal();
-            GUILayout.Label(body, Rich());
+            Ui.Label(body, Rich());
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("< Back", GUILayout.Width(74f)) && todo.Previous()) GoToCurrent();
-            if (GUILayout.Button("Take me there", GUILayout.Width(120f))) GoToCurrent();
-            if (GUILayout.Button(resolved ? "Next >" : "Skip >", GUILayout.Width(74f))) NextToDo();
+            if (Ui.Button("< Back", GUILayout.Width(74f)) && todo.Previous()) GoToCurrent();
+            if (Ui.Button("Take me there", GUILayout.Width(120f))) GoToCurrent();
+            if (Ui.Button(resolved ? "Next >" : "Skip >", GUILayout.Width(74f))) NextToDo();
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Stop for now", GUILayout.Width(110f))) todo.Pause();
+            if (Ui.Button("Stop for now", GUILayout.Width(110f))) todo.Pause();
             GUILayout.EndHorizontal();
             UiCheck.End();
         }
@@ -933,7 +933,7 @@ namespace FishBreeder.Store
         {
             UiCheck.Begin("Shop clock", rect, UiTheme.Bar);
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}", Rich());
+            Ui.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}", Rich());
             DrawDevControls();
             GUILayout.EndHorizontal();
             UiCheck.End();
@@ -944,9 +944,9 @@ namespace FishBreeder.Store
             foreach (var speed in Speeds)
             {
                 bool on = Mathf.Approximately(shopDay.SpeedMultiplier, speed);
-                if (GUILayout.Toggle(on, $"{speed:0}x", GUI.skin.button, GUILayout.Width(36f)) && !on) shopDay.SetSpeed(speed);
+                if (Ui.Toggle(on, $"{speed:0}x", GUI.skin.button, GUILayout.Width(36f)) && !on) shopDay.SetSpeed(speed);
             }
-            if (GUILayout.Button("Skip day (K)", GUILayout.Width(110f))) shopDay.SkipRestOfDay();
+            if (Ui.Button("Skip day (K)", GUILayout.Width(110f))) shopDay.SkipRestOfDay();
         }
 
         /// <summary>
@@ -1191,16 +1191,16 @@ namespace FishBreeder.Store
         void DrawRegister()
         {
             UiCheck.Begin("Register", panelRect, UiStyles.Window);
-            GUILayout.Label("Register", UiTheme.Title);
-            GUILayout.Label($"Balance: <b>{Economy.Format(Economy.Money)}</b>     Day {Economy.Day}     Reputation {Economy.Reputation * 100f:0}%", Rich());
+            Ui.Label("Register", UiTheme.Title);
+            Ui.Label($"Balance: <b>{Economy.Format(Economy.Money)}</b>     Day {Economy.Day}     Reputation {Economy.Reputation * 100f:0}%", Rich());
             if (shopDay.IsOpen)
             {
-                GUILayout.Label($"Open for another {Clock(shopDay.TimeLeft)}. About {shopDay.CustomersPerHour:0} customers an hour. Time passes while the shop is open; what happens in the tanks shows when you close.", Rich());
-                if (GUILayout.Button("Close early")) shopDay.Close();
+                Ui.Label($"Open for another {Clock(shopDay.TimeLeft)}. About {shopDay.CustomersPerHour:0} customers an hour. Time passes while the shop is open; what happens in the tanks shows when you close.", Rich());
+                if (Ui.Button("Close early")) shopDay.Close();
             }
             else if (shopDay.Phase == DayPhase.Evening)
             {
-                GUILayout.Label("Evening. See to anything that happened today, settle the fish in, then go to sleep: the night passes and a new day begins.", Rich());
+                Ui.Label("Evening. See to anything that happened today, settle the fish in, then go to sleep: the night passes and a new day begins.", Rich());
                 GUILayout.BeginHorizontal();
                 DrawPhaseButtons(true);
                 GUILayout.EndHorizontal();
@@ -1208,45 +1208,45 @@ namespace FishBreeder.Store
             else if (!Economy.CanOpenShop)
             {
                 int setup = Economy.DaysUntilOpening;
-                GUILayout.Label($"Morning. The grand opening is in <b>{setup} day{(setup == 1 ? "" : "s")}</b>. Until then, raise fish to sell: let the day pass, then settle the fish in for the night.", Rich());
+                Ui.Label($"Morning. The grand opening is in <b>{setup} day{(setup == 1 ? "" : "s")}</b>. Until then, raise fish to sell: let the day pass, then settle the fish in for the night.", Rich());
                 GUILayout.BeginHorizontal();
                 DrawPhaseButtons(true);
                 GUILayout.EndHorizontal();
             }
             else
             {
-                GUILayout.Label($"Morning. Get the tanks ready, then open: nothing changes in the tanks between now and opening. Time passes while the shop is open (the day lasts {Clock(Balance.Data.shop.dayLengthSeconds)}), and you see what happened when you close. Or keep the shop closed today: the day still passes, but nobody comes in.", Rich());
+                Ui.Label($"Morning. Get the tanks ready, then open: nothing changes in the tanks between now and opening. Time passes while the shop is open (the day lasts {Clock(Balance.Data.shop.dayLengthSeconds)}), and you see what happened when you close. Or keep the shop closed today: the day still passes, but nobody comes in.", Rich());
                 GUILayout.BeginHorizontal();
                 DrawPhaseButtons(true);
                 GUILayout.EndHorizontal();
             }
 
             GUILayout.Space(6f);
-            GUILayout.Label("<b>Recent transactions</b>", Rich());
+            Ui.Label("<b>Recent transactions</b>", Rich());
             var ledger = Economy.Ledger;
-            if (ledger.Count == 0) GUILayout.Label("<i>Nothing yet.</i>", Rich());
+            if (ledger.Count == 0) Ui.Label("<i>Nothing yet.</i>", Rich());
             for (int i = ledger.Count - 1; i >= Mathf.Max(0, ledger.Count - 7); i--)
-                GUILayout.Label(ledger[i], Rich());
+                Ui.Label(ledger[i], Rich());
 
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Shopkeeper:", GUILayout.Width(90f));
-            if (GUILayout.Toggle(ShopOwner.Look == OwnerLook.Woman, "Woman", GUI.skin.button) && ShopOwner.Look != OwnerLook.Woman) ShopOwner.Look = OwnerLook.Woman;
-            if (GUILayout.Toggle(ShopOwner.Look == OwnerLook.Man, "Man", GUI.skin.button) && ShopOwner.Look != OwnerLook.Man) ShopOwner.Look = OwnerLook.Man;
+            Ui.Label("Shopkeeper:", GUILayout.Width(90f));
+            if (Ui.Toggle(ShopOwner.Look == OwnerLook.Woman, "Woman", GUI.skin.button) && ShopOwner.Look != OwnerLook.Woman) ShopOwner.Look = OwnerLook.Woman;
+            if (Ui.Toggle(ShopOwner.Look == OwnerLook.Man, "Man", GUI.skin.button) && ShopOwner.Look != OwnerLook.Man) ShopOwner.Look = OwnerLook.Man;
             GUILayout.EndHorizontal();
-            GUILayout.Label("<b>Developer</b>", Rich());
+            Ui.Label("<b>Developer</b>", Rich());
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("+$1,000 (dev)")) Economy.Earn(1000, "developer cash");
-            if (shopDay.IsOpen && GUILayout.Button("Skip rest of day (dev)")) shopDay.SkipRestOfDay();
+            if (Ui.Button("+$1,000 (dev)")) Economy.Earn(1000, "developer cash");
+            if (shopDay.IsOpen && Ui.Button("Skip rest of day (dev)")) shopDay.SkipRestOfDay();
             GUILayout.EndHorizontal();
 #if UNITY_EDITOR
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("+500 Fishkeeping XP (dev)")) Progression.DevAward(XpTrack.Fishkeeping, 500);
-            if (GUILayout.Button("+500 Shopkeeping XP (dev)")) Progression.DevAward(XpTrack.Shopkeeping, 500);
+            if (Ui.Button("+500 Fishkeeping XP (dev)")) Progression.DevAward(XpTrack.Fishkeeping, 500);
+            if (Ui.Button("+500 Shopkeeping XP (dev)")) Progression.DevAward(XpTrack.Shopkeeping, 500);
             GUILayout.EndHorizontal();
-            if (!Economy.CanOpenShop && GUILayout.Button("Skip the setup days (dev)")) Economy.DevSkipSetup();
+            if (!Economy.CanOpenShop && Ui.Button("Skip the setup days (dev)")) Economy.DevSkipSetup();
 #endif
-            if (GUILayout.Button("Close")) panel = Panel.None;
+            if (Ui.Button("Close")) panel = Panel.None;
             UiCheck.End();
         }
 
@@ -1262,34 +1262,34 @@ namespace FishBreeder.Store
             }
             if (report.morning)
             {
-                GUILayout.Label($"Good morning! Day {report.day}", UiTheme.Title);
+                Ui.Label($"Good morning! Day {report.day}", UiTheme.Title);
                 int setup = Economy.DaysUntilOpening;
-                GUILayout.Label(setup > 1 ? $"<color={UiTheme.SunHex}>{setup} days until the grand opening.</color> Feed and clean, then let the day pass."
+                Ui.Label(setup > 1 ? $"<color={UiTheme.SunHex}>{setup} days until the grand opening.</color> Feed and clean, then let the day pass."
                     : setup == 1 ? $"<color={UiTheme.SunHex}>Tomorrow is the grand opening!</color> Make sure the for sale tank has some juveniles or adults."
                     : Economy.Day == Balance.Data.shop.setupDays + 1 ? $"<color={UiTheme.SunHex}>Today is the grand opening!</color> Get the tanks ready, then open the shop."
                     : "Get the tanks ready, then open the shop. Nothing changes in the tanks until you open.", Rich());
             }
             else if (report.stayedClosed)
             {
-                GUILayout.Label($"Day {report.day}: the shop stayed closed", UiTheme.Title);
-                GUILayout.Label(Economy.CanOpenShop ? "No customers today, so no sales and no reviews." : "Another day of getting ready. See to the fish, then go to sleep.", Rich());
+                Ui.Label($"Day {report.day}: the shop stayed closed", UiTheme.Title);
+                Ui.Label(Economy.CanOpenShop ? "No customers today, so no sales and no reviews." : "Another day of getting ready. See to the fish, then go to sleep.", Rich());
             }
             else
             {
-                GUILayout.Label($"Day {report.day} is over", UiTheme.Title);
-                GUILayout.Label($"Visitors: {report.visitors}     Fish sold: {report.fishSold}     Earned: <b><color={UiTheme.LeafHex}>{Economy.Format(report.earnings)}</color></b>", Rich());
-                GUILayout.Label($"Reactions: {report.happy} happy, {report.grossed} grossed out, {report.sad} upset, {report.mad} angry about prices", Rich());
-                GUILayout.Label($"Reviews: <size=18><color={UiTheme.SunHex}>{Stars(report.stars)}</color></size> ({report.stars:0.#} / 5)   Reputation {(report.reputationChange >= 0f ? "+" : "")}{report.reputationChange * 5f:0.00} stars (now {StoreLayout.Stars:0.0})", Rich());
-                if (report.visitors == 0) GUILayout.Label("<i>Nobody came in today. More tanks, especially display tanks, bring in more people.</i>", Rich());
-                foreach (var review in report.reviews) GUILayout.Label($"<i>\"{review}\"</i>", Rich());
-                GUILayout.Label("<size=11>See what's helping and hurting your reputation: click the stars or press Y.</size>", Rich());
+                Ui.Label($"Day {report.day} is over", UiTheme.Title);
+                Ui.Label($"Visitors: {report.visitors}     Fish sold: {report.fishSold}     Earned: <b><color={UiTheme.LeafHex}>{Economy.Format(report.earnings)}</color></b>", Rich());
+                Ui.Label($"Reactions: {report.happy} happy, {report.grossed} grossed out, {report.sad} upset, {report.mad} angry about prices", Rich());
+                Ui.Label($"Reviews: <size=18><color={UiTheme.SunHex}>{Stars(report.stars)}</color></size> ({report.stars:0.#} / 5)   Reputation {(report.reputationChange >= 0f ? "+" : "")}{report.reputationChange * 5f:0.00} stars (now {StoreLayout.Stars:0.0})", Rich());
+                if (report.visitors == 0) Ui.Label("<i>Nobody came in today. More tanks, especially display tanks, bring in more people.</i>", Rich());
+                foreach (var review in report.reviews) Ui.Label($"<i>\"{review}\"</i>", Rich());
+                Ui.Label("<size=11>See what's helping and hurting your reputation: click the stars or press Y.</size>", Rich());
             }
             GUILayout.Space(6f);
-            GUILayout.Label(report.morning ? "OVERNIGHT IN THE TANKS" : "TODAY IN THE TANKS", UiTheme.Heading);
-            GUILayout.Label(report.tanks, Rich());
-            if (!report.morning) GUILayout.Label("<size=11>When you're done, go to sleep (top bar or register) to let the night pass.</size>", Rich());
+            Ui.Label(report.morning ? "OVERNIGHT IN THE TANKS" : "TODAY IN THE TANKS", UiTheme.Heading);
+            Ui.Label(report.tanks, Rich());
+            if (!report.morning) Ui.Label("<size=11>When you're done, go to sleep (top bar or register) to let the night pass.</size>", Rich());
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Back to work", UiTheme.Primary, GUILayout.Height(34f)))
+            if (Ui.Button("Back to work", UiTheme.Primary, GUILayout.Height(34f)))
             {
                 shopDay.LastReport = null;
                 panel = Panel.None;
@@ -1309,8 +1309,8 @@ namespace FishBreeder.Store
         void DrawOwnerPick()
         {
             UiCheck.Begin("Owner pick", panelRect, UiStyles.Window);
-            GUILayout.Label("Who runs the shop?", UiTheme.Title);
-            GUILayout.Label("Pick your shopkeeper. You can change this any time at the register.", Rich());
+            Ui.Label("Who runs the shop?", UiTheme.Title);
+            Ui.Label("Pick your shopkeeper. You can change this any time at the register.", Rich());
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
@@ -1326,11 +1326,11 @@ namespace FishBreeder.Store
         void OwnerCard(OwnerLook look, string modelId, string label)
         {
             GUILayout.BeginVertical(UiTheme.Card, GUILayout.Width(170f));
-            var rect = GUILayoutUtility.GetRect(150f, 220f, GUILayout.Width(150f), GUILayout.Height(220f));
+            var rect = Ui.Slot("Picture", 150f, 220f, GUILayout.Width(150f), GUILayout.Height(220f));
             GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 6f);
             var photo = ItemPreviews.Person(modelId);
             if (photo != null) GUI.DrawTexture(rect, photo, ScaleMode.ScaleToFit);
-            if (GUILayout.Button(label, UiTheme.Primary, GUILayout.Height(34f)))
+            if (Ui.Button(label, UiTheme.Primary, GUILayout.Height(34f)))
             {
                 ShopOwner.Look = look;
                 panel = Panel.None;
@@ -1343,14 +1343,14 @@ namespace FishBreeder.Store
             string id = atFishSeller ? "Fish seller" : "Supplier computer";
             UiCheck.Begin(id, panelRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
-            GUILayout.Label(atFishSeller ? "Fish seller" : "Supplier computer", UiTheme.Title);
+            Ui.Label(atFishSeller ? "Fish seller" : "Supplier computer", UiTheme.Title);
             GUILayout.FlexibleSpace();
-            GUILayout.Label($"Fishkeeping {Progression.Fishkeeping}   Shopkeeping {Progression.Shopkeeping}   Balance: <b>{Economy.Format(Economy.Money)}</b>", Rich());
+            Ui.Label($"Fishkeeping {Progression.Fishkeeping}   Shopkeeping {Progression.Shopkeeping}   Balance: <b>{Economy.Format(Economy.Money)}</b>", Rich());
             GUILayout.EndHorizontal();
             if (shopDay.IsOpen)
             {
-                GUILayout.Label(atFishSeller ? "The fish seller only sells while the shop is closed." : "The supplier only delivers while the shop is closed.");
-                if (GUILayout.Button("Close")) panel = Panel.None;
+                Ui.Label(atFishSeller ? "The fish seller only sells while the shop is closed." : "The supplier only delivers while the shop is closed.");
+                if (Ui.Button("Close")) panel = Panel.None;
                 UiCheck.End();
                 return;
             }
@@ -1358,11 +1358,11 @@ namespace FishBreeder.Store
             var tabNames = new string[tabs.Length];
             for (int i = 0; i < tabs.Length; i++) tabNames[i] = SupplierTabs[tabs[i]];
             int shown = Mathf.Max(0, System.Array.IndexOf(tabs, supplierTab));
-            shown = Mathf.Clamp(GUILayout.Toolbar(shown, tabNames), 0, tabs.Length - 1);
+            shown = Mathf.Clamp(Ui.Toolbar(shown, tabNames), 0, tabs.Length - 1);
             supplierTab = tabs[shown];
-            GUILayout.Label(atFishSeller ? "<size=11><i>Food, decorations and equipment are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall.</i></size>", Rich());
+            Ui.Label(atFishSeller ? "<size=11><i>Food, decorations and equipment are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall.</i></size>", Rich());
             if (atFishSeller && FishSeller.Away)
-                GUILayout.Label($"<color={UiTheme.SunHex}>The fish seller has gone home for the night. He's back in the morning.</color>", Rich());
+                Ui.Label($"<color={UiTheme.SunHex}>The fish seller has gone home for the night. He's back in the morning.</color>", Rich());
             GUILayout.Space(2f);
 
             if (supplierTab != FoodTab) DrawDeliverTo();
@@ -1379,7 +1379,7 @@ namespace FishBreeder.Store
             }
             UiCheck.EndScroll();
 
-            if (GUILayout.Button("Close")) panel = Panel.None;
+            if (Ui.Button("Close")) panel = Panel.None;
             UiCheck.End();
         }
 
@@ -1387,7 +1387,7 @@ namespace FishBreeder.Store
         {
             if (orderTarget == null && store.Tanks.Count > 0) orderTarget = store.Tanks[0];
             bool fish = supplierTab == EggsTab || supplierTab == FryTab || supplierTab == DevFryTab;
-            GUILayout.Label(fish ? "Deliver to:" : supplierTab == DecorTab ? "Put in:" : "Install in:");
+            Ui.Label(fish ? "Deliver to:" : supplierTab == DecorTab ? "Put in:" : "Install in:");
             var tanks = store.Tanks;
             var names = new string[tanks.Count];
             int current = 0;
@@ -1399,7 +1399,7 @@ namespace FishBreeder.Store
                     : tanks[i].Title;
                 if (tanks[i] == orderTarget) current = i;
             }
-            current = GUILayout.SelectionGrid(current, names, 3);
+            current = Ui.SelectionGrid(current, names, 3);
             if (tanks.Count > 0) orderTarget = tanks[current];
             GUILayout.Space(4f);
         }
@@ -1416,24 +1416,24 @@ namespace FishBreeder.Store
             bool unlocked = Progression.IsUnlocked(track, level);
             bool bought = false;
             GUILayout.BeginHorizontal(GUI.skin.box);
-            var pictureRect = GUILayoutUtility.GetRect(pictureSize, pictureSize, GUILayout.Width(pictureSize), GUILayout.Height(pictureSize));
+            var pictureRect = Ui.Slot("Picture", pictureSize, pictureSize, GUILayout.Width(pictureSize), GUILayout.Height(pictureSize));
             var old = GUI.color;
             if (!unlocked) GUI.color = new Color(0.45f, 0.45f, 0.45f, 0.8f);
             GUI.DrawTexture(pictureRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
             if (picture != null) GUI.DrawTexture(pictureRect, picture, ScaleMode.ScaleToFit);
             GUI.color = old;
             GUILayout.BeginVertical();
-            GUILayout.Label($"<b>{title}</b>", Rich());
-            if (!string.IsNullOrEmpty(details)) GUILayout.Label($"<size=11>{details}</size>", Rich());
+            Ui.Label($"<b>{title}</b>", Rich());
+            if (!string.IsNullOrEmpty(details)) Ui.Label($"<size=11>{details}</size>", Rich());
             GUILayout.EndVertical();
             GUILayout.FlexibleSpace();
             GUILayout.BeginVertical(GUILayout.Width(170f));
             GUILayout.FlexibleSpace();
-            if (!unlocked) GUILayout.Label($"<color=#ffd27f>Needs {Progression.LockText(track, level)}</color>", Rich());
+            if (!unlocked) Ui.Label($"<color=#ffd27f>Needs {Progression.LockText(track, level)}</color>", Rich());
             else
             {
                 GUI.enabled = canBuy;
-                bought = GUILayout.Button(buyLabel, GUILayout.Height(34f));
+                bought = Ui.Button(buyLabel, GUILayout.Height(34f));
                 GUI.enabled = true;
             }
             GUILayout.FlexibleSpace();
@@ -1449,7 +1449,7 @@ namespace FishBreeder.Store
         /// </summary>
         void DrawEggOffers(bool fry)
         {
-            GUILayout.Label(fry
+            Ui.Label(fry
                 ? "<i>Boxes of mixed fry, delivered right away. Any kind of fish can come as fry, but they're all tiny grey fish: you find out what each one is when it grows into a juvenile. Each extra rare fish in one box is harder to get than the last.</i>"
                 : "<i>Boxes of mixed eggs. They hatch at the next time step (when the shop closes, or overnight). Only egg-laying fish come as eggs: livebearers like guppies and mollies come as fry. Each extra rare fish in one box is harder to get than the last.</i>", Rich());
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
@@ -1509,7 +1509,7 @@ namespace FishBreeder.Store
                 if (kinds != null) lines.Add($"{sizes[size].name} tank: {kinds}");
             }
             if (lines.Count == 0) return;
-            GUILayout.Label($"<size=11><color={UiTheme.SunHex}>Some fish need more room than a {TankQuality.SizeName(tankSize).ToLower()} tank, so they only come for bigger ones. Raise a tank's quality to upgrade it.</color>\n" + string.Join("\n", lines) + "</size>", Rich());
+            Ui.Label($"<size=11><color={UiTheme.SunHex}>Some fish need more room than a {TankQuality.SizeName(tankSize).ToLower()} tank, so they only come for bigger ones. Raise a tank's quality to upgrade it.</color>\n" + string.Join("\n", lines) + "</size>", Rich());
         }
 
         /// <summary>Little pictures of the fish a box can hatch at the player's level (rare ones marked).</summary>
@@ -1517,13 +1517,13 @@ namespace FishBreeder.Store
         {
             GUILayout.BeginHorizontal();
             GUILayout.Space(80f);
-            GUILayout.Label("<size=11>Can hatch:</size>", Rich(), GUILayout.Width(62f));
+            Ui.Label("<size=11>Can hatch:</size>", Rich(), GUILayout.Width(62f));
             int shown = 0;
             foreach (var list in new[] { normal, rare })
                 foreach (var species in list)
                 {
                     if (shown++ >= 12) break;
-                    var rect = GUILayoutUtility.GetRect(40f, 40f, GUILayout.Width(40f), GUILayout.Height(40f));
+                    var rect = Ui.Slot("Icon", 40f, 40f, GUILayout.Width(40f), GUILayout.Height(40f));
                     GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f,
                         list == rare ? new Color(0.45f, 0.35f, 0.15f, 0.9f) : new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
                     var photo = ItemPreviews.Fish(species);
@@ -1534,7 +1534,7 @@ namespace FishBreeder.Store
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
             // Always there (tooltips only exist while repainting): a label that came and went would upset the layout.
-            GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich(), GUILayout.Height(18f));
+            Ui.NamedLabel("Tooltip line", $"<size=11>{GUI.tooltip}</size>", Rich(), GUILayout.Height(18f));
         }
 
         void OrderEggs(EggTierBalance tier)
@@ -1558,7 +1558,7 @@ namespace FishBreeder.Store
 
         void DrawDecorationOffers()
         {
-            GUILayout.Label("<i>Decorations draw more customers and make fish comfortable (most like 3 to 10 per tank), but too many speed up algae. Plants count as plants for fish that love them.</i>", Rich());
+            Ui.Label("<i>Decorations draw more customers and make fish comfortable (most like 3 to 10 per tank), but too many speed up algae. Plants count as plants for fish that love them.</i>", Rich());
             var tank = orderTarget != null ? orderTarget.Tank : null;
             foreach (var item in SupplierCatalog.Decorations)
             {
@@ -1589,8 +1589,8 @@ namespace FishBreeder.Store
         void DrawBackgroundOffers(Tank tank)
         {
             GUILayout.Space(6f);
-            GUILayout.Label("<b>Backgrounds</b>", Rich());
-            GUILayout.Label($"<i>A picture for the back glass of this tank. A tank shows one at a time; a new one replaces the old. Quality +{Balance.Data.quality.backgroundPoints:0}.</i>", Rich());
+            Ui.Label("<b>Backgrounds</b>", Rich());
+            Ui.Label($"<i>A picture for the back glass of this tank. A tank shows one at a time; a new one replaces the old. Quality +{Balance.Data.quality.backgroundPoints:0}.</i>", Rich());
             foreach (var item in TankBackgrounds.All)
             {
                 if (item == null) continue;
@@ -1605,7 +1605,7 @@ namespace FishBreeder.Store
                     Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
                 }
             }
-            if (tank != null && TankBackgrounds.Find(tank.BackgroundId) != null && GUILayout.Button("Take the background down (plain glass)"))
+            if (tank != null && TankBackgrounds.Find(tank.BackgroundId) != null && Ui.Button("Take the background down (plain glass)"))
             {
                 tank.SetBackground("");
                 GameLog.Add($"Took the background down in {orderTarget.Title}.");
@@ -1634,7 +1634,7 @@ namespace FishBreeder.Store
             var supplier = SupplierCatalog.Equipment;
             var tank = orderTarget != null ? orderTarget.Tank : null;
             string where = orderTarget != null ? orderTarget.Title : "a tank";
-            GUILayout.Label("<b>Equipment</b>  <size=11>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you pay to repair it from the tank's Care tab. Better models work better and break less, but cost more to fix. (Water treatment is bought right from the Care tab too.)</size>", Rich());
+            Ui.Label("<b>Equipment</b>  <size=11>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you pay to repair it from the tank's Care tab. Better models work better and break less, but cost more to fix. (Water treatment is bought right from the Care tab too.)</size>", Rich());
             EquipmentSection(EquipmentKind.Filter, ItemPreviews.Icon.Filter, "Filters", "Cuts how fast waste dirties the water.", tank, where,
                 info => $"Leaves {info.effect * 100f:0}% of the waste");
             EquipmentSection(EquipmentKind.Heater, ItemPreviews.Icon.Heater, "Heaters", $"Holds the water at the temperature you set in the tank view. Without one the water is room temperature ({GameConfig.Active.roomTemperature:0} C).", tank, where,
@@ -1650,7 +1650,7 @@ namespace FishBreeder.Store
             string now = installed == null ? "none"
                 : installed.broken ? $"{installed.Name} <color=#ff8080>(broken)</color>"
                 : $"{installed.Name} ({installed.BreakChance * 100f:0}% chance of breaking per time step)";
-            GUILayout.Label($"<b>{title}</b>  <size=11>{blurb} {where}: {now}</size>", Rich());
+            Ui.Label($"<b>{title}</b>  <size=11>{blurb} {where}: {now}</size>", Rich());
             var tiers = Equipment.Tiers(kind);
             for (int i = 0; i < tiers.Count; i++)
             {
@@ -1680,12 +1680,12 @@ namespace FishBreeder.Store
         /// <summary>Developer list: any species as a single fry, ignoring levels, for testing.</summary>
         void DrawDevFryOffers()
         {
-            GUILayout.Label("<i>Developer only: buy any species as a fry, ignoring levels.</i>", Rich());
+            Ui.Label("<i>Developer only: buy any species as a fry, ignoring levels.</i>", Rich());
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
             GUILayout.BeginHorizontal();
-            GUILayout.Label("<b>Random mix</b>  <size=11>A free adult with the body, fins and tail of three random species, to see that any fins fit any body. Only compatible pairs can breed mixes in game.</size>", Rich());
+            Ui.Label("<b>Random mix</b>  <size=11>A free adult with the body, fins and tail of three random species, to see that any fins fit any body. Only compatible pairs can breed mixes in game.</size>", Rich());
             GUI.enabled = free >= 1;
-            if (GUILayout.Button("Random mix", GUILayout.Width(120f), GUILayout.Height(32f))) OrderRandomMix();
+            if (Ui.Button("Random mix", GUILayout.Width(120f), GUILayout.Height(32f))) OrderRandomMix();
             GUI.enabled = true;
             GUILayout.EndHorizontal();
             GUILayout.Space(6f);
@@ -1737,18 +1737,18 @@ namespace FishBreeder.Store
         {
             var section = pendingSection;
             UiCheck.Begin("Unlock section", panelRect, UiStyles.Window);
-            GUILayout.Label($"Unlock the {section.name}?", UiTheme.Title);
-            GUILayout.Label("Opens up room for more display or for sale tanks. Bigger rooms open as your reputation grows (see Reputation, Y).", Rich());
+            Ui.Label($"Unlock the {section.name}?", UiTheme.Title);
+            Ui.Label("Opens up room for more display or for sale tanks. Bigger rooms open as your reputation grows (see Reputation, Y).", Rich());
             var why = store.WhyLocked(section);
-            if (shopDay.IsOpen) GUILayout.Label("<i>Building work has to wait until the shop is closed.</i>", Rich());
-            else if (why != null) GUILayout.Label($"<i>{why}</i>", Rich());
-            else if (!Economy.CanAfford(section.Price)) GUILayout.Label($"<i>You need {Economy.Format(section.Price - Economy.Money)} more.</i>", Rich());
+            if (shopDay.IsOpen) Ui.Label("<i>Building work has to wait until the shop is closed.</i>", Rich());
+            else if (why != null) Ui.Label($"<i>{why}</i>", Rich());
+            else if (!Economy.CanAfford(section.Price)) Ui.Label($"<i>You need {Economy.Format(section.Price - Economy.Money)} more.</i>", Rich());
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
             GUI.enabled = !shopDay.IsOpen && why == null && Economy.CanAfford(section.Price);
-            if (GUILayout.Button($"Unlock for {Economy.Format(section.Price)}") && store.TryUnlock(section)) panel = Panel.None;
+            if (Ui.Button($"Unlock for {Economy.Format(section.Price)}") && store.TryUnlock(section)) panel = Panel.None;
             GUI.enabled = true;
-            if (GUILayout.Button("Cancel")) panel = Panel.None;
+            if (Ui.Button("Cancel")) panel = Panel.None;
             GUILayout.EndHorizontal();
             UiCheck.End();
         }
@@ -1759,8 +1759,8 @@ namespace FishBreeder.Store
         {
             UiCheck.Begin("Buy a tank", panelRect, UiStyles.Window);
             var wall = Balance.Data.store.wallAquarium;
-            GUILayout.Label(pendingSlot.wall ? "The wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
-            GUILayout.Label(pendingSlot.wall
+            Ui.Label(pendingSlot.wall ? "The wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
+            Ui.Label(pendingSlot.wall
                 ? $"<i>One tank the whole length of the back wall ({wall.width:0.#} m), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth. Make it a display tank to wow customers, or fill it with fish for sale.</i>"
                 : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
@@ -1779,11 +1779,11 @@ namespace FishBreeder.Store
                 string text = Progression.IsUnlocked(track, level)
                     ? $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} {StoreTank.RoleName(role).ToLower()} owned)"
                     : $"{kind}: needs {Progression.LockText(track, level)}";
-                if (GUILayout.Button(text, GUILayout.Height(30f)) && store.TryBuyTank(pendingSlot, role) != null) panel = Panel.None;
+                if (Ui.Button(text, GUILayout.Height(30f)) && store.TryBuyTank(pendingSlot, role) != null) panel = Panel.None;
             }
             GUI.enabled = true;
             GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Cancel")) panel = Panel.None;
+            if (Ui.Button("Cancel")) panel = Panel.None;
             UiCheck.End();
         }
 

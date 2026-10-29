@@ -37,7 +37,7 @@ namespace FishBreeder.Core
 
         static void Gauge(Texture2D scale, float min, float max, float value, Vector2? liked, string valueText, string lowWord, string highWord)
         {
-            var rect = GUILayoutUtility.GetRect(140f, 34f, GUILayout.ExpandWidth(true));
+            var rect = Ui.Slot("Gauge", 140f, 34f, GUILayout.ExpandWidth(true));
             var bar = new Rect(rect.x + 2f, rect.y + 14f, rect.width - 4f, 10f);
             GUI.DrawTexture(bar, scale, ScaleMode.StretchToFill);
 
@@ -56,9 +56,9 @@ namespace FishBreeder.Core
             bool inside = liked.HasValue && value >= liked.Value.x && value <= liked.Value.y;
             string color = !liked.HasValue ? "#ffffff" : inside ? "#9fe39f" : "#ff9a8a";
             float labelX = Mathf.Clamp(x - 40f, rect.x, rect.xMax - 80f);
-            GUI.Label(new Rect(labelX, rect.y - 3f, 80f, 18f), $"<color={color}><b>▼ {valueText}</b></color>", ArrowStyle);
-            GUI.Label(new Rect(bar.x, bar.yMax, 60f, 14f), lowWord, TickStyle);
-            GUI.Label(new Rect(bar.xMax - 60f, bar.yMax, 60f, 14f), highWord, RightTick);
+            Ui.Label(new Rect(labelX, rect.y - 3f, 80f, 18f), $"<color={color}><b>▼ {valueText}</b></color>", ArrowStyle);
+            Ui.Label(new Rect(bar.x, bar.yMax, 60f, 14f), lowWord, TickStyle);
+            Ui.Label(new Rect(bar.xMax - 60f, bar.yMax, 60f, 14f), highWord, RightTick);
         }
 
         static void Outline(Rect r, Color color)
@@ -90,7 +90,7 @@ namespace FishBreeder.Core
                 style.normal.textColor = Color.white;
                 badges[color] = style;
             }
-            GUILayout.Label(text, style, GUILayout.ExpandWidth(false));
+            Ui.Label(text, style, GUILayout.ExpandWidth(false));
         }
 
         static GUIStyle ArrowStyle => arrowStyle != null ? arrowStyle : arrowStyle = new GUIStyle(GUI.skin.label) { richText = true, alignment = TextAnchor.UpperCenter, fontSize = 11, padding = new RectOffset(0, 0, 0, 0) };

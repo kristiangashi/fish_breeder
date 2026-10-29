@@ -51,7 +51,10 @@ namespace FishBreeder
                 material.SetTexture("_BumpMap", sand ? SandNormal : GravelNormal);
                 material.EnableKeyword("_NORMALMAP");
             }
-            bed.AddComponent<MeshRenderer>().sharedMaterial = material;
+            var bedRenderer = bed.AddComponent<MeshRenderer>();
+            bedRenderer.sharedMaterial = material;
+            // The floor of the tank: it takes shadows but has nothing below to cast them on.
+            bedRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
             // Loose pieces on top: pebbles on gravel, a sprinkle of coral bits on sand.
             float area = size.x * size.z / (1.6f * 0.7f);
@@ -61,7 +64,20 @@ namespace FishBreeder
             stones.AddComponent<MeshFilter>().sharedMesh = StonesMesh(size, sand, seed, count);
             var stoneMaterial = MaterialFactory.Create(Color.white, sand ? 0.3f : 0.25f);
             stoneMaterial.mainTexture = Palette;
-            stones.AddComponent<MeshRenderer>().sharedMaterial = stoneMaterial;
+            var stonesRenderer = stones.AddComponent<MeshRenderer>();
+            stonesRenderer.sharedMaterial = stoneMaterial;
+            stonesRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Seen from across the store: a coarser bed and no loose pieces.
+            var far = new GameObject("Bed (far)");
+            far.transform.SetParent(root.transform, false);
+            far.AddComponent<MeshFilter>().sharedMesh = BedMesh(size, depth, sand, seed, FarStep);
+            var farRenderer = far.AddComponent<MeshRenderer>();
+            farRenderer.sharedMaterial = material;
+            farRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var lod = root.AddComponent<LODGroup>();
+            lod.SetLODs(new[] { new LOD(NearShare, new Renderer[] { bedRenderer, stonesRenderer }), new LOD(0f, new Renderer[] { farRenderer }) });
+            lod.RecalculateBounds();
             return root;
         }
 
@@ -82,11 +98,14 @@ namespace FishBreeder
             return -0.004f + back * 0.009f + mounds + grain;
         }
 
-        static Mesh BedMesh(Vector3 size, float depth, bool sand, int seed)
+        /// <summary>Grid step of the far bed, and the screen height share above which the full bed and its pebbles show.</summary>
+        const float FarStep = 0.07f, NearShare = 0.35f;
+
+        static Mesh BedMesh(Vector3 size, float depth, bool sand, int seed, float step = 0.02f)
         {
             float tile = sand ? SandTile : GravelTile;
-            int nx = Mathf.Max(8, Mathf.RoundToInt(size.x / 0.02f));
-            int nz = Mathf.Max(4, Mathf.RoundToInt(size.z / 0.02f));
+            int nx = Mathf.Max(8, Mathf.RoundToInt(size.x / step));
+            int nz = Mathf.Max(4, Mathf.RoundToInt(size.z / step));
             var vertices = new List<Vector3>();
             var uvs = new List<Vector2>();
             var triangles = new List<int>();

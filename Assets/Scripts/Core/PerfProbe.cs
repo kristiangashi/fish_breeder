@@ -177,11 +177,11 @@ namespace FishBreeder.Core
             {
                 yield return null;
                 frames.Add(Time.unscaledDeltaTime * 1000f);
-                mainSum += main.LastValue * 1e-6;
-                renderSum += render.LastValue * 1e-6;
-                gcSum += gc.LastValue;
-                for (int i = 0; i < recorders.Count; i++) counterSums[i] += recorders[i].Value.LastValue;
-                for (int i = 0; i < markers.Count; i++) markerSums[i] += markers[i].Value.LastValue * 1e-6;
+                mainSum += Last(main) * 1e-6;
+                renderSum += Last(render) * 1e-6;
+                gcSum += Last(gc);
+                for (int i = 0; i < recorders.Count; i++) counterSums[i] += Last(recorders[i].Value);
+                for (int i = 0; i < markers.Count; i++) markerSums[i] += Last(markers[i].Value) * 1e-6;
             }
             int n = Mathf.Max(1, frames.Count);
             frames.Sort();
@@ -191,6 +191,7 @@ namespace FishBreeder.Core
 
             var sb = new StringBuilder();
             sb.Append($"[Perf] {label}: {CountFish()} fish, {n} frames, {avg:0.0} ms avg ({1000f / Mathf.Max(avg, 0.01f):0} fps), p95 {frames[Mathf.Min(frames.Count - 1, (int)(frames.Count * 0.95f))]:0.0} ms");
+            sb.Append(main.Valid ? "" : " (no main thread timer)");
             sb.Append($" | main thread {mainSum / n:0.0} ms, render thread {renderSum / n:0.0} ms, GC {gcSum / n / 1024:0.0} KB/frame");
             sb.Append($" | renderers on {CountRenderers()}, {Screen.width}x{Screen.height}");
             sb.Append("\n[Perf]   counters:");
@@ -199,17 +200,56 @@ namespace FishBreeder.Core
             sb.Append("\n[Perf]   ms/frame:");
             for (int i = 0; i < markers.Count; i++)
                 sb.Append(markers[i].Value.Valid ? $" {Markers[i]} {markerSums[i] / n:0.00}," : $" {Markers[i]} n/a,");
+            sb.Append("\n[Perf]   seen by the camera:").Append(Breakdown());
             Debug.Log(sb.ToString());
             GameLog.Add($"Perf ({label}): {avg:0.0} ms a frame, main thread {mainSum / n:0.0} ms.");
 
-            main.Dispose();
-            render.Dispose();
-            gc.Dispose();
-            foreach (var r in recorders) r.Value.Dispose();
-            foreach (var r in markers) r.Value.Dispose();
+            if (main.Valid) main.Dispose();
+            if (render.Valid) render.Dispose();
+            if (gc.Valid) gc.Dispose();
+            foreach (var r in recorders) if (r.Value.Valid) r.Value.Dispose();
+            foreach (var r in markers) if (r.Value.Valid) r.Value.Dispose();
         }
 
+        static double Last(ProfilerRecorder recorder) => recorder.Valid ? recorder.LastValue : 0;
+
         static string Short(string counter) => counter.Replace(" Count", "").Replace(" Calls", "");
+
+        /// <summary>Renderers and triangles the camera saw last frame, by what they belong to.</summary>
+        static string Breakdown()
+        {
+            var groups = new SortedDictionary<string, long[]>();
+            foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (!r.enabled || !r.isVisible) continue;
+                string group;
+                if (r.GetComponentInParent<Fish>() != null) group = "fish";
+                else if (r.GetComponentInParent<TankDecor>() != null) group = "tank/" + TankPart(r.transform);
+                else group = r.transform.root.name;
+                long tris = 0;
+                var filter = r.GetComponent<MeshFilter>();
+                var mesh = filter != null ? filter.sharedMesh : r is SkinnedMeshRenderer skinned ? skinned.sharedMesh : null;
+                if (mesh != null)
+                    for (int i = 0; i < mesh.subMeshCount; i++) tris += mesh.GetIndexCount(i) / 3;
+                if (!groups.TryGetValue(group, out var g)) groups[group] = g = new long[3];
+                g[0]++;
+                g[1] += tris;
+                if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off) g[2]++;
+            }
+            var sb = new StringBuilder();
+            foreach (var g in groups) sb.Append($" {g.Key}: {g.Value[0]} renderers {g.Value[1] / 1000}k tris {g.Value[2]} cast shadows;");
+            sb.Append($" shadows {QualitySettings.shadows} to {QualitySettings.shadowDistance:0} m");
+            return sb.ToString();
+        }
+
+        /// <summary>The tank's own piece a renderer is in: two levels down from the tank, e.g. "Visuals/Decor".</summary>
+        static string TankPart(Transform t)
+        {
+            var tank = t.GetComponentInParent<TankDecor>().transform;
+            var path = new List<string>();
+            for (var p = t; p != null && p != tank; p = p.parent) path.Insert(0, p.name);
+            return path.Count > 1 ? path[0] + "/" + path[1] : path.Count == 1 ? path[0] : "self";
+        }
 
         static int CountRenderers()
         {

@@ -124,14 +124,24 @@ namespace FishBreeder
             float phase, float amplitude, float bankDegrees, float follow, float curl, float stiffen, Transform meshSpace)
         {
             float stiff = Mathf.Clamp01(stiffness * stiffen);
-            // 1. Lay the spine along the recent path, blended with a straight body.
+            // 1. Lay the spine along the recent path, blended with a straight body. The samples
+            // go tail-wards, so one walk down the recorded path finds them all.
+            var walk = new TrailWalk { previous = nose, previousUp = up };
             for (int i = 0; i < SampleCount; i++)
             {
                 float distance = i / (SampleCount - 1f) * length;
-                SampleTrail(nose, up, forward, distance, out var pathPoint, out var pathUp);
                 var straight = nose - forward * distance;
-                spinePoints[i] = Vector3.Lerp(straight, pathPoint, follow);
-                spineUps[i] = Vector3.Lerp(up, pathUp, follow).normalized;
+                if (follow > 0f)
+                {
+                    SampleTrail(ref walk, forward, distance, out var pathPoint, out var pathUp);
+                    spinePoints[i] = Vector3.Lerp(straight, pathPoint, follow);
+                    spineUps[i] = Vector3.Lerp(up, pathUp, follow).normalized;
+                }
+                else
+                {
+                    spinePoints[i] = straight;
+                    spineUps[i] = up;
+                }
             }
 
             // 2. Add the travelling body wave sideways to the spine.
@@ -150,6 +160,7 @@ namespace FishBreeder
             }
 
             // 3. Frames along the final midline, rolled for banking and the tail twist.
+            var toMesh = meshSpace.worldToLocalMatrix;
             for (int i = 0; i < SampleCount; i++)
             {
                 float s = i / (SampleCount - 1f);
@@ -163,10 +174,11 @@ namespace FishBreeder
                 side = spin * side;
                 u = spin * u;
 
-                Positions[i] = meshSpace.InverseTransformPoint(midline[i]);
-                Forwards[i] = meshSpace.InverseTransformDirection(f);
-                Sides[i] = meshSpace.InverseTransformDirection(side);
-                Ups[i] = meshSpace.InverseTransformDirection(u);
+                // Directions pick up the mesh space's (uniform) scale here; the shader normalises them.
+                Positions[i] = toMesh.MultiplyPoint3x4(midline[i]);
+                Forwards[i] = toMesh.MultiplyVector(f);
+                Sides[i] = toMesh.MultiplyVector(side);
+                Ups[i] = toMesh.MultiplyVector(u);
             }
         }
 
@@ -179,32 +191,42 @@ namespace FishBreeder
             return d.sqrMagnitude > 1e-12f ? d.normalized : fallback;
         }
 
-        /// <summary>Point <paramref name="distance"/> back along the path from the live nose.</summary>
-        void SampleTrail(Vector3 nose, Vector3 up, Vector3 forward, float distance, out Vector3 point, out Vector3 pointUp)
+        /// <summary>Where a walk down the recorded path has got to.</summary>
+        struct TrailWalk
         {
-            var previous = nose;
-            var previousUp = up;
-            float remaining = distance;
-            for (int i = 0; i < trail.Count; i++)
+            public int index;
+            public float walked;
+            public Vector3 previous, previousUp;
+        }
+
+        /// <summary>
+        /// Point <paramref name="distance"/> back along the path from the live nose, carrying on
+        /// from where the last call left off (distances must not go down between calls).
+        /// </summary>
+        void SampleTrail(ref TrailWalk walk, Vector3 forward, float distance, out Vector3 point, out Vector3 pointUp)
+        {
+            while (walk.index < trail.Count)
             {
-                float segment = (trail[i] - previous).magnitude;
+                float segment = (trail[walk.index] - walk.previous).magnitude;
+                float remaining = distance - walk.walked;
                 if (segment >= remaining && segment > 1e-6f)
                 {
                     float t = remaining / segment;
-                    point = Vector3.Lerp(previous, trail[i], t);
-                    pointUp = Vector3.Lerp(previousUp, trailUp[i], t);
+                    point = Vector3.Lerp(walk.previous, trail[walk.index], t);
+                    pointUp = Vector3.Lerp(walk.previousUp, trailUp[walk.index], t);
                     return;
                 }
-                remaining -= segment;
-                previous = trail[i];
-                previousUp = trailUp[i];
+                walk.walked += segment;
+                walk.previous = trail[walk.index];
+                walk.previousUp = trailUp[walk.index];
+                walk.index++;
             }
 
             // Past the recorded history: continue straight back.
             var back = trail.Count >= 2 ? (trail[trail.Count - 1] - trail[trail.Count - 2]) : -forward;
             back = back.sqrMagnitude > 1e-12f ? back.normalized : -forward;
-            point = previous + back * remaining;
-            pointUp = previousUp;
+            point = walk.previous + back * (distance - walk.walked);
+            pointUp = walk.previousUp;
         }
     }
 }

@@ -34,7 +34,8 @@ namespace FishBreeder.Genetics
     /// </summary>
     public static class Relationships
     {
-        static readonly Dictionary<string, Relationship> lookup = new Dictionary<string, Relationship>();
+        // a's id, then b's id. Nested so a lookup builds no strings: it runs for every pair of fish in a tank.
+        static readonly Dictionary<string, Dictionary<string, Relationship>> lookup = new Dictionary<string, Dictionary<string, Relationship>>();
         static List<RelationshipBalance> builtFrom;
         static int builtCount = -1;
 
@@ -43,13 +44,11 @@ namespace FishBreeder.Genetics
         {
             if (a == null || b == null) return Relationship.Neutral;
             Refresh();
-            return lookup.TryGetValue(Key(a.id, b.id), out var relation) ? relation : Relationship.Neutral;
+            return lookup.TryGetValue(a.id, out var row) && row.TryGetValue(b.id, out var relation) ? relation : Relationship.Neutral;
         }
 
         /// <summary>True if either nips the other.</summary>
         public static bool AreCompetitive(Species a, Species b) => Get(a, b) == Relationship.Competitive || Get(b, a) == Relationship.Competitive;
-
-        static string Key(string a, string b) => a + "|" + b;
 
         static void Refresh()
         {
@@ -61,7 +60,10 @@ namespace FishBreeder.Genetics
             if (list == null) return;
             foreach (var entry in list)
                 if (entry != null && !string.IsNullOrEmpty(entry.a) && !string.IsNullOrEmpty(entry.b))
-                    lookup[Key(entry.a, entry.b)] = entry.relation;
+                {
+                    if (!lookup.TryGetValue(entry.a, out var row)) lookup[entry.a] = row = new Dictionary<string, Relationship>();
+                    row[entry.b] = entry.relation;
+                }
         }
 
         /// <summary>

@@ -139,6 +139,8 @@ namespace FishBreeder.Health
         {
             tank = GetComponent<Tank>();
             nextLunge = Time.time + GameRandom.Range(2f, 6f);
+            // Tanks take their samples on different frames.
+            nextSample = Time.time + Random.Range(0f, SampleEvery);
         }
 
         static string Key(Species a, Species b) => a.id + ">" + b.id;
@@ -150,41 +152,51 @@ namespace FishBreeder.Health
             return !hunting && shares.TryGetValue(Key(b, a), out share);
         }
 
+        // The tank's living fish by kind, regrouped for each pass: pairs of kinds are looked up once,
+        // not once per pair of fish.
+        readonly List<Species> kinds = new List<Species>();
+        readonly Dictionary<Species, List<Fish>> byKind = new Dictionary<Species, List<Fish>>();
+
+        void Group()
+        {
+            foreach (var list in byKind.Values) list.Clear();
+            kinds.Clear();
+            foreach (var fish in tank.Residents)
+            {
+                if (fish == null || fish.IsDead || fish.Species == null) continue;
+                if (!byKind.TryGetValue(fish.Species, out var list)) byKind[fish.Species] = list = new List<Fish>();
+                if (list.Count == 0) kinds.Add(fish.Species);
+                list.Add(fish);
+            }
+        }
+
         /// <summary>Every half second: for each pair of kinds that hunt or fight, how many of their fish are within range right now.</summary>
         void Sample()
         {
             var rules = Balance.Data.tankMates;
-            var adults = new List<Fish>();
-            foreach (var fish in tank.Residents)
-                if (fish != null && !fish.IsDead) adults.Add(fish);
-            var done = new HashSet<string>();
-            foreach (var a in adults)
-            {
-                if (a.Stage != LifeStage.Adult) continue;
-                foreach (var b in adults)
+            Group();
+            foreach (var a in kinds)
+                foreach (var b in kinds)
                 {
-                    if (b == a) continue;
-                    bool hunt = Relationships.Get(a.Species, b.Species) == Relationship.Predator;
-                    bool fight = b.Stage == LifeStage.Adult && Relationships.AreCompetitive(a.Species, b.Species);
-                    if (hunt && done.Add("h" + Key(a.Species, b.Species))) Measure(huntShares, a.Species, b.Species, adults, rules.huntRange, true);
-                    if (fight && done.Add("f" + Key(a.Species, b.Species))) Measure(fightShares, a.Species, b.Species, adults, rules.fightRange, false);
+                    if (Relationships.Get(a, b) == Relationship.Predator) Measure(huntShares, a, b, rules.huntRange, true);
+                    if (Relationships.AreCompetitive(a, b)) Measure(fightShares, a, b, rules.fightRange, false);
                 }
-            }
         }
 
-        void Measure(Dictionary<string, float> shares, Species first, Species second, List<Fish> fish, float range, bool hunting)
+        void Measure(Dictionary<string, float> shares, Species first, Species second, float range, bool hunting)
         {
             int pairs = 0, near = 0;
             float rangeSq = range * range;
-            foreach (var a in fish)
+            foreach (var a in byKind[first])
             {
                 // Only grown fish hunt or fight; a predator hunts prey of any age.
-                if (a.Species != first || a.Stage != LifeStage.Adult) continue;
-                foreach (var b in fish)
+                if (a.Stage != LifeStage.Adult) continue;
+                var at = a.transform.position;
+                foreach (var b in byKind[second])
                 {
-                    if (b == a || b.Species != second || (!hunting && b.Stage != LifeStage.Adult)) continue;
+                    if (b == a || (!hunting && b.Stage != LifeStage.Adult)) continue;
                     pairs++;
-                    if ((a.transform.position - b.transform.position).sqrMagnitude <= rangeSq) near++;
+                    if ((at - b.transform.position).sqrMagnitude <= rangeSq) near++;
                 }
             }
             if (pairs == 0) return;
@@ -196,7 +208,8 @@ namespace FishBreeder.Health
 
         void Update()
         {
-            if (tank == null) return;
+            // Fish in a sleeping tank hold still, so there's nothing new to see or measure.
+            if (tank == null || TankActivity.Step(tank) == 0) return;
             Perf.TankMates.Begin();
             Step();
             Perf.TankMates.End();
@@ -215,22 +228,28 @@ namespace FishBreeder.Health
             var pairs = new List<Fish>();
             var rules = Balance.Data.tankMates;
             bool crowded = tank.Residents.Count > tank.Capacity * rules.crowdedAbove;
-            foreach (var hunter in tank.Residents)
-            {
-                if (hunter == null || hunter.IsDead || hunter.Stage != LifeStage.Adult) continue;
-                foreach (var prey in tank.Residents)
+            Group();
+            foreach (var hunterKind in kinds)
+                foreach (var preyKind in kinds)
                 {
-                    if (prey == hunter || prey.IsDead) continue;
-                    bool hunts = Relationships.Get(hunter.Species, prey.Species) == Relationship.Predator;
-                    bool fights = crowded && prey.Stage == LifeStage.Adult && Relationships.AreCompetitive(hunter.Species, prey.Species);
+                    bool hunts = Relationships.Get(hunterKind, preyKind) == Relationship.Predator;
+                    bool fights = crowded && Relationships.AreCompetitive(hunterKind, preyKind);
                     if (!hunts && !fights) continue;
                     // Only goes for fish that come within range.
                     float range = hunts ? rules.huntRange : rules.fightRange;
-                    if ((hunter.transform.position - prey.transform.position).sqrMagnitude > range * range) continue;
-                    pairs.Add(hunter);
-                    pairs.Add(prey);
+                    foreach (var hunter in byKind[hunterKind])
+                    {
+                        if (hunter.Stage != LifeStage.Adult) continue;
+                        var at = hunter.transform.position;
+                        foreach (var prey in byKind[preyKind])
+                        {
+                            if (prey == hunter || (!hunts && prey.Stage != LifeStage.Adult)) continue;
+                            if ((at - prey.transform.position).sqrMagnitude > range * range) continue;
+                            pairs.Add(hunter);
+                            pairs.Add(prey);
+                        }
+                    }
                 }
-            }
             if (pairs.Count == 0) return;
 
             // Closer prey gets picked more often: a predator goes for what's near it.

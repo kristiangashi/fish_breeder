@@ -85,6 +85,9 @@ namespace FishBreeder
         /// <summary>The piece of food it's swimming after, if any.</summary>
         public FoodPellet TargetFood => targetFood;
         FishSchool school;
+        // Time saved up while the tank skipped this fish's frames (see TankActivity), and which frames it takes.
+        float pendingTime;
+        int turnSlot;
 
         // A short burst: a predator bolting at prey, or prey darting away.
         float burstLeft, burstDelay;
@@ -114,7 +117,17 @@ namespace FishBreeder
         void Update()
         {
             if (Owner.Tank == null) return;
-            float dt = Time.deltaTime;
+            // Tanks far off on screen only update some of their fish each frame, and off-screen tanks sleep.
+            int step = TankActivity.Step(Owner.Tank);
+            if (step == 0)
+            {
+                pendingTime = 0f;
+                return;
+            }
+            pendingTime += Time.deltaTime;
+            if (!TankActivity.IsTurn(step, turnSlot)) return;
+            float dt = Mathf.Min(pendingTime, 0.1f);
+            pendingTime = 0f;
             if (dt <= 0f) return;
             Perf.FishBrain.Begin();
 
@@ -714,6 +727,7 @@ namespace FishBreeder
 
         void OnEnable()
         {
+            turnSlot = Random.Range(0, 6);
             if (Owner != null && Owner.Tank != null)
                 StartActivity(Owner.Phenotype.species.style == SwimStyle.Bottom ? Activity.Descend : Activity.Potter, Owner.Phenotype.lengthMeters);
         }

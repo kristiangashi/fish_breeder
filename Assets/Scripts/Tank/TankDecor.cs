@@ -329,6 +329,10 @@ namespace FishBreeder
             }
         }
 
+        /// <summary>Level of detail for decorations (see <see cref="FarCopies"/>).</summary>
+        const int FarCells = 22;
+        const float NearShare = 0.12f, CullShare = 0.004f;
+
         GameObject Build(DecorationBalance item, Spot spot)
         {
             float height = item.height * tankSize.y / StandardTankHeight;
@@ -357,6 +361,8 @@ namespace FishBreeder
             t.position += Vector3.up * (root.position.y - bounds.min.y);
 
             piece.AddComponent<TankObstacle>();
+            // A low-poly copy for the store view; the full model inside the tank you're looking at.
+            FarCopies.Add(piece, renderers, FarCells, NearShare, CullShare);
             return piece;
         }
 
@@ -407,7 +413,8 @@ namespace FishBreeder
 
         static Material CreateMaterial()
         {
-            var created = new Material(MaterialFactory.Lit) { name = "Decor" };
+            // Instanced: the same piece in every tank is drawn in one go.
+            var created = new Material(MaterialFactory.Lit) { name = "Decor", enableInstancing = true };
             var albedo = Resources.Load<Texture2D>(Folder + "Decor_Albedo");
             var normal = Resources.Load<Texture2D>(Folder + "Decor_Normal");
             var metallicSmoothness = Resources.Load<Texture2D>(Folder + "Decor_MetallicSmoothness");

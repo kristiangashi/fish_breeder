@@ -543,6 +543,13 @@ namespace FishBreeder
         /// </summary>
         public void Animate(float bodyLengthsPerSecond, float thrust, float bankDegrees, float turnDegreesPerSecond, float deltaTime)
         {
+            Perf.FishSpine.Begin();
+            AnimateModel(bodyLengthsPerSecond, thrust, bankDegrees, turnDegreesPerSecond, deltaTime);
+            Perf.FishSpine.End();
+        }
+
+        void AnimateModel(float bodyLengthsPerSecond, float thrust, float bankDegrees, float turnDegreesPerSecond, float deltaTime)
+        {
             if (modelRoot == null || deltaTime <= 0f) return;
             bankDegrees += IllnessRoll(deltaTime);
             float effort = Mathf.Clamp(bodyLengthsPerSecond, 0f, 2f);

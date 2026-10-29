@@ -197,6 +197,13 @@ namespace FishBreeder.Health
         void Update()
         {
             if (tank == null) return;
+            Perf.TankMates.Begin();
+            Step();
+            Perf.TankMates.End();
+        }
+
+        void Step()
+        {
             if (Time.time >= nextSample)
             {
                 nextSample = Time.time + SampleEvery;

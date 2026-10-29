@@ -116,6 +116,7 @@ namespace FishBreeder
             if (Owner.Tank == null) return;
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
+            Perf.FishBrain.Begin();
 
             var phenotype = Owner.Phenotype;
             var species = phenotype.species;
@@ -186,12 +187,14 @@ namespace FishBreeder
 
             // Steer around obstacles between us and the target.
             float lookAhead = bodyLength * (lookAheadBodyLengths + currentSpeed * 0.5f);
+            Perf.FishProbes.Begin();
             float danger = AvoidObstacles(bodyLength, Mathf.Min(lookAhead, Mathf.Max(targetDistance, bodyLength)), ref desired);
 
             // Keep a comfortable distance from the glass (bottom dwellers hug the sand, and
             // reach the surface when they go up for air).
             desired = (desired + WallPush(bodyLength * wallComfortBodyLengths, !bottomDweller,
                 activity != Activity.AirDash || targetFood != null)).normalized;
+            Perf.FishProbes.End();
 
             if (danger > 0.6f) blockedTime += dt;
             else blockedTime = Mathf.Max(0f, blockedTime - dt);
@@ -216,6 +219,7 @@ namespace FishBreeder
             var next = transform.position + transform.forward * currentSpeed * bodyLength * dt;
             float floorMargin = bottomDweller ? FloorClearance(bodyLength) : bodyLength * 0.5f;
             transform.position = Owner.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f, floorMargin);
+            Perf.FishBrain.End();
 
             // Resting on the sand, the tail goes still; hovering midwater fish keep sculling.
             Owner.Visual.IdleStroke = activity == Activity.Rest && targetFood == null ? 0.02f : 0.12f;

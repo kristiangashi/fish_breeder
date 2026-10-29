@@ -30,7 +30,6 @@ namespace FishBreeder.Core
         Fish priceTextFor;
         Vector2 panelScroll, fishScroll;
         Fish fishScrollFor;
-        bool showDecorations;
         Func<StoreTank, int, bool> upgradeTank;
         Action<int> switchTank;
         Func<int, StoreTank> neighbourTank;
@@ -88,6 +87,8 @@ namespace FishBreeder.Core
             selected.Clear();
             ZoomPoint = null;
             Arranging = ArrangeMode.None;
+            picker = Picker.None;
+            showLevelInfo = false;
             heldPiece = dragPiece = -1;
             confirmText = null;
             confirmAction = null;
@@ -163,6 +164,7 @@ namespace FishBreeder.Core
                 // No menus: clicking a fish still follows it (the corner is the "Show menus" button).
                 leftPanel = fishWindow = breedBar = logPanel = stepLeft = stepRight = tankBar = Rect.zero;
                 leftPanel = new Rect(width - 170f, 0f, 170f, 60f);
+                pickerRect = levelPopup = Rect.zero;
                 HandleClick();
                 return;
             }
@@ -184,6 +186,7 @@ namespace FishBreeder.Core
             stepLeft = stepRight = Rect.zero;
 
             DrawTankPanel();
+            DrawPicker(height);
             if (selected.Count > 0)
             {
                 DrawStepButtons(Focus, scale, height);
@@ -195,6 +198,7 @@ namespace FishBreeder.Core
             DrawSickMarkers(scale, height);
             DrawSelectionMarkers(scale, height);
             DrawHeldMarker(scale, height);
+            DrawLevelPopup(width, height);
             if (!HandleArranging() && Arranging == ArrangeMode.None) HandleClick();
         }
 
@@ -225,20 +229,23 @@ namespace FishBreeder.Core
         /// </summary>
         void DrawTankPanel()
         {
-            // Sections that open or shut change only between events, so each one's layout matches.
-            if (Event.current.type == EventType.Layout) levelInfoShown = showLevelInfo;
             UiCheck.Begin("Tank panel", leftPanel, UiStyles.Window);
             GUILayout.BeginHorizontal();
             Ui.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
             GUILayout.FlexibleSpace();
             DrawLevelBadge();
             if (Ui.Button(new GUIContent("?", "What the aquarium's level means"), SmallButton(), GUILayout.Width(22f), GUILayout.Height(22f))) showLevelInfo = !showLevelInfo;
+            if (Event.current.type == EventType.Repaint)
+            {
+                // The details pop out beside this, outside the panel, so nothing in it moves.
+                var help = GUILayoutUtility.GetLastRect();
+                levelHover |= help.Contains(Event.current.mousePosition);
+                levelAnchor = UiCheck.CurrentWindow.position + new Vector2(help.xMax, help.y);
+            }
             GUILayout.EndHorizontal();
-            float headerBottom = GUILayoutUtility.GetLastRect().yMax;
             if (Arranging != ArrangeMode.None)
             {
                 DrawArrangePanel();
-                DrawLevelHover(headerBottom);
                 UiCheck.End();
                 return;
             }
@@ -250,9 +257,8 @@ namespace FishBreeder.Core
             tab = (TankTab)Ui.SelectionGrid((int)tab, labels, labels.Length, TabStyle());
             GUILayout.Space(4f);
             panelScroll = UiCheck.BeginScroll("Tank panel: " + TabNames[(int)tab], panelScroll);
-            // The level details stay open (from "?") whichever tab is showing; a waiting warning comes first.
-            if (levelInfoShown) DrawLevelInfo(true);
-            DrawConfirm();
+            // A waiting warning comes first (in the picker instead, when one is open).
+            if (pickerShown == Picker.None) DrawConfirm();
             switch (tab)
             {
                 case TankTab.Care: DrawCareTab(); break;
@@ -275,13 +281,15 @@ namespace FishBreeder.Core
             if (Ui.Button("Reputation (Y)")) ReputationView.Toggle();
             GUILayout.EndHorizontal();
             if (onBack != null && Ui.Button("Back to store (Esc)")) onBack();
-            DrawLevelHover(headerBottom);
             UiCheck.End();
         }
 
         // ------------------------------------------------------------ aquarium level
 
-        bool showLevelInfo, levelInfoShown, levelHover;
+        bool showLevelInfo, levelHover;
+        // The "?" button's top right, in the menus' space, and the details box beside it.
+        Vector2 levelAnchor;
+        Rect levelPopup;
 
         /// <summary>The aquarium's level in a circle: coral when fish here need a higher one.</summary>
         void DrawLevelBadge()
@@ -291,7 +299,7 @@ namespace FishBreeder.Core
             var color = FishWantingHigherLevel() > 0 ? UiTheme.Coral : level >= TankQuality.MaxLevel ? UiTheme.Sun : UiTheme.Aqua;
             GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 11f);
             GUI.Label(rect, $"<b>{level}</b>", BadgeText());
-            levelHover = rect.Contains(Event.current.mousePosition);
+            if (Event.current.type == EventType.Repaint) levelHover = rect.Contains(Event.current.mousePosition);
         }
 
         /// <summary>How many fish here need a higher aquarium level than this one has.</summary>
@@ -303,46 +311,50 @@ namespace FishBreeder.Core
             return count;
         }
 
-        /// <summary>The level details floating under the title while the mouse is over the circle.</summary>
-        void DrawLevelHover(float top)
+        /// <summary>
+        /// The level details in a little box popping out beside the "?", over everything and
+        /// outside the panel: while the mouse is on the circle or the "?", or pinned by clicking "?".
+        /// </summary>
+        void DrawLevelPopup(float width, float height)
         {
-            if (!levelHover || levelInfoShown || Event.current.type != EventType.Repaint) return;
+            if (!(showLevelInfo || levelHover) || Arranging != ArrangeMode.None)
+            {
+                levelPopup = Rect.zero;
+                return;
+            }
+            var anchor = levelAnchor;
             var content = new GUIContent(LevelInfoText());
-            float width = leftPanel.width - 24f;
-            float height = HoverStyle().CalcHeight(content, width);
-            GUI.Box(new Rect(12f, top + 2f, width, height), content, HoverStyle());
+            const float boxWidth = 250f;
+            float boxHeight = HoverStyle().CalcHeight(content, boxWidth);
+            float x = anchor.x + 8f;
+            // Clear of the picker when one is open beside the panel.
+            if (pickerRect.width > 0f && pickerRect.Contains(new Vector2(pickerRect.x + 1f, anchor.y + 1f))) x = pickerRect.xMax + 8f;
+            if (x + boxWidth > width - 8f) x = Mathf.Max(8f, anchor.x - boxWidth);
+            float y = Mathf.Clamp(anchor.y, 8f, Mathf.Max(8f, height - boxHeight - 8f));
+            levelPopup = new Rect(x, y, boxWidth, boxHeight);
+            if (Event.current.type == EventType.Repaint) GUI.Box(levelPopup, content, HoverStyle());
         }
 
-        /// <summary>The level details as a block in the panel (from the "?").</summary>
-        void DrawLevelInfo(bool closeButton)
-        {
-            GUILayout.BeginVertical(GUI.skin.box);
-            Ui.Label(LevelInfoText(), Rich());
-            if (closeButton && Ui.Button("Hide", SmallButton())) showLevelInfo = false;
-            GUILayout.EndVertical();
-            GUILayout.Space(4f);
-        }
-
-        /// <summary>What the level is, what makes up the quality score, the next level and who needs more.</summary>
+        /// <summary>The level, the quality score and what it's made of, the next level and who wants more.</summary>
         string LevelInfoText()
         {
             int quality = tank.Quality, level = TankQuality.LevelFor(quality);
             var text = new System.Text.StringBuilder();
-            text.Append($"<b>Aquarium level {level}</b>  (quality {quality})\n");
-            if (level < TankQuality.MaxLevel)
-            {
-                int next = TankQuality.QualityForLevel(level + 1);
-                text.Append($"<size=11>Level {level + 1} at quality {next}: {next - quality} to go.</size>\n");
-            }
-            var parts = TankQuality.Breakdown(tank);
+            text.Append($"<b>Level {level}</b>  <size=11>quality {quality}");
+            if (level < TankQuality.MaxLevel) text.Append($", level {level + 1} at {TankQuality.QualityForLevel(level + 1)}");
+            text.Append("</size>\n");
             var bits = new List<string>();
-            foreach (var part in parts) bits.Add($"{part.label} +{part.points}");
-            text.Append("<size=11>" + (bits.Count > 0 ? string.Join(",  ", bits) : "Nothing yet.") + "</size>\n");
-            text.Append("<size=11><i>Equipment (better models count more), decorations (plants and variety count extra) and a background raise the quality.</i></size>\n");
-            foreach (var line in TankQuality.LevelLines()) text.Append($"<size=11>{line}</size>\n");
+            foreach (var part in TankQuality.Breakdown(tank)) bits.Add($"{part.label} +{part.points}");
+            text.Append("<size=11>" + (bits.Count > 0 ? string.Join(", ", bits) : "Raise it with equipment, decorations and a background.") + "</size>");
+            var sizes = Balance.Data.store.tankSizes;
+            for (int n = 2; n <= TankQuality.MaxLevel; n++)
+            {
+                string size = sizes != null && n - 1 < sizes.Count ? sizes[n - 1].name : "";
+                text.Append($"\n<size=11>Level {n}: {size.ToLower()} tanks and the fish that need one</size>");
+            }
             int unhappy = FishWantingHigherLevel();
-            if (unhappy > 0) text.Append($"<color={UiTheme.CoralHex}><size=11>{unhappy} fish here need a higher level and are unhappy until it's back up.</size></color>");
-            return text.ToString().TrimEnd('\n');
+            if (unhappy > 0) text.Append($"\n<color={UiTheme.CoralHex}><size=11>{unhappy} fish here want a higher level.</size></color>");
+            return text.ToString();
         }
 
         static GUIStyle badgeText, hoverStyle;
@@ -1006,71 +1018,170 @@ namespace FishBreeder.Core
             }
         }
 
-        /// <summary>
-        /// The decorations in the tank, each one to take out (back into your stock), and what's in
-        /// stock to put in. Taking out one that drops the aquarium below a level its fish need asks first.
-        /// </summary>
+        /// <summary>The decorations: a button that opens the picker beside the panel, and one to move them about.</summary>
         void DrawDecorations()
         {
             var decor = tank.Decor;
             if (decor == null) return;
             GUILayout.Space(2f);
-            if (Event.current.type == EventType.Layout) decorationsShown = showDecorations;
-            bool shown = decorationsShown;
-            if (Ui.Button($"{(shown ? "▾" : "▸")} <b>Decorations</b>  <size=11>{decor.Count} / {decor.Capacity}{(tank.HasPlants ? ", with plants" : "")}   ({Inventory.DecorationCount} in stock)</size>", SectionHeader())) showDecorations = !showDecorations;
-            if (decor.Count > 0)
-            {
-                if (Ui.Button("Move decorations (top view)")) StartArranging(ArrangeMode.Decorations);
-                Ui.Label($"<size=11>{(decor.MovedCount > 0 ? $"{decor.MovedCount} placed by hand, the rest in their automatic spots." : "Each one is in its automatic spot.")}</size>", Rich());
-            }
-            if (!shown) return;
-            var ids = decor.Ids;
-            if (ids.Count == 0) Ui.Label("<size=11><i>None in this tank.</i></size>", Rich());
-            for (int i = 0; i < ids.Count; i++)
-            {
-                var item = TankDecor.Find(ids[i]);
-                GUILayout.BeginHorizontal();
-                Ui.Label($"<size=12>{(item != null ? item.name : ids[i])}{LikedBy(ids[i])}</size>", Rich(), GUILayout.Width(170f));
-                if (Ui.Button("Take out", SmallButton()))
-                {
-                    int index = i;
-                    string id = ids[i], name = item != null ? item.name.ToLower() : "decoration";
-                    Confirm(TankQuality.WarnIfDrops(tank, TankQuality.WhatIf.RemoveDecoration(index), $"Taking out the {name}"), () =>
-                    {
-                        if (index >= decor.Count || decor.IdAt(index) != id) return;
-                        decor.RemoveAt(index);
-                        Inventory.AddDecoration(id);
-                        GameLog.Add($"Took the {name} out of {storeTank.Title}. It's back in your stock.");
-                    });
-                }
-                GUILayout.EndHorizontal();
-            }
+            GUILayout.BeginHorizontal();
+            if (Ui.Button($"Decorations  {decor.Count} / {decor.Capacity}", pickerShown == Picker.Decorations ? UiTheme.Primary : GUI.skin.button)) TogglePicker(Picker.Decorations);
+            if (decor.Count > 0 && Ui.Button(new GUIContent("Move", "Move decorations (top view)"), GUILayout.Width(64f))) StartArranging(ArrangeMode.Decorations);
+            GUILayout.EndHorizontal();
+        }
 
-            GUILayout.Space(4f);
-            Ui.Label("<size=11><b>In stock</b> (bought at the supplier computer)</size>", Rich());
+        /// <summary>The background: a button that opens the picker beside the panel, and one to adjust the picture.</summary>
+        void DrawBackgroundSetup()
+        {
+            var background = TankBackgrounds.Find(tank.BackgroundId);
+            GUILayout.BeginHorizontal();
+            if (Ui.Button(background != null ? $"Background: {background.name}" : "Background: none", pickerShown == Picker.Background ? UiTheme.Primary : GUI.skin.button)) TogglePicker(Picker.Background);
+            if (background != null && Ui.Button(new GUIContent("Adjust", "Slide and zoom the picture"), GUILayout.Width(64f))) StartArranging(ArrangeMode.Background);
+            GUILayout.EndHorizontal();
+        }
+
+        // ------------------------------------------------------------ decoration and background pickers
+
+        enum Picker { None, Decorations, Background }
+        // Asked for, and showing (changed only on Layout, so each frame's layout matches).
+        Picker picker, pickerShown;
+        Vector2 pickerScroll;
+        Rect pickerRect;
+
+        void TogglePicker(Picker which)
+        {
+            picker = picker == which ? Picker.None : which;
+            pickerScroll = Vector2.zero;
+        }
+
+        /// <summary>The open picker, as a window beside the tank panel (only on the Tank tab).</summary>
+        void DrawPicker(float height)
+        {
+            if (Event.current.type == EventType.Layout) pickerShown = tab == TankTab.Tank && Arranging == ArrangeMode.None ? picker : Picker.None;
+            if (pickerShown == Picker.None)
+            {
+                pickerRect = Rect.zero;
+                return;
+            }
+            string id = pickerShown == Picker.Decorations ? "Decoration picker" : "Background picker";
+            float want = UiCheck.Height(id, 320f);
+            pickerRect = new Rect(leftPanel.xMax + 8f, leftPanel.y, 270f, Mathf.Clamp(want, 120f, Mathf.Max(120f, height - leftPanel.y - 160f)));
+            UiCheck.Begin(id, pickerRect, UiStyles.Window);
+            GUILayout.BeginHorizontal();
+            Ui.Label(pickerShown == Picker.Decorations ? "<b>Your decorations</b>" : "<b>Your backgrounds</b>", Rich());
+            GUILayout.FlexibleSpace();
+            if (Ui.Button("✕", SmallButton(), GUILayout.Width(24f))) picker = Picker.None;
+            GUILayout.EndHorizontal();
+            DrawConfirm();
+            pickerScroll = UiCheck.BeginScroll(id + ": list", pickerScroll);
+            GUI.enabled = !ReadOnly;
+            if (pickerShown == Picker.Decorations) DrawDecorationPicker();
+            else DrawBackgroundPicker();
+            GUI.enabled = true;
+            UiCheck.EndScroll();
+            UiCheck.End();
+        }
+
+        /// <summary>Decorations in stock to put in, then the ones in this tank to take out (back into stock).</summary>
+        void DrawDecorationPicker()
+        {
+            var decor = tank.Decor;
+            if (decor == null) return;
             bool any = false;
             foreach (var pair in new List<KeyValuePair<string, int>>(Inventory.AllDecorations))
             {
                 any = true;
                 var item = TankDecor.Find(pair.Key);
-                GUILayout.BeginHorizontal();
-                Ui.Label($"<size=12>{(item != null ? item.name : pair.Key)} x{pair.Value}{LikedBy(pair.Key)}</size>", Rich(), GUILayout.Width(170f));
+                string name = item != null ? item.name : pair.Key;
                 bool wasEnabled = GUI.enabled;
                 GUI.enabled = wasEnabled && !decor.IsFull;
-                if (Ui.Button(decor.IsFull ? "Full" : "Put in", SmallButton()) && Inventory.TakeDecoration(pair.Key))
+                if (PickerRow(ItemPreviews.Decoration(pair.Key), 40f, $"{name}  <size=11>x{pair.Value}</size>{LikedBy(pair.Key)}", decor.IsFull ? "Full" : "Put in")
+                    && Inventory.TakeDecoration(pair.Key))
                 {
-                    if (decor.Add(pair.Key)) GameLog.Add($"Put a {(item != null ? item.name.ToLower() : "decoration")} in {storeTank.Title}.");
+                    if (decor.Add(pair.Key)) GameLog.Add($"Put a {name.ToLower()} in {storeTank.Title}.");
                     else Inventory.AddDecoration(pair.Key);
                 }
                 GUI.enabled = wasEnabled;
-                GUILayout.EndHorizontal();
             }
-            if (!any) Ui.Label("<size=11><i>Nothing in stock. Buy decorations at the supplier computer and they wait here.</i></size>", Rich());
+            if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
+
+            var ids = decor.Ids;
+            if (ids.Count == 0) return;
+            GUILayout.Space(6f);
+            Ui.Label("<size=11><b>In this tank</b></size>", Rich());
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var item = TankDecor.Find(ids[i]);
+                string name = item != null ? item.name : ids[i];
+                if (!PickerRow(ItemPreviews.Decoration(ids[i]), 28f, $"<size=12>{name}</size>{LikedBy(ids[i])}", "Take out")) continue;
+                int index = i;
+                string id = ids[i], lower = name.ToLower();
+                Confirm(TankQuality.WarnIfDrops(tank, TankQuality.WhatIf.RemoveDecoration(index), $"Taking out the {lower}"), () =>
+                {
+                    if (index >= decor.Count || decor.IdAt(index) != id) return;
+                    decor.RemoveAt(index);
+                    Inventory.AddDecoration(id);
+                    GameLog.Add($"Took the {lower} out of {storeTank.Title}. It's back in your stock.");
+                });
+            }
         }
 
-        bool decorationsShown;
+        /// <summary>The picture up now (to take down, back into stock), then the ones in stock to put up.</summary>
+        void DrawBackgroundPicker()
+        {
+            var background = TankBackgrounds.Find(tank.BackgroundId);
+            if (background != null && PickerRow(TankBackgrounds.Texture(background.id), 40f, $"{background.name}  <size=11>(up now)</size>", "Take down"))
+            {
+                string id = background.id, name = background.name.ToLower();
+                Confirm(TankQuality.WarnIfDrops(tank, TankQuality.WhatIf.RemoveBackground, $"Taking down the {name} background"), () =>
+                {
+                    if (tank.BackgroundId != id) return;
+                    tank.SetBackground("");
+                    Inventory.AddBackground(id);
+                    GameLog.Add($"Took the {name} background down in {storeTank.Title}. It's back in your stock.");
+                });
+            }
+            bool any = false;
+            foreach (var pair in new List<KeyValuePair<string, int>>(Inventory.AllBackgrounds))
+            {
+                var item = TankBackgrounds.Find(pair.Key);
+                if (item == null) continue;
+                any = true;
+                if (!PickerRow(TankBackgrounds.Texture(pair.Key), 40f, $"{item.name}  <size=11>x{pair.Value}</size>", background != null ? "Swap" : "Put up")
+                    || !Inventory.TakeBackground(pair.Key)) continue;
+                if (background != null) Inventory.AddBackground(background.id);
+                tank.SetBackground(pair.Key);
+                GameLog.Add($"Put the {item.name.ToLower()} background up in {storeTank.Title}.");
+            }
+            if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
+        }
 
-        /// <summary>" (the neon tetras like it)" once the plants research says who likes what, for fish in this tank.</summary>
+        /// <summary>One row of a picker: a picture, a name and a button. True when the button is clicked.</summary>
+        bool PickerRow(Texture picture, float size, string label, string button)
+        {
+            GUILayout.BeginHorizontal();
+            var rect = Ui.Slot("Picture", size * 1.4f, size, GUILayout.Width(size * 1.4f), GUILayout.Height(size));
+            if (Event.current.type == EventType.Repaint)
+            {
+                GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
+                if (picture != null) GUI.DrawTexture(rect, picture, ScaleMode.ScaleAndCrop);
+            }
+            GUILayout.BeginVertical();
+            GUILayout.FlexibleSpace();
+            Ui.Label(label, Rich());
+            GUILayout.FlexibleSpace();
+            GUILayout.EndVertical();
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginVertical(GUILayout.Width(68f));
+            GUILayout.FlexibleSpace();
+            bool clicked = Ui.Button(button, SmallButton());
+            GUILayout.FlexibleSpace();
+            GUILayout.EndVertical();
+            GUILayout.EndHorizontal();
+            return clicked;
+        }
+
+        /// <summary>A second line naming the fish here that like it, once the plants research says who likes what.</summary>
         string LikedBy(string decorationId)
         {
             var kinds = new List<string>();
@@ -1082,49 +1193,7 @@ namespace FishBreeder.Core
                 if (!kinds.Contains(name)) kinds.Add(name);
             }
             if (kinds.Count == 0) return "";
-            return $" <color={UiTheme.LeafHex}><size=10>({string.Join(", ", kinds.ToArray())} like it)</size></color>";
-        }
-
-        /// <summary>The picture on the back glass: adjust it or take it down (back into stock), or put one up from stock.</summary>
-        void DrawBackgroundSetup()
-        {
-            var background = TankBackgrounds.Find(tank.BackgroundId);
-            GUILayout.Space(4f);
-            Ui.Label(background != null ? $"Background: <b>{background.name}</b>" + (tank.BackgroundZoom > 1.01f ? $" <size=11>(zoomed {tank.BackgroundZoom:0.0}x)</size>" : "") : "Background: <i>plain glass</i>", Rich());
-            if (background != null)
-            {
-                GUILayout.BeginHorizontal();
-                if (Ui.Button("Adjust (drag and zoom)", SmallButton())) StartArranging(ArrangeMode.Background);
-                if (Ui.Button("Take down", SmallButton()))
-                {
-                    string id = background.id, name = background.name.ToLower();
-                    Confirm(TankQuality.WarnIfDrops(tank, TankQuality.WhatIf.RemoveBackground, $"Taking down the {name} background"), () =>
-                    {
-                        if (tank.BackgroundId != id) return;
-                        tank.SetBackground("");
-                        Inventory.AddBackground(id);
-                        GameLog.Add($"Took the {name} background down in {storeTank.Title}. It's back in your stock.");
-                    });
-                }
-                GUILayout.EndHorizontal();
-            }
-            bool any = false;
-            foreach (var pair in new List<KeyValuePair<string, int>>(Inventory.AllBackgrounds))
-            {
-                var item = TankBackgrounds.Find(pair.Key);
-                if (item == null) continue;
-                any = true;
-                GUILayout.BeginHorizontal();
-                Ui.Label($"<size=12>{item.name} x{pair.Value}</size>", Rich(), GUILayout.Width(170f));
-                if (Ui.Button(background != null ? "Swap to it" : "Put up", SmallButton()) && Inventory.TakeBackground(pair.Key))
-                {
-                    if (background != null) Inventory.AddBackground(background.id);
-                    tank.SetBackground(pair.Key);
-                    GameLog.Add($"Put the {item.name.ToLower()} background up in {storeTank.Title}.");
-                }
-                GUILayout.EndHorizontal();
-            }
-            if (!any && background == null) Ui.Label("<size=11><i>No backgrounds in stock. Buy them at the supplier computer.</i></size>", Rich());
+            return $"\n<color={UiTheme.LeafHex}><size=10>{string.Join(", ", kinds.ToArray())} like it</size></color>";
         }
 
         /// <summary>Turning the tank into the other type for its room (for sale and display, or breeder and quarantine), for a fee.</summary>
@@ -1178,6 +1247,7 @@ namespace FishBreeder.Core
             Arranging = mode;
             heldPiece = dragPiece = -1;
             draggingPicture = false;
+            picker = Picker.None;
         }
 
         public void StopArranging()
@@ -1238,7 +1308,7 @@ namespace FishBreeder.Core
             if (Arranging == ArrangeMode.None) return false;
             var e = Event.current;
             var m = e.mousePosition;
-            bool overMenu = leftPanel.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m);
+            bool overMenu = leftPanel.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m) || pickerRect.Contains(m);
             var ray = RayAt(m);
             if (Arranging == ArrangeMode.Decorations)
             {
@@ -1351,8 +1421,7 @@ namespace FishBreeder.Core
             int next = tank.SizeIndex + 1;
             if (next >= sizes.Count || upgradeTank == null) return;
             var info = sizes[next];
-            var kinds = TankQuality.KindsNeeding(next);
-            Ui.Label($"<size=11>A {info.name.ToLower()} tank holds {Tank.CapacityOf(info)} fish and {info.decorationSlots} decorations" + (kinds != null ? $", and can keep {kinds}." : "."), Rich());
+            Ui.Label($"<size=11>{info.name} tank: {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>", Rich());
             var reason = StoreLayout.WhyCantUpgrade(storeTank, next);
             if (reason != null && reason != StoreLayout.NoMoney)
             {
@@ -1828,7 +1897,8 @@ namespace FishBreeder.Core
             var e = Event.current;
             if (e.type != EventType.MouseDown || e.button != 0 || cam == null) return;
             var m = e.mousePosition;
-            if (leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || stepLeft.Contains(m) || stepRight.Contains(m)) return;
+            if (leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || stepLeft.Contains(m) || stepRight.Contains(m)
+                || pickerRect.Contains(m) || levelPopup.Contains(m)) return;
 
             // IMGUI coordinates are top-left based and scaled; convert back to screen pixels.
             var guiToScreen = GUI.matrix.MultiplyPoint3x4(m);

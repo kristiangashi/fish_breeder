@@ -16,6 +16,10 @@ namespace FishBreeder.Core
     /// piece's in the same window) lines up with it and shows a guide line, and otherwise the
     /// corner snaps to an 8 px grid. Hold Alt to drag freely. The arrow keys nudge the last thing
     /// touched by a pixel (Shift: 8), Ctrl with the arrows resizes it.
+    /// A picked label, button or toggle can also get new text (typed in the editor's bar; "{text}"
+    /// stands for what the code says, so a number can be kept) or be hidden (Delete, or the bar's
+    /// Hide button): a hidden piece takes no room once the editor closes, and shows faintly while
+    /// it's open so it can be brought back.
     /// </summary>
     public static class UiLayout
     {
@@ -24,6 +28,9 @@ namespace FishBreeder.Core
         {
             public string id;
             public float x, y, width, height;
+            // New text for a label or button ("" or missing: the code's own), and whether it's hidden.
+            public string text;
+            public bool hidden;
         }
 
         [Serializable]
@@ -34,6 +41,10 @@ namespace FishBreeder.Core
 
         const string ResourceName = "UiLayout";
         static Dictionary<string, Rect> offsets;
+        static Dictionary<string, string> texts;
+        static HashSet<string> hidden;
+        // What the code says for each piece drawn while editing, for the editor's text box.
+        static readonly Dictionary<string, string> originals = new Dictionary<string, string>();
 
         /// <summary>The layout editor is showing (F7).</summary>
         public static bool Editing { get; set; }
@@ -81,9 +92,29 @@ namespace FishBreeder.Core
             }
         }
 
+        static Dictionary<string, string> Texts
+        {
+            get
+            {
+                if (offsets == null) Load();
+                return texts;
+            }
+        }
+
+        static HashSet<string> Hidden
+        {
+            get
+            {
+                if (offsets == null) Load();
+                return hidden;
+            }
+        }
+
         static void Load()
         {
             offsets = new Dictionary<string, Rect>();
+            texts = new Dictionary<string, string>();
+            hidden = new HashSet<string>();
             var asset = Resources.Load<TextAsset>(ResourceName);
             if (asset == null || string.IsNullOrWhiteSpace(asset.text)) return;
             try
@@ -91,7 +122,13 @@ namespace FishBreeder.Core
                 var saved = JsonUtility.FromJson<SavedLayout>(asset.text);
                 if (saved?.entries == null) return;
                 foreach (var entry in saved.entries)
-                    if (!string.IsNullOrEmpty(entry.id)) offsets[entry.id] = new Rect(entry.x, entry.y, entry.width, entry.height);
+                {
+                    if (string.IsNullOrEmpty(entry.id)) continue;
+                    var r = new Rect(entry.x, entry.y, entry.width, entry.height);
+                    if (r != Rect.zero) offsets[entry.id] = r;
+                    if (!string.IsNullOrEmpty(entry.text)) texts[entry.id] = entry.text;
+                    if (entry.hidden) hidden.Add(entry.id);
+                }
             }
             catch (Exception e)
             {
@@ -102,14 +139,20 @@ namespace FishBreeder.Core
         static void Save()
         {
 #if UNITY_EDITOR
+            savePending = false;
             var saved = new SavedLayout();
-            var ids = new List<string>(offsets.Keys);
+            var all = new HashSet<string>(offsets.Keys);
+            all.UnionWith(texts.Keys);
+            all.UnionWith(hidden);
+            var ids = new List<string>(all);
             ids.Sort(StringComparer.Ordinal);
             foreach (var id in ids)
             {
-                var r = offsets[id];
-                if (r == Rect.zero) continue;
-                saved.entries.Add(new Entry { id = id, x = Round(r.x), y = Round(r.y), width = Round(r.width), height = Round(r.height) });
+                offsets.TryGetValue(id, out var r);
+                texts.TryGetValue(id, out var text);
+                bool hide = hidden.Contains(id);
+                if (r == Rect.zero && string.IsNullOrEmpty(text) && !hide) continue;
+                saved.entries.Add(new Entry { id = id, x = Round(r.x), y = Round(r.y), width = Round(r.width), height = Round(r.height), text = text, hidden = hide });
             }
             string path = System.IO.Path.Combine(Application.dataPath, "Resources", ResourceName + ".json");
             System.IO.File.WriteAllText(path, JsonUtility.ToJson(saved, true));
@@ -125,19 +168,97 @@ namespace FishBreeder.Core
             return new Rect(rect.x + o.x, rect.y + o.y, Mathf.Max(8f, rect.width + o.width), Mathf.Max(4f, rect.height + o.height));
         }
 
-        /// <summary>Puts one window or item back where the code puts it.</summary>
+        /// <summary>Puts one window or item back the way the code has it: place, size, text and showing.</summary>
         public static void Reset(string id)
         {
-            if (Offsets.Remove(id)) Save();
+            bool changed = Offsets.Remove(id);
+            changed |= Texts.Remove(id);
+            changed |= Hidden.Remove(id);
+            if (changed) Save();
         }
 
         public static void ResetAll()
         {
             Offsets.Clear();
+            Texts.Clear();
+            Hidden.Clear();
             Save();
         }
 
-        public static int Count => Offsets.Count;
+        /// <summary>How many windows and pieces are changed from the code's layout.</summary>
+        public static int Count
+        {
+            get
+            {
+                var all = new HashSet<string>(Offsets.Keys);
+                all.UnionWith(Texts.Keys);
+                all.UnionWith(Hidden);
+                return all.Count;
+            }
+        }
+
+        // ------------------------------------------------------------ text and hiding
+
+        static bool savePending;
+        static float saveAt;
+
+        /// <summary>Saves a moment later, so typing new text doesn't write the file on every key.</summary>
+        static void SaveSoon()
+        {
+            savePending = true;
+            saveAt = Time.realtimeSinceStartup + 0.8f;
+        }
+
+        /// <summary>Writes a waiting save once typing has paused (the editor calls this every frame).</summary>
+        public static void SaveIfDue(bool now = false)
+        {
+            if (savePending && (now || Time.realtimeSinceStartup >= saveAt)) Save();
+        }
+
+        /// <summary>
+        /// A label's or button's content with its new text, if it has one. False when it's hidden
+        /// and the editor is closed: draw nothing and take no room.
+        /// </summary>
+        public static bool Content(string id, ref GUIContent content)
+        {
+            if (Editing && content != null) originals[id] = content.text ?? "";
+            if (!Editing && Hidden.Contains(id)) return false;
+            if (Texts.TryGetValue(id, out var text) && content != null)
+                content = new GUIContent(text.Replace("{text}", content.text ?? ""), content.image, content.tooltip);
+            return true;
+        }
+
+        /// <summary>The piece is hidden (only drawn, faintly, while the editor is open).</summary>
+        public static bool IsHidden(string id) => Hidden.Contains(id);
+
+        /// <summary>The last touched piece can have its text changed and be hidden (labels, buttons, toggles).</summary>
+        public static bool LastHasText => LastTouched != null && originals.ContainsKey(LastTouched);
+
+        public static string OriginalText(string id) => id != null && originals.TryGetValue(id, out var text) ? text : "";
+
+        /// <summary>The piece's new text, or what the code says when it has none.</summary>
+        public static string TextFor(string id) => id != null && Texts.TryGetValue(id, out var text) ? text : OriginalText(id);
+
+        public static bool HasNewText(string id) => id != null && Texts.ContainsKey(id);
+
+        public static void SetText(string id, string text)
+        {
+            if (id == null) return;
+            if (text == OriginalText(id)) Texts.Remove(id);
+            else Texts[id] = text;
+            SaveSoon();
+        }
+
+        public static void ResetText(string id)
+        {
+            if (id != null && Texts.Remove(id)) Save();
+        }
+
+        public static void SetHidden(string id, bool hide)
+        {
+            if (id == null) return;
+            if (hide ? Hidden.Add(id) : Hidden.Remove(id)) Save();
+        }
 
         // ------------------------------------------------------------ windows
 
@@ -208,7 +329,7 @@ namespace FishBreeder.Core
         /// </summary>
         public static Rect Item(string id, Rect rect)
         {
-            if (!Editing && offsets != null && offsets.Count == 0) return rect;
+            if (!Editing && Offsets.Count == 0) return rect;
             var moved = Apply(id, rect);
             if (!Editing || !ShowItems) return moved;
             string parent = currentWindow ?? "";
@@ -222,6 +343,8 @@ namespace FishBreeder.Core
                     e.Use();
                     return rect;
                 }
+                // The editor's text box lets go, so it shows this piece's text.
+                GUIUtility.keyboardControl = 0;
                 if (e.button == 0 && e.shift) StartDrag(id, true, e);
                 else if (e.button == 0)
                 {
@@ -251,7 +374,8 @@ namespace FishBreeder.Core
                 var r = new Rect(moved.x - 1f, moved.y - 1f, moved.width + 2f, moved.height + 2f);
                 bool hot = dragging == id || LastTouched == id;
                 bool over = r.Contains(e.mousePosition);
-                Outline(r, hot ? UiTheme.Sun : over ? new Color(0.4f, 1f, 0.9f, 0.95f) : new Color(0.4f, 1f, 0.9f, 0.3f), 1f);
+                var teal = Hidden.Contains(id) ? new Color(1f, 0.45f, 0.6f, 1f) : new Color(0.4f, 1f, 0.9f, 1f);
+                Outline(r, hot ? UiTheme.Sun : new Color(teal.r, teal.g, teal.b, over ? 0.95f : 0.3f), 1f);
                 if (dragging == id) DrawGuides();
             }
             return moved;
@@ -298,7 +422,7 @@ namespace FishBreeder.Core
         }
 
         /// <summary>Whether pieces need their names at all (something is nudged, or the editor is open).</summary>
-        public static bool Active => Editing || Offsets.Count > 0;
+        public static bool Active => Editing || Offsets.Count > 0 || Texts.Count > 0 || Hidden.Count > 0;
 
         // ------------------------------------------------------------ dragging
 
@@ -453,6 +577,7 @@ namespace FishBreeder.Core
         {
             if (Input.GetKeyDown(KeyCode.F7) && DevMode.Available) UiLayout.Editing = !UiLayout.Editing;
             if (!Input.GetMouseButton(0) && !Input.GetMouseButton(1)) UiLayout.EndStrayDrag();
+            UiLayout.SaveIfDue(!UiLayout.Editing);
         }
 
         void OnGUI()
@@ -465,7 +590,14 @@ namespace FishBreeder.Core
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
             float width = Screen.width / scale, height = Screen.height / scale;
             var e = Event.current;
-            if (e.type == EventType.KeyDown && UiLayout.LastTouched != null)
+            // Keys go to the text box while it's being typed in.
+            bool typing = GUIUtility.keyboardControl != 0;
+            if (e.type == EventType.KeyDown && !typing && UiLayout.LastHasText && (e.keyCode == KeyCode.Delete || e.keyCode == KeyCode.Backspace))
+            {
+                UiLayout.SetHidden(UiLayout.LastTouched, !UiLayout.IsHidden(UiLayout.LastTouched));
+                e.Use();
+            }
+            if (e.type == EventType.KeyDown && !typing && UiLayout.LastTouched != null)
             {
                 float step = e.shift ? UiLayout.GridSize : 1f;
                 var by = e.keyCode == KeyCode.LeftArrow ? new Vector2(-step, 0f) : e.keyCode == KeyCode.RightArrow ? new Vector2(step, 0f)
@@ -478,9 +610,12 @@ namespace FishBreeder.Core
             }
             if (UiLayout.ShowGrid && e.type == EventType.Repaint) DrawGrid(width, height);
 
-            var bar = new Rect(Mathf.Max(10f, width * 0.5f - 360f), height - 104f, Mathf.Min(720f, width - 20f), 94f);
+            bool textRow = UiLayout.LastHasText;
+            float barHeight = textRow ? 126f : 94f;
+            var bar = new Rect(Mathf.Max(10f, width * 0.5f - 360f), height - barHeight - 10f, Mathf.Min(720f, width - 20f), barHeight);
             GUILayout.BeginArea(bar, UiStyles.Window);
-            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Every button, label and bar has a teal outline: click it to pick it (it still clicks), drag it to move it, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Right-click resets. Saved as you go.</size>", Rich());
+            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Every button, label and bar has a teal outline: click it to pick it (it still clicks), drag it to move it, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Picked text can be retyped below, and Delete hides it (pink outline; Delete again shows it). Right-click resets. Saved as you go.</size>", Rich());
+            if (textRow) DrawTextRow();
             GUILayout.BeginHorizontal();
             UiLayout.ShowItems = GUILayout.Toggle(UiLayout.ShowItems, " Pieces", GUILayout.Width(70f));
             UiLayout.Snap = GUILayout.Toggle(UiLayout.Snap, " Snap", GUILayout.Width(62f));
@@ -492,6 +627,25 @@ namespace FishBreeder.Core
             if (GUILayout.Button("Reset all", GUILayout.Width(80f))) UiLayout.ResetAll();
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
+        }
+
+        /// <summary>The picked piece's text to retype ("{text}" keeps the code's), and buttons to hide it or put its text back.</summary>
+        static void DrawTextRow()
+        {
+            string id = UiLayout.LastTouched;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("<size=11>Text</size>", Rich(), GUILayout.Width(32f));
+            string now = UiLayout.TextFor(id);
+            string typed = GUILayout.TextField(now, GUILayout.MinWidth(200f));
+            if (typed != now) UiLayout.SetText(id, typed);
+            if (GUILayout.Button(new GUIContent("Original", "Put the code's text back"), GUILayout.Width(70f)))
+            {
+                GUIUtility.keyboardControl = 0;
+                UiLayout.ResetText(id);
+            }
+            bool hiddenNow = UiLayout.IsHidden(id);
+            if (GUILayout.Button(hiddenNow ? "Show" : "Hide", GUILayout.Width(56f))) UiLayout.SetHidden(id, !hiddenNow);
+            GUILayout.EndHorizontal();
         }
 
         /// <summary>Faint lines every 8 px, stronger every 32, so things can be lined up by eye too.</summary>

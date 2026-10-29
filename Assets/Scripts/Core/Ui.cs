@@ -6,13 +6,34 @@ namespace FishBreeder.Core
     /// The menus' buttons, labels, toggles and sliders. Each one lays out exactly like its
     /// GUILayout twin, then goes through <see cref="UiLayout.Item"/> under a name made from its
     /// window and text, so the menu layout editor (F7) can move and resize every piece of every
-    /// menu. The Rect versions do the same for pieces placed by hand.
+    /// menu. The Rect versions do the same for pieces placed by hand. Labels, buttons and toggles
+    /// can also be given new text or hidden in the editor (a hidden one takes no room).
     /// </summary>
     public static class Ui
     {
         static Rect Piece(string kind, string text, Rect rect) => UiLayout.Active ? UiLayout.Item(UiLayout.AutoId(kind, text), rect) : rect;
-        static Rect Piece(string kind, GUIContent content, Rect rect) => UiLayout.Active ? UiLayout.Item(UiLayout.AutoId(kind, Text(content)), rect) : rect;
+        static Rect Piece(string id, Rect rect) => id != null ? UiLayout.Item(id, rect) : rect;
         static string Text(GUIContent content) => content == null ? null : !string.IsNullOrEmpty(content.text) ? content.text : content.tooltip;
+
+        /// <summary>
+        /// Names the piece and swaps in its new text from the editor. False when it's hidden: draw
+        /// nothing (and, in a layout, take no room).
+        /// </summary>
+        static bool Prepare(string kind, ref GUIContent content, out string id)
+        {
+            id = null;
+            if (!UiLayout.Active) return true;
+            id = UiLayout.AutoId(kind, Text(content));
+            return UiLayout.Content(id, ref content);
+        }
+
+        /// <summary>Hidden pieces show faintly while the editor is open, so they can be brought back.</summary>
+        static Color Fade(string id)
+        {
+            var old = GUI.color;
+            if (id != null && UiLayout.Editing && UiLayout.IsHidden(id)) GUI.color = new Color(old.r, old.g, old.b, old.a * 0.3f);
+            return old;
+        }
 
         // ------------------------------------------------------------ labels
 
@@ -24,22 +45,47 @@ namespace FishBreeder.Core
 
         public static void Label(GUIContent content, GUIStyle style, params GUILayoutOption[] options)
         {
-            var rect = Piece("Label", content, GUILayoutUtility.GetRect(content, style, options));
+            if (!Prepare("Label", ref content, out var id)) return;
+            var rect = Piece(id, GUILayoutUtility.GetRect(content, style, options));
+            var old = Fade(id);
             GUI.Label(rect, content, style);
+            GUI.color = old;
         }
 
         /// <summary>A label whose text keeps changing (a tooltip line, a total), under a fixed name.</summary>
         public static void NamedLabel(string name, string text, GUIStyle style, params GUILayoutOption[] options)
         {
             var content = new GUIContent(text);
-            var rect = Piece(name, name, GUILayoutUtility.GetRect(content, style, options));
+            string id = null;
+            if (UiLayout.Active)
+            {
+                id = UiLayout.AutoId(name, name);
+                if (!UiLayout.Content(id, ref content)) return;
+            }
+            var rect = Piece(id, GUILayoutUtility.GetRect(content, style, options));
+            var old = Fade(id);
             GUI.Label(rect, content, style);
+            GUI.color = old;
         }
 
-        public static void Label(Rect rect, string text, GUIStyle style) => GUI.Label(Piece("Label", text, rect), text, style);
-        public static void Label(Rect rect, GUIContent content, GUIStyle style) => GUI.Label(Piece("Label", content, rect), content, style);
-        public static void Box(Rect rect, string text, GUIStyle style) => GUI.Box(Piece("Box", text, rect), text, style);
-        public static void Box(Rect rect, GUIContent content, GUIStyle style) => GUI.Box(Piece("Box", content, rect), content, style);
+        public static void Label(Rect rect, string text, GUIStyle style) => Label(rect, new GUIContent(text), style);
+        public static void Box(Rect rect, string text, GUIStyle style) => Box(rect, new GUIContent(text), style);
+
+        public static void Label(Rect rect, GUIContent content, GUIStyle style)
+        {
+            if (!Prepare("Label", ref content, out var id)) return;
+            var old = Fade(id);
+            GUI.Label(Piece(id, rect), content, style);
+            GUI.color = old;
+        }
+
+        public static void Box(Rect rect, GUIContent content, GUIStyle style)
+        {
+            if (!Prepare("Box", ref content, out var id)) return;
+            var old = Fade(id);
+            GUI.Box(Piece(id, rect), content, style);
+            GUI.color = old;
+        }
 
         // ------------------------------------------------------------ buttons
 
@@ -51,13 +97,25 @@ namespace FishBreeder.Core
 
         public static bool Button(GUIContent content, GUIStyle style, params GUILayoutOption[] options)
         {
-            var rect = Piece("Button", content, GUILayoutUtility.GetRect(content, style, options));
-            return GUI.Button(rect, content, style);
+            if (!Prepare("Button", ref content, out var id)) return false;
+            var rect = Piece(id, GUILayoutUtility.GetRect(content, style, options));
+            var old = Fade(id);
+            bool clicked = GUI.Button(rect, content, style);
+            GUI.color = old;
+            return clicked;
         }
 
-        public static bool Button(Rect rect, string text) => GUI.Button(Piece("Button", text, rect), text);
-        public static bool Button(Rect rect, string text, GUIStyle style) => GUI.Button(Piece("Button", text, rect), text, style);
-        public static bool Button(Rect rect, GUIContent content, GUIStyle style) => GUI.Button(Piece("Button", content, rect), content, style);
+        public static bool Button(Rect rect, string text) => Button(rect, new GUIContent(text), GUI.skin.button);
+        public static bool Button(Rect rect, string text, GUIStyle style) => Button(rect, new GUIContent(text), style);
+
+        public static bool Button(Rect rect, GUIContent content, GUIStyle style)
+        {
+            if (!Prepare("Button", ref content, out var id)) return false;
+            var old = Fade(id);
+            bool clicked = GUI.Button(Piece(id, rect), content, style);
+            GUI.color = old;
+            return clicked;
+        }
 
         // ------------------------------------------------------------ toggles, sliders, fields
 
@@ -67,8 +125,12 @@ namespace FishBreeder.Core
 
         public static bool Toggle(bool value, GUIContent content, GUIStyle style, params GUILayoutOption[] options)
         {
-            var rect = Piece("Toggle", content, GUILayoutUtility.GetRect(content, style, options));
-            return GUI.Toggle(rect, value, content, style);
+            if (!Prepare("Toggle", ref content, out var id)) return value;
+            var rect = Piece(id, GUILayoutUtility.GetRect(content, style, options));
+            var old = Fade(id);
+            bool now = GUI.Toggle(rect, value, content, style);
+            GUI.color = old;
+            return now;
         }
 
         static readonly GUIContent sliderSize = new GUIContent("mmmm");

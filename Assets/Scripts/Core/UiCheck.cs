@@ -56,6 +56,9 @@ namespace FishBreeder.Core
             GUILayout.BeginVertical();
         }
 
+        /// <summary>Where the window being drawn is (after any layout nudge), in its parent's space.</summary>
+        public static Rect CurrentWindow => open.Count > 0 ? open.Peek().rect : Rect.zero;
+
         public static void End()
         {
             GUILayout.EndVertical();

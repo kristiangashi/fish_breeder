@@ -315,7 +315,7 @@ namespace FishBreeder.Store
             if (size <= tank.Tank.SizeIndex || size >= sizes.Count) return "It's already this size or bigger.";
             var info = sizes[size];
             if (!Progression.IsUnlocked(XpTrack.Fishkeeping, info.unlockLevel)) return $"Needs {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}.";
-            if (tank.Tank.Quality < info.qualityNeeded) return $"Needs aquarium quality {info.qualityNeeded} (it's {tank.Tank.Quality}): add better equipment and more decorations.";
+            if (tank.Tank.Quality < info.qualityNeeded) return $"Needs aquarium level {size + 1} (quality {info.qualityNeeded}, it's {tank.Tank.Quality}).";
             if (!Economy.CanAfford(Perks.Upgrade(info.upgradePrice))) return NoMoney;
             return null;
         }

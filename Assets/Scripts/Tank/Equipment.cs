@@ -79,6 +79,20 @@ namespace FishBreeder
             return tiers[Mathf.Clamp(tier, 0, tiers.Count - 1)];
         }
 
+        /// <summary>Whether this model can go in this tank: the wall aquarium takes only the models made for it.</summary>
+        public static bool Fits(EquipmentTierBalance info, Tank tank) => info != null && tank != null && info.wallAquariumOnly == tank.IsWallAquarium;
+
+        /// <summary>The models of this kind that fit this tank, as indexes into <see cref="Tiers"/>, cheapest first.</summary>
+        public static List<int> TiersFor(EquipmentKind kind, Tank tank)
+        {
+            var result = new List<int>();
+            var tiers = Tiers(kind);
+            if (tiers == null) return result;
+            for (int i = 0; i < tiers.Count; i++)
+                if (Fits(tiers[i], tank)) result.Add(i);
+            return result;
+        }
+
         /// <summary>Fishkeeping level of the first model of this kind.</summary>
         public static int FirstLevel(EquipmentKind kind)
         {

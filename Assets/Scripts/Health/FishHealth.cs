@@ -303,6 +303,15 @@ namespace FishBreeder.Health
                 comfort += weights.plantsBonus;
                 Note(notes, Research.Knows(species, ResearchFact.Plants) ? "Loves the plants" : "Likes something about the decorations", weights.plantsBonus);
             }
+            if (species.likedDecorations != null && species.likedDecorations.Count > 0 && tank.Decor != null)
+                foreach (var id in tank.Decor.Ids)
+                    if (species.LikesDecoration(id))
+                    {
+                        comfort += weights.likedDecorComfort;
+                        var item = TankDecor.Find(id);
+                        Note(notes, Research.Knows(species, ResearchFact.Plants) ? $"Likes to stay by the {(item != null ? item.name.ToLower() : "decorations")}" : "Has a favourite spot in the tank", weights.likedDecorComfort);
+                        break;
+                    }
             if (fish.AteFavouriteRecently)
             {
                 comfort += weights.favouriteFoodComfort;
@@ -326,15 +335,26 @@ namespace FishBreeder.Health
                 string name = otherSpecies.id == species.id ? Research.Plural(species) : $"the {otherSpecies.displayName}";
                 bool known = Research.KnowsRelationship(species, otherSpecies);
                 bool otherGrown = grownUp.Contains(otherSpecies.id);
+                // How much trouble depends on how close they come: in a big enough tank they keep apart.
                 if (otherGrown && Relationships.Get(otherSpecies, species) == Relationship.Predator)
                 {
-                    comfort -= mates.predatorFear;
-                    Note(notes, known ? $"Afraid of {name}" : "Nervous of a tank mate", -mates.predatorFear);
+                    float fear = mates.predatorFear * TankMates.Strength(tank, species, otherSpecies, true);
+                    if (fear > 0.005f)
+                    {
+                        comfort -= fear;
+                        Note(notes, known ? $"Afraid of {name}" : "Nervous of a tank mate", -fear);
+                    }
+                    else Note(notes, known ? $"Keeps well away from {name} in all this room" : "Keeps out of a tank mate's way", 0f);
                 }
                 if (canFight && otherGrown && Relationships.AreCompetitive(species, otherSpecies))
                 {
-                    comfort -= mates.competitiveStress;
-                    Note(notes, known ? $"Fights with {(otherSpecies.id == species.id ? "other " + name : name)}" : "Squabbles with a tank mate", -mates.competitiveStress);
+                    float stress = mates.competitiveStress * TankMates.Strength(tank, species, otherSpecies, false);
+                    if (stress > 0.005f)
+                    {
+                        comfort -= stress;
+                        Note(notes, known ? $"Fights with {(otherSpecies.id == species.id ? "other " + name : name)}" : "Squabbles with a tank mate", -stress);
+                    }
+                    else Note(notes, known ? $"Rarely meets {(otherSpecies.id == species.id ? "other " + name : name)}: room to keep apart" : "Room to keep clear of a tank mate", 0f);
                 }
                 if (Relationships.Get(species, otherSpecies) == Relationship.Preferred && likedKinds < 2)
                 {
@@ -356,6 +376,18 @@ namespace FishBreeder.Health
             if (tank.HasPests) { comfort -= weights.pestsComfortLoss; Note(notes, "Pests in the tank", -weights.pestsComfortLoss); }
             var cramped = TankQuality.TooSmallFor(fish.MinTankSize, tank);
             if (cramped != null) { comfort -= weights.crampedComfortLoss; Note(notes, $"Cramped: {cramped.ToLower()}", -weights.crampedComfortLoss); }
+            else
+            {
+                // Big enough, but the aquarium's level has slipped below what this fish needs.
+                int needed = TankQuality.LevelNeeded(fish), quality = tank.Quality;
+                if (TankQuality.LevelFor(quality) < needed)
+                {
+                    int shortBy = TankQuality.QualityForLevel(needed) - quality;
+                    float loss = Mathf.Min(weights.lowLevelMaxLoss, weights.lowLevelComfortLoss + weights.lowLevelLossPerPoint * shortBy);
+                    comfort -= loss;
+                    Note(notes, $"Unhappy with the aquarium: needs level {needed} (quality {TankQuality.QualityForLevel(needed)}), it's {quality}", -loss);
+                }
+            }
             if (tank.Residents.Count > tank.Capacity * 0.75f) { comfort -= 0.15f; Note(notes, tank.IsOvercrowded ? "Overcrowded" : "Crowded", -0.15f); }
             if (MedicineStress > 0.01f) { comfort -= MedicineStress; Note(notes, "Upset by medicine", -MedicineStress); }
             return Mathf.Clamp01(comfort);

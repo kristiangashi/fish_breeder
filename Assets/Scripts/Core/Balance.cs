@@ -256,6 +256,8 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float maxBreakChance = 0.3f;
         [Tooltip("What a typical repair costs ($), before the fault and a bit of luck. Better models break less but cost more to fix.")]
         public int repairCost = 15;
+        [Tooltip("Made for the wall aquarium: only it can take this model, and it can only take these (ordinary models are too small for it).")]
+        public bool wallAquariumOnly;
     }
 
     /// <summary>Something that can go wrong with a filter, heater or bubbler, and how dear it is to fix.</summary>
@@ -373,7 +375,7 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
         [Tooltip("The East wing's wall aquarium: it fills the back wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 12f, height = 1.3f, depth = 2f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 12f, height = 1.95f, depth = 1.333f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("What the wall aquarium costs (a display or for sale tank).")]
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
@@ -444,8 +446,6 @@ namespace FishBreeder.Core
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
             new DecorationBalance { id = "Diver", name = "Deep-sea diver", price = 120, unlockLevel = 9, height = 0.32f },
         };
-        [Tooltip("Share of a decoration's price you get back when you take it out of a tank.")]
-        [Range(0f, 1f)] public float decorationSellBack = 0.5f;
         [Tooltip("Fishkeeping level needed for care products.")]
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
         public List<EquipmentTierBalance> filters = new List<EquipmentTierBalance>
@@ -454,6 +454,9 @@ namespace FishBreeder.Core
             new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 30 },
             new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 75 },
             new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 170 },
+            // The wall aquarium is too big for any of the above: it needs plant-room systems of its own.
+            new EquipmentTierBalance { name = "Plant-room sump", blurb = "A big sump in the room behind the wall, pumping the whole wall aquarium through its filter media.", price = 3500, unlockLevel = 8, effect = 0.18f, breakChance = 0.006f, breakChancePerStep = 0.0015f, maxBreakChance = 0.12f, repairCost = 220, wallAquariumOnly = true },
+            new EquipmentTierBalance { name = "Drum filter and UV system", blurb = "Public aquarium filtration: a self-cleaning drum filter with a UV steriliser.", price = 9000, unlockLevel = 20, effect = 0.07f, breakChance = 0.002f, breakChancePerStep = 0.0008f, maxBreakChance = 0.05f, repairCost = 450, wallAquariumOnly = true },
         };
         public List<EquipmentTierBalance> heaters = new List<EquipmentTierBalance>
         {
@@ -461,6 +464,8 @@ namespace FishBreeder.Core
             new EquipmentTierBalance { name = "Adjustable heater", blurb = "Steadier, and it lasts longer.", price = 280, unlockLevel = 6, effect = 1f, breakChance = 0.015f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 35 },
             new EquipmentTierBalance { name = "Titanium heater", blurb = "Very steady, rarely breaks.", price = 650, unlockLevel = 14, effect = 0.5f, breakChance = 0.008f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 85 },
             new EquipmentTierBalance { name = "Smart heater controller", blurb = "Holds the exact temperature.", price = 1500, unlockLevel = 26, effect = 0f, breakChance = 0.004f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 200 },
+            new EquipmentTierBalance { name = "Twin inline heaters", blurb = "Two heaters on the sump's return line, for a tank too big for any one heater.", price = 1400, unlockLevel = 8, effect = 0.8f, breakChance = 0.008f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 160, wallAquariumOnly = true },
+            new EquipmentTierBalance { name = "Heat exchanger with controller", blurb = "A titanium heat exchanger run by a controller: holds the exact temperature in all that water.", price = 4200, unlockLevel = 18, effect = 0f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.06f, repairCost = 380, wallAquariumOnly = true },
         };
         public List<EquipmentTierBalance> bubblers = new List<EquipmentTierBalance>
         {
@@ -468,6 +473,8 @@ namespace FishBreeder.Core
             new EquipmentTierBalance { name = "Twin-outlet air pump", blurb = "Air for a busy tank.", price = 220, unlockLevel = 5, effect = 22f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 20 },
             new EquipmentTierBalance { name = "Silent air pump", blurb = "Air for a crowded tank, rarely breaks.", price = 520, unlockLevel = 12, effect = 34f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 55 },
             new EquipmentTierBalance { name = "Oxygen reactor", blurb = "Air for any tank.", price = 1300, unlockLevel = 24, effect = 60f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 130 },
+            new EquipmentTierBalance { name = "Air blower and manifold", blurb = "A blower feeding air lines all along the wall aquarium.", price = 1100, unlockLevel = 8, effect = 120f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 120, wallAquariumOnly = true },
+            new EquipmentTierBalance { name = "Oxygen injection system", blurb = "Pure oxygen dissolved into the return line: air for every fish the wall aquarium can hold.", price = 3200, unlockLevel = 18, effect = 240f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.06f, repairCost = 300, wallAquariumOnly = true },
         };
         [Tooltip("Share of the equipment's wear (age) a repair takes off. Old equipment keeps breaking more often until replaced.")]
         [Range(0f, 1f)] public float repairWearRemoved = 0.25f;
@@ -605,6 +612,14 @@ namespace FishBreeder.Core
         public float favouriteFoodComfort = 0.1f;
         [Tooltip("Comfort a fish loses in a tank smaller than it wants (see each species' smallest tank).")]
         public float crampedComfortLoss = 0.35f;
+        [Tooltip("Comfort a fish loses as soon as its aquarium's level drops below the level it needs (a Large tank's fish need level 2, a Grand tank's level 3).")]
+        public float lowLevelComfortLoss = 0.1f;
+        [Tooltip("More comfort lost for each quality point the aquarium is short of the level the fish needs.")]
+        public float lowLevelLossPerPoint = 0.012f;
+        [Tooltip("Most comfort a fish can lose for its aquarium's level being too low.")]
+        public float lowLevelMaxLoss = 0.5f;
+        [Tooltip("Comfort a fish gets when the tank has a decoration it likes to stay near.")]
+        public float likedDecorComfort = 0.08f;
     }
 
     /// <summary>
@@ -722,6 +737,14 @@ namespace FishBreeder.Core
         public float preferredComfort = 0.1f;
         [Tooltip("Health gained for each kind of preferred tank mate (counted up to 2 kinds).")]
         public float preferredHealth = 0.04f;
+        [Tooltip("Fish only fight (nip, squabble) when they come within this many metres of each other.")]
+        public float fightRange = 0.45f;
+        [Tooltip("A predator only goes for prey that comes within this many metres of it.")]
+        public float huntRange = 0.7f;
+        [Tooltip("Share of the time two fish spend within range of each other at which fighting and hunting are at full strength. Less time near each other means less trouble.")]
+        [Range(0.01f, 1f)] public float fullAggressionShare = 0.3f;
+        [Tooltip("Below this share of the time near each other (a big enough tank), fish don't fight or hunt at all, and don't fear each other.")]
+        [Range(0f, 1f)] public float calmShare = 0.06f;
         [Tooltip("Wounds heal by this much per time step (wounds run 0..1).")]
         public float injuryHealPerStep = 0.1f;
         [Tooltip("Health a fish loses at full wounds.")]
@@ -799,7 +822,7 @@ namespace FishBreeder.Core
         /// 7: wild tetras and the wild tetra egg box (opens after raising 50 neons or tiger barbs).
         /// 8: where each species' body starts to wiggle (bendStart), set on the console's Swimming tab.
         /// </summary>
-        public const int CurrentDataVersion = 8;
+        public const int CurrentDataVersion = 9;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1028,6 +1051,26 @@ namespace FishBreeder.Core
             if (fromVersion < 8)
                 foreach (var s in data.species)
                     if (s != null) s.bendStart = Species.DefaultBendStart(s.id);
+            if (fromVersion < 9)
+            {
+                // Wall aquarium equipment, which decorations each fish likes, and who roams.
+                var fresh = new SupplierBalance();
+                if (data.supplier != null)
+                {
+                    AddWallTiers(data.supplier.filters, fresh.filters);
+                    AddWallTiers(data.supplier.heaters, fresh.heaters);
+                    AddWallTiers(data.supplier.bubblers, fresh.bubblers);
+                }
+                var defaults = new Dictionary<string, Species>();
+                foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
+                foreach (var s in data.species)
+                    if (s != null && s.id != null && defaults.TryGetValue(s.id, out var d))
+                    {
+                        s.likedDecorations = new List<string>(d.likedDecorations);
+                        s.roams = d.roams;
+                    }
+                if (data.store != null) data.store.wallAquarium = new StoreBalance().wallAquarium;
+            }
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1035,6 +1078,12 @@ namespace FishBreeder.Core
         {
             foreach (var s in data.species) if (s != null && s.id == id) return s.onlyInBox == Species.WildTetraBox;
             return false;
+        }
+
+        static void AddWallTiers(List<EquipmentTierBalance> saved, List<EquipmentTierBalance> defaults)
+        {
+            if (saved == null || defaults == null || saved.Exists(t => t != null && t.wallAquariumOnly)) return;
+            foreach (var tier in defaults) if (tier.wallAquariumOnly) saved.Add(tier);
         }
 
         static void CopyRepairCosts(List<EquipmentTierBalance> saved, List<EquipmentTierBalance> defaults)

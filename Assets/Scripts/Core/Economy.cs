@@ -31,6 +31,7 @@ namespace FishBreeder.Core
             Reputation = Balance.Data.shop.startingReputation;
             food.Clear();
             ledger.Clear();
+            Inventory.Reset();
             if (store.starterFlakeFeedings > 0) AddFood(FoodType.Flakes, store.starterFlakeFeedings);
         }
 

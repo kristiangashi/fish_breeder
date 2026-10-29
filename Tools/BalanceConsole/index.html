@@ -191,6 +191,17 @@ const META = {
   hungerToleranceDays: ["Days before starving", "One day is two time steps (shop open + close)."],
   favoriteFoods: ["Favourite foods", "More filling and a small comfort boost. Players discover them by feeding; fish still eat any food."],
   likesPlants: ["Likes plants", "Comfort bonus in planted tanks."],
+  likedDecorations: ["Favourite decorations", "It stays close to these when they're in its tank (pottering and inspecting near them) and gets a small comfort boost."],
+  roams: ["Roams", "Swims long laps round the whole tank instead of keeping near decorations."],
+  wallAquariumOnly: ["Wall aquarium only", "Only fits the wall aquarium, and the wall aquarium only takes models with this ticked. Lets the big tank have its own, more serious gear."],
+  fightRange: ["Fight range", "How close (m) two fish that fight have to be to actually fight. In a big tank they can stay out of each other's way."],
+  huntRange: ["Hunt range", "How close (m) a predator has to get to prey to hunt it."],
+  fullAggressionShare: ["Full aggression share", "Share of the time two fish spend within range at which fights, nipping and hunting happen at the full chance. Less time near each other scales them down."],
+  calmShare: ["Calm share", "Share of the time within range at or below which two fish never fight or hunt each other."],
+  lowLevelComfortLoss: ["Low level comfort loss", "Comfort a fish loses when its aquarium's level is below what it needs (for example after decorations or gear were taken out)."],
+  lowLevelLossPerPoint: ["Loss per quality point short", "Extra comfort lost for every quality point the aquarium is short of the level the fish needs."],
+  lowLevelMaxLoss: ["Most low level loss", "The most comfort an aquarium that's too low a level can take away."],
+  likedDecorComfort: ["Favourite decoration comfort", "Comfort bonus when one of a fish's favourite decorations is in its tank."],
   schoolSize: ["School size", "Stressed with fewer of its own kind than this (0 = fine alone)."],
   daysToAdult: ["Days to adult", ""], lifespanDays: ["Lifespan (days)", "After this, old age slowly lowers health."],
   litterMin: ["Litter / clutch min", ""], litterMax: ["Litter / clutch max", ""],
@@ -373,6 +384,7 @@ const SPECIES_GROUPS = [
   ["Identity", ["id", "displayName", "scientificName", "family", "category", "reproduction", "rarity", "unlockLevel"]],
   ["Money", ["baseValue", "fryPrice"]],
   ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "likesPlants", "schoolSize", "minTankSize"]],
+  ["Habits", ["likedDecorations", "roams"]],
   ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
   ["Body and swimming", ["minLength", "maxLength", "speed", "depthMin", "depthMax", "style", "bendStart"]],
@@ -534,8 +546,24 @@ function foodChecks(obj, key) {
   return el("div", { class: "field", title: help(key) }, el("span", {}, nice(key)), el("div", { class: "foods" }, boxes));
 }
 
+/** A species' favourite decorations as ticks, one per decoration the supplier sells. */
+function decorChecks(obj, key) {
+  obj[key] = obj[key] || [];
+  const boxes = (data.supplier.decorations || []).map((d) => {
+    const box = el("input", { type: "checkbox", onchange: (e) => {
+      obj[key] = obj[key].filter((id) => id !== d.id);
+      if (e.target.checked) obj[key].push(d.id);
+      markDirty();
+    } });
+    box.checked = obj[key].includes(d.id);
+    return el("label", { class: "check" }, box, d.name || d.id);
+  });
+  return el("div", { class: "field", title: help(key) }, el("span", {}, nice(key)), el("div", { class: "foods" }, boxes));
+}
+
 function field(obj, key, onChange) {
   if (key === "favoriteFoods") return foodChecks(obj, key);
+  if (key === "likedDecorations") return decorChecks(obj, key);
   const control = input(obj, key, onChange);
   const pin = pinButton(obj, key);
   if (control.type === "checkbox") return el("label", { class: "field check", title: help(key) }, control, nice(key), pin);
@@ -623,8 +651,9 @@ function renderSpecies() {
     } }, "Delete"));
 
   const s = species[selectedSpecies];
+  if (typeof s.roams !== "boolean") s.roams = false;
   const form = el("div", {}, SPECIES_GROUPS.map(([title, keys]) =>
-    el("div", { class: "card" }, el("h2", {}, title), el("div", { class: "grid" }, keys.filter((k) => k in s).map((k) => field(s, k))))));
+    el("div", { class: "card" }, el("h2", {}, title), el("div", { class: "grid" }, keys.filter((k) => k in s || k === "likedDecorations" || k === "roams").map((k) => field(s, k))))));
   const note = el("p", { class: "hint" }, "Tank mates it doesn't get on with are set on the Relationships tab, and which species it can breed with on the Cross-breeding tab. New species need a Meshy model to look right; without one they use a placeholder body.");
 
   return [overview, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
@@ -1156,7 +1185,7 @@ function simulate(setup, B, seed) {
     const capacity = Math.max(1, Math.round(size.capacity));
     const eq = (list, tier, kind) => (tier >= 0 && list && list[tier] ? { info: list[tier], kind, wear: 0, broken: false } : null);
     const t = {
-      cfg, index, capacity, hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
+      cfg, index, capacity, volume: Math.max(0.01, (size.width || 1.6) * (size.height || 0.9) * (size.depth || 0.7)), hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
       wq: 1, algae: 0, temp: rules.roomTemperature, ph: cfg.salt ? 8.1 : rules.startingPh, salinity: cfg.salt ? 35 : 0, pests: false,
       filter: eq(sup.filters, cfg.filter, 0), heater: eq(sup.heaters, cfg.heater, 1), bubbler: eq(sup.bubblers, cfg.bubbler, 2),
       residents: [], corpses: 0, clutches: [], wipesLeft: wipesPerSession, decor: Math.max(0, Math.min(cfg.decorations, size.decorationSlots || 99)),
@@ -1194,6 +1223,13 @@ function simulate(setup, B, seed) {
   const infectionMultiplier = (t) => lerp(rules.dirtyWaterInfectionMultiplier, 1, t.wq) * (t.pests ? 1.3 : 1) * (1 + overLimit(t) * ts.overcrowdedIllnessPerFish);
   const eggsIn = (t) => t.clutches.reduce((n, c) => n + c.genes.length, 0);
   const hasPlants = (t) => t.cfg.plants && t.decor > 0;
+  // Fish only fight or hunt when they meet: in a big tank they spend less time within range.
+  const strength = (t, hunting) => {
+    const r = hunting ? mates.huntRange ?? 0.7 : mates.fightRange ?? 0.45;
+    const share = clamp01((4 / 3) * Math.PI * r * r * r / t.volume);
+    const calm = mates.calmShare ?? 0.06, full = Math.max(calm + 0.001, mates.fullAggressionShare ?? 0.3);
+    return share <= calm ? 0 : clamp01((share - calm) / (full - calm));
+  };
 
   const envMismatch = (s, t) => {
     const temp = outsideBy(t.temp, s.tempMin, s.tempMax) * hb.tempPenaltyPerDegree;
@@ -1215,8 +1251,8 @@ function simulate(setup, B, seed) {
       if (seen.has(o.sp)) continue;
       seen.add(o.sp);
       const otherGrown = grown.has(o.sp);
-      if (otherGrown && relation(o.sp, f.sp) === 1) c -= mates.predatorFear;
-      if (canFight && otherGrown && competitive(f.sp, o.sp)) c -= mates.competitiveStress;
+      if (otherGrown && relation(o.sp, f.sp) === 1) c -= mates.predatorFear * strength(t, true);
+      if (canFight && otherGrown && competitive(f.sp, o.sp)) c -= mates.competitiveStress * strength(t, false);
       if (relation(f.sp, o.sp) === 3 && liked < 2) { liked++; c += mates.preferredComfort; }
     }
     if (f.s.schoolSize > 0 && sameKind + 1 < f.s.schoolSize) c -= hb.tooFewSchoolmates;
@@ -1548,19 +1584,21 @@ function simulate(setup, B, seed) {
     }
 
     for (const t of tanks) {
+      const hunt = strength(t, true), fight = strength(t, false);
       for (const hunter of [...t.residents]) {
         if (hunter.dead || stage(hunter) !== 2) continue;
         const prey = t.residents.filter((o) => o !== hunter && relation(hunter.sp, o.sp) === 1);
         if (!prey.length) continue;
         const target = pick(prey);
-        if (bodyLength(target) <= bodyLength(hunter) * mates.preyMaxSizeRatio && chance(mates.eatChance)) killFish(t, target, "eaten by a tank mate", false);
-        else if (chance(mates.biteChance)) target.injury = clamp01(target.injury + mates.biteInjury);
+        if (hunt <= 0) continue;
+        if (bodyLength(target) <= bodyLength(hunter) * mates.preyMaxSizeRatio && chance(mates.eatChance * hunt)) killFish(t, target, "eaten by a tank mate", false);
+        else if (chance(mates.biteChance * hunt)) target.injury = clamp01(target.injury + mates.biteInjury);
       }
       if (alive(t) <= t.capacity * mates.crowdedAbove) continue;
       for (const victim of [...t.residents]) {
         if (stage(victim) !== 2) continue;
         const nippers = t.residents.filter((o) => o !== victim && stage(o) === 2 && competitive(victim.sp, o.sp));
-        if (nippers.length && chance(mates.nipChance)) victim.injury = clamp01(victim.injury + mates.nipInjury);
+        if (nippers.length && fight > 0 && chance(mates.nipChance * fight)) victim.injury = clamp01(victim.injury + mates.nipInjury);
       }
     }
   };
@@ -1676,7 +1714,8 @@ function simInput(obj, key, opts = {}) {
   return el("label", { class: "field", title: opts.help || "" }, el("span", {}, opts.label), control);
 }
 
-const tierOptions = (list) => [[-1, "None"], ...(list || []).map((t, i) => [i, `${t.name} ($${t.price})`])];
+// The simulator's tanks are the normal sizes, so the wall aquarium's own gear is left out.
+const tierOptions = (list) => [[-1, "None"], ...(list || []).map((t, i) => [i, t]).filter(([, t]) => !t.wallAquariumOnly).map(([i, t]) => [i, `${t.name} ($${t.price})`])];
 
 function simTankCard(cfg, index, setup) {
   const sp = data.species;

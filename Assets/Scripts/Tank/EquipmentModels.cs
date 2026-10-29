@@ -23,9 +23,10 @@ namespace FishBreeder
         /// </summary>
         static readonly int[][] DesignForTier =
         {
-            new[] { 0, 1, 1, 2 }, // sponge; hang-on-back and canister share the two-tray filter; the smart filter for the sump
-            new[] { 0, 1, 2, 2 }, // basic, adjustable, titanium; the smart controller is the titanium tube plus its box
-            new[] { 0, 1, 1, 2 }, // air stone; the long stone for both air pumps; oxygen reactor
+            // The last two of each are the wall aquarium's own models: they use the best design until they get their own.
+            new[] { 0, 1, 1, 2, 2, 2 }, // sponge; hang-on-back and canister share the two-tray filter; the smart filter for the sump
+            new[] { 0, 1, 2, 2, 2, 2 }, // basic, adjustable, titanium; the smart controller is the titanium tube plus its box
+            new[] { 0, 1, 1, 2, 2, 2 }, // air stone; the long stone for both air pumps; oxygen reactor
         };
 
         /// <summary>Longest side of each design in a Standard tank (metres; scaled with the tank's height).</summary>
@@ -46,7 +47,7 @@ namespace FishBreeder
         }
 
         /// <summary>The smart heater controller's box goes on the outside of the tank.</summary>
-        public static bool HasController(EquipmentKind kind, int tier) => kind == EquipmentKind.Heater && tier >= 3;
+        public static bool HasController(EquipmentKind kind, int tier) => kind == EquipmentKind.Heater && (tier == 3 || tier == 5);
 
         public static float Size(string design) => Sizes.TryGetValue(design, out var size) ? size : 0.2f;
 

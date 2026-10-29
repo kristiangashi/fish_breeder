@@ -26,9 +26,9 @@ namespace FishBreeder.Store
         static readonly Vector3 StoreViewDirection = new Vector3(0f, 0.62f, -0.78f).normalized;
         static readonly Color StoreBackground = new Color(0.42f, 0.78f, 0.86f);
 #if UNITY_EDITOR
-        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment and care", "Any fish (dev)" };
+        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment", "Any fish (dev)" };
 #else
-        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment and care" };
+        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment" };
 #endif
         const int EggsTab = 0, FryTab = 1, DecorTab = 2, FoodTab = 3, EquipmentTab = 4, DevFryTab = 5;
         // The fish seller sells the fish; the supplier computer everything else.
@@ -37,7 +37,8 @@ namespace FishBreeder.Store
 #else
         static readonly int[] FishSellerTabs = { EggsTab, FryTab };
 #endif
-        static readonly int[] ComputerTabs = { DecorTab, FoodTab, EquipmentTab };
+        // Equipment is bought from each aquarium's Upgrades tab, since what fits depends on the tank.
+        static readonly int[] ComputerTabs = { DecorTab, FoodTab };
         static readonly float[] Speeds = { 1f, 5f, 20f };
 
         StoreLayout store;
@@ -1394,12 +1395,12 @@ namespace FishBreeder.Store
             int shown = Mathf.Max(0, System.Array.IndexOf(tabs, supplierTab));
             shown = Mathf.Clamp(Ui.Toolbar(shown, tabNames), 0, tabs.Length - 1);
             supplierTab = tabs[shown];
-            Ui.Label(atFishSeller ? "<size=11><i>Food, decorations and equipment are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall.</i></size>", Rich());
+            Ui.Label(atFishSeller ? "<size=11><i>Food and decorations are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall. Equipment is bought from each aquarium's Upgrades tab.</i></size>", Rich());
             if (atFishSeller && FishSeller.Away)
                 Ui.Label($"<color={UiTheme.SunHex}>The fish seller has gone home for the night. He's back in the morning.</color>", Rich());
             GUILayout.Space(2f);
 
-            if (supplierTab != FoodTab) DrawDeliverTo();
+            if (supplierTab == EggsTab || supplierTab == FryTab || supplierTab == DevFryTab) DrawDeliverTo();
 
             supplierScroll = UiCheck.BeginScroll($"{id}: {SupplierTabs[supplierTab]}", supplierScroll);
             switch (supplierTab)
@@ -1408,7 +1409,6 @@ namespace FishBreeder.Store
                 case FryTab: DrawEggOffers(true); break;
                 case DecorTab: DrawDecorationOffers(); break;
                 case FoodTab: DrawFoodOffers(); break;
-                case EquipmentTab: DrawEquipmentOffers(); break;
                 default: DrawDevFryOffers(); break;
             }
             UiCheck.EndScroll();
@@ -1420,17 +1420,14 @@ namespace FishBreeder.Store
         void DrawDeliverTo()
         {
             if (orderTarget == null && store.Tanks.Count > 0) orderTarget = store.Tanks[0];
-            bool fish = supplierTab == EggsTab || supplierTab == FryTab || supplierTab == DevFryTab;
-            Ui.Label(fish ? "Deliver to:" : supplierTab == DecorTab ? "Put in:" : "Install in:");
+            Ui.Label("Deliver to:");
             var tanks = store.Tanks;
             var names = new string[tanks.Count];
             int current = 0;
             for (int i = 0; i < tanks.Count; i++)
             {
                 var tank = tanks[i].Tank;
-                names[i] = fish ? $"{tanks[i].Title} ({FreeSpace(tanks[i])} free)"
-                    : supplierTab == DecorTab ? $"{tanks[i].Title} ({tank.DecorCount}/{tank.Decor.Capacity})"
-                    : tanks[i].Title;
+                names[i] = $"{tanks[i].Title} ({FreeSpace(tanks[i])} free)";
                 if (tanks[i] == orderTarget) current = i;
             }
             current = Ui.SelectionGrid(current, names, 3);
@@ -1590,59 +1587,62 @@ namespace FishBreeder.Store
             GameLog.Add($"{tier.eggs} {EggBoxes.FryName(tier).ToLower()} delivered to {orderTarget.Title}. You'll see what they are when they grow.");
         }
 
+        /// <summary>
+        /// Decorations and background pictures go into your stock when bought, not straight into a
+        /// tank: put them in (and take them out again) from each aquarium's Tank tab.
+        /// </summary>
         void DrawDecorationOffers()
         {
-            Ui.Label("<i>Decorations draw more customers and make fish comfortable (most like 3 to 10 per tank), but too many speed up algae. Plants count as plants for fish that love them.</i>", Rich());
-            var tank = orderTarget != null ? orderTarget.Tank : null;
+            Ui.Label("<i>Bought decorations wait in your stock until you put them in an aquarium (its Tank tab), so you can buy a few and share them out. Decorations draw more customers and make fish comfortable (most like 3 to 10 per tank), but too many speed up algae. Some fish like certain decorations and stay close to them.</i>", Rich());
+            var quality = Balance.Data.quality;
             foreach (var item in SupplierCatalog.Decorations)
             {
-                int inTank = 0;
-                if (tank != null) foreach (var id in tank.Decor.Ids) if (id == item.id) inTank++;
-                var quality = Balance.Data.quality;
-                float points = quality.decorationPoints + (item.plant ? quality.plantPoints : 0f) + (inTank == 0 ? quality.varietyPoints : 0f);
-                string details = (item.plant ? "Plant. " : "") + (item.back ? "Goes along the back." : "Goes near the front.") + $"  Quality +{points:0}." + (inTank > 0 ? $"  {inTank} in this tank." : "");
-                bool full = tank == null || tank.Decor.IsFull;
+                int have = Inventory.Decorations(item.id), placed = PlacedCount(item.id);
+                float points = quality.decorationPoints + (item.plant ? quality.plantPoints : 0f);
+                string details = (item.plant ? "Plant. " : "") + (item.back ? "Goes along the back." : "Goes near the front.") + $"  Quality +{points:0} (+{quality.varietyPoints:0} if it's a new kind for the tank)."
+                                 + $"\nYou have <b>{have}</b> in stock" + (placed > 0 ? $", {placed} in aquariums." : ".");
                 int price = Perks.Decoration(item.price);
-                string label = full ? "No room in this tank" : $"Add  {Economy.Format(price)}";
-                if (OfferRow(ItemPreviews.Decoration(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, label, !full && Economy.CanAfford(price))
-                    && Economy.TrySpend(price, $"a {item.name.ToLower()} for {orderTarget.Title}", MoneyKind.Decorations))
+                if (OfferRow(ItemPreviews.Decoration(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, $"Buy  {Economy.Format(price)}", Economy.CanAfford(price))
+                    && Economy.TrySpend(price, $"a {item.name.ToLower()}", MoneyKind.Decorations))
                 {
-                    if (tank.Decor.Add(item.id))
-                    {
-                        GameLog.Add($"Added a {item.name.ToLower()} to {orderTarget.Title}.");
-                        Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
-                        Progression.Count(GoalKind.BuyDecorations);
-                    }
-                    else Economy.Earn(price, "refund: no room for a decoration", MoneyKind.Refunds);
+                    Inventory.AddDecoration(item.id);
+                    GameLog.Add($"Bought a {item.name.ToLower()}. It's in your stock: put it in an aquarium from its Tank tab.");
+                    Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
+                    Progression.Count(GoalKind.BuyDecorations);
                 }
             }
-            DrawBackgroundOffers(tank);
+            DrawBackgroundOffers();
         }
 
-        /// <summary>Pictures for the back glass: one per tank, bought for the tank chosen above.</summary>
-        void DrawBackgroundOffers(Tank tank)
+        int PlacedCount(string decorationId)
+        {
+            int count = 0;
+            foreach (var tank in store.Tanks)
+                foreach (var id in tank.Tank.Decor.Ids)
+                    if (id == decorationId) count++;
+            return count;
+        }
+
+        /// <summary>Pictures for the back glass, bought into your stock like decorations; each one goes up in one tank.</summary>
+        void DrawBackgroundOffers()
         {
             GUILayout.Space(6f);
             Ui.Label("<b>Backgrounds</b>", Rich());
-            Ui.Label($"<i>A picture for the back glass of this tank. A tank shows one at a time; a new one replaces the old. Quality +{Balance.Data.quality.backgroundPoints:0}.</i>", Rich());
+            Ui.Label($"<i>A picture for the back glass. Put it up from an aquarium's Tank tab; a tank shows one at a time. Quality +{Balance.Data.quality.backgroundPoints:0}.</i>", Rich());
             foreach (var item in TankBackgrounds.All)
             {
                 if (item == null) continue;
-                bool onTank = tank != null && tank.BackgroundId == item.id;
+                int have = Inventory.Backgrounds(item.id), up = 0;
+                foreach (var tank in store.Tanks) if (tank.Tank.BackgroundId == item.id) up++;
                 int price = Perks.Decoration(item.price);
-                string label = tank == null ? "Pick a tank" : onTank ? "On this tank" : $"Put up  {Economy.Format(price)}";
-                if (OfferRow(TankBackgrounds.Texture(item.id), item.name, item.blurb, XpTrack.Shopkeeping, item.unlockLevel, label, tank != null && !onTank && Economy.CanAfford(price))
-                    && Economy.TrySpend(price, $"the {item.name.ToLower()} background for {orderTarget.Title}", MoneyKind.Decorations))
+                string details = item.blurb + $"\nYou have <b>{have}</b> in stock" + (up > 0 ? $", {up} up in aquariums." : ".");
+                if (OfferRow(TankBackgrounds.Texture(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, $"Buy  {Economy.Format(price)}", Economy.CanAfford(price))
+                    && Economy.TrySpend(price, $"the {item.name.ToLower()} background", MoneyKind.Decorations))
                 {
-                    tank.SetBackground(item.id);
-                    GameLog.Add($"Put the {item.name.ToLower()} background on {orderTarget.Title}.");
+                    Inventory.AddBackground(item.id);
+                    GameLog.Add($"Bought the {item.name.ToLower()} background. Put it up from an aquarium's Tank tab.");
                     Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyDecoration);
                 }
-            }
-            if (tank != null && TankBackgrounds.Find(tank.BackgroundId) != null && Ui.Button("Take the background down (plain glass)"))
-            {
-                tank.SetBackground("");
-                GameLog.Add($"Took the background down in {orderTarget.Title}.");
             }
         }
 
@@ -1661,54 +1661,6 @@ namespace FishBreeder.Store
                     GameLog.Add($"Bought {offer.name.ToLower()}: {offer.feedings} more feedings.");
                 }
             }
-        }
-
-        void DrawEquipmentOffers()
-        {
-            var supplier = SupplierCatalog.Equipment;
-            var tank = orderTarget != null ? orderTarget.Tank : null;
-            string where = orderTarget != null ? orderTarget.Title : "a tank";
-            Ui.Label("<b>Equipment</b>  <size=11>Equipment wears out: the longer it runs, the likelier it breaks down at a time step. A broken one does nothing until you pay to repair it from the tank's Care tab. Better models work better and break less, but cost more to fix. (Water treatment is bought right from the Care tab too.)</size>", Rich());
-            EquipmentSection(EquipmentKind.Filter, ItemPreviews.Icon.Filter, "Filters", "Cuts how fast waste dirties the water.", tank, where,
-                info => $"Leaves {info.effect * 100f:0}% of the waste");
-            EquipmentSection(EquipmentKind.Heater, ItemPreviews.Icon.Heater, "Heaters", $"Holds the water at the temperature you set in the tank view. Without one the water is room temperature ({GameConfig.Active.roomTemperature:0} C).", tank, where,
-                info => info.effect > 0.05f ? $"Holds the setting within {info.effect:0.#} C" : "Holds the exact setting");
-            EquipmentSection(EquipmentKind.Bubbler, ItemPreviews.Icon.Bubbler, "Bubblers", $"Air for the fish. Without one, a tank has air for {GameConfig.Active.fishPerTankWithoutBubbler} fish.", tank, where,
-                info => $"Air for {info.effect:0} fish");
-        }
-
-        /// <summary>All the models of one kind of equipment, and what the chosen tank has now.</summary>
-        void EquipmentSection(EquipmentKind kind, ItemPreviews.Icon icon, string title, string blurb, Tank tank, string where, System.Func<EquipmentTierBalance, string> effect)
-        {
-            var installed = tank != null ? tank.GetEquipment(kind) : null;
-            string now = installed == null ? "none"
-                : installed.broken ? $"{installed.Name} <color=#ff8080>(broken)</color>"
-                : $"{installed.Name} ({installed.BreakChance * 100f:0}% chance of breaking per time step)";
-            Ui.Label($"<b>{title}</b>  <size=11>{blurb} {where}: {now}</size>", Rich());
-            var tiers = Equipment.Tiers(kind);
-            for (int i = 0; i < tiers.Count; i++)
-            {
-                var info = tiers[i];
-                int tier = i;
-                bool same = installed != null && installed.tier == i;
-                int price = Perks.Supplier(info.price);
-                string label = installed == null ? $"Install  {Economy.Format(price)}"
-                    : same ? $"Replace with new  {Economy.Format(price)}"
-                    : $"Swap to this  {Economy.Format(price)}";
-                var quality = Balance.Data.quality;
-                string details = $"{info.blurb} {effect(info)}. Breaks {info.breakChance * 100f:0.#}% of time steps when new, up to {info.maxBreakChance * 100f:0}% when old. Quality {quality.equipmentPoints + quality.pointsPerEquipmentTier * i:0}.";
-                var tint = Color.Lerp(new Color(0.55f, 0.6f, 0.68f), new Color(0.95f, 0.8f, 0.35f), tiers.Count > 1 ? i / (float)(tiers.Count - 1) : 0f);
-                if (OfferRow(ItemPreviews.Equipment(kind, i) ?? ItemPreviews.Filler(icon, tint), info.name, details, XpTrack.Fishkeeping, info.unlockLevel, label,
-                        tank != null && Economy.CanAfford(price), 56f)
-                    && Economy.TrySpend(price, $"a {info.name.ToLower()} for {where}", MoneyKind.Equipment))
-                {
-                    tank.Install(kind, tier);
-                    Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyEquipment);
-                    Milestones.Add(MilestoneKind.BuyEquipment);
-                    GameLog.Add($"{info.name} installed in {where}.");
-                }
-            }
-            GUILayout.Space(6f);
         }
 
         /// <summary>Developer list: any species as a single fry, ignoring levels, for testing.</summary>

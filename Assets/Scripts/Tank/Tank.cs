@@ -673,9 +673,9 @@ namespace FishBreeder
         }
 
         /// <summary>Bubbles from each bubbler model, by tier: better ones bubble more.</summary>
-        static readonly int[] BubblesForTier = { 8, 14, 20, 26 };
+        static readonly int[] BubblesForTier = { 8, 14, 20, 26, 40, 56 };
         /// <summary>Outlets along the long air stone, by tier (the better pump pushes air out of more of it).</summary>
-        static readonly int[] OutletsAlongForTier = { 1, 5, 7, 1 };
+        static readonly int[] OutletsAlongForTier = { 1, 5, 7, 1, 1, 1 };
 
         /// <summary>
         /// The bubbler on the sand towards the back on the left. Bubbles rise from its outlets: the

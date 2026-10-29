@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FishBreeder.Core;
 using FishBreeder.Feeding;
 using FishBreeder.Genetics;
@@ -14,6 +15,9 @@ namespace FishBreeder
     /// Speeds are in body lengths per second, so small and big fish both look right.
     /// Each species keeps to its own depth band and pace (see <see cref="Species"/>). Schooling
     /// species swim as a loose school once there are enough of them in the tank (<see cref="FishSchool"/>).
+    /// Fish that like certain decorations (<see cref="Species.likedDecorations"/>) keep near them:
+    /// their trips start and end by a favourite plant or rock and they seldom lap the tank. Roamers
+    /// (<see cref="Species.roams"/>) do the opposite, taking long trips all over the tank.
     ///
     /// Bottom dwellers (corydoras) follow what they do in real tanks instead: they move over the
     /// sand in short hops (a quick burst of tail beats, then a glide), stop to root nose-down in
@@ -400,11 +404,56 @@ namespace FishBreeder
         {
             // After a trip, usually pause a moment; after a pause, usually potter on.
             float roll = GameRandom.Value;
+            var species = Owner.Phenotype.species;
+            if (species.roams)
+            {
+                // Roamers rarely stop and often take a long lap.
+                if (activity != Activity.Hover && roll < 0.3f) StartActivity(Activity.Hover, bodyLength);
+                else if (roll < 0.55f) StartActivity(Activity.Potter, bodyLength);
+                else if (roll < 0.65f) StartActivity(Activity.Inspect, bodyLength);
+                else StartActivity(Activity.Cruise, bodyLength);
+                return;
+            }
+            bool home = LikedPieces().Count > 0;
             if (activity != Activity.Hover && roll < 0.55f) StartActivity(Activity.Hover, bodyLength);
             else if (roll < 0.2f) StartActivity(Activity.Hover, bodyLength);
-            else if (roll < 0.65f) StartActivity(Activity.Potter, bodyLength);
-            else if (roll < 0.9f) StartActivity(Activity.Inspect, bodyLength);
+            else if (roll < (home ? 0.55f : 0.65f)) StartActivity(Activity.Potter, bodyLength);
+            else if (roll < (home ? 0.97f : 0.9f)) StartActivity(Activity.Inspect, bodyLength);
             else StartActivity(Activity.Cruise, bodyLength);
+        }
+
+        /// <summary>Indexes of the decorations in this fish's tank that its kind likes to stay near.</summary>
+        List<int> LikedPieces()
+        {
+            liked.Clear();
+            var species = Owner.Phenotype.species;
+            var decor = Owner.Tank != null ? Owner.Tank.Decor : null;
+            if (decor == null || species.likedDecorations == null || species.likedDecorations.Count == 0) return liked;
+            var ids = decor.Ids;
+            for (int i = 0; i < ids.Count; i++)
+                if (species.LikesDecoration(ids[i])) liked.Add(i);
+            return liked;
+        }
+
+        readonly List<int> liked = new List<int>();
+
+        /// <summary>A free spot close beside one of the decorations it likes, at its own depth, or null.</summary>
+        Vector3? NearLikedPiece(float bodyLength, float margin, float minLengths, float maxLengths)
+        {
+            var pieces = LikedPieces();
+            if (pieces.Count == 0) return null;
+            var tank = Owner.Tank;
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                var b = tank.Decor.BoundsAt(pieces[GameRandom.Range(0, pieces.Count)]);
+                if (b.size == Vector3.zero) continue;
+                var around = Quaternion.Euler(0f, GameRandom.Range(0f, 360f), 0f) * Vector3.forward;
+                var point = b.center + around * (new Vector2(b.extents.x, b.extents.z).magnitude + bodyLength * GameRandom.Range(minLengths, maxLengths));
+                point.y = GameRandom.Range(b.min.y + bodyLength * 0.5f, Mathf.Max(b.min.y + bodyLength * 0.5f, b.max.y + bodyLength));
+                point = InDepthBand(tank.Clamp(point, margin), bodyLength);
+                if (!Tank.OverlapsObstacle(point, margin * 0.5f)) return point;
+            }
+            return null;
         }
 
         void StartActivity(Activity next, float bodyLength)
@@ -454,13 +503,16 @@ namespace FishBreeder
                 case Activity.Potter:
                     activitySpeed = potterSpeed * GameRandom.Range(0.8f, 1.2f);
                     activityTimeLeft = 8f;
-                    target = NearbyPoint(position, bodyLength, 1.5f, 4.5f, margin);
+                    var species = Owner.Phenotype.species;
+                    // Homebodies potter about their favourite spot; roamers potter further afield.
+                    var home = GameRandom.Chance(0.75f) ? NearLikedPiece(bodyLength, margin, 0.5f, 2.5f) : null;
+                    target = home ?? NearbyPoint(position, bodyLength, species.roams ? 3f : 1.5f, species.roams ? 8f : 4.5f, margin);
                     break;
 
                 case Activity.Inspect:
                     activitySpeed = potterSpeed * 0.8f;
                     activityTimeLeft = 10f;
-                    target = InspectPoint(position, bodyLength, margin);
+                    target = (GameRandom.Chance(0.85f) ? NearLikedPiece(bodyLength, margin, 0.3f, 1.2f) : null) ?? InspectPoint(position, bodyLength, margin);
                     break;
 
                 default:

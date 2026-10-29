@@ -86,6 +86,10 @@ namespace FishBreeder.Genetics
         public int schoolSize;
         /// <summary>Smallest tank it will live in, as an index into the tank sizes (0 = any tank, 1 = Large, 2 = Grand).</summary>
         public int minTankSize;
+        /// <summary>Decoration ids it likes to stay close to (hiding in plants, sheltering by rocks), and is a little happier for.</summary>
+        public List<string> likedDecorations = new List<string>();
+        /// <summary>Roams the whole tank rather than keeping near decorations: longer trips, fewer stops to nose around.</summary>
+        public bool roams;
 
         // Life
         public float daysToAdult = 4f;
@@ -190,6 +194,39 @@ namespace FishBreeder.Genetics
         /// dollars, territorial sharks and cichlids want a Large tank, and the oscar (which grows
         /// huge and messy) a Grand one.
         /// </summary>
+        /// <summary>
+        /// Who keeps close to what, from how the real fish live: tetras and bettas shelter among
+        /// plants, cichlids and sharks claim a rock or root, corydoras rest under driftwood. Active
+        /// open-water swimmers (danios, barbs, silver dollars, goldfish) roam instead.
+        /// </summary>
+        static readonly Dictionary<string, string[]> LikedDecorations = new Dictionary<string, string[]>
+        {
+            { "Angelfish", new[] { "TallPlant", "Plant" } }, { "Betta", new[] { "Plant", "FernRock" } }, { "Clownfish", new[] { "Seaweed", "Clam" } },
+            { "NeonTetra", new[] { "Plant", "TallPlant" } }, { "Corydoras", new[] { "Driftwood" } }, { "RedTailShark", new[] { "Rock", "Driftwood" } },
+            { "SiameseAlgaeEater", new[] { "Driftwood", "Rock" } }, { "Platy", new[] { "Plant", "Seaweed" } }, { "Oscar", new[] { "Rock" } },
+            { "GreenTerror", new[] { "Rock" } }, { "BlueAcara", new[] { "Rock", "Driftwood" } }, { "GoldenMbuna", new[] { "Rock", "FernRock" } },
+            { "FancyGoldfish", new[] { "Plant" } },
+            { "SerpaeTetra", new[] { "Plant", "Driftwood" } }, { "XRayTetra", new[] { "Plant" } }, { "BlackSkirtTetra", new[] { "Plant", "TallPlant" } },
+            { "RedeyeTetra", new[] { "Plant" } }, { "LemonTetra", new[] { "TallPlant", "Plant" } }, { "BleedingHeartTetra", new[] { "TallPlant", "Driftwood" } },
+            { "EmperorTetra", new[] { "Plant", "Driftwood" } }, { "FlameTetra", new[] { "Plant" } }, { "PenguinTetra", new[] { "TallPlant" } },
+            { "GlowlightTetra", new[] { "Plant", "TallPlant" } }, { "RubyTetra", new[] { "Plant", "FernRock" } }, { "RummyNoseTetra", new[] { "Plant", "Driftwood" } },
+            { "SilvertipTetra", new[] { "Plant" } }, { "CongoTetra", new[] { "TallPlant" } },
+        };
+
+        static readonly HashSet<string> Roamers = new HashSet<string>
+        {
+            "CometGoldfish", "Guppy", "TigerBarb", "ZebraDanio", "SilverDollar", "BlackMolly", "BloodfinTetra", "BuenosAiresTetra", "BucktoothTetra",
+        };
+
+        static void SetHabits(Species s)
+        {
+            s.likedDecorations = LikedDecorations.TryGetValue(s.id, out var liked) ? new List<string>(liked) : new List<string>();
+            s.roams = Roamers.Contains(s.id);
+        }
+
+        /// <summary>Whether it likes to stay near this decoration.</summary>
+        public bool LikesDecoration(string id) => likedDecorations != null && likedDecorations.Contains(id);
+
         static readonly Dictionary<string, int> MinTankSizes = new Dictionary<string, int>
         {
             { "Angelfish", 1 }, { "SilverDollar", 1 }, { "RedTailShark", 1 }, { "GreenTerror", 1 }, { "BlueAcara", 1 }, { "Oscar", 2 },
@@ -275,7 +312,11 @@ namespace FishBreeder.Genetics
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }
             list.AddRange(WildTetras());
-            foreach (var s in list) s.bendStart = DefaultBendStart(s.id);
+            foreach (var s in list)
+            {
+                s.bendStart = DefaultBendStart(s.id);
+                SetHabits(s);
+            }
             return list;
         }
 

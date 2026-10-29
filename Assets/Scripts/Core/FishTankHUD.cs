@@ -94,7 +94,7 @@ namespace FishBreeder.Core
         void Update()
         {
             selected.RemoveAll(f => f == null || f.Tank != tank);
-            if (tank == null || GUIUtility.keyboardControl != 0) return;
+            if (tank == null || GUIUtility.keyboardControl != 0 || UiLayout.Editing) return;
             if (Arranging == ArrangeMode.Decorations && heldPiece >= 0 && tank.Decor != null)
             {
                 if (Input.GetKeyDown(KeyCode.Q)) tank.Decor.Turn(heldPiece, -15f);

@@ -240,7 +240,8 @@ namespace FishBreeder.Store
 
         void HandleStoreCameraInput(float dt)
         {
-            if (GUIUtility.keyboardControl != 0) return;
+            // The menu layout editor uses the arrow keys to nudge.
+            if (GUIUtility.keyboardControl != 0 || UiLayout.Editing) return;
             float pan = 0f, up = 0f;
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) pan -= 1f;
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) pan += 1f;

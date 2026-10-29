@@ -1119,8 +1119,11 @@ namespace FishBreeder.Store
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
-                    if (slot.IsOpen && slot.tank == null)
-                        WorldLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height);
+                    if (slot.IsOpen && slot.tank == null && ClickableLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
+                    {
+                        pendingSlot = slot;
+                        panel = Panel.BuyTank;
+                    }
 
             foreach (var section in store.Sections)
                 if (!section.unlocked)
@@ -1128,7 +1131,11 @@ namespace FishBreeder.Store
                     var why = store.WhyLocked(section);
                     string requirement = why == null ? $"Unlock for {Economy.Format(section.Price)}"
                         : section == store.NextLockedSection ? why : $"{StoreLayout.SectionStars(section):0.0} stars and {Economy.Format(section.Price)}";
-                    WorldLabel(section.LabelPoint, $"<b>{section.name}</b> (locked)\n{requirement}", scale, height);
+                    if (ClickableLabel(section.LabelPoint, $"<b>{section.name}</b> (locked)\n{requirement}", scale, height))
+                    {
+                        pendingSection = section;
+                        panel = Panel.Unlock;
+                    }
                 }
         }
 
@@ -1138,6 +1145,33 @@ namespace FishBreeder.Store
             var content = new GUIContent(text);
             var size = WorldLabelStyle().CalcSize(content);
             GUI.Label(new Rect(gui.x - size.x * 0.5f, gui.y - size.y, size.x, size.y), content, WorldLabelStyle());
+        }
+
+        /// <summary>A world label that's also a button: the floor spot under it isn't the only thing to click.</summary>
+        bool ClickableLabel(Vector3 world, string text, float scale, float height)
+        {
+            if (!ToGui(world, scale, height, out var gui)) return false;
+            var content = new GUIContent(text);
+            var size = WorldLabelStyle().CalcSize(content);
+            var rect = new Rect(gui.x - size.x * 0.5f, gui.y - size.y, size.x, size.y);
+            // Only when no window is open: a click elsewhere first closes the window.
+            if (panel != Panel.None)
+            {
+                GUI.Label(rect, content, WorldLabelStyle());
+                return false;
+            }
+            return GUI.Button(rect, content, ClickableLabelStyle());
+        }
+
+        static GUIStyle clickableLabel;
+        static GUIStyle ClickableLabelStyle()
+        {
+            if (clickableLabel != null) return clickableLabel;
+            clickableLabel = new GUIStyle(WorldLabelStyle());
+            clickableLabel.hover.background = clickableLabel.active.background = clickableLabel.normal.background;
+            clickableLabel.hover.textColor = UiTheme.Sun;
+            clickableLabel.active.textColor = UiTheme.Sun;
+            return clickableLabel;
         }
 
         static GUIStyle worldButton;

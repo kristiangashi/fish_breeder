@@ -7,7 +7,9 @@ namespace FishBreeder.Core
     /// GUILayout twin, then goes through <see cref="UiLayout.Item"/> under a name made from its
     /// window and text, so the menu layout editor (F7) can move and resize every piece of every
     /// menu. The Rect versions do the same for pieces placed by hand. Labels, buttons and toggles
-    /// can also be given new text or hidden in the editor (a hidden one takes no room).
+    /// can also be given new text or hidden in the editor (a hidden one takes no room). While the
+    /// editor is open nothing here reacts: buttons don't click, toggles and tabs don't change, so
+    /// pieces can be picked and dragged without setting anything off.
     /// </summary>
     public static class Ui
     {
@@ -102,7 +104,7 @@ namespace FishBreeder.Core
             var old = Fade(id);
             bool clicked = GUI.Button(rect, content, style);
             GUI.color = old;
-            return clicked;
+            return clicked && !UiLayout.Editing;
         }
 
         public static bool Button(Rect rect, string text) => Button(rect, new GUIContent(text), GUI.skin.button);
@@ -114,7 +116,7 @@ namespace FishBreeder.Core
             var old = Fade(id);
             bool clicked = GUI.Button(Piece(id, rect), content, style);
             GUI.color = old;
-            return clicked;
+            return clicked && !UiLayout.Editing;
         }
 
         // ------------------------------------------------------------ toggles, sliders, fields
@@ -130,7 +132,7 @@ namespace FishBreeder.Core
             var old = Fade(id);
             bool now = GUI.Toggle(rect, value, content, style);
             GUI.color = old;
-            return now;
+            return UiLayout.Editing ? value : now;
         }
 
         static readonly GUIContent sliderSize = new GUIContent("mmmm");
@@ -138,12 +140,19 @@ namespace FishBreeder.Core
         public static float HorizontalSlider(float value, float left, float right, params GUILayoutOption[] options)
         {
             var rect = Piece("Slider", (string)null, GUILayoutUtility.GetRect(sliderSize, GUI.skin.horizontalSlider, options));
-            return GUI.HorizontalSlider(rect, value, left, right);
+            float now = GUI.HorizontalSlider(rect, value, left, right);
+            return UiLayout.Editing ? value : now;
         }
 
         public static string TextField(string text, int maxLength, params GUILayoutOption[] options)
         {
             var rect = Piece("Text field", (string)null, GUILayoutUtility.GetRect(new GUIContent(text), GUI.skin.textField, options));
+            // Drawn without taking the keyboard while editing, so the editor's keys still work.
+            if (UiLayout.Editing)
+            {
+                GUI.Label(rect, text, GUI.skin.textField);
+                return text;
+            }
             return GUI.TextField(rect, text, maxLength);
         }
 
@@ -166,7 +175,8 @@ namespace FishBreeder.Core
             float width = cellW * xCount + spacing * (xCount - 1);
             float height = cellH * rows + Mathf.Max(style.margin.top, style.margin.bottom) * (rows - 1);
             var rect = Piece("Tabs", string.Join(" ", texts), GUILayoutUtility.GetRect(width, height, style, options));
-            return GUI.SelectionGrid(rect, selected, texts, xCount, style);
+            int now = GUI.SelectionGrid(rect, selected, texts, xCount, style);
+            return UiLayout.Editing ? selected : now;
         }
 
         // ------------------------------------------------------------ bars and pictures

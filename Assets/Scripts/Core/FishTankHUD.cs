@@ -1895,7 +1895,7 @@ namespace FishBreeder.Core
         void HandleClick()
         {
             var e = Event.current;
-            if (e.type != EventType.MouseDown || e.button != 0 || cam == null) return;
+            if (e.type != EventType.MouseDown || e.button != 0 || cam == null || UiLayout.Editing) return;
             var m = e.mousePosition;
             if (leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || stepLeft.Contains(m) || stepRight.Contains(m)
                 || pickerRect.Contains(m) || levelPopup.Contains(m)) return;

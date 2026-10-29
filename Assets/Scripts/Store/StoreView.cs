@@ -1115,7 +1115,7 @@ namespace FishBreeder.Store
             {
                 var label = new GUIContent(FishSeller.Away ? "Parking lot ▲" : "Fish seller's van ▲  <size=11>(W)</size>");
                 var size = WorldButtonStyle().CalcSize(label);
-                if (GUI.Button(new Rect(door.x - size.x * 0.5f, door.y - size.y, size.x, size.y), label, WorldButtonStyle())) LookAtParkingLot();
+                if (GUI.Button(new Rect(door.x - size.x * 0.5f, door.y - size.y, size.x, size.y), label, WorldButtonStyle()) && !UiLayout.Editing) LookAtParkingLot();
             }
 
             if (!shopDay.IsOpen)
@@ -1161,7 +1161,7 @@ namespace FishBreeder.Store
                 GUI.Label(rect, content, WorldLabelStyle());
                 return false;
             }
-            return GUI.Button(rect, content, ClickableLabelStyle());
+            return GUI.Button(rect, content, ClickableLabelStyle()) && !UiLayout.Editing;
         }
 
         static GUIStyle clickableLabel;
@@ -1776,7 +1776,7 @@ namespace FishBreeder.Store
         void HandleClick()
         {
             var e = Event.current;
-            if (e.type != EventType.MouseDown || e.button != 0) return;
+            if (e.type != EventType.MouseDown || e.button != 0 || UiLayout.Editing) return;
             if (topBar.Contains(e.mousePosition) || statusBar.Contains(e.mousePosition) || milestoneRect.Contains(e.mousePosition)) return;
             if (todo.Count > 0 && todoBar.Contains(e.mousePosition)) return;
             if (panel != Panel.None)

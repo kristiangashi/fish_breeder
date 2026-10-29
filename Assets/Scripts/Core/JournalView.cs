@@ -80,7 +80,7 @@ namespace FishBreeder.Core
 
             // The journal is modal: clicks outside it close it instead of reaching the store behind.
             var e = Event.current;
-            if (e.type == EventType.MouseDown)
+            if (e.type == EventType.MouseDown && !UiLayout.Editing)
             {
                 if (!window.Contains(e.mousePosition)) Close();
                 e.Use();
@@ -181,7 +181,7 @@ namespace FishBreeder.Core
                 GUI.backgroundColor = tagOld;
             }
 
-            if (known && GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            if (known && GUI.Button(rect, GUIContent.none, GUIStyle.none) && !UiLayout.Editing)
             {
                 page = species.id;
                 pageScroll = Vector2.zero;

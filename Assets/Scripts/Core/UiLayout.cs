@@ -20,6 +20,9 @@ namespace FishBreeder.Core
     /// stands for what the code says, so a number can be kept) or be hidden (Delete, or the bar's
     /// Hide button): a hidden piece takes no room once the editor closes, and shows faintly while
     /// it's open so it can be brought back.
+    /// Shift-click picks more than one piece: dragging any picked piece moves them all, the arrow
+    /// keys nudge them all, and Delete hides them all. While the editor is open, menu buttons don't
+    /// click (see <see cref="Ui"/>).
     /// </summary>
     public static class UiLayout
     {
@@ -55,6 +58,36 @@ namespace FishBreeder.Core
         static bool resizing;
         static Vector2 dragFrom;
         static Rect dragStart;
+        // Every picked piece's offset when the drag began, so the group moves (or grows) together.
+        static readonly Dictionary<string, Rect> groupStart = new Dictionary<string, Rect>();
+
+        /// <summary>The pieces picked (Shift-click adds or takes one away). The last one clicked is <see cref="LastTouched"/>.</summary>
+        static readonly List<string> picked = new List<string>();
+        public static int PickedCount => picked.Count;
+        public static bool IsPicked(string id) => picked.Contains(id);
+        public static void ClearPicked()
+        {
+            picked.Clear();
+            LastTouched = null;
+        }
+
+        static void Pick(string id, bool add)
+        {
+            if (!add)
+            {
+                picked.Clear();
+                picked.Add(id);
+                LastTouched = id;
+                return;
+            }
+            if (picked.Remove(id))
+            {
+                LastTouched = picked.Count > 0 ? picked[picked.Count - 1] : null;
+                return;
+            }
+            picked.Add(id);
+            LastTouched = id;
+        }
 
         /// <summary>The last window or item touched, shown in the editor's bar.</summary>
         public static string LastTouched { get; private set; }
@@ -232,7 +265,7 @@ namespace FishBreeder.Core
         public static bool IsHidden(string id) => Hidden.Contains(id);
 
         /// <summary>The last touched piece can have its text changed and be hidden (labels, buttons, toggles).</summary>
-        public static bool LastHasText => LastTouched != null && originals.ContainsKey(LastTouched);
+        public static bool LastHasText => LastTouched != null && originals.ContainsKey(LastTouched) && picked.Count <= 1;
 
         public static string OriginalText(string id) => id != null && originals.TryGetValue(id, out var text) ? text : "";
 
@@ -287,7 +320,10 @@ namespace FishBreeder.Core
                     return rect;
                 }
                 if (e.button == 0 && (tag.Contains(e.mousePosition) || corner.Contains(e.mousePosition) || (e.control && moved.Contains(e.mousePosition))))
+                {
+                    picked.Clear();
                     StartDrag(id, corner.Contains(e.mousePosition), e);
+                }
             }
             HandleDrag(id, rect, null, e);
             moved = Apply(id, rect);
@@ -345,45 +381,60 @@ namespace FishBreeder.Core
                 }
                 // The editor's text box lets go, so it shows this piece's text.
                 GUIUtility.keyboardControl = 0;
-                if (e.button == 0 && e.shift) StartDrag(id, true, e);
-                else if (e.button == 0)
+                if (e.button == 0)
                 {
-                    // Not used yet: if the mouse lets go without moving, the button under it clicks
-                    // as normal. Pieces drawn later are on top, so the last one hit wins.
+                    // Decided when the mouse moves (a drag) or lets go (a click, which picks it).
+                    // Pieces drawn later are on top, so the last one hit wins. The corner square of
+                    // a picked piece resizes it, like Shift-drag.
                     pressed = id;
                     pressedFrom = e.mousePosition;
-                    LastTouched = id;
+                    pressedShift = e.shift;
+                    pressedCorner = picked.Contains(id) && CornerRect(moved).Contains(e.mousePosition);
                 }
             }
             if (e.type == EventType.MouseDrag && pressed == id && dragging == null && (e.mousePosition - pressedFrom).sqrMagnitude > 9f)
             {
+                if (!picked.Contains(id)) Pick(id, false);
+                LastTouched = id;
                 dragging = id;
-                resizing = false;
+                resizing = pressedShift || pressedCorner;
                 dragFrom = pressedFrom;
                 dragStart = Offsets.TryGetValue(id, out var o) ? o : Rect.zero;
+                groupStart.Clear();
+                foreach (var other in picked) groupStart[other] = Offsets.TryGetValue(other, out var g) ? g : Rect.zero;
                 pressed = null;
-                // A button that took the press lets go of it, so it doesn't click when the drag ends.
+                // A button that took the press lets go of it.
                 GUIUtility.hotControl = 0;
             }
-            if (e.rawType == EventType.MouseUp && pressed == id) pressed = null;
+            if (e.rawType == EventType.MouseUp && pressed == id)
+            {
+                Pick(id, pressedShift);
+                pressed = null;
+            }
             HandleDrag(id, rect, parent, e);
             moved = Apply(id, rect);
             Record(id, moved, parent);
             if (e.type == EventType.Repaint)
             {
                 var r = new Rect(moved.x - 1f, moved.y - 1f, moved.width + 2f, moved.height + 2f);
-                bool hot = dragging == id || LastTouched == id;
+                bool hot = dragging == id || picked.Contains(id);
                 bool over = r.Contains(e.mousePosition);
                 var teal = Hidden.Contains(id) ? new Color(1f, 0.45f, 0.6f, 1f) : new Color(0.4f, 1f, 0.9f, 1f);
                 Outline(r, hot ? UiTheme.Sun : new Color(teal.r, teal.g, teal.b, over ? 0.95f : 0.3f), 1f);
+                if (picked.Contains(id))
+                    GUI.DrawTexture(CornerRect(moved), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, UiTheme.Sun, 0f, 1f);
                 if (dragging == id) DrawGuides();
             }
             return moved;
         }
 
-        // A press on a piece that hasn't turned into a drag yet.
+        // The little square at a picked piece's bottom right that resizes it.
+        static Rect CornerRect(Rect piece) => new Rect(piece.xMax - 5f, piece.yMax - 5f, 7f, 7f);
+
+        // A press on a piece that hasn't turned into a click or a drag yet.
         static string pressed;
         static Vector2 pressedFrom;
+        static bool pressedShift, pressedCorner;
 
         // How many pieces with the same name the current window has drawn so far this pass.
         static readonly Dictionary<string, int> autoCounts = new Dictionary<string, int>();
@@ -428,6 +479,7 @@ namespace FishBreeder.Core
 
         static void StartDrag(string id, bool resize, Event e)
         {
+            groupStart.Clear();
             dragging = id;
             resizing = resize;
             dragFrom = e.mousePosition;
@@ -450,11 +502,17 @@ namespace FishBreeder.Core
                 guides.Clear();
                 if (Snap && !e.alt) offset = Snapped(id, code, offset, parent);
                 Offsets[id] = offset;
+                // The other picked pieces go the same way (snapping follows the one being dragged).
+                var by = new Rect(offset.x - dragStart.x, offset.y - dragStart.y, offset.width - dragStart.width, offset.height - dragStart.height);
+                foreach (var pair in groupStart)
+                    if (pair.Key != id)
+                        Offsets[pair.Key] = new Rect(pair.Value.x + by.x, pair.Value.y + by.y, pair.Value.width + by.width, pair.Value.height + by.height);
                 e.Use();
             }
             else if (e.rawType == EventType.MouseUp)
             {
                 dragging = null;
+                groupStart.Clear();
                 guides.Clear();
                 Save();
                 e.Use();
@@ -537,8 +595,26 @@ namespace FishBreeder.Core
         public static void Nudge(Vector2 by, bool resize)
         {
             if (LastTouched == null) return;
-            var o = Offsets.TryGetValue(LastTouched, out var old) ? old : Rect.zero;
-            Offsets[LastTouched] = resize ? new Rect(o.x, o.y, o.width + by.x, o.height + by.y) : new Rect(o.x + by.x, o.y + by.y, o.width, o.height);
+            var ids = picked.Contains(LastTouched) ? new List<string>(picked) : new List<string> { LastTouched };
+            foreach (var id in ids)
+            {
+                var o = Offsets.TryGetValue(id, out var old) ? old : Rect.zero;
+                Offsets[id] = resize ? new Rect(o.x, o.y, o.width + by.x, o.height + by.y) : new Rect(o.x + by.x, o.y + by.y, o.width, o.height);
+            }
+            Save();
+        }
+
+        /// <summary>Hides (or, when the last one clicked is hidden, shows) every picked piece.</summary>
+        public static void ToggleHiddenPicked()
+        {
+            if (LastTouched == null) return;
+            bool hide = !Hidden.Contains(LastTouched);
+            var ids = picked.Contains(LastTouched) ? picked : new List<string> { LastTouched };
+            foreach (var id in ids)
+            {
+                if (hide) Hidden.Add(id);
+                else Hidden.Remove(id);
+            }
             Save();
         }
 
@@ -592,9 +668,14 @@ namespace FishBreeder.Core
             var e = Event.current;
             // Keys go to the text box while it's being typed in.
             bool typing = GUIUtility.keyboardControl != 0;
-            if (e.type == EventType.KeyDown && !typing && UiLayout.LastHasText && (e.keyCode == KeyCode.Delete || e.keyCode == KeyCode.Backspace))
+            if (e.type == EventType.KeyDown && !typing && UiLayout.PickedCount > 0 && (e.keyCode == KeyCode.Delete || e.keyCode == KeyCode.Backspace))
             {
-                UiLayout.SetHidden(UiLayout.LastTouched, !UiLayout.IsHidden(UiLayout.LastTouched));
+                UiLayout.ToggleHiddenPicked();
+                e.Use();
+            }
+            if (e.type == EventType.KeyDown && !typing && e.keyCode == KeyCode.Escape)
+            {
+                UiLayout.ClearPicked();
                 e.Use();
             }
             if (e.type == EventType.KeyDown && !typing && UiLayout.LastTouched != null)
@@ -614,7 +695,7 @@ namespace FishBreeder.Core
             float barHeight = textRow ? 126f : 94f;
             var bar = new Rect(Mathf.Max(10f, width * 0.5f - 360f), height - barHeight - 10f, Mathf.Min(720f, width - 20f), barHeight);
             GUILayout.BeginArea(bar, UiStyles.Window);
-            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Every button, label and bar has a teal outline: click it to pick it (it still clicks), drag it to move it, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Picked text can be retyped below, and Delete hides it (pink outline; Delete again shows it). Right-click resets. Saved as you go.</size>", Rich());
+            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Every button, label and bar has a teal outline: click it to pick it (it still clicks), drag it to move it, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Buttons don't click while this is open. Shift-click picks more than one (drag, nudge or Delete them together; Esc unpicks). Picked text can be retyped below, and Delete hides it (pink outline; Delete again shows it). Right-click resets. Saved as you go.</size>", Rich());
             if (textRow) DrawTextRow();
             GUILayout.BeginHorizontal();
             UiLayout.ShowItems = GUILayout.Toggle(UiLayout.ShowItems, " Pieces", GUILayout.Width(70f));
@@ -622,8 +703,10 @@ namespace FishBreeder.Core
             UiLayout.ShowGrid = GUILayout.Toggle(UiLayout.ShowGrid, " Grid", GUILayout.Width(58f));
             GUILayout.FlexibleSpace();
             var r = UiLayout.LastRect;
-            string last = UiLayout.LastTouched == null ? "" : $", last: {UiLayout.LastTouched}" + (r.HasValue ? $"  ({r.Value.x:0}, {r.Value.y:0}  {r.Value.width:0} x {r.Value.height:0})" : "");
+            string last = UiLayout.PickedCount > 1 ? $", {UiLayout.PickedCount} picked"
+                : UiLayout.LastTouched == null ? "" : $", last: {UiLayout.LastTouched}" + (r.HasValue ? $"  ({r.Value.x:0}, {r.Value.y:0}  {r.Value.width:0} x {r.Value.height:0})" : "");
             GUILayout.Label($"<size=11>{UiLayout.Count} nudged{last}</size>", Rich());
+            if (UiLayout.PickedCount > 1 && GUILayout.Button(new GUIContent("Hide / show", "Hide the picked pieces, or show them again"), GUILayout.Width(90f))) UiLayout.ToggleHiddenPicked();
             if (GUILayout.Button("Reset all", GUILayout.Width(80f))) UiLayout.ResetAll();
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
@@ -644,7 +727,7 @@ namespace FishBreeder.Core
                 UiLayout.ResetText(id);
             }
             bool hiddenNow = UiLayout.IsHidden(id);
-            if (GUILayout.Button(hiddenNow ? "Show" : "Hide", GUILayout.Width(56f))) UiLayout.SetHidden(id, !hiddenNow);
+            if (GUILayout.Button(hiddenNow ? "Show" : "Hide", GUILayout.Width(56f))) UiLayout.ToggleHiddenPicked();
             GUILayout.EndHorizontal();
         }
 

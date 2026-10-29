@@ -204,7 +204,7 @@ namespace FishBreeder.Core
             UiCheck.Label("Celebration card: reward", new Rect(x, ty, textW, rewardH), reward, cardText);
 
             var e = Event.current;
-            if (e.type == EventType.MouseDown && cardRect.Contains(e.mousePosition))
+            if (e.type == EventType.MouseDown && cardRect.Contains(e.mousePosition) && !UiLayout.Editing)
             {
                 e.Use();
                 Fx.Current = null;

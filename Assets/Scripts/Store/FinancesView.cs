@@ -87,7 +87,7 @@ namespace FishBreeder.Store
             UiCheck.End();
 
             var e = Event.current;
-            if (e.type == EventType.MouseDown)
+            if (e.type == EventType.MouseDown && !UiLayout.Editing)
             {
                 if (!window.Contains(e.mousePosition)) Close();
                 e.Use();

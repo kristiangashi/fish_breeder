@@ -94,7 +94,7 @@ namespace FishBreeder.Store
 
             // Modal: clicks outside close it instead of reaching the store behind.
             var e = Event.current;
-            if (e.type == EventType.MouseDown)
+            if (e.type == EventType.MouseDown && !UiLayout.Editing)
             {
                 if (!window.Contains(e.mousePosition)) Close();
                 e.Use();

@@ -1106,7 +1106,8 @@ namespace FishBreeder.Store
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
             WorldLabel(store.ComputerPoint, "<b>Supplier computer</b>\nfood, decorations, equipment", scale, height);
-            WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
+            // The seller is behind the breeding room's back wall: only labelled once the view is out there.
+            if (panZ >= 4f) WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
             // The van is out of sight behind the breeding room: a sign over the back door slides the view there.
             if (panZ < 4f && ToGui(store.BackDoorSign, scale, height, out var door))
             {
@@ -1531,7 +1532,8 @@ namespace FishBreeder.Store
                 }
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
-            if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich());
+            // Always there (tooltips only exist while repainting): a label that came and went would upset the layout.
+            GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich(), GUILayout.Height(18f));
         }
 
         void OrderEggs(EggTierBalance tier)

@@ -70,7 +70,7 @@ namespace FishBreeder.Store
         /// <summary>Centre of the back room, west of the main floor.</summary>
         public static float BackRoomCenterX => -SectionWidth * 0.5f - WallThickness - BackRoomWidth * 0.5f;
         /// <summary>Above the breeding room's back door, where the sign pointing to the parking lot hangs.</summary>
-        public Vector3 BackDoorSign => new Vector3(BackRoomCenterX + BackDoorOffset, WallHeight + 0.3f, SectionDepth * 0.5f);
+        public Vector3 BackDoorSign => new Vector3(BackRoomCenterX + BackDoorOffset, 2.55f, SectionDepth * 0.5f - 0.05f);
         /// <summary>Where the store camera looks to see the fish seller in the parking lot.</summary>
         public static Vector3 ParkingLotView => new Vector3(BackRoomCenterX + BackDoorOffset - 1.5f, 0f, SellerTableZ + 0.3f);
 

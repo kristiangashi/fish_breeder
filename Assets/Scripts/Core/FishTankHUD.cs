@@ -490,12 +490,15 @@ namespace FishBreeder.Core
                     if (GUILayout.Button(new GUIContent((t + 1).ToString(), tiers[t].name), current == t ? DevPrimary() : DevButton(), GUILayout.Width(28f))) tank.Install(kind, t);
                 GUILayout.EndHorizontal();
             }
-            if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich());
+            // Always there (tooltips only exist while repainting): a label that came and went would upset the layout.
+            GUILayout.Label($"<size=11>{GUI.tooltip}</size>", Rich(), GUILayout.Height(18f));
 
             GUILayout.Space(4f);
             var decor = tank.Decor;
+            // Folding opens or shuts from the next frame, so this one's layout stays as it was measured.
+            bool showDecor = devShowDecor;
             if (GUILayout.Button($"{(devShowDecor ? "▾" : "▸")} <b>Decorations</b>  <size=11>{(decor != null ? $"{decor.Count} / {decor.Capacity}" : "")}</size>", SectionHeader())) devShowDecor = !devShowDecor;
-            if (devShowDecor && decor != null)
+            if (showDecor && decor != null)
             {
                 var ids = decor.Ids;
                 for (int i = 0; i < ids.Count; i++)
@@ -521,8 +524,9 @@ namespace FishBreeder.Core
             }
 
             GUILayout.Space(4f);
+            bool showFish = devShowFish;
             if (GUILayout.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>{tank.Residents.Count} / {tank.Capacity}</size>", SectionHeader())) devShowFish = !devShowFish;
-            if (!devShowFish) return;
+            if (!showFish) return;
             foreach (var species in Species.All)
             {
                 GUILayout.BeginHorizontal();
@@ -762,13 +766,14 @@ namespace FishBreeder.Core
             var decor = tank.Decor;
             if (decor == null) return;
             GUILayout.Space(2f);
-            showDecorations = GUILayout.Toggle(showDecorations, $" Decorations: {decor.Count} / {decor.Capacity}{(tank.HasPlants ? ", with plants" : "")}");
+            bool shown = showDecorations;
+            if (GUILayout.Button($"{(shown ? "▾" : "▸")} <b>Decorations</b>  <size=11>{decor.Count} / {decor.Capacity}{(tank.HasPlants ? ", with plants" : "")}</size>", SectionHeader())) showDecorations = !showDecorations;
             if (decor.Count > 0)
             {
                 if (GUILayout.Button("Move decorations (top view)")) StartArranging(ArrangeMode.Decorations);
                 GUILayout.Label($"<size=11>{(decor.MovedCount > 0 ? $"{decor.MovedCount} placed by hand, the rest in their automatic spots." : "Each one is in its automatic spot.")}</size>", Rich());
             }
-            if (!showDecorations) return;
+            if (!shown) return;
             var ids = decor.Ids;
             if (ids.Count == 0) GUILayout.Label("<i>None. Buy some at the supplier computer.</i>", Rich());
             float sellBack = Balance.Data.supplier.decorationSellBack;
@@ -877,7 +882,7 @@ namespace FishBreeder.Core
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
                 GUI.enabled = decor != null && decor.MovedCount > 0;
-                if (GUILayout.Button("Put them all back in their automatic spots"))
+                if (GUILayout.Button("Back to automatic spots"))
                 {
                     decor.ResetPlacement();
                     heldPiece = -1;
@@ -978,7 +983,7 @@ namespace FishBreeder.Core
             if (e.rawType == EventType.MouseUp) draggingPicture = false;
             if (e.type == EventType.ScrollWheel && !overMenu)
             {
-                tank.SetBackgroundCrop(tank.BackgroundCenter, tank.BackgroundZoom * (e.delta.y > 0f ? 0.9f : 1.1f));
+                tank.SetBackgroundCrop(tank.BackgroundCenter, tank.BackgroundZoom * (e.delta.y > 0f ? 0.85f : 1.18f));
                 e.Use();
                 return true;
             }

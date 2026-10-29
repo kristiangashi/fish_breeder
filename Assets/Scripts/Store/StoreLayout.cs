@@ -62,8 +62,8 @@ namespace FishBreeder.Store
         /// <summary>The breeding room's back door to the parking lot, from the room's centre.</summary>
         const float BackDoorOffset = 3.4f;
         const float BackDoorWidth = 1.1f;
-        /// <summary>How far behind the shop the fish seller sets up his table, in the parking lot.</summary>
-        const float SellerTableZ = 8.6f;
+        /// <summary>How far behind the shop the fish seller sets up his table: the north end of the parking lot.</summary>
+        const float SellerTableZ = 12f;
         /// <summary>The back edge of the parking lot (and the ground behind the shop).</summary>
         public const float LotFarZ = 15f;
 
@@ -506,9 +506,20 @@ namespace FishBreeder.Store
                 }
 
                 var wallTank = WallTankIn(section);
-                if (wallTank != null) BackWallAround(root, cx, halfD, wallTank.Tank);
-                else Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(SectionWidth + t, WallHeight, t), WallColor);
-                Stripes(root, cx, SectionWidth, halfD);
+                if (wallTank != null)
+                {
+                    BackWallAround(root, cx, halfD, wallTank.Tank);
+                    // The stripes stop either side of the aquarium, like the wall does.
+                    var tank = wallTank.Tank;
+                    float gap = tank.InnerSize.x * 0.5f + 0.08f, tankX = tank.transform.position.x;
+                    float top = tank.transform.position.y + tank.InnerSize.y + 0.05f;
+                    Stripes(root, cx, SectionWidth, halfD, tankX - gap, tankX + gap, top);
+                }
+                else
+                {
+                    Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(SectionWidth + t, WallHeight, t), WallColor);
+                    Stripes(root, cx, SectionWidth, halfD);
+                }
                 Palm(root, new Vector3(cx + halfW - 0.45f, 0f, halfD - 0.45f));
                 if (section.index == 0) Palm(root, new Vector3(cx - halfW + 0.45f, 0f, halfD - 0.45f));
                 Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
@@ -923,11 +934,26 @@ namespace FishBreeder.Store
             return texture;
         }
 
-        /// <summary>A coral and sunny stripe round the back wall, like a beach hut.</summary>
-        static void Stripes(Transform parent, float centerX, float width, float halfD)
+        /// <summary>
+        /// A coral and sunny stripe round the back wall, like a beach hut. With a gap (from gapWest
+        /// to gapEast), any stripe lower than gapTop leaves it out, for a tank set into the wall.
+        /// </summary>
+        static void Stripes(Transform parent, float centerX, float width, float halfD, float gapWest = 0f, float gapEast = 0f, float gapTop = 0f)
         {
-            Wall(parent, "Stripe", new Vector3(centerX, 2.35f, halfD - 0.01f), new Vector3(width, 0.22f, 0.02f), StripeColor);
-            Wall(parent, "Stripe", new Vector3(centerX, 2.58f, halfD - 0.01f), new Vector3(width, 0.08f, 0.02f), StripeColor2);
+            Stripe(parent, centerX, width, halfD, 2.35f, 0.22f, StripeColor, gapWest, gapEast, gapTop);
+            Stripe(parent, centerX, width, halfD, 2.58f, 0.08f, StripeColor2, gapWest, gapEast, gapTop);
+        }
+
+        static void Stripe(Transform parent, float centerX, float width, float halfD, float y, float height, Color color, float gapWest, float gapEast, float gapTop)
+        {
+            float west = centerX - width * 0.5f, east = centerX + width * 0.5f;
+            if (gapEast <= gapWest || y - height * 0.5f >= gapTop)
+            {
+                Wall(parent, "Stripe", new Vector3(centerX, y, halfD - 0.01f), new Vector3(width, height, 0.02f), color);
+                return;
+            }
+            if (gapWest > west) Wall(parent, "Stripe", new Vector3((west + gapWest) * 0.5f, y, halfD - 0.01f), new Vector3(gapWest - west, height, 0.02f), color);
+            if (gapEast < east) Wall(parent, "Stripe", new Vector3((gapEast + east) * 0.5f, y, halfD - 0.01f), new Vector3(east - gapEast, height, 0.02f), color);
         }
 
         /// <summary>A potted palm: terracotta pot, a gently curved trunk and drooping fronds.</summary>

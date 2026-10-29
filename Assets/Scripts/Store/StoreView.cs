@@ -179,7 +179,7 @@ namespace FishBreeder.Store
             if (focused != null)
             {
                 if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, cam, hud.MenuCover, out targetPosition, out targetRotation);
-                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
             {
@@ -294,7 +294,7 @@ namespace FishBreeder.Store
         /// the menu, as far as it can without the tank going off the right edge (backing off a
         /// little to make room when it's tight).
         /// </summary>
-        static void GetTankPose(StoreTank tank, Fish follow, Vector3? zoom, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
+        static void GetTankPose(StoreTank tank, Fish follow, Vector3? zoom, Vector2 pan, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
         {
             var bounds = tank.Tank.InnerBounds;
             var size = tank.Tank.InnerSize;
@@ -339,6 +339,8 @@ namespace FishBreeder.Store
             position = center + front * back + Vector3.up * 0.1f;
             rotation = Quaternion.LookRotation(center - position);
             position -= rotation * Vector3.right * shift;
+            // Slid along with WASD: the same view, moved sideways and up or down.
+            position += tank.Tank.transform.right * pan.x + Vector3.up * pan.y;
         }
 
         /// <summary>

@@ -40,6 +40,8 @@ namespace FishBreeder.Core
         public StoreTank Current => storeTank;
         /// <summary>A spot in the water the camera zooms in on (clicked with no fish there), or null.</summary>
         public Vector3? ZoomPoint { get; private set; }
+        /// <summary>How far WASD has slid the whole-tank view (metres along the glass and up), without zooming in.</summary>
+        public Vector2 ViewPan { get; private set; }
 
         public void ClearSelection()
         {
@@ -86,6 +88,7 @@ namespace FishBreeder.Core
             shopIsOpen = isShopOpen;
             selected.Clear();
             ZoomPoint = null;
+            ViewPan = Vector2.zero;
             Arranging = ArrangeMode.None;
             picker = Picker.None;
             showLevelInfo = false;
@@ -113,8 +116,9 @@ namespace FishBreeder.Core
 
         /// <summary>
         /// WASD (and the arrow keys once zoomed in on a spot) slide the close-up view about the
-        /// tank. From the whole-tank view, WASD zooms in on the middle first; while following a
-        /// fish, they let go of it and slide from where it is.
+        /// tank; while following a fish, they let go of it and slide from where it is. From the
+        /// whole-tank view, WASD slides that view along the glass and up and down, at the same
+        /// distance, as far as the tank's edges.
         /// </summary>
         void SlideZoom(float dt)
         {
@@ -131,7 +135,15 @@ namespace FishBreeder.Core
                 if (Input.GetKey(KeyCode.DownArrow)) y -= 1f;
             }
             if (x == 0f && y == 0f) return;
-            var from = ZoomPoint ?? (Focus != null ? Focus.transform.position : tank.InnerBounds.center);
+            if (!ZoomPoint.HasValue && Focus == null)
+            {
+                var size = tank.InnerSize;
+                float pace = Mathf.Max(0.6f, size.x * 0.3f);
+                var pan = ViewPan + new Vector2(Mathf.Clamp(x, -1f, 1f), Mathf.Clamp(y, -1f, 1f)) * pace * dt;
+                ViewPan = new Vector2(Mathf.Clamp(pan.x, -size.x * 0.5f, size.x * 0.5f), Mathf.Clamp(pan.y, -size.y * 0.5f, size.y * 0.5f));
+                return;
+            }
+            var from = ZoomPoint ?? Focus.transform.position;
             // About a third of the view's width a second, whatever the tank's size.
             float speed = Mathf.Max(0.5f, Mathf.Min(tank.InnerSize.x, 3f) * 0.35f);
             var move = (tank.transform.right * Mathf.Clamp(x, -1f, 1f) + Vector3.up * Mathf.Clamp(y, -1f, 1f)) * speed * dt;

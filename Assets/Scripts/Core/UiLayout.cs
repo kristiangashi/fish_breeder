@@ -148,6 +148,10 @@ namespace FishBreeder.Core
         public static Rect Window(string id, Rect rect)
         {
             var moved = Apply(id, rect);
+            // The pieces drawn next are named after this window, editing or not, so their nudges
+            // are found when the editor is closed too.
+            currentWindow = id;
+            autoCounts.Clear();
             if (!Editing) return moved;
             var e = Event.current;
             var tag = TagRect(id, moved);

@@ -32,6 +32,19 @@ namespace FishBreeder.Store
 
         public static string RoleName(TankRole role) => role == TankRole.ForSale ? "For Sale" : role.ToString();
 
+        /// <summary>Turns the tank into another type, numbered among its new kind (the caller checks it's allowed and pays).</summary>
+        public void SetRole(TankRole newRole, int newNumber)
+        {
+            role = newRole;
+            number = newNumber;
+            gameObject.name = Title;
+            tank.Title = Title;
+            tank.PricesNewFish = role == TankRole.ForSale;
+            if (tank.PricesNewFish)
+                foreach (var fish in tank.Residents)
+                    if (fish.Price <= 0) fish.Price = fish.AppraisedValue;
+        }
+
         /// <summary>Builds a tank with its feeding and breeding systems at <paramref name="position"/> (the sand level), turned <paramref name="yaw"/> degrees (its front faces -Z at 0).</summary>
         public static StoreTank Create(TankRole role, int number, Vector3 position, float yaw, Transform parent, int size, IEnumerable<string> decorations)
         {

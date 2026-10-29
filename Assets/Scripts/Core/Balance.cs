@@ -363,7 +363,7 @@ namespace FishBreeder.Core
         public int maxBreederTanks = 3, maxForSaleTanks = 6, maxDisplayTanks = 6, maxQuarantineTanks = 1;
         [Tooltip("Shopkeeping level to buy another tank of this kind (for sale and display tanks sit on the shop floor).")]
         public int forSaleTankLevel = 1, displayTankLevel = 2;
-        [Tooltip("Fishkeeping level to buy another tank of this kind (they live in the back room).")]
+        [Tooltip("Fishkeeping level to buy another tank of this kind (they live in the breeding room).")]
         public int breederTankLevel = 4, quarantineTankLevel = 3;
         public List<SectionBalance> sections = SectionBalance.CreateDefaults();
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
@@ -372,6 +372,14 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
+        [Tooltip("The East wing's wall aquarium: it fills the back wall, set into it and reaching out behind it. Never an upgrade from another size.")]
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 12f, height = 1.3f, depth = 2f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
+        [Tooltip("What the wall aquarium costs (a display or for sale tank).")]
+        public int wallAquariumPrice = 12000;
+        [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
+        public int wallAquariumLevel = 8;
+        [Tooltip("What it costs to turn a tank into another type (for sale and display swap on the shop floor, breeder and quarantine in the breeding room).")]
+        public int changeTankTypePrice = 100;
         [Tooltip("Decoration ids the three starting tanks come with.")]
         public List<string> starterDecorations = new List<string>();
         [Tooltip("A tank's fish count is a soft limit: you can go over it (with serious problems for the fish) up to this many times the limit.")]
@@ -487,7 +495,7 @@ namespace FishBreeder.Core
         [Tooltip("Extra traffic per display tank (0.15 = +15%).")]
         public float trafficPerDisplayTank = 0.15f;
         public float trafficPerOtherTank = 0.05f;
-        [Tooltip("Extra traffic per decoration in a tank customers can see (breeder and quarantine tanks are in the back room).")]
+        [Tooltip("Extra traffic per decoration in a tank customers can see (breeder and quarantine tanks are in the breeding room).")]
         public float trafficPerDecoration = 0.01f;
         public int maxCustomersInStore = 8;
         public int minTankVisits = 2, maxTankVisits = 5;

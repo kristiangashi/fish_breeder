@@ -58,6 +58,8 @@ namespace FishBreeder.Store
 #endif
         Vector2 supplierScroll;
         float panX;
+        /// <summary>How far north (into the screen) the store view has been slid; 0 looks at the shop floor.</summary>
+        float panZ;
         float distance = 15f;
         Rect panelRect, topBar, statusBar, todoBar, milestoneRect, watchButton;
         /// <summary>Height the to-do bar needed last frame (its hint text wraps on narrow screens).</summary>
@@ -165,7 +167,8 @@ namespace FishBreeder.Store
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && (escape || zoomOut))
             {
-                if (hud.HasSelection || hud.ZoomPoint.HasValue) hud.ClearSelection();
+                if (hud.Arranging != FishTankHUD.ArrangeMode.None) hud.StopArranging();
+                else if (hud.HasSelection || hud.ZoomPoint.HasValue) hud.ClearSelection();
                 else ExitTank();
             }
             else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
@@ -174,7 +177,8 @@ namespace FishBreeder.Store
             var person = focused == null ? FollowedPerson() : null;
             if (focused != null)
             {
-                GetTankPose(focused, hud.Focus, hud.ZoomPoint, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
             {
@@ -236,24 +240,47 @@ namespace FishBreeder.Store
 
         void HandleStoreCameraInput(float dt)
         {
-            float pan = 0f;
+            if (GUIUtility.keyboardControl != 0) return;
+            float pan = 0f, up = 0f;
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) pan -= 1f;
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) pan += 1f;
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) up += 1f;
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) up -= 1f;
             panX += pan * 7f * dt;
-            if (Input.GetMouseButton(1)) panX -= Input.GetAxis("Mouse X") * 0.25f;
+            panZ += up * 7f * dt;
+            if (Input.GetMouseButton(1))
+            {
+                panX -= Input.GetAxis("Mouse X") * 0.25f;
+                panZ -= Input.GetAxis("Mouse Y") * 0.25f;
+            }
             distance = Mathf.Clamp(distance - Input.mouseScrollDelta.y * 1.2f, 7f, 26f);
 
-            // The back room is to the west; you can look one section past the open ones, to see what's for sale.
+            // The breeding room is to the west; you can look one section past the open ones, to see what's for sale.
             float maxX = Mathf.Min(store.UnlockedCount, store.Sections.Count - 1) * StoreLayout.SectionWidth;
             panX = Mathf.Clamp(panX, StoreLayout.BackRoomCenterX, maxX);
+            // Down to the street out front, up past the back wall to the parking lot behind the breeding room.
+            panZ = Mathf.Clamp(panZ, -2.5f, StoreLayout.ParkingLotView.z - StoreLookZ);
         }
+
+        /// <summary>Where the store view looks before it's slid north: a little in front of the middle, so the pavement shows.</summary>
+        const float StoreLookZ = -1.5f;
+
+        /// <summary>Slid north past the back wall, the view tips down more steeply so it can see over the wall into the parking lot.</summary>
+        static readonly Vector3 LotViewDirection = new Vector3(0f, 0.8f, -0.6f).normalized;
 
         void GetStorePose(out Vector3 position, out Quaternion rotation)
         {
-            // Centred a little in front of the middle, so the pavement and the fish seller's van show.
-            var lookAt = new Vector3(panX, 0.8f, -1.5f);
-            position = lookAt + StoreViewDirection * distance;
+            var lookAt = new Vector3(panX, 0.8f, StoreLookZ + panZ);
+            float steep = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(StoreLayout.SectionDepth * 0.5f - 1.5f, StoreLayout.ParkingLotView.z, lookAt.z));
+            position = lookAt + Vector3.Slerp(StoreViewDirection, LotViewDirection, steep) * distance;
             rotation = Quaternion.LookRotation(lookAt - position);
+        }
+
+        /// <summary>Slides the store view over the fish seller in the parking lot.</summary>
+        void LookAtParkingLot()
+        {
+            panX = StoreLayout.ParkingLotView.x;
+            panZ = StoreLayout.ParkingLotView.z - StoreLookZ;
         }
 
         /// <summary>
@@ -273,9 +300,14 @@ namespace FishBreeder.Store
             float back = Mathf.Max(1.9f, 1.9f * size.x / 1.6f, size.y * 2.1f);
             // Half the view's width one metre away.
             float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect;
+            // A wall aquarium is framed just wide enough to fit, so the camera stays in the room.
+            if (size.x > 4f && halfWidth > 1e-4f) back = Mathf.Max(1.9f, (size.x * 0.5f + 0.4f) / halfWidth + size.z * 0.5f);
             if ((follow != null && follow.Tank == tank.Tank) || zoom.HasValue)
             {
-                var target = follow != null && follow.Tank == tank.Tank ? follow.transform.position : zoom.Value;
+                // A spot slid to with the keys wins over the fish (clicking a fish follows it again).
+                var target = zoom.HasValue ? zoom.Value : follow.transform.position;
+                // Close-ups are as close in a wall aquarium as in a grand tank.
+                back = Mathf.Min(back, 3.6f);
                 position = target + front * (back * 0.5f) + Vector3.up * 0.05f;
                 rotation = Quaternion.LookRotation(target - position);
                 // Keep the fish (or spot) in the middle of the uncovered part.
@@ -307,6 +339,25 @@ namespace FishBreeder.Store
             position -= rotation * Vector3.right * shift;
         }
 
+        /// <summary>
+        /// Straight down onto the tank, its back at the top of the screen, high enough to see the
+        /// whole floor inside the glass beside the menu: for moving decorations about.
+        /// </summary>
+        static void GetTopPose(StoreTank tank, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
+        {
+            var size = tank.Tank.InnerSize;
+            float tanV = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float halfWidth = tanV * cam.aspect;
+            float open = Mathf.Clamp(1f - menuCover, 0.3f, 1f);
+            // Fitted at the rim, the nearest part to the camera.
+            float above = Mathf.Max((size.x * 0.5f + 0.12f) / (halfWidth * open), (size.z * 0.5f + 0.12f) / tanV);
+            var top = tank.Tank.InnerBounds.center + Vector3.up * size.y * 0.5f;
+            rotation = Quaternion.LookRotation(Vector3.down, tank.transform.forward);
+            position = top + Vector3.up * above;
+            // The tank's middle goes to the middle of the part of the screen right of the menu.
+            position -= rotation * Vector3.right * (menuCover * above * halfWidth);
+        }
+
         void EnterTank(StoreTank tank)
         {
             panel = Panel.None;
@@ -315,6 +366,7 @@ namespace FishBreeder.Store
             Tank.Focused = tank.Tank;
             hud.Initialize(tank, store.Tanks, cam, ExitTank, () => shopDay.IsOpen, UpgradeTank);
             hud.SetTankNavigation(SwitchTank, NeighbourTank);
+            hud.SetStore(store);
             hud.enabled = true;
         }
 
@@ -350,6 +402,7 @@ namespace FishBreeder.Store
             {
                 float x = focused.transform.position.x;
                 panX = focused.InBackRoom ? StoreLayout.BackRoomCenterX : Mathf.Round(x / StoreLayout.SectionWidth) * StoreLayout.SectionWidth;
+                panZ = 0f;
             }
             focused = null;
             Tank.Focused = null;
@@ -460,7 +513,7 @@ namespace FishBreeder.Store
                 case Panel.Register: panelRect = Centered(width, height, 500f, 560f); DrawRegister(); break;
                 case Panel.Supplier: panelRect = Centered(width, height, 760f, Mathf.Min(700f, height - 100f)); DrawSupplier(); break;
                 case Panel.Unlock: panelRect = Centered(width, height, 380f, 170f); DrawUnlock(); break;
-                case Panel.BuyTank: panelRect = Centered(width, height, 440f, 250f); DrawBuyTank(); break;
+                case Panel.BuyTank: panelRect = Centered(width, height, 460f, pendingSlot != null && pendingSlot.wall ? 330f : 250f); DrawBuyTank(); break;
                 case Panel.DayReport: panelRect = Centered(width, height, 520f, 440f); DrawDayReport(); break;
                 case Panel.Owner: panelRect = Centered(width, height, 480f, 400f); DrawOwnerPick(); break;
             }
@@ -631,20 +684,35 @@ namespace FishBreeder.Store
             UiCheck.End();
         }
 
+        /// <summary>
+        /// A level, its XP bar and the XP numbers, all centred on one row height so the bar sits
+        /// level with the text. Each piece can be nudged in the layout editor (F7).
+        /// </summary>
         static void LevelMeter(XpTrack track)
         {
             int level = Progression.Level(track);
-            GUILayout.Label($"<b>{Progression.TrackName(track)} {level}</b>", Rich(), GUILayout.Width(104f));
-            var rect = GUILayoutUtility.GetRect(84f, 12f, GUILayout.Width(84f));
-            rect.y += 6f;
-            rect.height = 10f;
+            string name = Progression.TrackName(track);
+            var style = MeterLabel();
+            float row = MeterRowHeight;
+            var labelRect = UiLayout.Item($"Status bar: {name} level", GUILayoutUtility.GetRect(104f, row, GUILayout.Width(104f), GUILayout.Height(row)));
+            GUI.Label(labelRect, $"<b>{name} {level}</b>", style);
+            var slot = GUILayoutUtility.GetRect(84f, row, GUILayout.Width(84f), GUILayout.Height(row));
+            var rect = UiLayout.Item($"Status bar: {name} XP bar", new Rect(slot.x, slot.y + (row - 10f) * 0.5f, slot.width, 10f));
             float fill = Progression.IsMaxLevel(track) ? 1f : Progression.Xp(track) / (float)Progression.XpToNext(level);
             GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 5f);
             var color = track == XpTrack.Fishkeeping ? UiTheme.Aqua : track == XpTrack.Shopkeeping ? UiTheme.Sun : UiTheme.Hibiscus;
             if (fill > 0.001f)
                 GUI.DrawTexture(new Rect(rect.x, rect.y, Mathf.Max(10f, rect.width * Mathf.Clamp01(fill)), rect.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, color, 0f, 5f);
-            GUILayout.Label(Progression.IsMaxLevel(track) ? "<size=11>max</size>" : $"<size=11>{Progression.Xp(track)}/{Progression.XpToNext(level)}</size>", Rich(), GUILayout.Width(58f));
+            GUILayout.Space(6f);
+            var numbers = UiLayout.Item($"Status bar: {name} XP", GUILayoutUtility.GetRect(58f, row, GUILayout.Width(58f), GUILayout.Height(row)));
+            GUI.Label(numbers, Progression.IsMaxLevel(track) ? "<size=11>max</size>" : $"<size=11>{Progression.Xp(track)}/{Progression.XpToNext(level)}</size>", style);
         }
+
+        const float MeterRowHeight = 24f;
+        static GUIStyle meterLabel;
+        /// <summary>Rich text centred down its row, with no margins, so it lines up with the bar beside it.</summary>
+        static GUIStyle MeterLabel() => meterLabel != null ? meterLabel : meterLabel = new GUIStyle(GUI.skin.label)
+            { richText = true, wordWrap = false, alignment = TextAnchor.MiddleLeft, margin = new RectOffset(), padding = new RectOffset(0, 0, 0, 0), clipping = TextClipping.Overflow };
 
         /// <summary>The next few milestones down the right side, with progress and what each pays.</summary>
         void DrawMilestones(float width, float top)
@@ -1039,12 +1107,18 @@ namespace FishBreeder.Store
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
             WorldLabel(store.ComputerPoint, "<b>Supplier computer</b>\nfood, decorations, equipment", scale, height);
             WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
-            WorldLabel(store.BackRoomLabelPoint, "<b>Back room</b>\nstaff only: breeding and quarantine", scale, height);
+            // The van is out of sight behind the breeding room: a sign over the back door slides the view there.
+            if (panZ < 4f && ToGui(store.BackDoorSign, scale, height, out var door))
+            {
+                var label = new GUIContent(FishSeller.Away ? "Parking lot ▲" : "Fish seller's van ▲  <size=11>(W)</size>");
+                var size = WorldButtonStyle().CalcSize(label);
+                if (GUI.Button(new Rect(door.x - size.x * 0.5f, door.y - size.y, size.x, size.y), label, WorldButtonStyle())) LookAtParkingLot();
+            }
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
                     if (slot.IsOpen && slot.tank == null)
-                        WorldLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height);
+                        WorldLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height);
 
             foreach (var section in store.Sections)
                 if (!section.unlocked)
@@ -1063,6 +1137,9 @@ namespace FishBreeder.Store
             var size = WorldLabelStyle().CalcSize(content);
             GUI.Label(new Rect(gui.x - size.x * 0.5f, gui.y - size.y, size.x, size.y), content, WorldLabelStyle());
         }
+
+        static GUIStyle worldButton;
+        static GUIStyle WorldButtonStyle() => worldButton != null ? worldButton : worldButton = new GUIStyle(GUI.skin.button) { richText = true, fontSize = 12, padding = new RectOffset(8, 8, 4, 5) };
 
         bool ToGui(Vector3 world, float scale, float height, out Vector2 gui)
         {
@@ -1678,18 +1755,27 @@ namespace FishBreeder.Store
         void DrawBuyTank()
         {
             UiCheck.Begin("Buy a tank", panelRect, UiStyles.Window);
-            GUILayout.Label(pendingSlot.backRoom ? "Buy a tank for the back room" : "Buy a tank for this spot", UiTheme.Title);
-            GUILayout.Label(pendingSlot.backRoom
+            var wall = Balance.Data.store.wallAquarium;
+            GUILayout.Label(pendingSlot.wall ? "The wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
+            GUILayout.Label(pendingSlot.wall
+                ? $"<i>One tank the whole length of the back wall ({wall.width:0.#} m), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth. Make it a display tank to wow customers, or fill it with fish for sale.</i>"
+                : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
-                : "<i>Customers browse these. Breeder and quarantine tanks go in the back room.</i>", Rich());
+                : "<i>Customers browse these. Breeder and quarantine tanks go in the breeding room.</i>", Rich());
             foreach (var role in BuyableRoles)
             {
                 if (!pendingSlot.Allows(role)) continue;
                 SupplierCatalog.TankLevel(role, out var track, out var level);
+                if (pendingSlot.wall)
+                {
+                    track = XpTrack.Shopkeeping;
+                    level = Mathf.Max(level, Balance.Data.store.wallAquariumLevel);
+                }
                 GUI.enabled = !shopDay.IsOpen && store.CanBuyTank(pendingSlot, role, out _);
+                string kind = pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
                 string text = Progression.IsUnlocked(track, level)
-                    ? $"{StoreTank.RoleName(role)} tank   {Economy.Format(SupplierCatalog.TankPrice(role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} owned)"
-                    : $"{StoreTank.RoleName(role)} tank: needs {Progression.LockText(track, level)}";
+                    ? $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} {StoreTank.RoleName(role).ToLower()} owned)"
+                    : $"{kind}: needs {Progression.LockText(track, level)}";
                 if (GUILayout.Button(text, GUILayout.Height(30f)) && store.TryBuyTank(pendingSlot, role) != null) panel = Panel.None;
             }
             GUI.enabled = true;

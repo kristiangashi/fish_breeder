@@ -59,16 +59,17 @@ namespace FishBreeder.Core
             gameObject.AddComponent<PerksView>();
             gameObject.AddComponent<ResearchView>();
             gameObject.AddComponent<FxOverlay>();
+            gameObject.AddComponent<UiLayoutEditor>();
             int setup = Economy.DaysUntilOpening;
             if (setup > 0)
             {
                 GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)} and {setup} days before the grand opening to raise some fish to sell.");
                 if (Balance.Data.store.grandmaGift > 0)
                     GameLog.Add($"Grandma believes in you: she'll send {Economy.Format(Balance.Data.store.grandmaGift)} every night until the grand opening. After that the shop has to pay its way (she'll only help out if you go broke).");
-                GameLog.Add("Buy your first box of eggs or fry from the fish seller's van out front. Time passes twice a day: when you let the day pass (or close the shop), and when you go to sleep.");
+                GameLog.Add("Buy your first box of eggs or fry from the fish seller's van in the parking lot behind the breeding room (W or the up arrow slides the view there). Time passes twice a day: when you let the day pass (or close the shop), and when you go to sleep.");
                 Fx.Day("Welcome to your fish shop!", $"{setup} days to raise some fish before the grand opening");
             }
-            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Buy your first box of eggs from the fish seller's van out front.");
+            else GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)}. Buy your first box of eggs from the fish seller's van in the parking lot behind the breeding room (W or the up arrow slides the view there).");
         }
 
         static Camera SetupCamera()

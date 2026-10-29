@@ -87,16 +87,52 @@ namespace FishBreeder.Core
             shopIsOpen = isShopOpen;
             selected.Clear();
             ZoomPoint = null;
+            Arranging = ArrangeMode.None;
+            heldPiece = dragPiece = -1;
         }
 
         void Update()
         {
             selected.RemoveAll(f => f == null || f.Tank != tank);
-            if (tank == null) return;
+            if (tank == null || GUIUtility.keyboardControl != 0) return;
+            if (Arranging == ArrangeMode.Decorations && heldPiece >= 0 && tank.Decor != null)
+            {
+                if (Input.GetKeyDown(KeyCode.Q)) tank.Decor.Turn(heldPiece, -15f);
+                if (Input.GetKeyDown(KeyCode.E)) tank.Decor.Turn(heldPiece, 15f);
+            }
+            if (Arranging != ArrangeMode.None) return;
+            SlideZoom(Time.unscaledDeltaTime);
             int step = Input.GetKeyDown(KeyCode.RightArrow) ? 1 : Input.GetKeyDown(KeyCode.LeftArrow) ? -1 : 0;
-            if (step == 0) return;
+            if (step == 0 || ZoomPoint.HasValue) return;
             if (HasSelection) Cycle(step);
             else switchTank?.Invoke(step);
+        }
+
+        /// <summary>
+        /// WASD (and the arrow keys once zoomed in on a spot) slide the close-up view about the
+        /// tank. From the whole-tank view, WASD zooms in on the middle first; while following a
+        /// fish, they let go of it and slide from where it is.
+        /// </summary>
+        void SlideZoom(float dt)
+        {
+            float x = 0f, y = 0f;
+            if (Input.GetKey(KeyCode.A)) x -= 1f;
+            if (Input.GetKey(KeyCode.D)) x += 1f;
+            if (Input.GetKey(KeyCode.W)) y += 1f;
+            if (Input.GetKey(KeyCode.S)) y -= 1f;
+            if (ZoomPoint.HasValue)
+            {
+                if (Input.GetKey(KeyCode.LeftArrow)) x -= 1f;
+                if (Input.GetKey(KeyCode.RightArrow)) x += 1f;
+                if (Input.GetKey(KeyCode.UpArrow)) y += 1f;
+                if (Input.GetKey(KeyCode.DownArrow)) y -= 1f;
+            }
+            if (x == 0f && y == 0f) return;
+            var from = ZoomPoint ?? (Focus != null ? Focus.transform.position : tank.InnerBounds.center);
+            // About a third of the view's width a second, whatever the tank's size.
+            float speed = Mathf.Max(0.5f, Mathf.Min(tank.InnerSize.x, 3f) * 0.35f);
+            var move = (tank.transform.right * Mathf.Clamp(x, -1f, 1f) + Vector3.up * Mathf.Clamp(y, -1f, 1f)) * speed * dt;
+            ZoomPoint = tank.Clamp(from + move, 0.12f, 0.08f);
         }
 
         /// <summary>Share of the screen's width, from the left, that the tank menu covers (0 when the menus are hidden).</summary>
@@ -156,7 +192,8 @@ namespace FishBreeder.Core
             DrawLog();
             DrawSickMarkers(scale, height);
             DrawSelectionMarkers(scale, height);
-            HandleClick();
+            DrawHeldMarker(scale, height);
+            if (!HandleArranging() && Arranging == ArrangeMode.None) HandleClick();
         }
 
         // ------------------------------------------------------------ tank panel
@@ -186,6 +223,12 @@ namespace FishBreeder.Core
         {
             UiCheck.Begin("Tank panel", leftPanel, UiStyles.Window);
             GUILayout.Label($"<b>{storeTank.Title}</b>   {Economy.Format(Economy.Money)}", Rich());
+            if (Arranging != ArrangeMode.None)
+            {
+                DrawArrangePanel();
+                UiCheck.End();
+                return;
+            }
             if (ReadOnly) GUILayout.Label("<color=#ffd27f>The shop is open: you can look, but tank work waits until closing.</color>", Rich());
             if ((int)tab >= TabCount) tab = TankTab.Tank;
             var labels = new string[TabCount];
@@ -243,7 +286,7 @@ namespace FishBreeder.Core
 
         void DrawTankTab()
         {
-            DrawFishCount(tank.SizeInfo.name);
+            DrawFishCount(tank.IsWallAquarium ? tank.SizeInfo.name : tank.SizeInfo.name + " tank");
             GUILayout.Label($"<size=11>Aquarium quality {tank.Quality} (see Setup)</size>", Rich());
             DrawSickList();
             int eggs = EggClutch.EggsIn(tank);
@@ -325,7 +368,7 @@ namespace FishBreeder.Core
             GUILayout.Space(4f);
             GUILayout.Label(storeTank.Role == TankRole.Breeder
                 ? "<size=11>Pick a male and a female to pair them up.</size>"
-                : "<size=11>Pairs in other tanks only breed now and then by chance; a breeder tank in the back room lets you pair them.</size>", Rich());
+                : "<size=11>Pairs in other tanks only breed now and then by chance; a breeder tank in the breeding room lets you pair them.</size>", Rich());
         }
 
         /// <summary>
@@ -399,6 +442,8 @@ namespace FishBreeder.Core
                 else if (GUILayout.Button(label) && Economy.TrySpend(salt, "changing a tank's water", MoneyKind.Care)) tank.SetSaltwater(!tank.IsSaltwater);
             }
             DrawDecorations();
+            DrawBackgroundSetup();
+            DrawTankType();
             GUI.enabled = true;
 #if UNITY_EDITOR
             if (!ReadOnly && GUILayout.Button("Dirty the water (dev)")) tank.DevMakeDirty();
@@ -526,13 +571,13 @@ namespace FishBreeder.Core
             string dead = tank.Corpses.Count > 0 ? $"   <color=#ff8080>Dead: {tank.Corpses.Count}</color>" : "";
             if (tank.IsOvercrowded)
             {
-                GUILayout.Label($"{sizeName} tank. <color=#ff8080><b>Fish: {count} / {tank.Capacity}</b></color>{dead}", Rich());
+                GUILayout.Label($"{sizeName}. <color=#ff8080><b>Fish: {count} / {tank.Capacity}</b></color>{dead}", Rich());
                 GUILayout.Label($"<size=11><color=#ff9a8a>Overcrowded by {tank.OverLimit}: the water fouls faster, illness spreads and every fish here is stressed. Move some out.</color></size>", Rich());
             }
             else
             {
                 string color = count == tank.Capacity ? "#ffd27f" : "#ffffff";
-                GUILayout.Label($"{sizeName} tank. <color={color}><b>Fish: {count} / {tank.Capacity}</b></color>{dead}", Rich());
+                GUILayout.Label($"{sizeName}. <color={color}><b>Fish: {count} / {tank.Capacity}</b></color>{dead}", Rich());
             }
         }
 
@@ -718,6 +763,11 @@ namespace FishBreeder.Core
             if (decor == null) return;
             GUILayout.Space(2f);
             showDecorations = GUILayout.Toggle(showDecorations, $" Decorations: {decor.Count} / {decor.Capacity}{(tank.HasPlants ? ", with plants" : "")}");
+            if (decor.Count > 0)
+            {
+                if (GUILayout.Button("Move decorations (top view)")) StartArranging(ArrangeMode.Decorations);
+                GUILayout.Label($"<size=11>{(decor.MovedCount > 0 ? $"{decor.MovedCount} placed by hand, the rest in their automatic spots." : "Each one is in its automatic spot.")}</size>", Rich());
+            }
             if (!showDecorations) return;
             var ids = decor.Ids;
             if (ids.Count == 0) GUILayout.Label("<i>None. Buy some at the supplier computer.</i>", Rich());
@@ -739,6 +789,233 @@ namespace FishBreeder.Core
             }
         }
 
+        /// <summary>The picture on the back glass, if there is one, with the button to slide and zoom it.</summary>
+        void DrawBackgroundSetup()
+        {
+            var background = TankBackgrounds.Find(tank.BackgroundId);
+            if (background == null) return;
+            GUILayout.Space(2f);
+            GUILayout.Label($"Background: <b>{background.name}</b>" + (tank.BackgroundZoom > 1.01f ? $" <size=11>(zoomed {tank.BackgroundZoom:0.0}x)</size>" : ""), Rich());
+            if (GUILayout.Button("Adjust the picture (drag and zoom)")) StartArranging(ArrangeMode.Background);
+        }
+
+        /// <summary>Turning the tank into the other type for its room (for sale and display, or breeder and quarantine), for a fee.</summary>
+        void DrawTankType()
+        {
+            if (tankStore == null) return;
+            GUILayout.Space(2f);
+            GUILayout.Label($"Tank type: <b>{StoreTank.RoleName(storeTank.Role)}</b>", Rich());
+            bool wasEnabled = GUI.enabled;
+            foreach (var role in StoreLayout.OtherRoles(storeTank))
+            {
+                var reason = tankStore.WhyCantChangeRole(storeTank, role);
+                GUI.enabled = wasEnabled && reason == null;
+                if (GUILayout.Button($"Make it a {StoreTank.RoleName(role).ToLower()} tank  {Economy.Format(StoreLayout.ChangeRolePrice)}")) tankStore.TryChangeRole(storeTank, role);
+                GUI.enabled = wasEnabled;
+                if (reason != null && reason != StoreLayout.NoMoney) GUILayout.Label($"<size=11><color=#ffd27f>{reason}</color></size>", Rich());
+            }
+            GUILayout.Label($"<size=11>{RoleHint(storeTank.Role)}</size>", Rich());
+        }
+
+        static string RoleHint(TankRole role)
+        {
+            switch (role)
+            {
+                case TankRole.ForSale: return "Customers buy the fish in for sale tanks.";
+                case TankRole.Display: return "Display tanks aren't for sale: they're there to wow customers.";
+                case TankRole.Breeder: return "Pairs breed best in breeder tanks.";
+                default: return "Sick fish get better apart in quarantine.";
+            }
+        }
+
+        StoreLayout tankStore;
+        /// <summary>The store the tanks stand in, for changing a tank's type.</summary>
+        public void SetStore(StoreLayout layout) => tankStore = layout;
+
+        // ------------------------------------------------------------ arranging decorations and the background
+
+        public enum ArrangeMode { None, Decorations, Background }
+
+        /// <summary>Moving decorations about (seen from above) or sliding the background picture.</summary>
+        public ArrangeMode Arranging { get; private set; }
+        int heldPiece = -1, dragPiece = -1;
+        Vector3 dragOffset, lastDragPoint;
+        bool draggingPicture;
+
+        void StartArranging(ArrangeMode mode)
+        {
+            if (ReadOnly) return;
+            selected.Clear();
+            ZoomPoint = null;
+            Arranging = mode;
+            heldPiece = dragPiece = -1;
+            draggingPicture = false;
+        }
+
+        public void StopArranging()
+        {
+            Arranging = ArrangeMode.None;
+            heldPiece = dragPiece = -1;
+            draggingPicture = false;
+        }
+
+        void DrawArrangePanel()
+        {
+            if (Arranging == ArrangeMode.Decorations)
+            {
+                var decor = tank.Decor;
+                GUILayout.Label("MOVE DECORATIONS", UiTheme.Heading);
+                GUILayout.Label("Seen from above. Drag a decoration to move it. Q and E, the mouse wheel or the buttons turn the one you last moved. Nothing can go past the glass.", Rich());
+                GUILayout.Space(4f);
+                string held = decor != null ? decor.IdAt(heldPiece) : null;
+                var item = held != null ? TankDecor.Find(held) : null;
+                GUILayout.Label(item != null ? $"Holding: <b>{item.name}</b>" : "<i>Pick one up to move or turn it.</i>", Rich());
+                GUILayout.BeginHorizontal();
+                GUI.enabled = held != null;
+                if (GUILayout.Button("Turn left (Q)")) decor.Turn(heldPiece, -15f);
+                if (GUILayout.Button("Turn right (E)")) decor.Turn(heldPiece, 15f);
+                GUI.enabled = true;
+                GUILayout.EndHorizontal();
+                GUI.enabled = decor != null && decor.MovedCount > 0;
+                if (GUILayout.Button("Put them all back in their automatic spots"))
+                {
+                    decor.ResetPlacement();
+                    heldPiece = -1;
+                }
+                GUI.enabled = true;
+            }
+            else
+            {
+                GUILayout.Label("ADJUST THE BACKGROUND", UiTheme.Heading);
+                GUILayout.Label("Drag the picture to slide it, and zoom with the mouse wheel or the slider. It always covers the whole back glass.", Rich());
+                GUILayout.Space(4f);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Zoom", GUILayout.Width(44f));
+                float zoom = GUILayout.HorizontalSlider(tank.BackgroundZoom, 1f, Tank.MaxBackgroundZoom, GUILayout.ExpandWidth(true));
+                if (!Mathf.Approximately(zoom, tank.BackgroundZoom)) tank.SetBackgroundCrop(tank.BackgroundCenter, zoom);
+                GUILayout.Label($"{tank.BackgroundZoom:0.0}x", GUILayout.Width(36f));
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button("Centre it, as wide as it fits")) tank.SetBackgroundCrop(new Vector2(0.5f, 0.5f), 1f);
+            }
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Done (Esc)", UiTheme.Primary, GUILayout.Height(30f))) StopArranging();
+        }
+
+        /// <summary>
+        /// Mouse work while arranging: picking up, dragging and turning decorations on the floor of
+        /// the tank, or dragging and zooming the picture on the back glass. True if it used the event.
+        /// </summary>
+        bool HandleArranging()
+        {
+            if (Arranging == ArrangeMode.None) return false;
+            var e = Event.current;
+            var m = e.mousePosition;
+            bool overMenu = leftPanel.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m);
+            var ray = RayAt(m);
+            if (Arranging == ArrangeMode.Decorations)
+            {
+                var decor = tank.Decor;
+                if (decor == null) return false;
+                var floor = new Plane(Vector3.up, tank.transform.position);
+                if (!floor.Raycast(ray, out float hitAt)) return false;
+                var point = ray.GetPoint(hitAt);
+                if (e.type == EventType.MouseDown && e.button == 0 && !overMenu)
+                {
+                    int index = -1;
+                    var hits = Physics.RaycastAll(ray, 60f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                    foreach (var hit in hits)
+                    {
+                        index = decor.IndexOf(hit.collider);
+                        if (index >= 0) break;
+                    }
+                    if (index < 0) index = decor.Nearest(point, Mathf.Max(0.2f, tank.InnerSize.y * 0.25f));
+                    heldPiece = dragPiece = index;
+                    if (index >= 0)
+                    {
+                        var c = decor.BoundsAt(index).center;
+                        dragOffset = new Vector3(c.x - point.x, 0f, c.z - point.z);
+                    }
+                    e.Use();
+                    return true;
+                }
+                if (e.type == EventType.MouseDrag && dragPiece >= 0)
+                {
+                    decor.MoveTo(dragPiece, point + dragOffset);
+                    e.Use();
+                    return true;
+                }
+                if (e.rawType == EventType.MouseUp) dragPiece = -1;
+                if (e.type == EventType.ScrollWheel && heldPiece >= 0 && !overMenu)
+                {
+                    decor.Turn(heldPiece, e.delta.y > 0f ? 15f : -15f);
+                    e.Use();
+                    return true;
+                }
+                return false;
+            }
+
+            // The background: points on the back glass.
+            var size = tank.InnerSize;
+            var glass = new Plane(tank.Front, tank.InnerBounds.center - tank.Front * (size.z * 0.5f));
+            if (!glass.Raycast(ray, out float at)) return false;
+            var onGlass = ray.GetPoint(at);
+            if (e.type == EventType.MouseDown && e.button == 0 && !overMenu)
+            {
+                draggingPicture = true;
+                lastDragPoint = onGlass;
+                e.Use();
+                return true;
+            }
+            if (e.type == EventType.MouseDrag && draggingPicture)
+            {
+                var moved = onGlass - lastDragPoint;
+                lastDragPoint = onGlass;
+                tank.DragBackground(new Vector2(Vector3.Dot(moved, tank.transform.right), moved.y));
+                e.Use();
+                return true;
+            }
+            if (e.rawType == EventType.MouseUp) draggingPicture = false;
+            if (e.type == EventType.ScrollWheel && !overMenu)
+            {
+                tank.SetBackgroundCrop(tank.BackgroundCenter, tank.BackgroundZoom * (e.delta.y > 0f ? 0.9f : 1.1f));
+                e.Use();
+                return true;
+            }
+            return false;
+        }
+
+        Ray RayAt(Vector2 guiPoint)
+        {
+            var screen = GUI.matrix.MultiplyPoint3x4(guiPoint);
+            return cam.ScreenPointToRay(new Vector3(screen.x, Screen.height - screen.y, 0f));
+        }
+
+        /// <summary>A box round the decoration being moved, so it's clear which one is held.</summary>
+        void DrawHeldMarker(float scale, float guiHeight)
+        {
+            if (Arranging != ArrangeMode.Decorations || heldPiece < 0 || tank.Decor == null || cam == null) return;
+            var b = tank.Decor.BoundsAt(heldPiece);
+            if (b.size == Vector3.zero) return;
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                var p = cam.WorldToScreenPoint(corner);
+                if (p.z <= 0f) return;
+                minX = Mathf.Min(minX, p.x / scale);
+                maxX = Mathf.Max(maxX, p.x / scale);
+                minY = Mathf.Min(minY, guiHeight - p.y / scale);
+                maxY = Mathf.Max(maxY, guiHeight - p.y / scale);
+            }
+            var r = new Rect(minX - 4f, minY - 4f, maxX - minX + 8f, maxY - minY + 8f);
+            var c = UiTheme.Sun;
+            GUI.DrawTexture(new Rect(r.x, r.y, r.width, 2f), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, c, 0f, 0f);
+            GUI.DrawTexture(new Rect(r.x, r.yMax - 2f, r.width, 2f), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, c, 0f, 0f);
+            GUI.DrawTexture(new Rect(r.x, r.y, 2f, r.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, c, 0f, 0f);
+            GUI.DrawTexture(new Rect(r.xMax - 2f, r.y, 2f, r.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, c, 0f, 0f);
+        }
+
         /// <summary>The tank's quality score, what it's made of, and how far it is from the next size.</summary>
         void DrawQuality()
         {
@@ -750,8 +1027,7 @@ namespace FishBreeder.Core
             GUILayout.Label($"Aquarium quality <b>{quality}</b>" + (need > 0 ? $" / {need}" : ""), Rich(), GUILayout.Width(150f));
             if (need > 0)
             {
-                var rect = GUILayoutUtility.GetRect(40f, 14f, GUILayout.ExpandWidth(true));
-                rect.y += 4f;
+                var rect = UiLayout.Item("Tank panel: quality bar", BarBeside(GUILayoutUtility.GetLastRect(), GUILayoutUtility.GetRect(40f, 14f, GUILayout.ExpandWidth(true)), 12f));
                 GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0f, 0f, 0f, 0.35f), 0f, 0f);
                 bool ready = quality >= need;
                 GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(quality / (float)need), rect.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f,
@@ -786,12 +1062,18 @@ namespace FishBreeder.Core
             GUI.enabled = wasEnabled;
         }
 
+        /// <summary>A bar of this height in the slot beside a label, centred on the label's text so the two line up.</summary>
+        static Rect BarBeside(Rect label, Rect slot, float height)
+        {
+            float middle = label.height > 1f ? label.center.y : slot.center.y;
+            return new Rect(slot.x, middle - height * 0.5f, slot.width, height);
+        }
+
         static void Bar(string label, float value, bool highIsGood)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(label, Rich(), GUILayout.Width(95f));
-            var rect = GUILayoutUtility.GetRect(60f, 14f, GUILayout.ExpandWidth(true));
-            rect.y += 4f;
+            var rect = UiLayout.Item("Tank panel: " + label.Replace("<b>", "").Replace("</b>", "") + " bar", BarBeside(GUILayoutUtility.GetLastRect(), GUILayoutUtility.GetRect(60f, 14f, GUILayout.ExpandWidth(true)), 12f));
             GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0f, 0f, 0f, 0.35f), 0f, 0f);
             float good = highIsGood ? value : 1f - value;
             var fill = new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(value), rect.height);

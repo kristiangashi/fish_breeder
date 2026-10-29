@@ -9,6 +9,9 @@ namespace FishBreeder
     /// in Resources/Decor: one FBX per piece, each with a low-poly "_Collider" mesh fish swim
     /// around, sharing one texture atlas. Each tank has a number of spots (more in bigger tanks):
     /// tall pieces go along the back, small ones up front, with open water left between them.
+    /// That's where every piece goes unless the player moves it (Setup tab, top view): a moved
+    /// piece keeps its own place and turn, as a share of the tank's size, so it stays put when
+    /// the tank is upgraded. Pieces are always kept wholly inside the glass.
     /// </summary>
     public class TankDecor : MonoBehaviour
     {
@@ -32,6 +35,9 @@ namespace FishBreeder
             public string id;
             public int spot;
             public GameObject piece;
+            /// <summary>Moved by the player: <see cref="x"/>, <see cref="z"/> and <see cref="yaw"/> replace the spot's.</summary>
+            public bool moved;
+            public float x, z, yaw;
         }
 
         readonly List<Placed> placed = new List<Placed>();
@@ -84,10 +90,20 @@ namespace FishBreeder
             root = visualsRoot;
             tankSize = size;
             spots = MakeSpots(spotCount);
-            var keep = Ids;
+            var keep = new List<Placed>(placed);
             foreach (var p in placed) if (p.piece != null) Destroy(p.piece);
             placed.Clear();
-            foreach (var id in keep) Add(id);
+            foreach (var old in keep)
+            {
+                if (!Add(old.id) || !old.moved) continue;
+                var p = placed[placed.Count - 1];
+                p.moved = true;
+                p.x = old.x;
+                p.z = old.z;
+                p.yaw = old.yaw;
+                Pose(p);
+            }
+            Physics.SyncTransforms();
         }
 
         /// <summary>Changes how many spots the tank has (a perk added some), keeping what's placed.</summary>
@@ -109,6 +125,154 @@ namespace FishBreeder
             // New colliders must be in the physics scene before fish look for room around them.
             Physics.SyncTransforms();
             return true;
+        }
+
+        // ------------------------------------------------------------ moving pieces by hand
+
+        /// <summary>How many pieces the player has moved from their automatic spots.</summary>
+        public int MovedCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var p in placed) if (p.moved) n++;
+                return n;
+            }
+        }
+
+        /// <summary>The placed piece a collider belongs to, or -1.</summary>
+        public int IndexOf(Collider collider)
+        {
+            if (collider == null) return -1;
+            for (int i = 0; i < placed.Count; i++)
+                if (placed[i].piece != null && collider.transform.IsChildOf(placed[i].piece.transform)) return i;
+            return -1;
+        }
+
+        /// <summary>The piece whose middle is nearest this point (seen from above), within reach metres, or -1.</summary>
+        public int Nearest(Vector3 world, float reach)
+        {
+            int best = -1;
+            float bestDistance = reach;
+            for (int i = 0; i < placed.Count; i++)
+            {
+                if (placed[i].piece == null) continue;
+                var c = Footprint(placed[i].piece).center;
+                float d = Vector2.Distance(new Vector2(c.x, c.z), new Vector2(world.x, world.z));
+                if (d < bestDistance)
+                {
+                    bestDistance = d;
+                    best = i;
+                }
+            }
+            return best;
+        }
+
+        public string IdAt(int index) => index >= 0 && index < placed.Count ? placed[index].id : null;
+        public Bounds BoundsAt(int index) => index >= 0 && index < placed.Count && placed[index].piece != null ? Footprint(placed[index].piece) : default;
+
+        /// <summary>
+        /// Moves a piece so its middle (seen from above) sits over this point, then keeps it inside
+        /// the glass. From now on it stays where the player put it.
+        /// </summary>
+        public void MoveTo(int index, Vector3 world)
+        {
+            if (index < 0 || index >= placed.Count || placed[index].piece == null) return;
+            var p = placed[index];
+            var t = p.piece.transform;
+            var centre = Footprint(p.piece).center;
+            var pivot = t.position + new Vector3(world.x - centre.x, 0f, world.z - centre.z);
+            var local = root.InverseTransformPoint(pivot);
+            Keep(p, local.x, local.z, t.localEulerAngles.y);
+        }
+
+        /// <summary>Turns a piece by this many degrees about its middle (it stays inside the glass).</summary>
+        public void Turn(int index, float degrees)
+        {
+            if (index < 0 || index >= placed.Count || placed[index].piece == null) return;
+            var p = placed[index];
+            var t = p.piece.transform;
+            var centre = Footprint(p.piece).center;
+            t.RotateAround(centre, Vector3.up, degrees);
+            var local = root.InverseTransformPoint(t.position);
+            Keep(p, local.x, local.z, t.localEulerAngles.y);
+        }
+
+        /// <summary>Every piece back in its automatic spot.</summary>
+        public void ResetPlacement()
+        {
+            foreach (var p in placed) p.moved = false;
+            Rebuild(root, tankSize, spots.Length);
+        }
+
+        void Keep(Placed p, float localX, float localZ, float yaw)
+        {
+            p.moved = true;
+            p.x = localX / Mathf.Max(0.01f, tankSize.x * 0.5f);
+            p.z = localZ / Mathf.Max(0.01f, tankSize.z * 0.5f);
+            p.yaw = yaw;
+            Pose(p);
+            Physics.SyncTransforms();
+        }
+
+        /// <summary>Puts a moved piece where the player left it, nudged back inside the glass if it pokes out.</summary>
+        void Pose(Placed p)
+        {
+            if (p.piece == null) return;
+            var t = p.piece.transform;
+            t.localRotation = Quaternion.Euler(0f, p.yaw, 0f);
+            t.localPosition = new Vector3(p.x * tankSize.x * 0.5f, t.localPosition.y, p.z * tankSize.z * 0.5f);
+            // Keep the whole piece inside, 1.5 cm clear of the glass (in the tank's own axes).
+            var b = LocalFootprint(p.piece);
+            float marginX = tankSize.x * 0.5f - 0.015f, marginZ = tankSize.z * 0.5f - 0.015f;
+            float dx = Shift(b.min.x, b.max.x, -marginX, marginX);
+            float dz = Shift(b.min.z, b.max.z, -marginZ, marginZ);
+            t.localPosition += new Vector3(dx, 0f, dz);
+            p.x = t.localPosition.x / Mathf.Max(0.01f, tankSize.x * 0.5f);
+            p.z = t.localPosition.z / Mathf.Max(0.01f, tankSize.z * 0.5f);
+        }
+
+        /// <summary>How far to slide a span to fit between the limits (centred if it's wider than the gap).</summary>
+        static float Shift(float min, float max, float low, float high)
+        {
+            if (max - min > high - low) return (low + high) * 0.5f - (min + max) * 0.5f;
+            if (min < low) return low - min;
+            if (max > high) return high - max;
+            return 0f;
+        }
+
+        /// <summary>The piece's visible bounds in world space.</summary>
+        static Bounds Footprint(GameObject piece)
+        {
+            var renderers = piece.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return new Bounds(piece.transform.position, Vector3.zero);
+            Bounds bounds = default;
+            bool any = false;
+            foreach (var r in renderers)
+            {
+                if (!r.enabled) continue;
+                if (!any) { bounds = r.bounds; any = true; }
+                else bounds.Encapsulate(r.bounds);
+            }
+            return any ? bounds : new Bounds(piece.transform.position, Vector3.zero);
+        }
+
+        /// <summary>The piece's visible bounds in the tank's own space (the tank may be turned to face a side wall).</summary>
+        Bounds LocalFootprint(GameObject piece)
+        {
+            var bounds = new Bounds(root.InverseTransformPoint(piece.transform.position), Vector3.zero);
+            foreach (var filter in piece.GetComponentsInChildren<MeshFilter>())
+            {
+                var r = filter.GetComponent<Renderer>();
+                if (r == null || !r.enabled || filter.sharedMesh == null) continue;
+                var mb = filter.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var corner = mb.center + Vector3.Scale(mb.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                    bounds.Encapsulate(root.InverseTransformPoint(filter.transform.TransformPoint(corner)));
+                }
+            }
+            return bounds;
         }
 
         public void RemoveAt(int index)

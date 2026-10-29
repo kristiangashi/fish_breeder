@@ -31,11 +31,57 @@ namespace FishBreeder
         /// <summary>The picture on the back glass (a <see cref="BackgroundBalance"/> id), or "" for plain glass.</summary>
         public string BackgroundId => backgroundId;
 
-        /// <summary>Puts a picture on the back glass ("" or null takes it down).</summary>
+        /// <summary>Puts a picture on the back glass ("" or null takes it down). A new picture starts centred and as wide as it fits.</summary>
         public void SetBackground(string id)
         {
             backgroundId = id ?? "";
+            backgroundZoom = 1f;
+            backgroundCenter = new Vector2(0.5f, 0.5f);
             BuildBackground();
+        }
+
+        float backgroundZoom = 1f;
+        Vector2 backgroundCenter = new Vector2(0.5f, 0.5f);
+
+        /// <summary>How far the picture is zoomed in past just covering the glass (1 = as wide as it fits).</summary>
+        public float BackgroundZoom => backgroundZoom;
+        /// <summary>The middle of the part of the picture that shows, in texture space (0.5, 0.5 is centred).</summary>
+        public Vector2 BackgroundCenter => backgroundCenter;
+
+        /// <summary>
+        /// Moves and zooms the picture on the back glass. It never gets smaller than the glass: at
+        /// zoom 1 it just covers it, and it can't be slid so far that an edge shows.
+        /// </summary>
+        public void SetBackgroundCrop(Vector2 center, float zoom)
+        {
+            backgroundZoom = Mathf.Clamp(zoom, 1f, MaxBackgroundZoom);
+            backgroundCenter = center;
+            ApplyBackgroundCrop();
+        }
+
+        public const float MaxBackgroundZoom = 4f;
+
+        /// <summary>Slides the picture by this much in metres across the glass (right and up), as if dragged.</summary>
+        public void DragBackground(Vector2 metres)
+        {
+            if (backgroundMaterial == null) return;
+            var scale = backgroundMaterial.mainTextureScale;
+            backgroundCenter -= new Vector2(metres.x * scale.x / Mathf.Max(0.01f, innerSize.x), metres.y * scale.y / Mathf.Max(0.01f, innerSize.y));
+            ApplyBackgroundCrop();
+        }
+
+        /// <summary>The part of the picture showing (in texture space): the cover crop, zoomed, kept inside the picture.</summary>
+        void ApplyBackgroundCrop()
+        {
+            if (backgroundMaterial == null || backgroundMaterial.mainTexture == null) return;
+            var texture = backgroundMaterial.mainTexture;
+            var b = innerSize;
+            float tankAspect = b.x / Mathf.Max(0.01f, b.y), textureAspect = texture.width / (float)Mathf.Max(1, texture.height);
+            var cover = tankAspect > textureAspect ? new Vector2(1f, textureAspect / tankAspect) : new Vector2(tankAspect / textureAspect, 1f);
+            var scale = cover / backgroundZoom;
+            backgroundCenter = new Vector2(Mathf.Clamp(backgroundCenter.x, scale.x * 0.5f, 1f - scale.x * 0.5f), Mathf.Clamp(backgroundCenter.y, scale.y * 0.5f, 1f - scale.y * 0.5f));
+            backgroundMaterial.mainTextureScale = scale;
+            backgroundMaterial.mainTextureOffset = backgroundCenter - scale * 0.5f;
         }
         TankWater water;
         Transform visuals;
@@ -104,12 +150,18 @@ namespace FishBreeder
         /// <summary>Fed since the last time step (the to-do list uses it to know hungry fish were seen to).</summary>
         public bool FedSinceTimeStep { get; set; }
 
-        /// <summary>Which of the balance's tank sizes this is (0 = the standard size every tank starts as).</summary>
+        /// <summary>Which of the balance's tank sizes this is (0 = the standard size every tank starts as, <see cref="WallSize"/> the wall aquarium).</summary>
         public int SizeIndex => sizeIndex;
+
+        /// <summary>The size index of the East wing's wall aquarium: bigger than every other size, and never upgraded to.</summary>
+        public const int WallSize = 100;
+        public bool IsWallAquarium => sizeIndex == WallSize;
+
         public TankSizeBalance SizeInfo
         {
             get
             {
+                if (sizeIndex == WallSize) return Balance.Data.store.wallAquarium;
                 var sizes = Balance.Data.store.tankSizes;
                 if (sizes == null || sizes.Count == 0) return new TankSizeBalance { name = "Standard" };
                 return sizes[Mathf.Clamp(sizeIndex, 0, sizes.Count - 1)];
@@ -678,7 +730,8 @@ namespace FishBreeder
 
         /// <summary>
         /// The picture on the back glass: a quad just in front of the back wall, the texture cropped
-        /// (not stretched) to the tank's shape, keeping its middle.
+        /// (not stretched) to the tank's shape: centred at first, then wherever the player slid and
+        /// zoomed it (see <see cref="SetBackgroundCrop"/>).
         /// </summary>
         void BuildBackground()
         {
@@ -693,11 +746,8 @@ namespace FishBreeder
             var material = quad.GetComponent<Renderer>().material;
             material.mainTexture = texture;
             if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0f);
-            float tankAspect = b.x / Mathf.Max(0.01f, b.y), textureAspect = texture.width / (float)Mathf.Max(1, texture.height);
-            var scale = tankAspect > textureAspect ? new Vector2(1f, textureAspect / tankAspect) : new Vector2(tankAspect / textureAspect, 1f);
-            material.mainTextureScale = scale;
-            material.mainTextureOffset = new Vector2((1f - scale.x) * 0.5f, (1f - scale.y) * 0.5f);
             backgroundMaterial = material;
+            ApplyBackgroundCrop();
             ApplyWaterLook();
         }
 

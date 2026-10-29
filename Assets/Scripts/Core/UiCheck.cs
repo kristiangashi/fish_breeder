@@ -12,6 +12,7 @@ namespace FishBreeder.Core
     /// <see cref="Label"/>. Anything that still doesn't fit is recorded in <see cref="Problems"/> and,
     /// in the editor, logged once as a "[UI overflow]" warning naming the window. The store's UI check
     /// (F8 in the editor) opens every window and tab in turn and reports what overflowed.
+    /// Windows and labels take their hand-tuned nudges from <see cref="UiLayout"/> (F7 edits them).
     /// </summary>
     public static class UiCheck
     {
@@ -48,6 +49,7 @@ namespace FishBreeder.Core
         /// <summary>Starts a window: a GUILayout area whose content is measured.</summary>
         public static void Begin(string id, Rect rect, GUIStyle style = null)
         {
+            rect = UiLayout.Window(id, rect);
             if (style != null) GUILayout.BeginArea(rect, style);
             else GUILayout.BeginArea(rect);
             open.Push(new Open { id = id, rect = rect, padding = style != null ? style.padding : new RectOffset() });
@@ -74,6 +76,7 @@ namespace FishBreeder.Core
                         : tall ? $"needs {need.y:0} high, has {o.rect.height:0}" : $"needs {need.x:0} wide, has {o.rect.width:0}");
             }
             GUILayout.EndArea();
+            UiLayout.WindowOutline(o.id, o.rect);
         }
 
         /// <summary>How tall the window's content was last frame (with padding), or the fallback before it's been drawn.</summary>
@@ -133,6 +136,7 @@ namespace FishBreeder.Core
         /// <summary>A label in a fixed rect; records it if the text doesn't fit.</summary>
         public static void Label(string id, Rect rect, GUIContent content, GUIStyle style)
         {
+            rect = UiLayout.Item(id, rect);
             if (Event.current.type == EventType.Repaint)
             {
                 Seen.Add(id);

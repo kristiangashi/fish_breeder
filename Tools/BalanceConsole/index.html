@@ -261,16 +261,16 @@ const META = {
   // Decorations and tanks
   plant: ["Is a plant", "Fish that like plants are happier with one."],
   passable: ["Fish swim through", "A grassy plant: fish swim straight through it and the leaves bend out of their way, then sway back."],
-  height: ["Height in a standard tank (m)", ""],
+  height: ["Height (m)", ""],
   back: ["Goes at the back", "Tall pieces fill the back row first."],
   capacity: ["Small fish capacity", "Most small fish it holds. A soft limit: fish can go over it (up to the hard limit) with overcrowding penalties."],
   mediumCapacity: ["Medium fish capacity", "Most medium fish (the big kinds, see each species' Body class) it holds. Its own limit, apart from the small fish, and a hard one."],
   upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
   decorationSlots: ["Decoration spots", ""],
   bodyClass: ["Body class", "Small fish share a tank's main fish limit. Medium fish (the big kinds) count against the tank's much smaller medium limit instead (Aquariums tab)."],
-  wallDecorationSize: ["Wall decoration size (x)", "How big decorations come out in the wall aquarium, as a share of what its height would make them. 1 = scaled up with the tank like every other tank; 0.6 = 60% of that."],
+  wallDecorationSize: ["Wall decoration size (x)", "How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). 2 = twice as big. Raising the aquarium never changes it."],
   wallDecorationMinSize: ["Smallest a player can make one (x)", "In the wall aquarium the player can make each decoration smaller or bigger (Move decorations). This is the smallest, as a share of its normal size."],
-  wallDecorationMaxSize: ["Biggest a player can make one (x)", "The biggest the player can make one decoration in the wall aquarium, as a share of its normal size."],
+  wallDecorationMaxSize: ["Biggest a player can make one (x)", "The biggest the player can make one decoration in the wall aquarium, as a share of its normal size. A piece never grows taller than the water."],
   // Equipment
   effect: ["Effect", "Filter: share of waste left (lower is better). Heater: how far the water drifts from the setting (C). Bubbler: fish kept in full oxygen."],
   breakChance: ["Break chance when new", "Per time step."],
@@ -2615,7 +2615,7 @@ function renderAquariums() {
   } }, "+ Add a taller height");
 
   const decor = el("div", { class: "grid" }, ["wallDecorationSize", "wallDecorationMinSize", "wallDecorationMaxSize"].map((k) => {
-    if (typeof store[k] !== "number") store[k] = k === "wallDecorationMinSize" ? 0.4 : k === "wallDecorationMaxSize" ? 2 : 1;
+    if (typeof store[k] !== "number") store[k] = k === "wallDecorationMinSize" ? 0.4 : k === "wallDecorationMaxSize" ? 4 : 2.2;
     return field(store, k);
   }));
 
@@ -2630,7 +2630,7 @@ function renderAquariums() {
     el("div", { class: "tank-grid" }, wallCards),
     wall ? addHeight : null,
     el("div", { class: "card", style: "margin-top:18px" }, el("h2", {}, "Decorations in the wall aquarium"),
-      el("p", { class: "hint" }, "Only the wall aquarium's decorations can be resized. This size goes for every piece; in the game the player can then make each piece smaller or bigger when moving decorations (- and +), within these limits."),
+      el("p", { class: "hint" }, "Decorations keep their own size in every tank: upgrading or reshaping an aquarium never grows or shrinks them. Only the wall aquarium's decorations can be resized. This size goes for every piece; in the game the player can then make each piece smaller or bigger when moving decorations (- and +), within these limits."),
       decor),
   ];
 }

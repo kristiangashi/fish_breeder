@@ -311,7 +311,7 @@ namespace FishBreeder.Core
         public bool plant;
         [Tooltip("A grassy plant: fish swim straight through it and the leaves bend out of their way.")]
         public bool passable;
-        [Tooltip("Height in a standard tank (metres). Bigger tanks get bigger pieces.")]
+        [Tooltip("Height in metres, the same in every tank (the wall aquarium multiplies it by its decoration size).")]
         public float height = 0.3f;
         [Tooltip("Goes along the back of the tank (tall pieces) rather than the front.")]
         public bool back;
@@ -380,10 +380,10 @@ namespace FishBreeder.Core
         public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
-        [Tooltip("How big decorations come out in the wall aquarium, as a share of what its height would make them (1 = scaled with the tank like every other tank).")]
-        public float wallDecorationSize = 1f;
-        [Tooltip("Smallest and biggest the player can make one decoration in the wall aquarium (Move decorations), as a share of its normal size.")]
-        public float wallDecorationMinSize = 0.4f, wallDecorationMaxSize = 2f;
+        [Tooltip("How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). Raising the aquarium never changes it.")]
+        public float wallDecorationSize = 2.2f;
+        [Tooltip("Smallest and biggest the player can make one decoration in the wall aquarium (Move decorations), as a share of its normal size. A piece never grows taller than the water.")]
+        public float wallDecorationMinSize = 0.4f, wallDecorationMaxSize = 4f;
         [Tooltip("What the wall aquarium costs (a display or for sale tank).")]
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
@@ -884,8 +884,9 @@ namespace FishBreeder.Core
         /// 10: the big wall-aquarium fish (Crimson Jewel Cichlid, Silver Flamefin): tank mates, crosses, egg boxes.
         /// 11: the wall aquarium 30% deeper at the same volume, and its height upgrades.
         /// 12: medium fish (the big kinds) get their own, much smaller limit in every tank size.
+        /// 13: decorations keep their own size in every tank (no longer grown with its height), and bigger wall pieces.
         /// </summary>
-        public const int CurrentDataVersion = 12;
+        public const int CurrentDataVersion = 13;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1201,6 +1202,16 @@ namespace FishBreeder.Core
                 foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
                 foreach (var s in data.species)
                     if (s != null && s.id != null && defaults.TryGetValue(s.id, out var d)) s.bodyClass = d.bodyClass;
+            }
+            if (fromVersion < 13 && data.store != null)
+            {
+                // Decorations no longer grow with the tank's height (they were sized for a 0.9 m tank):
+                // the wall aquarium as bought keeps the look it had, its taller upgrades no longer grow
+                // them, and the player can make each piece up to twice as big as before.
+                var fresh = new StoreBalance();
+                float wallHeight = (data.store.wallAquarium ?? fresh.wallAquarium).height;
+                data.store.wallDecorationSize *= wallHeight / 0.9f;
+                data.store.wallDecorationMaxSize = Mathf.Max(data.store.wallDecorationMaxSize, fresh.wallDecorationMaxSize);
             }
             data.dataVersion = CurrentDataVersion;
         }

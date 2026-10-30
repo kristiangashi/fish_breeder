@@ -21,8 +21,8 @@ namespace FishBreeder
         /// <summary>Yaw that turns a piece's front (Blender's -Y) towards the camera.</summary>
         const float FaceCameraYaw = 180f;
 
-        /// <summary>Tank height the decoration heights in the balance file are for.</summary>
-        const float StandardTankHeight = 0.9f;
+        /// <summary>The tallest a piece can be: it stays under the water line.</summary>
+        float MaxHeight => tankSize.y * 0.95f;
 
         struct Spot
         {
@@ -229,9 +229,13 @@ namespace FishBreeder
             var store = Balance.Data.store;
             float size = Mathf.Clamp(p.size * factor, Mathf.Min(store.wallDecorationMinSize, 1f), Mathf.Max(store.wallDecorationMaxSize, 1f));
             if (Mathf.Abs(size - 1f) < 0.02f) size = 1f;
-            if (Mathf.Approximately(size, p.size)) return;
             var t = p.piece.transform;
-            var centre = Footprint(p.piece).center;
+            var before = Footprint(p.piece);
+            var centre = before.center;
+            // Never taller than the water.
+            float tallest = MaxHeight * root.lossyScale.y;
+            if (size > p.size && before.size.y * size / p.size > tallest) size = Mathf.Max(p.size, p.size * tallest / Mathf.Max(1e-5f, before.size.y));
+            if (Mathf.Approximately(size, p.size)) return;
             t.localScale *= size / p.size;
             p.size = size;
             // Grow about its middle, then rest it on the sand again.
@@ -378,7 +382,8 @@ namespace FishBreeder
 
         GameObject Build(DecorationBalance item, Spot spot, float size)
         {
-            float height = item.height * tankSize.y / StandardTankHeight * (WallAquarium ? Mathf.Max(0.1f, Balance.Data.store.wallDecorationSize) * size : 1f);
+            // Its own size, whatever the tank's: upgrading a tank never grows what's in it.
+            float height = Mathf.Min(item.height * (WallAquarium ? Mathf.Max(0.1f, Balance.Data.store.wallDecorationSize) * size : 1f), MaxHeight);
             var prefab = Resources.Load<GameObject>(Folder + item.id);
             GameObject piece;
             if (prefab == null)

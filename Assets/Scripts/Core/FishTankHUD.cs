@@ -44,6 +44,16 @@ namespace FishBreeder.Core
         public Vector2 ViewPan { get; private set; }
         /// <summary>The scroll wheel's zoom: the camera's distance as a share of the normal view (below 1 is closer).</summary>
         public float WheelZoom { get; private set; } = 1f;
+        /// <summary>
+        /// The scroll wheel's zoom in a close-up (a picked fish or a clicked spot), kept apart from the
+        /// whole-tank view's: how far the camera stands out from the glass, as a share of the normal
+        /// close-up (below 1 is closer). Leaving the close-up puts it back to 1.
+        /// </summary>
+        public float CloseZoom { get; private set; } = 1f;
+        /// <summary>Whether the view is a close-up on a fish or a clicked spot, not the whole tank.</summary>
+        public bool CloseUp => HasSelection || ZoomPoint.HasValue;
+        /// <summary>The zoom the camera uses now: the close-up's own, or the whole-tank view's.</summary>
+        public float ViewZoom => CloseUp ? CloseZoom : WheelZoom;
         /// <summary>Looking straight down into the tank instead of through the front glass (T). It stays on when switching tanks.</summary>
         public bool TopView { get; private set; }
 
@@ -54,18 +64,25 @@ namespace FishBreeder.Core
             WheelZoom = 1f;
         }
         public const float MinWheelZoom = 0.3f, MaxWheelZoom = 1.5f;
+        public const float MinCloseZoom = 0.1f, MaxCloseZoom = 3f;
 
+        /// <summary>Lets go of the picked fish and the clicked spot: back to the whole tank, at the wheel zoom it had.</summary>
         public void ClearSelection()
         {
             selected.Clear();
             ZoomPoint = null;
-            WheelZoom = 1f;
+            CloseZoom = 1f;
         }
 
-        /// <summary>Scroll wheel: each notch moves the camera 15% closer (up) or further (down), within the limits.</summary>
+        /// <summary>
+        /// Scroll wheel: each notch moves the camera 15% closer (up) or further (down), within the
+        /// limits of the view it's in (a close-up has its own).
+        /// </summary>
         public void ZoomWheel(float notches)
         {
-            WheelZoom = Mathf.Clamp(WheelZoom * Mathf.Pow(0.85f, notches), MinWheelZoom, MaxWheelZoom);
+            float step = Mathf.Pow(0.85f, notches);
+            if (CloseUp) CloseZoom = Mathf.Clamp(CloseZoom * step, MinCloseZoom, MaxCloseZoom);
+            else WheelZoom = Mathf.Clamp(WheelZoom * step, MinWheelZoom, MaxWheelZoom);
         }
 
         /// <summary>Back to the normal distance; false if it already was.</summary>
@@ -129,7 +146,7 @@ namespace FishBreeder.Core
             selected.Clear();
             ZoomPoint = null;
             ViewPan = Vector2.zero;
-            WheelZoom = 1f;
+            WheelZoom = CloseZoom = 1f;
             Arranging = ArrangeMode.None;
             picker = Picker.None;
             showLevelInfo = false;
@@ -141,6 +158,8 @@ namespace FishBreeder.Core
         void Update()
         {
             selected.RemoveAll(f => f == null || f.Tank != tank);
+            // However the close-up ended (a click outside the water, the fish moved away), the next one starts at its normal distance.
+            if (!CloseUp) CloseZoom = 1f;
             if (tank == null || GUIUtility.keyboardControl != 0 || UiLayout.Editing) return;
             if (Arranging == ArrangeMode.Decorations && heldPiece >= 0 && tank.Decor != null)
             {
@@ -1106,11 +1125,15 @@ namespace FishBreeder.Core
             if (Ui.Button(background != null ? $"Background: {background.name}" : "Background: none", pickerShown == Picker.Background ? UiTheme.Primary : GUI.skin.button)) TogglePicker(Picker.Background);
             if (background != null && Ui.Button(new GUIContent("Adjust", "Slide and zoom the picture"), GUILayout.Width(64f))) StartArranging(ArrangeMode.Background);
             GUILayout.EndHorizontal();
+            // A wall aquarium's sides run deep into the wall and show from the room: they take a picture too.
+            if (!tank.IsWallAquarium) return;
+            var sides = TankBackgrounds.Find(tank.SideBackgroundId);
+            if (Ui.Button(sides != null ? $"Sides: {sides.name}" : "Sides: none", pickerShown == Picker.Sides ? UiTheme.Primary : GUI.skin.button)) TogglePicker(Picker.Sides);
         }
 
         // ------------------------------------------------------------ decoration and background pickers
 
-        enum Picker { None, Decorations, Background }
+        enum Picker { None, Decorations, Background, Sides }
         // Asked for, and showing (changed only on Layout, so each frame's layout matches).
         Picker picker, pickerShown;
         Vector2 pickerScroll;
@@ -1131,12 +1154,12 @@ namespace FishBreeder.Core
                 pickerRect = Rect.zero;
                 return;
             }
-            string id = pickerShown == Picker.Decorations ? "Decoration picker" : "Background picker";
+            string id = pickerShown == Picker.Decorations ? "Decoration picker" : pickerShown == Picker.Sides ? "Side background picker" : "Background picker";
             float want = UiCheck.Height(id, 320f);
             pickerRect = new Rect(leftPanel.xMax + 8f, leftPanel.y, 270f, Mathf.Clamp(want, 120f, Mathf.Max(120f, height - leftPanel.y - 160f)));
             UiCheck.Begin(id, pickerRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
-            Ui.Label(pickerShown == Picker.Decorations ? "<b>Your decorations</b>" : "<b>Your backgrounds</b>", Rich());
+            Ui.Label(pickerShown == Picker.Decorations ? "<b>Your decorations</b>" : pickerShown == Picker.Sides ? "<b>Backgrounds for the sides</b>" : "<b>Your backgrounds</b>", Rich());
             GUILayout.FlexibleSpace();
             if (Ui.Button("✕", SmallButton(), GUILayout.Width(24f))) picker = Picker.None;
             GUILayout.EndHorizontal();
@@ -1144,6 +1167,7 @@ namespace FishBreeder.Core
             pickerScroll = UiCheck.BeginScroll(id + ": list", pickerScroll);
             GUI.enabled = !ReadOnly;
             if (pickerShown == Picker.Decorations) DrawDecorationPicker();
+            else if (pickerShown == Picker.Sides) DrawSideBackgroundPicker();
             else DrawBackgroundPicker();
             GUI.enabled = true;
             UiCheck.EndScroll();
@@ -1220,6 +1244,35 @@ namespace FishBreeder.Core
                 if (background != null) Inventory.AddBackground(background.id);
                 tank.SetBackground(pair.Key);
                 GameLog.Add($"Put the {item.name.ToLower()} background up in {storeTank.Title}.");
+            }
+            if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
+        }
+
+        /// <summary>
+        /// A wall aquarium's sides: one picture from stock covers both side glasses. The one up now
+        /// (to take down, back into stock), then the ones in stock to put up or swap in.
+        /// </summary>
+        void DrawSideBackgroundPicker()
+        {
+            Ui.Label("<size=11><i>One picture covers both side glasses.</i></size>", Rich());
+            var sides = TankBackgrounds.Find(tank.SideBackgroundId);
+            if (sides != null && PickerRow(TankBackgrounds.Texture(sides.id), 40f, $"{sides.name}  <size=11>(up now)</size>", "Take down"))
+            {
+                Inventory.AddBackground(sides.id);
+                tank.SetSideBackground("");
+                GameLog.Add($"Took the {sides.name.ToLower()} pictures off the sides of {storeTank.Title}. It's back in your stock.");
+            }
+            bool any = false;
+            foreach (var pair in new List<KeyValuePair<string, int>>(Inventory.AllBackgrounds))
+            {
+                var item = TankBackgrounds.Find(pair.Key);
+                if (item == null) continue;
+                any = true;
+                if (!PickerRow(TankBackgrounds.Texture(pair.Key), 40f, $"{item.name}  <size=11>x{pair.Value}</size>", sides != null ? "Swap" : "Put up")
+                    || !Inventory.TakeBackground(pair.Key)) continue;
+                if (sides != null) Inventory.AddBackground(sides.id);
+                tank.SetSideBackground(pair.Key);
+                GameLog.Add($"Put the {item.name.ToLower()} picture up on the sides of {storeTank.Title}.");
             }
             if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
         }

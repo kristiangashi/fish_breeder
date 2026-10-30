@@ -274,7 +274,7 @@ namespace FishBreeder
             if (destination == null || destination == Tank || destination.IsFull || IsDead) return false;
             if (MinTankSize > destination.SizeIndex)
             {
-                GameLog.Add($"{FishName} won't go in {destination.Title}: it wants a {TankQuality.SizeName(MinTankSize).ToLower()} tank or bigger.");
+                GameLog.Add($"{FishName} won't go in {destination.Title}: {TankQuality.WantsText(MinTankSize).ToLower()}.");
                 return false;
             }
             if (Tank != null) Tank.Remove(this);

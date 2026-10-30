@@ -73,8 +73,8 @@ namespace FishBreeder
             return sizes[Mathf.Clamp(level - 1, 0, sizes.Count - 1)].qualityNeeded;
         }
 
-        /// <summary>The level a fish needs: the level of the smallest tank it lives in (1 for fish happy anywhere).</summary>
-        public static int LevelNeeded(Fish fish) => fish.MinTankSize + 1;
+        /// <summary>The level a fish needs: the level of the smallest tank it lives in (1 for fish happy anywhere; wall-aquarium fish need the top level).</summary>
+        public static int LevelNeeded(Fish fish) => Mathf.Min(fish.MinTankSize, MaxLevel - 1) + 1;
 
         /// <summary>
         /// A warning before a change that drops the level below what fish in the tank need: who
@@ -177,6 +177,7 @@ namespace FishBreeder
 
         public static string SizeName(int size)
         {
+            if (size == Tank.WallSize) return Balance.Data.store.wallAquarium != null ? Balance.Data.store.wallAquarium.name : "Wall aquarium";
             var sizes = Balance.Data.store.tankSizes;
             if (sizes == null || sizes.Count == 0) return "Standard";
             return sizes[Mathf.Clamp(size, 0, sizes.Count - 1)].name;
@@ -193,7 +194,10 @@ namespace FishBreeder
         public static bool Fits(Species species, Tank tank) => species.minTankSize <= tank.SizeIndex;
 
         /// <summary>"Wants a Large tank or bigger", or null when the tank is big enough.</summary>
-        public static string TooSmallFor(int minSize, Tank tank) => minSize <= tank.SizeIndex ? null : $"Wants a {SizeName(minSize)} tank or bigger";
+        public static string TooSmallFor(int minSize, Tank tank) => minSize <= tank.SizeIndex ? null : WantsText(minSize);
+
+        /// <summary>"Wants a Large tank or bigger", or "Only lives in the wall aquarium" for the big fish.</summary>
+        public static string WantsText(int minSize) => minSize >= Tank.WallSize ? $"Only lives in the {SizeName(minSize).ToLower()}" : $"Wants a {SizeName(minSize)} tank or bigger";
 
         /// <summary>
         /// The fish that need a tank of exactly this size, for the upgrade button: discovered kinds

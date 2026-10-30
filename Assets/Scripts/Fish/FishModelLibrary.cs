@@ -60,13 +60,16 @@ namespace FishBreeder
             { "NeonTetra", 0.25f }, { "ZebraDanio", 0.15f }, { "Corydoras", 0.6f }, { "RedTailShark", 0.2f }, { "SiameseAlgaeEater", 0.15f },
             { "BlackSkirtTetra", 0.55f }, { "BleedingHeartTetra", 0.5f }, { "RedeyeTetra", 0.45f }, { "SerpaeTetra", 0.4f }, { "FlameTetra", 0.4f },
             { "LemonTetra", 0.4f }, { "XRayTetra", 0.3f }, { "EmperorTetra", 0.35f }, { "CongoTetra", 0.3f }, { "BucktoothTetra", 0.25f },
+            { "CrimsonJewelCichlid", 0.8f }, { "SilverFlamefin", 0.5f },
         };
 
-        /// <summary>The wild tetras, in two Meshy sets with their own atlases (folder, texture prefix, fish).</summary>
+        /// <summary>Fish with their own atlases (folder, texture prefix, fish): the wild tetras in two Meshy sets, and the big wall-aquarium fish one per folder.</summary>
         static readonly (string folder, string prefix, string[] fish)[] TetraSets =
         {
             ("Fish/TetraSetA/", "TetraFishA", new[] { "BloodfinTetra", "SerpaeTetra", "XRayTetra", "BlackSkirtTetra", "RedeyeTetra", "LemonTetra", "BleedingHeartTetra", "BuenosAiresTetra" }),
             ("Fish/TetraSetB/", "TetraFishB", new[] { "EmperorTetra", "FlameTetra", "CongoTetra", "PenguinTetra", "GlowlightTetra", "BucktoothTetra", "RubyTetra", "SilvertipTetra", "RummyNoseTetra" }),
+            ("Fish/CrimsonJewelCichlid/", "CrimsonJewelCichlid", new[] { "CrimsonJewelCichlid" }),
+            ("Fish/SilverFlamefin/", "SilverFlamefin", new[] { "SilverFlamefin" }),
         };
 
         public Entry defaultModel = new Entry();
@@ -146,6 +149,7 @@ namespace FishBreeder
             AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "GoldenMbuna", 3f, 1f, 0.8f, 8f);
 
             // Wild tetras: quick little tail beats like the neon; the big bucktooth and congo a bit slower.
+            // The metre-long wall-aquarium fish beat slowly and deeply.
             foreach (var tetras in TetraSets)
             {
                 var tAlbedo = Resources.Load<Texture2D>(tetras.folder + tetras.prefix + "_Albedo");
@@ -153,6 +157,11 @@ namespace FishBreeder
                 var tSmoothness = Resources.Load<Texture2D>(tetras.folder + tetras.prefix + "_Smoothness");
                 foreach (var id in tetras.fish)
                 {
+                    if (id == "CrimsonJewelCichlid" || id == "SilverFlamefin")
+                    {
+                        AddSetFish(library, tetras.folder, tAlbedo, tNormal, tSmoothness, id, 1.2f, 1f, 0.8f, 6f);
+                        continue;
+                    }
                     bool big = id == "BucktoothTetra" || id == "CongoTetra";
                     AddSetFish(library, tetras.folder, tAlbedo, tNormal, tSmoothness, id, big ? 3.2f : 3.9f, 1f, 0.9f, 8f);
                 }

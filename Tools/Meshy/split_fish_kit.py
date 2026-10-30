@@ -10,7 +10,7 @@
 # Plumping scales thickness (Y) by up to the factor given, weighted by how thick the fish
 # already is around each point, so the body fills out while fins and the tail stay thin.
 import bpy, sys, json, math
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 # kit -> {island centre (x, z): (species id, thickness multiplier, target triangles)}
 KITS = {
@@ -48,6 +48,10 @@ KITS = {
         (-0.09, -0.41): ("SilvertipTetra", 1.1, 1800),
         (0.62, -0.37): ("RummyNoseTetra", 1.1, 1800),
     },
+    # Single-fish Meshy models (2026-10-30): the big wall-aquarium fish. One fish per file, so
+    # every loose piece belongs to it. More triangles than the small fish since they're seen close up.
+    "crimson_jewel": {(0.0, 0.0): ("CrimsonJewelCichlid", 1.0, 3000)},
+    "silver_flamefin": {(0.0, 0.0): ("SilverFlamefin", 1.0, 3000)},
 }
 
 def straighten(pts):
@@ -124,6 +128,12 @@ def run(kit, src, outdir):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=src)
     obj = [o for o in bpy.context.scene.objects if o.type == 'MESH'][0]
+    if len(plan) == 1:
+        # A single-fish model may lie along Y; turn it to lie along X like the fish in the kits.
+        ws = [obj.matrix_world @ v.co for v in obj.data.vertices]
+        if max(p.y for p in ws) - min(p.y for p in ws) > max(p.x for p in ws) - min(p.x for p in ws):
+            m = obj.matrix_world
+            obj.data.transform(m.inverted() @ Matrix.Rotation(math.radians(90), 4, 'Z') @ m)
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.select_all(action='SELECT')

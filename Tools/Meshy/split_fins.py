@@ -98,6 +98,7 @@ OVERRIDES = {
     "BleedingHeartTetra": {"peduncle": 0.76}, "SerpaeTetra": {"peduncle": 0.75}, "XRayTetra": {"peduncle": 0.73},
     "LemonTetra": {"peduncle": 0.70}, "BloodfinTetra": {"peduncle": 0.68},
 }
+
 SID = ""
 
 def classify(o, thin=0.2):
@@ -356,8 +357,9 @@ def split_fills(body):
 if __name__ == "__main__":
     global_ns = globals()
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    root = os.path.join(sys.argv[1], '')
-    out = sys.argv[2]
+    args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
+    root = os.path.join(args[0], '')
+    out = args[1]
     report = {}
     for path in sorted(glob.glob(root + '*/*.fbx')):
         sid = os.path.basename(path)[:-4]

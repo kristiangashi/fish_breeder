@@ -821,8 +821,10 @@ namespace FishBreeder.Core
         ///    fewer stars), priced repairs with faults instead of repair kits.
         /// 7: wild tetras and the wild tetra egg box (opens after raising 50 neons or tiger barbs).
         /// 8: where each species' body starts to wiggle (bendStart), set on the console's Swimming tab.
+        /// 9: wall aquarium equipment, liked decorations and roaming.
+        /// 10: the big wall-aquarium fish (Crimson Jewel Cichlid, Silver Flamefin): tank mates, crosses, egg boxes.
         /// </summary>
-        public const int CurrentDataVersion = 9;
+        public const int CurrentDataVersion = 10;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1071,8 +1073,36 @@ namespace FishBreeder.Core
                     }
                 if (data.store != null) data.store.wallAquarium = new StoreBalance().wallAquarium;
             }
+            if (fromVersion < 10)
+            {
+                // The big wall-aquarium fish: who they eat and get on with, their cross-breeding
+                // partners, and a place in the egg boxes whose rare pick is exotic.
+                if (data.relationships != null)
+                {
+                    var known = new HashSet<string>();
+                    foreach (var r in data.relationships) if (r != null) known.Add(r.a + ">" + r.b);
+                    foreach (var r in Relationships.CreateDefaults())
+                        if ((BigFish.Contains(r.a) || BigFish.Contains(r.b)) && known.Add(r.a + ">" + r.b))
+                            data.relationships.Add(r);
+                }
+                if (data.crossBreeding != null && data.crossBreeding.pairs != null)
+                    foreach (var pair in CrossBreeding.DefaultPairs())
+                        if ((BigFish.Contains(pair.a) || BigFish.Contains(pair.b))
+                            && !data.crossBreeding.pairs.Exists(x => x != null && ((x.a == pair.a && x.b == pair.b) || (x.a == pair.b && x.b == pair.a))))
+                            data.crossBreeding.pairs.Add(pair);
+                if (data.supplier != null && data.supplier.eggTiers != null)
+                    foreach (var tier in data.supplier.eggTiers)
+                    {
+                        if (tier == null || tier.hatch == null || tier.hatch.Count == 0 || tier.rarePool != SpeciesRarity.Exotic) continue;
+                        foreach (var s in Species.CreateDefaults())
+                            if (BigFish.Contains(s.id) && !tier.hatch.Exists(h => h != null && h.species == s.id))
+                                tier.hatch.Add(new EggHatchBalance { species = s.id, weight = 2f, fromLevel = s.unlockLevel });
+                    }
+            }
             data.dataVersion = CurrentDataVersion;
         }
+
+        static readonly HashSet<string> BigFish = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin" };
 
         static bool IsWildTetra(BalanceData data, string id)
         {

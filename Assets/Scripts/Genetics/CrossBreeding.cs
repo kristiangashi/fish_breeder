@@ -74,6 +74,8 @@ namespace FishBreeder.Genetics
             new CrossPair { a = "CometGoldfish", b = "FancyGoldfish" },
             new CrossPair { a = "Guppy", b = "BlackMolly" },
             new CrossPair { a = "GreenTerror", b = "BlueAcara" },
+            new CrossPair { a = "CrimsonJewelCichlid", b = "Oscar" },
+            new CrossPair { a = "SilverFlamefin", b = "TigerBarb" },
         };
 
         public static bool Compatible(Species a, Species b) => a != null && b != null && Compatible(a.id, b.id);

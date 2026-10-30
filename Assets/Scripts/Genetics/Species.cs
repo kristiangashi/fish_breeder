@@ -167,6 +167,8 @@ namespace FishBreeder.Genetics
             { "BlackMolly", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
             { "Platy", new[] { FoodType.Flakes, FoodType.AlgaeWafers } },
             { "Oscar", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "CrimsonJewelCichlid", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "SilverFlamefin", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
             { "GreenTerror", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "BlueAcara", new[] { FoodType.Bloodworms, FoodType.Premium } },
             { "GoldenMbuna", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
@@ -211,11 +213,13 @@ namespace FishBreeder.Genetics
             { "EmperorTetra", new[] { "Plant", "Driftwood" } }, { "FlameTetra", new[] { "Plant" } }, { "PenguinTetra", new[] { "TallPlant" } },
             { "GlowlightTetra", new[] { "Plant", "TallPlant" } }, { "RubyTetra", new[] { "Plant", "FernRock" } }, { "RummyNoseTetra", new[] { "Plant", "Driftwood" } },
             { "SilvertipTetra", new[] { "Plant" } }, { "CongoTetra", new[] { "TallPlant" } },
+            { "CrimsonJewelCichlid", new[] { "Rock", "Driftwood" } },
         };
 
         static readonly HashSet<string> Roamers = new HashSet<string>
         {
             "CometGoldfish", "Guppy", "TigerBarb", "ZebraDanio", "SilverDollar", "BlackMolly", "BloodfinTetra", "BuenosAiresTetra", "BucktoothTetra",
+            "SilverFlamefin",
         };
 
         static void SetHabits(Species s)
@@ -231,6 +235,7 @@ namespace FishBreeder.Genetics
         {
             { "Angelfish", 1 }, { "SilverDollar", 1 }, { "RedTailShark", 1 }, { "GreenTerror", 1 }, { "BlueAcara", 1 }, { "Oscar", 2 },
             { "CongoTetra", 1 }, { "BucktoothTetra", 1 },
+            { "CrimsonJewelCichlid", Tank.WallSize }, { "SilverFlamefin", Tank.WallSize },
         };
 
         /// <summary>
@@ -246,6 +251,7 @@ namespace FishBreeder.Genetics
             { "NeonTetra", 0.2f }, { "ZebraDanio", 0.15f }, { "Corydoras", 0.38f }, { "RedTailShark", 0.18f }, { "SiameseAlgaeEater", 0.15f },
             { "BlackSkirtTetra", 0.35f }, { "BleedingHeartTetra", 0.33f }, { "RedeyeTetra", 0.3f }, { "SerpaeTetra", 0.28f }, { "FlameTetra", 0.28f },
             { "LemonTetra", 0.28f }, { "XRayTetra", 0.23f }, { "EmperorTetra", 0.25f }, { "CongoTetra", 0.23f }, { "BucktoothTetra", 0.2f },
+            { "CrimsonJewelCichlid", 0.5f }, { "SilverFlamefin", 0.35f },
         };
 
         /// <summary>The default <see cref="bendStart"/> for a species id.</summary>
@@ -312,6 +318,7 @@ namespace FishBreeder.Genetics
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }
             list.AddRange(WildTetras());
+            list.AddRange(BigFish());
             foreach (var s in list)
             {
                 s.bendStart = DefaultBendStart(s.id);
@@ -325,6 +332,32 @@ namespace FishBreeder.Genetics
         /// neon tetras or tiger barbs (see the egg box's goal). Real care-sheet ranges; Congo
         /// tetras (from Africa) and the big, scale-eating bucktooth want a Large tank.
         /// </summary>
+        /// <summary>
+        /// The big fish (2026-10-30), about five times the size of an Oscar, so they only live in the
+        /// wall aquarium. The Crimson Jewel is a flowerhorn-type cichlid (hot, hard water, bossy);
+        /// the Silver Flamefin is a tinfoil-barb-type schooling carp that roams the whole tank.
+        /// </summary>
+        static List<Species> BigFish()
+        {
+            var tropical = FishCategory.FreshwaterTropical;
+            var x = SpeciesRarity.Exotic;
+            var list = new List<Species>
+            {
+                Make("CrimsonJewelCichlid", "Crimson Jewel Cichlid", "Cichlid hybrid (flowerhorn type)", Cichlids, tropical, x, 600, 300, 0.9f, 1.05f, 0.5f, 0.2f, 0.75f, 26f, 30f, 7f, 8f, 4f, 0),
+                Make("SilverFlamefin", "Silver Flamefin", "Barbonymus schwanenfeldii", Carps, tropical, x, 450, 220, 0.85f, 1f, 0.6f, 0.2f, 0.8f, 22f, 26f, 6.5f, 7.5f, 4f, 5),
+            };
+            foreach (var s in list)
+            {
+                s.unlockLevel = s.id == "SilverFlamefin" ? 16 : 20;
+                s.daysToAdult = 8f;
+                s.litterMin = 3; s.litterMax = 6;
+                if (s.id == "CrimsonJewelCichlid") s.likesPlants = false;
+                if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
+                if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
+            }
+            return list;
+        }
+
         static List<Species> WildTetras()
         {
             var tropical = FishCategory.FreshwaterTropical;

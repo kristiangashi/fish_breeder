@@ -107,6 +107,16 @@ namespace FishBreeder.Genetics
                 Both(list, Relationship.Preferred, tetra, tetra, "Corydoras");
             Both(list, Relationship.Preferred, "BucktoothTetra", "BucktoothTetra");
 
+            // The metre-long wall-aquarium fish swallow anything small. The Crimson Jewel (a
+            // flowerhorn type) also bosses every other cichlid; the Silver Flamefin (a tinfoil-barb
+            // type) is peaceful with fish its size and schools with its own kind and other barbs.
+            Eats(list, "CrimsonJewelCichlid", "NeonTetra", "Guppy", "ZebraDanio", "Platy", "BlackMolly", "Betta", "TigerBarb", "Corydoras", "Angelfish",
+                "GoldenMbuna", "SiameseAlgaeEater", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra", "EmperorTetra", "LemonTetra",
+                "XRayTetra", "BloodfinTetra", "SerpaeTetra", "PenguinTetra", "BlackSkirtTetra", "RedeyeTetra", "BleedingHeartTetra", "BuenosAiresTetra");
+            Both(list, Relationship.Competitive, "CrimsonJewelCichlid", "CrimsonJewelCichlid", "Oscar", "GreenTerror", "BlueAcara", "RedTailShark");
+            Eats(list, "SilverFlamefin", "NeonTetra", "Guppy", "Platy", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra");
+            Both(list, Relationship.Preferred, "SilverFlamefin", "SilverFlamefin", "TigerBarb", "SilverDollar");
+
             // Good company.
             Both(list, Relationship.Preferred, "NeonTetra", "NeonTetra", "Corydoras");
             Both(list, Relationship.Preferred, "ZebraDanio", "ZebraDanio", "FancyGoldfish");

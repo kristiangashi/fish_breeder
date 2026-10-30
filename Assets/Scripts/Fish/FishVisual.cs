@@ -415,7 +415,7 @@ namespace FishBreeder
         }
 
         /// <summary>
-        /// Gives the spine the species' bend start (where its body starts to wiggle) and returns
+        /// Gives the spine the species' bend start (where its body starts to wiggle) and the bend limits, and returns
         /// how stiff that makes the fish (0 = snakes from the head, 1 = only the back half swings),
         /// which tones down its kicks and curls. Models without a species keep their library stiffness.
         /// </summary>
@@ -428,6 +428,13 @@ namespace FishBreeder
             {
                 spine.bendStart = bendStart;
                 spine.stiffness = stiffness;
+                // How far the body may bend, from the console's Swimming tab: stiff fish less.
+                var limits = Core.Balance.Data.swimming;
+                spine.maxBendDegrees = Mathf.Lerp(limits.maxBendFlexible, limits.maxBendStiff, stiffness);
+                spine.maxPitchBendDegrees = limits.maxPitchBend;
+                spine.sharpestBend = limits.sharpestBend;
+                spine.frontBend = limits.frontBend;
+                spine.bankTwist = limits.bankTwist;
             }
             return stiffness;
         }

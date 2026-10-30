@@ -226,6 +226,12 @@ const META = {
   sizeMedium: ["Medium size (x length)", "Normally 1: the species' own length."],
   sizeLarge: ["Large size (x length)", "How big a large fish of this kind looks, e.g. 1.3 for 30% longer than medium."],
   bendStart: ["Wiggle starts at", "Where the body starts to wiggle when swimming, as a fraction of its length from the nose: 0 = the whole fish snakes, 0.5 = the front half stays stiff and only the back swings. Set it by eye on the Swimming tab."],
+  maxBendFlexible: ["Most bend, wiggly fish (°)", "Most a fish that wiggles from the head (wiggle starts at 10% or less) bends from nose to tail, turns and wiggle together. Fish in between get a mix of this and the stiff limit."],
+  maxBendStiff: ["Most bend, stiff fish (°)", "Most a stiff, deep-bodied fish (wiggle starts at 55% or more) bends from nose to tail, turns and wiggle together."],
+  sharpestBend: ["Tightest curve (° per 10%)", "The sharpest the body may curve anywhere along it, in degrees per tenth of its length. Lower keeps the tail from kinking; too low and the wiggle goes flat."],
+  frontBend: ["Front bend share", "How much of that curve the stiff front of the body (in front of where the wiggle starts) can still take: 0 = rigid, 1 = as bendy as the back."],
+  maxPitchBend: ["Most bend up/down (°)", "Most the body bends up or down from nose to tail when the fish climbs or dives. Fish bend sideways, not up and down, so keep it small."],
+  bankTwist: ["Bank twist", "When a fish leans into a turn, how much less its tail leans than its head: 0 = it banks as one piece."],
   onlyInBox: ["Only in box", "Id of the only egg/fry box this fish comes in (e.g. WildTetra). Empty = any box whose rarity settings include it. A box with its own fish hatches nothing else."],
   raiseSpecies: ["Raise species", "Species ids, comma separated (e.g. NeonTetra,TigerBarb): the box opens once you've raised 'Raise count' of these fish to adulthood. Empty = no goal."],
   raiseCount: ["Raise count", "How many of the raise species you must raise to adulthood before the fish seller sells this box (0 = no goal)."],
@@ -1930,7 +1936,7 @@ function lineChart(title, series, format, days, fixedMax) {
 // ---------------------------------------------------------------- search
 
 const TOP_NAMES = Object.fromEntries(TABS.map(([k, n]) => [k, n]));
-Object.assign(TOP_NAMES, { crossBreeding: "Cross-breeding", supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships" });
+Object.assign(TOP_NAMES, { crossBreeding: "Cross-breeding", supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships", swimming: "Swimming" });
 
 const itemName = (item, i) => (item && (item.displayName || item.name || item.id || (item.body && `${item.body} with ${item.fins} fins`) || (item.fact !== undefined && ENUMS.fact[item.fact]))) || `#${i + 1}`;
 
@@ -2200,12 +2206,60 @@ tableObserver.observe($("#view"), { childList: true, subtree: true });
 
 // ---------------------------------------------------------------- swimming
 // Mirrors SwimSpine in the game: the body wave's envelope and where it starts (bendStart, plus a
-// fixed ramp to full strength), so the moving top view here is how the fish swims in the tank.
+// fixed ramp to full strength), the path through a turn and the bend limits that keep the shape,
+// so the moving top view here is how the fish swims in the tank.
 const BEND_RAMP = 0.3;
+const SPINE_SAMPLES = 16;
+let previewTurn = 0; // degrees per second the top views turn at (0 = straight)
+const softClamp = (v, limit) => {
+  if (limit <= 0) return 0;
+  const knee = 0.6 * limit, a = Math.abs(v);
+  return a <= knee ? v : Math.sign(v) * (knee + (limit - knee) * Math.tanh((a - knee) / (limit - knee)));
+};
+/** The spine in body lengths, nose at (0, 0) and tail to the right, as [x, y, heading] per sample. */
+function swimSpine(bendStart, phase, turn) {
+  const n = SPINE_SAMPLES, lim = data.swimming || {};
+  const stiffness = Math.min(1, Math.max(0, (bendStart - 0.1) / 0.45));
+  const flexible = lim.maxBendFlexible ?? 70, stiffLimit = lim.maxBendStiff ?? 35;
+  const maxBend = flexible + (stiffLimit - flexible) * stiffness;
+  // Pottering speed (0.7 body lengths a second) with the game's path follow, along a circle for the turn.
+  const radius = turn ? 0.7 / (turn * Math.PI / 180) : 1e9, follow = 0.85;
+  const path = [], mid = [];
+  for (let i = 0; i < n; i++) {
+    const d = i / (n - 1), a = d / radius;
+    path.push([d + (radius * Math.sin(a) - d) * follow, radius * (1 - Math.cos(a)) * follow]);
+  }
+  for (let i = 0; i < n; i++) {
+    const s = i / (n - 1), a = path[Math.max(0, i - 1)], b = path[Math.min(n - 1, i + 1)];
+    const tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1;
+    const sway = swimEnvelope(s) * 0.8 * bendMask(s, bendStart) * Math.sin(Math.PI * 2 * s - phase);
+    mid.push([path[i][0] - (ty / l) * sway, path[i][1] + (tx / l) * sway]);
+  }
+  // Keep the shape: limit the bend per joint (less in the stiff front) and from nose to tail.
+  const perJoint = Math.max(0, lim.sharpestBend ?? 24) * 10 / (n - 1), front = Math.min(1, Math.max(0, lim.frontBend ?? 0.15));
+  let want = 0, last = 0, x = 0, y = 0;
+  const out = [];
+  for (let j = 0; j < n - 1; j++) {
+    const heading = Math.atan2(mid[j + 1][1] - mid[j][1], mid[j + 1][0] - mid[j][0]) * 180 / Math.PI;
+    const joint = perJoint * (front + (1 - front) * bendMask(j / (n - 1), bendStart));
+    want += softClamp(((heading - last + 540) % 360) - 180, joint);
+    last = heading;
+    const yaw = softClamp(want, Math.max(0, maxBend)) * Math.PI / 180;
+    out.push([x, y, yaw]);
+    x += Math.cos(yaw) / (n - 1); y += Math.sin(yaw) / (n - 1);
+  }
+  out.push([x, y, out[out.length - 1][2]]);
+  return out;
+}
 const swimEnvelope = (s) => 0.02 - 0.0825 * s + 0.1625 * s * s;
 const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 const bendMask = (s, start) => { const end = Math.min(1, start + BEND_RAMP); return end <= start ? (s >= start ? 1 : 0) : smooth((s - start) / (end - start)); };
 let swimAnimation = 0;
+// A turning fish needs room to curl, so its picture gets taller (and is allowed to show taller).
+const swimCanvasHeight = (top, canvas) => {
+  canvas.style.maxHeight = previewTurn ? "230px" : "";
+  return Math.round(top.height * canvas.width / top.width + (previewTurn ? 0.62 : 0.26) * canvas.width);
+};
 
 function renderSwim() {
   cancelAnimationFrame(swimAnimation);
@@ -2243,7 +2297,7 @@ function renderSwim() {
     // Moving top view: the picture cut into thin slices, each pushed sideways by the body wave.
     const canvas = el("canvas", { class: "swim-top", width: 480, height: 150 });
     const top = new Image();
-    top.onload = () => { canvas.height = Math.round(top.height + 0.26 * top.width); animated.push({ s, canvas, top }); };
+    top.onload = () => { canvas.height = swimCanvasHeight(top, canvas); animated.push({ s, canvas, top }); };
     top.src = `/fish/${s.id}_top.webp`;
     // Small / medium / large: how big each size looks, as a share of the species' length.
     const sizeBox = (key, fallback, label) => {
@@ -2265,18 +2319,43 @@ function renderSwim() {
     for (const a of animated) {
       if (!a.canvas.isConnected) continue;
       const ctx = a.canvas.getContext("2d"), W = a.canvas.width, H = a.canvas.height;
-      const iw = a.top.width, ih = a.top.height, mid = (H - ih) / 2, strip = 3;
+      const iw = a.top.width, ih = a.top.height, strip = 3, scale = W / iw;
+      const spine = swimSpine(a.s.bendStart, phase, previewTurn);
+      // A turn curls the tail down the picture, so the nose sits higher up.
+      const noseY = previewTurn ? ih * scale / 2 + 0.06 * W : H / 2;
       ctx.clearRect(0, 0, W, H);
       for (let x = 0; x < iw; x += strip) {
-        const s = (x + strip / 2) / iw;
-        const sway = swimEnvelope(s) * iw * 0.8 * bendMask(s, a.s.bendStart) * Math.sin(Math.PI * 2 * s - phase);
-        ctx.drawImage(a.top, x, 0, strip + 0.5, ih, x * (W / iw), mid + sway, (strip + 0.5) * (W / iw), ih);
+        const f = Math.min(SPINE_SAMPLES - 1.001, ((x + strip / 2) / iw) * (SPINE_SAMPLES - 1)), i = Math.floor(f), w = f - i;
+        const px = spine[i][0] + (spine[i + 1][0] - spine[i][0]) * w, py = spine[i][1] + (spine[i + 1][1] - spine[i][1]) * w;
+        const yaw = spine[i][2] + (spine[i + 1][2] - spine[i][2]) * w;
+        ctx.save();
+        ctx.translate(px * W, noseY + py * W);
+        ctx.rotate(yaw);
+        ctx.drawImage(a.top, x, 0, strip + 0.5, ih, -(strip / 2) * scale, -ih * scale / 2, (strip + 0.5) * scale, ih * scale);
+        ctx.restore();
       }
     }
     swimAnimation = requestAnimationFrame(frame);
   };
   swimAnimation = requestAnimationFrame(frame);
+  // A game from before the limits existed doesn't send them yet: start from its defaults.
+  if (!data.swimming) data.swimming = { maxBendFlexible: 70, maxBendStiff: 35, sharpestBend: 24, frontBend: 0.15, maxPitchBend: 8, bankTwist: 0.1 };
+  const turnLabel = el("span", { class: "hint", style: "margin:0;min-width:110px" });
+  const showTurn = () => { turnLabel.textContent = previewTurn ? `turning ${previewTurn}°/s` : "swimming straight"; };
+  showTurn();
+  const turnSlider = el("input", { type: "range", min: 0, max: 360, step: 15, value: previewTurn, style: "width:220px",
+    oninput: (e) => {
+      previewTurn = parseInt(e.target.value, 10);
+      showTurn();
+      for (const a of animated) a.canvas.height = swimCanvasHeight(a.top, a.canvas);
+    } });
+  const limits = el("div", { class: "card" },
+    el("h2", {}, "How far bodies bend"),
+    el("p", { class: "hint" }, "Turning and wiggling together can ask a body to bend further than a fish's backbone goes. These limits keep its shape: the bend from nose to tail (stiff fish less), the tightest curve anywhere along it, how much the stiff front gives, bending up and down, and the twist when banking. Bends well inside the limits are left alone; bigger ones ease into them. Drag the slider to watch every fish below take a turn (pottering fish turn at up to 90°/s, dodging at 180°/s, darting at 360°/s)."),
+    objectForm(data.swimming),
+    el("label", { class: "row", style: "gap:10px;margin-top:8px" }, "Preview a turn", turnSlider, turnLabel));
   return [
+    limits,
     el("p", { class: "hint" }, "Where each fish's body starts to wiggle when it swims. Drag the line across the side view (or type a %): everything in front of it (striped) stays stiff, and the wiggle grows to full strength over the next 30% of the body. Slim fish like danios and tetras bend from just behind the head; deep-bodied fish like goldfish, angelfish and cichlids keep their body stiff and swing the back. The top view below each fish swims with the setting, the way it does in the tank. Saving applies it to the running game straight away."),
     el("div", { class: "swim-grid" }, cards),
   ];

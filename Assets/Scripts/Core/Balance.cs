@@ -752,6 +752,29 @@ namespace FishBreeder.Core
     }
 
     /// <summary>
+    /// How far a swimming fish's body may bend (console Swimming tab). The body follows the head's
+    /// path through turns and carries the swimming wave; these limits keep the two together from
+    /// folding it out of shape. Stiff fish (late bendStart) get the stiff limit, fish that wiggle
+    /// from the head the flexible one, and everything in between a mix.
+    /// </summary>
+    [Serializable]
+    public class SwimBalance
+    {
+        [Tooltip("Most a fish that wiggles from the head (bendStart 10% or less) bends from nose to tail, in degrees: turns and the wiggle together.")]
+        public float maxBendFlexible = 70f;
+        [Tooltip("Most a stiff, deep-bodied fish (bendStart 55% or more) bends from nose to tail, in degrees.")]
+        public float maxBendStiff = 35f;
+        [Tooltip("Tightest curve anywhere along the body: degrees of bend per tenth of its length. Lower keeps tails from kinking.")]
+        public float sharpestBend = 24f;
+        [Tooltip("Share of that curve the stiff front of the body (before bendStart) can still take (0 = rigid).")]
+        [Range(0f, 1f)] public float frontBend = 0.15f;
+        [Tooltip("Most the body bends up or down from nose to tail, in degrees. Fish bend sideways, so keep this small.")]
+        public float maxPitchBend = 8f;
+        [Tooltip("How much less the tail rolls than the head when banking into a turn (0 = the fish banks as one piece).")]
+        [Range(0f, 1f)] public float bankTwist = 0.1f;
+    }
+
+    /// <summary>
     /// Medicine goes into the whole tank. It cures fish with the illness it treats; every other fish
     /// in the water is stressed by it, and too many doses close together damage a fish for life.
     /// </summary>
@@ -795,6 +818,7 @@ namespace FishBreeder.Core
         public NotificationBalance notifications = new NotificationBalance();
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
+        public SwimBalance swimming = new SwimBalance();
         public ResearchBalance research = new ResearchBalance();
         public ReputationBalance reputation = new ReputationBalance();
         public FinanceBalance finances = new FinanceBalance();
@@ -859,6 +883,7 @@ namespace FishBreeder.Core
                 AddMissingSpecies(parsed.species);
                 Upgrade(parsed, ReadDataVersion(json));
                 if (parsed.crossBreeding == null) parsed.crossBreeding = new CrossBreedingBalance();
+                if (parsed.swimming == null) parsed.swimming = new SwimBalance();
                 CrossBreeding.FillCombos(parsed.crossBreeding, parsed.species);
                 if (parsed.perkSettings == null) parsed.perkSettings = new PerkSettingsBalance();
                 if (parsed.perks == null) parsed.perks = new List<PerkBalance>();

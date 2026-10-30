@@ -13,7 +13,12 @@ namespace FishBreeder
     /// 2. Carangiform body wave: a travelling sine from head to tail with the classic mackerel
     ///    amplitude envelope (Videler and Hess 1984): about 2% of body length at the nose,
     ///    nearly still at a third of the way back, 10% at the tail tip. One wavelength per body.
-    /// 3. Roll: banking into turns, plus a small twist wave on the tail (as in ABZÛ's fish).
+    /// 3. Keeping the shape: the path and the wave together can ask for more bend than a fish's
+    ///    backbone has (a tight turn at speed, a hard kick on top of it), so the bend is limited
+    ///    along the body (<see cref="sharpestBend"/>, less in the stiff front) and from nose to tail
+    ///    (<see cref="maxBendDegrees"/>, <see cref="maxPitchBendDegrees"/>), and the body is rebuilt
+    ///    from the nose at its true length, so it can't stretch or fold.
+    /// 4. Roll: banking into turns, plus a small twist wave on the tail (as in ABZÛ's fish).
     /// </summary>
     public class SwimSpine
     {
@@ -28,6 +33,8 @@ namespace FishBreeder
         readonly Vector3[] spinePoints = new Vector3[SampleCount];
         readonly Vector3[] spineUps = new Vector3[SampleCount];
         readonly Vector3[] midline = new Vector3[SampleCount];
+        readonly float[] segmentYaw = new float[SampleCount - 1];
+        readonly float[] segmentPitch = new float[SampleCount - 1];
 
         public readonly Vector4[] Positions = new Vector4[SampleCount];
         public readonly Vector4[] Forwards = new Vector4[SampleCount];
@@ -42,6 +49,16 @@ namespace FishBreeder
         public float stiffness;
         /// <summary>Where the body starts to wiggle, as a fraction of its length from the nose (the species' bendStart).</summary>
         public float bendStart = 0.2f;
+        /// <summary>Most the body bends sideways from nose to tail, in degrees (path, curl and wave together).</summary>
+        public float maxBendDegrees = 70f;
+        /// <summary>Most the body bends up or down from nose to tail, in degrees.</summary>
+        public float maxPitchBendDegrees = 8f;
+        /// <summary>Tightest curve anywhere along the body, in degrees per tenth of its length.</summary>
+        public float sharpestBend = 24f;
+        /// <summary>0..1: share of <see cref="sharpestBend"/> the body in front of <see cref="bendStart"/> can take.</summary>
+        public float frontBend = 0.15f;
+        /// <summary>0..1: how much less the tail rolls than the head when banking.</summary>
+        public float bankTwist = 0.1f;
 
         /// <summary>
         /// How much of the swimming wave reaches s (0 = nose, 1 = tail tip): none in front of
@@ -159,7 +176,9 @@ namespace FishBreeder
                 midline[i] = spinePoints[i] + side * sway;
             }
 
-            // 3. Frames along the final midline, rolled for banking and the tail twist.
+            KeepShape(forward, up, length);
+
+            // 4. Frames along the final midline, rolled for banking and the tail twist.
             var toMesh = meshSpace.worldToLocalMatrix;
             for (int i = 0; i < SampleCount; i++)
             {
@@ -169,7 +188,7 @@ namespace FishBreeder
                 var u = Vector3.Cross(f, side);
 
                 float tailMask = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.55f, 1f, s));
-                float roll = bankDegrees * (1f - 0.3f * s) + tailTwistDegrees * amplitude * tailMask * Mathf.Cos(k * s - phase);
+                float roll = bankDegrees * (1f - bankTwist * s) + tailTwistDegrees * amplitude * tailMask * Mathf.Cos(k * s - phase);
                 var spin = Quaternion.AngleAxis(roll, f);
                 side = spin * side;
                 u = spin * u;
@@ -180,6 +199,70 @@ namespace FishBreeder
                 Sides[i] = toMesh.MultiplyVector(side);
                 Ups[i] = toMesh.MultiplyVector(u);
             }
+        }
+
+        /// <summary>
+        /// Rebuilds <see cref="midline"/> from the nose, one body segment at a time, with the bend
+        /// between segments and the bend from the nose limited. Bends well inside the limits pass
+        /// through unchanged; bigger ones ease into them, so nothing snaps.
+        /// </summary>
+        void KeepShape(Vector3 forward, Vector3 up, float length)
+        {
+            var back = -forward;
+            var side = Vector3.Cross(up, forward).normalized;
+            up = Vector3.Cross(forward, side);
+            int segments = SampleCount - 1;
+            float step = length / segments;
+
+            // Each segment's heading as seen from the head: sideways (yaw) and up or down (pitch).
+            for (int j = 0; j < segments; j++)
+            {
+                var d = midline[j + 1] - midline[j];
+                float b = Vector3.Dot(d, back), x = Vector3.Dot(d, side), y = Vector3.Dot(d, up);
+                segmentYaw[j] = Mathf.Atan2(x, b) * Mathf.Rad2Deg;
+                segmentPitch[j] = Mathf.Atan2(y, Mathf.Sqrt(b * b + x * x)) * Mathf.Rad2Deg;
+            }
+
+            // How much each joint may bend: the curve limit over one segment, less in the stiff front.
+            float perJoint = Mathf.Max(0f, sharpestBend) * 10f / segments;
+            float wantYaw = 0f, wantPitch = 0f, yaw = 0f, pitch = 0f;
+            float lastYaw = 0f, lastPitch = 0f;
+            var point = midline[0];
+            for (int j = 0; j < segments; j++)
+            {
+                float s = j / (float)segments;
+                float joint = perJoint * Mathf.Lerp(Mathf.Clamp01(frontBend), 1f, BendMask(s, bendStart));
+                wantYaw += SoftClamp(Mathf.DeltaAngle(lastYaw, segmentYaw[j]), joint);
+                wantPitch += SoftClamp(segmentPitch[j] - lastPitch, joint);
+                lastYaw = segmentYaw[j];
+                lastPitch = segmentPitch[j];
+                yaw = SoftClamp(wantYaw, Mathf.Max(0f, maxBendDegrees));
+                pitch = SoftClamp(wantPitch, Mathf.Max(0f, maxPitchBendDegrees));
+
+                float cy = Mathf.Cos(yaw * Mathf.Deg2Rad), sy = Mathf.Sin(yaw * Mathf.Deg2Rad);
+                float cp = Mathf.Cos(pitch * Mathf.Deg2Rad), sp = Mathf.Sin(pitch * Mathf.Deg2Rad);
+                point += (back * (cy * cp) + side * (sy * cp) + up * sp) * step;
+                midline[j + 1] = point;
+            }
+        }
+
+        /// <summary>
+        /// <paramref name="value"/> unchanged up to 60% of <paramref name="limit"/>, then easing smoothly
+        /// towards the limit without ever passing it.
+        /// </summary>
+        static float SoftClamp(float value, float limit)
+        {
+            if (limit <= 0f) return 0f;
+            float knee = 0.6f * limit;
+            float size = Mathf.Abs(value);
+            if (size <= knee) return value;
+            return Mathf.Sign(value) * (knee + (limit - knee) * Tanh((size - knee) / (limit - knee)));
+        }
+
+        static float Tanh(float x)
+        {
+            float e = Mathf.Exp(-2f * x);
+            return (1f - e) / (1f + e);
         }
 
         /// <summary>Direction towards the nose at sample i.</summary>

@@ -68,6 +68,8 @@ namespace FishBreeder.Genetics
         /// The wiggle grows over the next <see cref="BendRamp"/> of the body to full strength.
         /// </summary>
         public float bendStart = 0.2f;
+        /// <summary>How big small, medium and large fish of this kind look, as a share of the species' length (medium is normally 1).</summary>
+        public float sizeSmall = 0.85f, sizeMedium = 1f, sizeLarge = 1.18f;
 
         /// <summary>How much of the body (fraction of its length) the wiggle takes to reach full strength after <see cref="bendStart"/>.</summary>
         public const float BendRamp = 0.3f;

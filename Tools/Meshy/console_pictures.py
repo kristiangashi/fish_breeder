@@ -2,7 +2,8 @@
 # (Tools/BalanceConsole/fish/<Species>_side.webp and _top.webp). Each picture is cropped exactly to
 # the fish's length, nose on the left, so a position across the picture is a fraction of the body
 # from nose (0) to tail tip (1), the same measure the game's swim spine uses.
-# Run with Blender's Python (`pip install bpy`):  python3 console_pictures.py <project root>
+# Run with Blender's Python (`pip install bpy`):  python3 console_pictures.py <project root> [species ids...]
+# (with ids, only those fish are drawn; without, every fish)
 import bpy, sys, os, glob, math
 from mathutils import Matrix
 from PIL import Image
@@ -18,6 +19,7 @@ def atlas_for(folder):
 
 for fbx in sorted(glob.glob(os.path.join(root, "Assets", "Resources", "Fish", "*", "*.fbx"))):
     sid = os.path.basename(fbx)[:-4]
+    if sys.argv[2:] and sid not in sys.argv[2:]: continue
     tex = atlas_for(os.path.dirname(fbx))
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=fbx)

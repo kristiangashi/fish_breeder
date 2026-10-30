@@ -65,7 +65,17 @@ namespace FishBreeder
 
         /// <summary>Small, medium or large for its species, rolled at birth. Only for looks.</summary>
         public FishSize Size => size;
-        public float SizeScale => size == FishSize.Small ? 0.85f : size == FishSize.Large ? 1.18f : 1f;
+        public float SizeScale
+        {
+            get
+            {
+                // Set per species in the balance console; a missing or zero value falls back to the old sizes.
+                var s = Phenotype.species;
+                if (size == FishSize.Small) return s != null && s.sizeSmall > 0f ? s.sizeSmall : 0.85f;
+                if (size == FishSize.Large) return s != null && s.sizeLarge > 0f ? s.sizeLarge : 1.18f;
+                return s != null && s.sizeMedium > 0f ? s.sizeMedium : 1f;
+            }
+        }
         float GrowthScale => Mathf.Lerp(0.5f, 1f, growth);
         public bool IsDead { get; private set; }
         public string CauseOfDeath { get; private set; }
@@ -192,6 +202,13 @@ namespace FishBreeder
         void ApplyGrowthScale()
         {
             transform.localScale = Vector3.one * (GrowthScale * SizeScale);
+        }
+
+        /// <summary>Picks up size changes made in the balance console while playing.</summary>
+        public void RefreshScale()
+        {
+            float scale = GrowthScale * SizeScale;
+            if (Mathf.Abs(transform.localScale.x - scale) > 1e-4f) transform.localScale = Vector3.one * scale;
         }
 
         public void Eat(FoodPellet pellet)

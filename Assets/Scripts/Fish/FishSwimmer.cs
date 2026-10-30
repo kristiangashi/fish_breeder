@@ -134,6 +134,7 @@ namespace FishBreeder
             var phenotype = Owner.Phenotype;
             var species = phenotype.species;
             bool bottomDweller = species.style == SwimStyle.Bottom;
+            Owner.RefreshScale();
             float bodyLength = Owner.VisualLength;
             float speedScale = species.speed
                                * Mathf.Lerp(0.8f, 1.2f, phenotype.swimSpeed)
@@ -207,6 +208,10 @@ namespace FishBreeder
             // reach the surface when they go up for air).
             desired = (desired + WallPush(bodyLength * wallComfortBodyLengths, !bottomDweller,
                 activity != Activity.AirDash || targetFood != null)).normalized;
+            // Swim round tank mates instead of through them.
+            var room = Crowding(bodyLength, bursting ? burstPrey : null);
+            if (bottomDweller) room.y = 0f;
+            desired = (desired + room).normalized;
             Perf.FishProbes.End();
 
             if (danger > 0.6f) blockedTime += dt;
@@ -231,6 +236,7 @@ namespace FishBreeder
 
             var next = transform.position + transform.forward * currentSpeed * bodyLength * dt;
             float floorMargin = bottomDweller ? FloorClearance(bodyLength) : bodyLength * 0.5f;
+            next = PushApart(next, bodyLength, bursting ? burstPrey : null, bottomDweller);
             transform.position = Owner.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f, floorMargin);
             Perf.FishBrain.End();
 
@@ -679,6 +685,89 @@ namespace FishBreeder
         static float Push(float distanceToWall, float comfort)
         {
             return distanceToWall >= comfort ? 0f : 1f - Mathf.Clamp01(distanceToWall / comfort);
+        }
+
+        /// <summary>A fish's body as a capsule: half its length along its heading, about a fifth of its length thick.</summary>
+        const float BodyRadius = 0.22f;
+
+        /// <summary>
+        /// Steering away from tank mates that are close: each fish is a capsule along its body, and
+        /// the push grows as the gap shrinks, more from a bigger fish. Without this the metre-long
+        /// fish swam straight through each other. The fish being hunted is left out.
+        /// </summary>
+        Vector3 Crowding(float bodyLength, Fish ignore)
+        {
+            var steer = Vector3.zero;
+            var me = transform.position;
+            var heading = transform.forward * (bodyLength * 0.5f);
+            float myRadius = bodyLength * BodyRadius;
+            foreach (var other in Owner.Tank.Residents)
+            {
+                if (other == null || other == Owner || other == ignore || other.IsDead) continue;
+                float otherLength = other.VisualLength;
+                float clear = myRadius + otherLength * BodyRadius;
+                float reach = clear * 2.2f;
+                var offset = other.transform.position - me;
+                float far = bodyLength * 0.5f + otherLength * 0.5f + reach;
+                if (offset.sqrMagnitude > far * far) continue;
+                ClosestPoints(me - heading, me + heading, other.transform.position - other.transform.forward * (otherLength * 0.5f),
+                    other.transform.position + other.transform.forward * (otherLength * 0.5f), out var a, out var b);
+                var away = a - b;
+                float d = away.magnitude;
+                if (d >= reach) continue;
+                if (d < 1e-4f) away = offset.sqrMagnitude > 1e-8f ? -offset : transform.right;
+                float t = 1f - d / reach;
+                steer += away.normalized * t * t * 1.6f * Mathf.Clamp(otherLength / Mathf.Max(0.01f, bodyLength), 0.3f, 2f);
+            }
+            return steer;
+        }
+
+        /// <summary>Safety net after moving: if its body still overlaps a tank mate's, slide out by half the overlap (the other fish does the other half).</summary>
+        Vector3 PushApart(Vector3 position, float bodyLength, Fish ignore, bool keepHeight)
+        {
+            var heading = transform.forward * (bodyLength * 0.5f);
+            float myRadius = bodyLength * BodyRadius;
+            foreach (var other in Owner.Tank.Residents)
+            {
+                if (other == null || other == Owner || other == ignore || other.IsDead) continue;
+                float otherLength = other.VisualLength;
+                float clear = (myRadius + otherLength * BodyRadius) * 0.85f;
+                var offset = other.transform.position - position;
+                float far = bodyLength * 0.5f + otherLength * 0.5f + clear;
+                if (offset.sqrMagnitude > far * far) continue;
+                ClosestPoints(position - heading, position + heading, other.transform.position - other.transform.forward * (otherLength * 0.5f),
+                    other.transform.position + other.transform.forward * (otherLength * 0.5f), out var a, out var b);
+                var away = a - b;
+                if (keepHeight) away.y = 0f;
+                float d = away.magnitude;
+                if (d >= clear || d < 1e-4f) continue;
+                position += away / d * ((clear - d) * 0.5f);
+            }
+            return position;
+        }
+
+        /// <summary>The closest points between segments p1-q1 and p2-q2.</summary>
+        static void ClosestPoints(Vector3 p1, Vector3 q1, Vector3 p2, Vector3 q2, out Vector3 c1, out Vector3 c2)
+        {
+            var d1 = q1 - p1; var d2 = q2 - p2; var r = p1 - p2;
+            float a = Vector3.Dot(d1, d1), e = Vector3.Dot(d2, d2), f = Vector3.Dot(d2, r);
+            float s, t;
+            if (a <= 1e-8f && e <= 1e-8f) { c1 = p1; c2 = p2; return; }
+            if (a <= 1e-8f) { s = 0f; t = Mathf.Clamp01(f / e); }
+            else
+            {
+                float c = Vector3.Dot(d1, r);
+                if (e <= 1e-8f) { t = 0f; s = Mathf.Clamp01(-c / a); }
+                else
+                {
+                    float b = Vector3.Dot(d1, d2), denom = a * e - b * b;
+                    s = denom > 1e-8f ? Mathf.Clamp01((b * f - c * e) / denom) : 0f;
+                    t = (b * s + f) / e;
+                    if (t < 0f) { t = 0f; s = Mathf.Clamp01(-c / a); }
+                    else if (t > 1f) { t = 1f; s = Mathf.Clamp01((b - c) / a); }
+                }
+            }
+            c1 = p1 + d1 * s; c2 = p2 + d2 * t;
         }
 
         static SphereCollider pushProbe;

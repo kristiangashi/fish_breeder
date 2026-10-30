@@ -114,11 +114,9 @@ namespace FishBreeder.Core
         public static List<SectionBalance> CreateDefaults() => new List<SectionBalance>
         {
             new SectionBalance { name = "Main floor", price = 0 },
+            // The East wing is the last room this shop can grow into (twice as deep, with four wall
+            // aquariums); later growth will be more shops. Rooms past it in an old file are ignored.
             new SectionBalance { name = "East wing", price = 2500, starsNeeded = 1.5f },
-            new SectionBalance { name = "Garden room", price = 5000, starsNeeded = 2f },
-            new SectionBalance { name = "Coral lounge", price = 9000, starsNeeded = 2.5f },
-            new SectionBalance { name = "Lagoon hall", price = 15000, starsNeeded = 3f },
-            new SectionBalance { name = "Grand hall", price = 25000, starsNeeded = 3.5f },
         };
     }
 
@@ -374,7 +372,7 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
-        [Tooltip("The East wing's wall aquarium: it fills most of the back wall, set into it and reaching out behind it. Never an upgrade from another size.")]
+        [Tooltip("The wall aquarium (the East wing has four, the big breeding room one): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
         public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
@@ -382,6 +380,10 @@ namespace FishBreeder.Core
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
         public int wallAquariumLevel = 8;
+        [Tooltip("What the wall breeding tank costs: a wall aquarium for breeding the big fish, along the back wall of the big breeding room (west of the breeding room).")]
+        public int wallBreederPrice = 15000;
+        [Tooltip("Fishkeeping level needed to buy the wall breeding tank.")]
+        public int wallBreederLevel = 10;
         [Tooltip("What it costs to turn a tank into another type (for sale and display swap on the shop floor, breeder and quarantine in the breeding room).")]
         public int changeTankTypePrice = 100;
         [Tooltip("Decoration ids the three starting tanks come with.")]

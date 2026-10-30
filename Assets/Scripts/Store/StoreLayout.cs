@@ -10,13 +10,15 @@ namespace FishBreeder.Store
     /// <summary>
     /// The shop building: a sunny beach-shack fish shop of rooms in a row (seafoam walls, wooden
     /// floors, a bamboo counter, palms and surfboards). The main floor (with the one entrance and the
-    /// register) is open from the start; the other sections are bought
-    /// with money once the shop's reputation is high enough (five expansions, each needing more
-    /// stars), and each adds room for more display and for sale tanks. Tanks stand round the
-    /// walls, facing into the room, which leaves the middle free to walk about. Breeder and
-    /// quarantine tanks live round the walls of the breeding room (the back room) to the west,
-    /// which customers never see, with the supplier computer. The fish seller parks his van in
-    /// the empty parking lot behind it, by its back door. Every spot has room for the biggest
+    /// register) is open from the start; the East wing beside it is bought with money once the
+    /// shop's reputation is high enough. It's the last room this shop grows into: twice as deep as
+    /// the main floor (it reaches north past the main floor's back wall), with a wall aquarium set
+    /// into each of its walls, four in all. Tanks stand round the walls, facing into the room,
+    /// which leaves the middle free to walk about. Breeder and quarantine tanks live round the
+    /// walls of the breeding room (the back room) to the west, which customers never see, with the
+    /// supplier computer; through a door in its west wall is the big breeding room, whose back
+    /// wall takes a wall breeding tank for the big fish. The fish seller parks his van in the empty
+    /// parking lot behind the breeding room, by its back door. Every spot has room for the biggest
     /// tank size, so tanks can be upgraded where they stand.
     /// </summary>
     public class StoreLayout : MonoBehaviour
@@ -40,20 +42,25 @@ namespace FishBreeder.Store
         const float WestSlotX = -SectionWidth * 0.5f + 0.7f;
         // Grand tanks are 3 m long: these leave a gap between the two and keep clear of the staff door.
         static readonly float[] WestSlotZ = { 2.15f, -1.05f };
-        /// <summary>The room whose whole back wall is kept for the wall aquarium (the East wing).</summary>
+        /// <summary>
+        /// The room whose walls are kept for wall aquariums (the East wing). It's twice as deep as
+        /// the others, reaching north past the main floor's back wall, and it's the last room.
+        /// </summary>
         public const int WallAquariumSection = 1;
-        /// <summary>How far the wall aquarium reaches out behind the back wall, into the space north of the room.</summary>
+        /// <summary>Rooms this shop can have: the main floor and the East wing. Later growth is more shops.</summary>
+        public const int MaxSections = 2;
+        /// <summary>How far a wall aquarium reaches out behind its wall, into the space outside the room.</summary>
         const float WallAquariumOutside = 0.2f;
         /// <summary>Wall left above the wall aquarium's frame; a taller one sits lower to keep it.</summary>
         const float WallAquariumHeadroom = 0.3f;
         /// <summary>The lowest the wall aquarium's base goes, however tall it's raised.</summary>
         const float WallAquariumLowestBase = 0.3f;
-        /// <summary>
-        /// With the back wall kept for the wall aquarium, the room's other two tanks stand side on at
-        /// its west and east edges, out of the way of anyone looking at the big tank.
-        /// </summary>
-        const float WallRoomSideX = SectionWidth * 0.5f - 0.8f;
-        const float WallRoomSideZ = -1.6f;
+        /// <summary>Where the two wall aquariums along the East wing's east wall sit, as a share of the wall from its south end.</summary>
+        static readonly float[] WallRoomEastShares = { 0.75f, 0.25f };
+        /// <summary>The big breeding room, west of the breeding room: just wide enough for the wall breeding tank and a palm.</summary>
+        public const float BigRoomWidth = 11f;
+        /// <summary>The door from the breeding room into the big breeding room, near the front of their shared wall.</summary>
+        const float BigRoomDoorZ = -4f;
         // The breeding room's tanks stand round its walls like the shop's, in walking order:
         // up the west wall, along the back (leaving the back door clear), then the east wall.
         // Each is x from the room's centre, z, and yaw (front facing into the room).
@@ -68,11 +75,17 @@ namespace FishBreeder.Store
         const float BackDoorWidth = 1.1f;
         /// <summary>How far behind the shop the fish seller sets up his table: the north end of the parking lot.</summary>
         const float SellerTableZ = 12f;
-        /// <summary>The back edge of the parking lot (and the ground behind the shop).</summary>
+        /// <summary>The back edge of the parking lot.</summary>
         public const float LotFarZ = 15f;
+        /// <summary>The back edge of the sandy ground behind the shop, past the East wing's back wall.</summary>
+        const float GroundFarZ = 19f;
 
         /// <summary>Centre of the back room, west of the main floor.</summary>
         public static float BackRoomCenterX => -SectionWidth * 0.5f - WallThickness - BackRoomWidth * 0.5f;
+        /// <summary>Centre of the big breeding room, west of the back room (they share a wall).</summary>
+        public static float BigRoomCenterX => BackRoomCenterX - BackRoomWidth * 0.5f - WallThickness - BigRoomWidth * 0.5f;
+        /// <summary>The far west edge of the building, outside the big breeding room's west wall.</summary>
+        static float BuildingWestX => BigRoomCenterX - BigRoomWidth * 0.5f - WallThickness;
         /// <summary>Above the breeding room's back door, where the sign pointing to the parking lot hangs.</summary>
         public Vector3 BackDoorSign => new Vector3(BackRoomCenterX + BackDoorOffset, 2.55f, SectionDepth * 0.5f - 0.05f);
         /// <summary>Where the store camera looks to see the fish seller in the parking lot.</summary>
@@ -99,6 +112,11 @@ namespace FishBreeder.Store
             public bool unlocked;
             public Transform shell;
             public float CenterX => index * SectionWidth;
+            /// <summary>Front to back: the East wing is twice as deep as the main floor, reaching north.</summary>
+            public float Depth => index == WallAquariumSection ? SectionDepth * 2f : SectionDepth;
+            /// <summary>Its back (north) edge; every room's front lines up with the main floor's.</summary>
+            public float BackZ => -SectionDepth * 0.5f + Depth;
+            public float CenterZ => -SectionDepth * 0.5f + Depth * 0.5f;
             public Vector3 LabelPoint => new Vector3(CenterX, 0.2f, 0f);
         }
 
@@ -110,13 +128,19 @@ namespace FishBreeder.Store
             public float yaw;         // 0: the tank's front faces -Z, the entrance side
             public StoreTank tank;
             public GameObject emptyMarker;
-            /// <summary>The East wing's back wall, where only the wall aquarium goes.</summary>
+            /// <summary>A wall where only a wall aquarium goes (the East wing's, and the big breeding room's back wall).</summary>
             public bool wall;
 
             public bool IsOpen => backRoom || section.unlocked;
 
-            /// <summary>Breeder and quarantine tanks go in the back room, display and for sale tanks on the shop floor.</summary>
-            public bool Allows(TankRole role) => backRoom == (role == TankRole.Breeder || role == TankRole.Quarantine);
+            /// <summary>The big breeding room's wall breeding tank.</summary>
+            public bool WallBreeder => wall && backRoom;
+
+            /// <summary>
+            /// Breeder and quarantine tanks go in the back room, display and for sale tanks on the
+            /// shop floor; the wall breeding tank is only ever a breeder.
+            /// </summary>
+            public bool Allows(TankRole role) => WallBreeder ? role == TankRole.Breeder : backRoom == (role == TankRole.Breeder || role == TankRole.Quarantine);
         }
 
         readonly List<Section> sections = new List<Section>();
@@ -170,11 +194,13 @@ namespace FishBreeder.Store
         public void Build()
         {
             var sectionBalance = Balance.Data.store.sections;
-            for (int i = 0; i < sectionBalance.Count; i++)
+            for (int i = 0; i < sectionBalance.Count && i < MaxSections; i++)
                 AddSection(sectionBalance[i].name, sectionBalance[i].price, i == 0);
 
             tankRoot = new GameObject("Tanks").transform;
             tankRoot.SetParent(transform, false);
+            // Walking order runs west to east: the big breeding room's wall tank comes first.
+            slots.Add(WallSlot(null, new Vector3(BigRoomCenterX, 0f, SectionDepth * 0.5f + WallThickness * 0.5f), 0f));
             foreach (var spot in BackRoomSpots)
                 slots.Add(new Slot { backRoom = true, position = new Vector3(BackRoomCenterX + spot.x, StandHeight, spot.y), yaw = spot.z });
             // Round the walls in walking order. The main floor: up the west wall (its front is the
@@ -188,11 +214,13 @@ namespace FishBreeder.Store
                         slots.Add(new Slot { section = section, position = new Vector3(cx + WestSlotX, StandHeight, WestSlotZ[i]), yaw = -90f });
                 if (section.index == WallAquariumSection)
                 {
-                    var wallTank = Balance.Data.store.wallAquarium;
-                    float z = SectionDepth * 0.5f + WallThickness + WallAquariumOutside - wallTank.depth * 0.5f;
-                    slots.Add(new Slot { section = section, position = new Vector3(cx - WallRoomSideX, StandHeight, WallRoomSideZ), yaw = -90f });
-                    slots.Add(new Slot { section = section, position = new Vector3(cx, StandHeight, z), wall = true });
-                    slots.Add(new Slot { section = section, position = new Vector3(cx + WallRoomSideX, StandHeight, WallRoomSideZ), yaw = 90f });
+                    // A wall aquarium in every wall: the west wall north of the main floor, the
+                    // back wall, then two along the east wall coming back south.
+                    float halfW = SectionWidth * 0.5f, halfT = WallThickness * 0.5f;
+                    slots.Add(WallSlot(section, new Vector3(cx - halfW - halfT, 0f, (SectionDepth * 0.5f + section.BackZ) * 0.5f), -90f));
+                    slots.Add(WallSlot(section, new Vector3(cx, 0f, section.BackZ + halfT), 0f));
+                    foreach (var share in WallRoomEastShares)
+                        slots.Add(WallSlot(section, new Vector3(cx + halfW + halfT, 0f, -SectionDepth * 0.5f + share * section.Depth), 90f));
                     continue;
                 }
                 foreach (var column in section.index == 0 ? MainSlotColumns : SlotColumns)
@@ -218,20 +246,32 @@ namespace FishBreeder.Store
             PlaceTank(slots.Find(s => !s.backRoom && s.section.index == 0 && s.yaw == 0f && s.tank == null), TankRole.Display, starter);
         }
 
+        /// <summary>
+        /// A spot for a wall aquarium set into a wall: the middle of the wall's thickness at floor
+        /// level, and which way the tank faces (its back goes through the wall, reaching out behind it).
+        /// </summary>
+        static Slot WallSlot(Section section, Vector3 wallMiddle, float yaw)
+        {
+            var outward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
+            var at = wallMiddle + outward * (WallThickness * 0.5f + WallAquariumOutside - Balance.Data.store.wallAquarium.depth * 0.5f);
+            return new Slot { section = section, backRoom = section == null, position = new Vector3(at.x, StandHeight, at.z), yaw = yaw, wall = true };
+        }
+
         /// <summary>Where a slot sits in walking order (back room first), for flicking between tanks.</summary>
         public int SlotOrder(Slot slot) => slot == null ? int.MaxValue : slots.IndexOf(slot);
 
-        Slot FirstFreeSlot(TankRole role) => slots.Find(s => s.tank == null && s.IsOpen && s.Allows(role));
+        Slot FirstFreeSlot(TankRole role) => slots.Find(s => s.tank == null && s.IsOpen && !s.wall && s.Allows(role));
 
         void AddSection(string name, int price, bool unlocked)
         {
             sections.Add(new Section { index = sections.Count, name = name, basePrice = price, unlocked = unlocked });
         }
 
+        /// <summary>Tanks of this kind, towards the store's limit (the wall breeding tank has its own room, so it doesn't count).</summary>
         public int CountTanks(TankRole role)
         {
             int count = 0;
-            foreach (var tank in tanks) if (tank.Role == role) count++;
+            foreach (var tank in tanks) if (tank.Role == role && (tank.Slot == null || !tank.Slot.WallBreeder)) count++;
             return count;
         }
 
@@ -289,22 +329,36 @@ namespace FishBreeder.Store
             return true;
         }
 
-        /// <summary>What a tank for this spot costs: the wall aquarium's own price on the wall, the usual price anywhere else.</summary>
-        public static int TankPrice(Slot slot, TankRole role) => slot != null && slot.wall ? Perks.Build(Balance.Data.store.wallAquariumPrice) : SupplierCatalog.TankPrice(role);
-
-        public bool CanBuyTank(Slot slot, TankRole role, out string reason)
+        /// <summary>What a tank for this spot costs: a wall aquarium's own price on a wall (the wall breeding tank's in the big breeding room), the usual price anywhere else.</summary>
+        public static int TankPrice(Slot slot, TankRole role)
         {
-            reason = null;
-            SupplierCatalog.TankLevel(role, out var track, out var level);
-            if (slot.wall)
+            if (slot == null || !slot.wall) return SupplierCatalog.TankPrice(role);
+            return Perks.Build(slot.WallBreeder ? Balance.Data.store.wallBreederPrice : Balance.Data.store.wallAquariumPrice);
+        }
+
+        /// <summary>The level that unlocks a tank of this kind for this spot: a wall aquarium needs more.</summary>
+        public static void TankLevel(Slot slot, TankRole role, out XpTrack track, out int level)
+        {
+            SupplierCatalog.TankLevel(role, out track, out level);
+            if (slot == null || !slot.wall) return;
+            // The wall breeding tank is for breeding the big fish, so it goes with fishkeeping;
+            // the shop's wall aquariums are for showing and selling, so they go with shopkeeping.
+            if (slot.WallBreeder) level = Mathf.Max(level, Balance.Data.store.wallBreederLevel);
+            else
             {
                 track = XpTrack.Shopkeeping;
                 level = Mathf.Max(level, Balance.Data.store.wallAquariumLevel);
             }
+        }
+
+        public bool CanBuyTank(Slot slot, TankRole role, out string reason)
+        {
+            reason = null;
+            TankLevel(slot, role, out var track, out var level);
             if (slot.tank != null) reason = "There is already a tank here.";
             else if (!slot.IsOpen) reason = "This part of the store is locked.";
-            else if (!slot.Allows(role)) reason = slot.backRoom ? "Only breeder and quarantine tanks go in the breeding room." : "Breeder and quarantine tanks go in the breeding room.";
-            else if (CountTanks(role) >= SupplierCatalog.TankLimit(role)) reason = $"The store can't hold more {StoreTank.RoleName(role).ToLower()} tanks.";
+            else if (!slot.Allows(role)) reason = slot.WallBreeder ? "The wall breeding tank is only for breeding." : slot.backRoom ? "Only breeder and quarantine tanks go in the breeding room." : "Breeder and quarantine tanks go in the breeding room.";
+            else if (!slot.WallBreeder && CountTanks(role) >= SupplierCatalog.TankLimit(role)) reason = $"The store can't hold more {StoreTank.RoleName(role).ToLower()} tanks.";
             else if (!Progression.IsUnlocked(track, level)) reason = $"Needs {Progression.LockText(track, level)}.";
             else if (!Economy.CanAfford(TankPrice(slot, role))) reason = "Not enough money.";
             return reason == null;
@@ -384,15 +438,23 @@ namespace FishBreeder.Store
                 GameLog.Add(reason);
                 return null;
             }
-            if (!Economy.TrySpend(TankPrice(slot, role), slot.wall ? "the wall aquarium" : $"a {StoreTank.RoleName(role).ToLower()} tank", MoneyKind.Tanks)) return null;
+            if (!Economy.TrySpend(TankPrice(slot, role), slot.WallBreeder ? "the wall breeding tank" : slot.wall ? "a wall aquarium" : $"a {StoreTank.RoleName(role).ToLower()} tank", MoneyKind.Tanks)) return null;
             var tank = PlaceTank(slot, role, null);
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyTank);
             if (slot.wall)
             {
-                // The back wall opens up round the new tank.
+                // The wall opens up round the new tank.
                 BuildShell();
-                Fx.Card("WALL AQUARIUM", tank.Title, $"The whole back wall of the {slot.section.name} is one big tank now: room for {tank.Tank.Capacity} fish.", "Fill it from the fish seller", UiTheme.Aqua);
-                GameLog.Add($"The wall aquarium is in! {tank.Title} holds {tank.Tank.Capacity} fish and {tank.Tank.DecorationSlots} decorations.");
+                if (slot.WallBreeder)
+                {
+                    Fx.Card("WALL BREEDING TANK", tank.Title, $"The back wall of the big breeding room is one big breeding tank now: room for {tank.Tank.Capacity} fish, and big enough for the biggest fish to breed.", "Pair up some big fish", UiTheme.Aqua);
+                    GameLog.Add($"The wall breeding tank is in! {tank.Title} holds {tank.Tank.Capacity} fish and {tank.Tank.DecorationSlots} decorations.");
+                }
+                else
+                {
+                    Fx.Card("WALL AQUARIUM", tank.Title, $"A whole wall of the {slot.section.name} is one big tank now: room for {tank.Tank.Capacity} fish.", "Fill it from the fish seller", UiTheme.Aqua);
+                    GameLog.Add($"The wall aquarium is in! {tank.Title} holds {tank.Tank.Capacity} fish and {tank.Tank.DecorationSlots} decorations.");
+                }
             }
             else GameLog.Add($"Your new {tank.Title.ToLower()} is set up and ready for fish.");
             return tank;
@@ -422,6 +484,7 @@ namespace FishBreeder.Store
         /// <summary>The types a tank here could be turned into: the other kind for its room.</summary>
         public static TankRole[] OtherRoles(StoreTank tank)
         {
+            if (tank.Slot != null && tank.Slot.WallBreeder) return new TankRole[0];
             if (tank.InBackRoom) return new[] { tank.Role == TankRole.Breeder ? TankRole.Quarantine : TankRole.Breeder };
             return new[] { tank.Role == TankRole.ForSale ? TankRole.Display : TankRole.ForSale };
         }
@@ -518,7 +581,7 @@ namespace FishBreeder.Store
             }
         }
 
-        /// <summary>Floors and walls. Rebuilt whenever a section unlocks so the outer wall moves out.</summary>
+        /// <summary>Floors and walls. Rebuilt whenever a section unlocks or a wall aquarium goes in, so the walls open up round it.</summary>
         void BuildShell()
         {
             int lastOpen = UnlockedCount - 1;
@@ -530,43 +593,38 @@ namespace FishBreeder.Store
                 section.shell = new GameObject($"Shell - {section.name}").transform;
                 section.shell.SetParent(transform, false);
                 var root = section.shell;
-                float cx = section.CenterX;
+                float cx = section.CenterX, cz = section.CenterZ, backZ = section.BackZ;
+                var floorSize = new Vector3(SectionWidth, 0.1f, section.Depth);
 
-                if (section.unlocked) Floor(root, new Vector3(cx, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), FloorColor);
-                else Wall(root, "Floor", new Vector3(cx, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), LockedFloorColor);
+                if (section.unlocked) Floor(root, new Vector3(cx, -0.05f, cz), floorSize, FloorColor);
+                else Wall(root, "Floor", new Vector3(cx, -0.05f, cz), floorSize, LockedFloorColor);
 
                 if (!section.unlocked)
                 {
                     // Low dark curbs outline the space that can be bought.
-                    Wall(root, "Curb", new Vector3(cx, 0.1f, halfD), new Vector3(SectionWidth, 0.2f, t), DarkColor);
+                    Wall(root, "Curb", new Vector3(cx, 0.1f, backZ), new Vector3(SectionWidth, 0.2f, t), DarkColor);
                     Wall(root, "Curb", new Vector3(cx, 0.1f, -halfD), new Vector3(SectionWidth, 0.2f, t), DarkColor);
                     if (section.index == sections.Count - 1)
-                        Wall(root, "Curb", new Vector3(cx + halfW, 0.1f, 0f), new Vector3(t, 0.2f, SectionDepth), DarkColor);
-                    var click = StoreClickable.Add(root, section.name, new Vector3(cx, 0.5f, 0f), new Vector3(SectionWidth, 1f, SectionDepth), StoreClickable.Kind.LockedSection);
+                        Wall(root, "Curb", new Vector3(cx + halfW, 0.1f, cz), new Vector3(t, 0.2f, section.Depth), DarkColor);
+                    // A deeper room's west side, where it reaches north past the room before it.
+                    if (backZ > halfD + 0.01f)
+                        Wall(root, "Curb", new Vector3(cx - halfW, 0.1f, (halfD + backZ) * 0.5f), new Vector3(t, 0.2f, backZ - halfD), DarkColor);
+                    var click = StoreClickable.Add(root, section.name, new Vector3(cx, 0.5f, cz), new Vector3(SectionWidth, 1f, section.Depth), StoreClickable.Kind.LockedSection);
                     click.section = section;
                     continue;
                 }
 
-                var wallTank = WallTankIn(section);
-                if (wallTank != null)
+                if (section.index == WallAquariumSection)
                 {
-                    BackWallAround(root, cx, halfD, wallTank.Tank);
-                    // The stripes stop either side of the aquarium, like the wall does.
-                    var tank = wallTank.Tank;
-                    float gap = tank.InnerSize.x * 0.5f + 0.08f, tankX = tank.transform.position.x;
-                    float top = tank.transform.position.y + tank.InnerSize.y + 0.05f;
-                    Stripes(root, cx, SectionWidth, halfD, tankX - gap, tankX + gap, top);
+                    BuildWallRoom(root, section);
+                    continue;
                 }
-                else
-                {
-                    Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(SectionWidth + t, WallHeight, t), WallColor);
-                    Stripes(root, cx, SectionWidth, halfD);
-                }
+
+                Wall(root, "BackWall", new Vector3(cx, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(SectionWidth + t, WallHeight, t), WallColor);
+                Stripes(root, cx, SectionWidth, halfD);
                 Palm(root, new Vector3(cx + halfW - 0.45f, 0f, halfD - 0.45f));
                 if (section.index == 0) Palm(root, new Vector3(cx - halfW + 0.45f, 0f, halfD - 0.45f));
-                // No room for the surfboard over a raised wall aquarium.
-                if (wallTank == null || wallTank.Tank.transform.position.y + wallTank.Tank.InnerSize.y < 2.9f)
-                    Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
+                Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
 
                 // The front wall is cut down (dollhouse style) so the overhead camera can see in.
                 if (section.index == 0)
@@ -580,17 +638,7 @@ namespace FishBreeder.Store
                     Wall(root, "DoorPost", new Vector3(cx + EntranceWidth * 0.5f, 1.2f, -halfD - t * 0.5f), new Vector3(t, 2.4f, t * 1.4f), CounterColor);
                     Wall(root, "Lintel", new Vector3(cx, 2.45f, -halfD - t * 0.5f), new Vector3(EntranceWidth + t, 0.15f, t * 1.4f), CounterColor);
                     Wall(root, "DoorMat", new Vector3(cx, 0.005f, -halfD - 0.6f), new Vector3(EntranceWidth - 0.2f, 0.01f, 0.8f), DarkColor);
-                }
-                else
-                {
-                    Wall(root, "FrontWall", new Vector3(cx, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(SectionWidth + t, FrontWallHeight, t), WallColor);
-                    // Pillars where two open sections meet.
-                    Wall(root, "Pillar", new Vector3(cx - halfW, WallHeight * 0.5f, halfD - 0.15f), new Vector3(0.3f, WallHeight, 0.3f), CounterColor);
-                    Wall(root, "Pillar", new Vector3(cx - halfW, FrontWallHeight * 0.5f + 0.1f, -halfD + 0.15f), new Vector3(0.3f, FrontWallHeight + 0.2f, 0.3f), CounterColor);
-                }
 
-                if (section.index == 0)
-                {
                     // The west wall has a staff door through to the back room, near the front.
                     float doorZ = -halfD + 1.6f;
                     float backLength = halfD + t - (doorZ + StaffDoorWidth * 0.5f);
@@ -600,52 +648,147 @@ namespace FishBreeder.Store
                     Wall(root, "SideWall", new Vector3(wallX, FrontWallHeight * 0.5f, -halfD - t + frontLength * 0.5f), new Vector3(t, FrontWallHeight, frontLength), WallColor);
                     Wall(root, "StaffDoorLintel", new Vector3(wallX, 2.5f, doorZ), new Vector3(t * 1.4f, 0.15f, StaffDoorWidth + t), CounterColor);
                 }
+                else
+                {
+                    Wall(root, "FrontWall", new Vector3(cx, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(SectionWidth + t, FrontWallHeight, t), WallColor);
+                    SectionPillars(root, cx - halfW);
+                }
                 if (section.index == lastOpen)
                     Wall(root, "SideWall", new Vector3(cx + halfW + t * 0.5f, WallHeight * 0.5f, 0f), new Vector3(t, WallHeight, SectionDepth + t * 2f), WallColor);
             }
+            BuildBigRoomShell();
         }
 
-        StoreTank WallTankIn(Section section)
+        /// <summary>Pillars where two open sections meet, at the back and (cut down) at the front.</summary>
+        static void SectionPillars(Transform root, float x)
         {
-            foreach (var slot in slots)
-                if (slot.wall && slot.section == section && slot.tank != null) return slot.tank;
-            return null;
+            float halfD = SectionDepth * 0.5f;
+            Wall(root, "Pillar", new Vector3(x, WallHeight * 0.5f, halfD - 0.15f), new Vector3(0.3f, WallHeight, 0.3f), CounterColor);
+            Wall(root, "Pillar", new Vector3(x, FrontWallHeight * 0.5f + 0.1f, -halfD + 0.15f), new Vector3(0.3f, FrontWallHeight + 0.2f, 0.3f), CounterColor);
         }
 
         /// <summary>
-        /// The back wall with an opening for the wall aquarium, which is set into it and reaches out
-        /// behind it; a wall-coloured housing outside covers the part that sticks out.
+        /// The East wing: twice as deep as the main floor, open to it along their shared side, and
+        /// reaching north past the main floor's back wall. Each of its walls takes a wall aquarium
+        /// (the east wall two), and each wall opens up round the aquariums set into it.
         /// </summary>
-        void BackWallAround(Transform root, float cx, float halfD, Tank tank)
+        void BuildWallRoom(Transform root, Section section)
         {
-            float t = WallThickness, z = halfD + t * 0.5f;
-            var size = tank.InnerSize;
-            var centre = tank.transform.position;
-            float frame = 0.03f;
-            float left = centre.x - size.x * 0.5f - frame, right = centre.x + size.x * 0.5f + frame;
-            float bottom = centre.y - Tank.BaseDepth, top = centre.y + size.y + frame;
-            float west = cx - SectionWidth * 0.5f - t * 0.5f, east = cx + SectionWidth * 0.5f + t * 0.5f;
-            Wall(root, "BackWall", new Vector3((west + left) * 0.5f, WallHeight * 0.5f, z), new Vector3(left - west, WallHeight, t), WallColor);
-            Wall(root, "BackWall", new Vector3((right + east) * 0.5f, WallHeight * 0.5f, z), new Vector3(east - right, WallHeight, t), WallColor);
-            Wall(root, "BackWall", new Vector3(centre.x, bottom * 0.5f, z), new Vector3(right - left, bottom, t), WallColor);
-            // Over the tallest wall aquarium the wall rises above the rest, like a bulkhead.
-            float above = Mathf.Max(WallHeight, top + WallAquariumHeadroom);
-            Wall(root, "BackWall", new Vector3(centre.x, (top + above) * 0.5f, z), new Vector3(right - left, above - top, t), WallColor);
-            // The housing round the back: a roof, two sides and a back, just clear of the glass.
-            float outer = centre.z + size.z * 0.5f + 0.05f, depth = outer + 0.25f - (halfD + t);
-            float mid = halfD + t + depth * 0.5f;
+            float cx = section.CenterX, halfW = SectionWidth * 0.5f, halfD = SectionDepth * 0.5f, t = WallThickness, backZ = section.BackZ;
+            // The west wall only runs north of the main floor; south of it the two rooms are open.
+            float westLength = backZ + t - halfD;
+            TankWall(root, section, new Vector3(cx - halfW - t * 0.5f, 0f, halfD + westLength * 0.5f), -90f, westLength);
+            TankWall(root, section, new Vector3(cx, 0f, backZ + t * 0.5f), 0f, SectionWidth + t * 2f);
+            TankWall(root, section, new Vector3(cx + halfW + t * 0.5f, 0f, (backZ - halfD) * 0.5f), 90f, section.Depth + t * 2f);
+            Wall(root, "FrontWall", new Vector3(cx, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(SectionWidth + t, FrontWallHeight, t), WallColor);
+            SectionPillars(root, cx - halfW);
+            // The aquariums fill the corners, but the one by the front and the main floor stays free.
+            Palm(root, new Vector3(cx - halfW + 0.6f, 0f, -halfD + 0.45f));
+            // No room for the surfboard over a raised back-wall aquarium.
+            var back = slots.Find(s => s.wall && s.section == section && s.yaw == 0f);
+            if (back == null || back.tank == null || back.tank.transform.position.y + back.tank.Tank.InnerSize.y < 2.9f)
+                Surfboard(root, new Vector3(cx - 2f, 3.1f, backZ - 0.06f), BoardColors[section.index % BoardColors.Length]);
+        }
+
+        Transform bigRoomShell;
+
+        /// <summary>
+        /// Staff only: the big breeding room, through a door in the breeding room's west wall. Its
+        /// back wall is kept for the wall breeding tank, where the big fish breed. Rebuilt with the
+        /// rest of the shell, so the wall opens up round the tank once it's in.
+        /// </summary>
+        void BuildBigRoomShell()
+        {
+            if (bigRoomShell != null) Destroy(bigRoomShell.gameObject);
+            bigRoomShell = new GameObject("Big breeding room").transform;
+            bigRoomShell.SetParent(transform, false);
+            var root = bigRoomShell;
+            float cx = BigRoomCenterX, halfW = BigRoomWidth * 0.5f, halfD = SectionDepth * 0.5f, t = WallThickness;
+            // The floor runs under the west wall; the wall it shares with the breeding room stands on that room's floor.
+            Floor(root, new Vector3(cx - t * 0.5f, -0.05f, 0f), new Vector3(BigRoomWidth + t, 0.1f, SectionDepth), BackRoomFloorColor);
+            TankWall(root, null, new Vector3(cx - t * 0.5f, 0f, halfD + t * 0.5f), 0f, BigRoomWidth + t);
+            Wall(root, "SideWall", new Vector3(cx - halfW - t * 0.5f, WallHeight * 0.5f, 0f), new Vector3(t, WallHeight, SectionDepth + t * 2f), WallColor);
+            Wall(root, "FrontWall", new Vector3(cx - t * 0.5f, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(BigRoomWidth + t, FrontWallHeight, t), WallColor);
+            Palm(root, new Vector3(cx - halfW + 0.45f, 0f, -halfD + 0.45f));
+            // A long bench of breeding gear down the west wall: buckets, nets and a spawning mop.
+            Wall(root, "Bench", new Vector3(cx - halfW + 0.35f, 0.45f, -0.2f), new Vector3(0.6f, 0.9f, 2.6f), CounterColor);
+            Wall(root, "Buckets", new Vector3(cx - halfW + 0.35f, 1.05f, -1f), new Vector3(0.3f, 0.3f, 0.3f), new Color(0.3f, 0.5f, 0.75f));
+            Wall(root, "Buckets", new Vector3(cx - halfW + 0.35f, 1.05f, -0.6f), new Vector3(0.3f, 0.3f, 0.3f), new Color(0.95f, 0.6f, 0.3f));
+            Wall(root, "Nets", new Vector3(cx - halfW + 0.3f, 0.98f, 0.4f), new Vector3(0.36f, 0.16f, 0.5f), new Color(0.3f, 0.62f, 0.66f));
+            var tank = slots.Find(s => s.WallBreeder);
+            if (tank == null || tank.tank == null || tank.tank.transform.position.y + tank.tank.Tank.InnerSize.y < 2.9f)
+                Surfboard(root, new Vector3(cx + 2f, 3.1f, halfD - 0.06f), BoardColors[3]);
+        }
+
+        /// <summary>
+        /// A full-height wall, its middle at floor level and turned like a wall aquarium against it
+        /// would be (so its inside faces the room), opened up round each wall aquarium set into it:
+        /// wall below and above each tank (rising like a bulkhead over the tallest), a coral stripe
+        /// along the inside that stops either side of them, and a wall-coloured housing outside over
+        /// the part of each tank that reaches out behind the wall. Section null is the big breeding room.
+        /// </summary>
+        void TankWall(Transform root, Section section, Vector3 middle, float yaw, float length)
+        {
+            var frame = new GameObject("Wall").transform;
+            frame.SetParent(root, false);
+            frame.SetPositionAndRotation(middle, Quaternion.Euler(0f, yaw, 0f));
+            float t = WallThickness, half = length * 0.5f;
+            var inWall = new List<Tank>();
+            foreach (var slot in slots)
+                if (slot.wall && slot.tank != null && slot.section == section && Mathf.Abs(Mathf.DeltaAngle(slot.yaw, yaw)) < 1f
+                    && Mathf.Abs(frame.InverseTransformPoint(slot.tank.transform.position).x) < half)
+                    inWall.Add(slot.tank.Tank);
+            inWall.Sort((a, b) => frame.InverseTransformPoint(a.transform.position).x.CompareTo(frame.InverseTransformPoint(b.transform.position).x));
+
+            const float rim = 0.03f;
+            float from = -half;
             var housing = WallColor * 0.92f;
             housing.a = 1f;
-            Wall(root, "Housing", new Vector3(centre.x, top + 0.06f, mid), new Vector3(right - left + 0.3f, 0.12f, depth), housing);
-            Wall(root, "Housing", new Vector3(left - 0.07f, (top + 0.12f) * 0.5f, mid), new Vector3(0.14f, top + 0.12f, depth), housing);
-            Wall(root, "Housing", new Vector3(right + 0.07f, (top + 0.12f) * 0.5f, mid), new Vector3(0.14f, top + 0.12f, depth), housing);
-            Wall(root, "Housing", new Vector3(centre.x, (top + 0.12f) * 0.5f, outer + 0.15f), new Vector3(right - left + 0.3f, top + 0.12f, 0.2f), housing);
+            foreach (var tank in inWall)
+            {
+                var size = tank.InnerSize;
+                var at = frame.InverseTransformPoint(tank.transform.position);
+                float left = at.x - size.x * 0.5f - rim, right = at.x + size.x * 0.5f + rim;
+                float bottom = at.y - Tank.BaseDepth, top = at.y + size.y + rim;
+                if (left > from) Wall(frame, "BackWall", new Vector3((from + left) * 0.5f, WallHeight * 0.5f, 0f), new Vector3(left - from, WallHeight, t), WallColor);
+                Wall(frame, "BackWall", new Vector3(at.x, bottom * 0.5f, 0f), new Vector3(right - left, bottom, t), WallColor);
+                // Over the tallest wall aquarium the wall rises above the rest, like a bulkhead.
+                float above = Mathf.Max(WallHeight, top + WallAquariumHeadroom);
+                Wall(frame, "BackWall", new Vector3(at.x, (top + above) * 0.5f, 0f), new Vector3(right - left, above - top, t), WallColor);
+                // The housing round the back: a roof, two sides and a back, just clear of the glass.
+                float outer = at.z + size.z * 0.5f + 0.05f, depth = outer + 0.25f - t * 0.5f;
+                float mid = t * 0.5f + depth * 0.5f;
+                Wall(frame, "Housing", new Vector3(at.x, top + 0.06f, mid), new Vector3(right - left + 0.3f, 0.12f, depth), housing);
+                Wall(frame, "Housing", new Vector3(left - 0.07f, (top + 0.12f) * 0.5f, mid), new Vector3(0.14f, top + 0.12f, depth), housing);
+                Wall(frame, "Housing", new Vector3(right + 0.07f, (top + 0.12f) * 0.5f, mid), new Vector3(0.14f, top + 0.12f, depth), housing);
+                Wall(frame, "Housing", new Vector3(at.x, (top + 0.12f) * 0.5f, outer + 0.15f), new Vector3(right - left + 0.3f, top + 0.12f, 0.2f), housing);
+                from = right;
+            }
+            if (half > from) Wall(frame, "BackWall", new Vector3((from + half) * 0.5f, WallHeight * 0.5f, 0f), new Vector3(half - from, WallHeight, t), WallColor);
+            StripeAlong(frame, -half, half, -t * 0.5f - 0.01f, 2.35f, 0.22f, StripeColor, inWall);
+            StripeAlong(frame, -half, half, -t * 0.5f - 0.01f, 2.58f, 0.08f, StripeColor2, inWall);
+        }
+
+        /// <summary>One stripe along a <see cref="TankWall"/>'s inside, leaving a gap round any tank that reaches up past it.</summary>
+        static void StripeAlong(Transform frame, float from, float to, float z, float y, float height, Color color, List<Tank> tanks)
+        {
+            float start = from;
+            foreach (var tank in tanks)
+            {
+                var at = frame.InverseTransformPoint(tank.transform.position);
+                if (y - height * 0.5f >= at.y + tank.InnerSize.y + 0.05f) continue;
+                float gapWest = at.x - tank.InnerSize.x * 0.5f - 0.08f, gapEast = at.x + tank.InnerSize.x * 0.5f + 0.08f;
+                if (gapWest > start) Wall(frame, "Stripe", new Vector3((start + gapWest) * 0.5f, y, z), new Vector3(gapWest - start, height, 0.02f), color);
+                start = Mathf.Max(start, gapEast);
+            }
+            if (to > start) Wall(frame, "Stripe", new Vector3((start + to) * 0.5f, y, z), new Vector3(to - start, height, 0.02f), color);
         }
 
         /// <summary>
         /// Staff only: the breeding room, where the breeder and quarantine tanks stand round the
-        /// walls, the supplier computer sits by the front wall, and a little back door opens onto
-        /// the parking lot where the fish seller parks his van.
+        /// walls, the supplier computer sits by the front wall, a little back door opens onto the
+        /// parking lot where the fish seller parks his van, and a door in the west wall leads
+        /// through to the big breeding room.
         /// </summary>
         void BuildBackRoom()
         {
@@ -662,7 +805,13 @@ namespace FishBreeder.Store
             Wall(root, "BackWall", new Vector3(doorX, (doorHeight + WallHeight) * 0.5f, wallZ), new Vector3(BackDoorWidth, WallHeight - doorHeight, t), WallColor);
             BuildBackDoor(root, new Vector3(doorX, 0f, halfD + t * 0.5f), doorHeight);
             Stripes(root, cx - 0.6f, BackRoomWidth - 1.6f, halfD);
-            Wall(root, "SideWall", new Vector3(cx - halfW - t * 0.5f, WallHeight * 0.5f, 0f), new Vector3(t, WallHeight, SectionDepth + t * 2f), WallColor);
+            // The west wall, shared with the big breeding room, with a door through near the front
+            // (cut down in front of it, like the main floor's staff door).
+            float sideX = cx - halfW - t * 0.5f;
+            float doorSouth = BigRoomDoorZ - StaffDoorWidth * 0.5f, doorNorth = BigRoomDoorZ + StaffDoorWidth * 0.5f;
+            Wall(root, "SideWall", new Vector3(sideX, WallHeight * 0.5f, (doorNorth + halfD + t) * 0.5f), new Vector3(t, WallHeight, halfD + t - doorNorth), WallColor);
+            Wall(root, "SideWall", new Vector3(sideX, FrontWallHeight * 0.5f, (doorSouth - halfD - t) * 0.5f), new Vector3(t, FrontWallHeight, doorSouth + halfD + t), WallColor);
+            Wall(root, "StaffDoorLintel", new Vector3(sideX, 2.5f, BigRoomDoorZ), new Vector3(t * 1.4f, 0.15f, StaffDoorWidth + t), CounterColor);
             Wall(root, "FrontWall", new Vector3(cx, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(BackRoomWidth + t * 2f, FrontWallHeight, t), WallColor);
             // A work bench along the front wall, beside the computer desk.
             Wall(root, "Bench", new Vector3(cx + 1.5f, 0.45f, -halfD + 0.45f), new Vector3(2.6f, 0.9f, 0.6f), CounterColor);
@@ -750,7 +899,7 @@ namespace FishBreeder.Store
         void BuildPavement()
         {
             float halfD = SectionDepth * 0.5f;
-            float west = BackRoomCenterX - BackRoomWidth * 0.5f - WallThickness;
+            float west = BuildingWestX;
             float east = (sections.Count - 1) * SectionWidth + SectionWidth * 0.5f + WallThickness;
             var outside = new GameObject("Pavement").transform;
             outside.SetParent(transform, false);
@@ -773,7 +922,9 @@ namespace FishBreeder.Store
             var lot = new GameObject("Parking lot").transform;
             lot.SetParent(transform, false);
             float near = halfD + wall;
-            Wall(lot, "Pavement", new Vector3((west + east) * 0.5f, -0.08f, (near + LotFarZ) * 0.5f), new Vector3(east - west + 8f, 0.1f, LotFarZ - near), new Color(0.86f, 0.78f, 0.6f));
+            // The sand runs behind the whole building, from the big breeding room to the East wing.
+            float groundWest = BuildingWestX - 4f, groundEast = east + 4f;
+            Wall(lot, "Pavement", new Vector3((groundWest + groundEast) * 0.5f, -0.08f, (near + GroundFarZ) * 0.5f), new Vector3(groundEast - groundWest, 0.1f, GroundFarZ - near), new Color(0.86f, 0.78f, 0.6f));
             float lotWest = west - 1f, lotEast = BackRoomCenterX + BackRoomWidth * 0.5f + 1.2f;
             float lotNear = near + 0.6f, lotFar = LotFarZ - 1.5f;
             var asphalt = new Color(0.3f, 0.31f, 0.33f);
@@ -921,7 +1072,7 @@ namespace FishBreeder.Store
             var sources = new List<NavMeshBuildSource>();
             foreach (var section in sections)
                 if (section.unlocked)
-                    sources.Add(StoreNavMesh.Box(new Vector3(section.CenterX, -0.05f, 0f), new Vector3(SectionWidth, 0.1f, SectionDepth), true));
+                    sources.Add(StoreNavMesh.Box(new Vector3(section.CenterX, -0.05f, section.CenterZ), new Vector3(SectionWidth, 0.1f, section.Depth), true));
             sources.Add(StoreNavMesh.Box(new Vector3(0f, -0.05f, -SectionDepth * 0.5f - 1.8f), new Vector3(6f, 0.1f, 3.8f), true));
 
             foreach (var renderer in GetComponentsInChildren<Renderer>())
@@ -935,7 +1086,9 @@ namespace FishBreeder.Store
             }
 
             float width = sections.Count * SectionWidth + 4f;
-            var bounds = new Bounds(new Vector3((sections.Count - 1) * SectionWidth * 0.5f, 1f, -2f), new Vector3(width, 5f, SectionDepth + 10f));
+            // From the street out front to the back of the East wing, the deepest room.
+            float far = SectionDepth * 1.5f + 1f, near = -SectionDepth * 0.5f - 7f;
+            var bounds = new Bounds(new Vector3((sections.Count - 1) * SectionWidth * 0.5f, 1f, (far + near) * 0.5f), new Vector3(width, 5f, far - near));
             StoreNavMesh.Build(sources, bounds);
         }
 

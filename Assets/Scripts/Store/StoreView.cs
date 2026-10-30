@@ -262,9 +262,9 @@ namespace FishBreeder.Store
             }
             distance = Mathf.Clamp(distance - Input.mouseScrollDelta.y * 1.2f, 7f, 26f);
 
-            // The breeding room is to the west; you can look one section past the open ones, to see what's for sale.
+            // The breeding rooms are to the west; you can look one section past the open ones, to see what's for sale.
             float maxX = Mathf.Min(store.UnlockedCount, store.Sections.Count - 1) * StoreLayout.SectionWidth;
-            panX = Mathf.Clamp(panX, StoreLayout.BackRoomCenterX, maxX);
+            panX = Mathf.Clamp(panX, StoreLayout.BigRoomCenterX, maxX);
             // Down to the street out front, up past the back wall to the parking lot behind the breeding room.
             panZ = Mathf.Clamp(panZ, -2.5f, StoreLayout.ParkingLotView.z - StoreLookZ);
         }
@@ -412,9 +412,11 @@ namespace FishBreeder.Store
         {
             if (focused != null)
             {
-                float x = focused.transform.position.x;
-                panX = focused.InBackRoom ? StoreLayout.BackRoomCenterX : Mathf.Round(x / StoreLayout.SectionWidth) * StoreLayout.SectionWidth;
-                panZ = 0f;
+                var at = focused.transform.position;
+                if (focused.Slot != null && focused.Slot.WallBreeder) panX = StoreLayout.BigRoomCenterX;
+                else panX = focused.InBackRoom ? StoreLayout.BackRoomCenterX : Mathf.Round(at.x / StoreLayout.SectionWidth) * StoreLayout.SectionWidth;
+                // Back out over the north end of the East wing for a tank up there.
+                panZ = at.z > StoreLayout.SectionDepth * 0.5f ? at.z - 2f - StoreLookZ : 0f;
             }
             focused = null;
             Tank.Focused = null;
@@ -525,7 +527,7 @@ namespace FishBreeder.Store
                 case Panel.Register: panelRect = Centered(width, height, 500f, 560f); DrawRegister(); break;
                 case Panel.Supplier: panelRect = Centered(width, height, 760f, Mathf.Min(700f, height - 100f)); DrawSupplier(); break;
                 case Panel.Unlock: panelRect = Centered(width, height, 380f, 170f); DrawUnlock(); break;
-                case Panel.BuyTank: panelRect = Centered(width, height, 460f, pendingSlot != null && pendingSlot.wall ? 330f : 250f); DrawBuyTank(); break;
+                case Panel.BuyTank: panelRect = Centered(width, height, 460f, pendingSlot != null && pendingSlot.wall && !pendingSlot.WallBreeder ? 330f : 250f); DrawBuyTank(); break;
                 case Panel.DayReport: panelRect = Centered(width, height, 520f, 440f); DrawDayReport(); break;
                 case Panel.Owner: panelRect = Centered(width, height, 480f, 400f); DrawOwnerPick(); break;
             }
@@ -1130,7 +1132,7 @@ namespace FishBreeder.Store
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
-                    if (slot.IsOpen && slot.tank == null && ClickableLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
+                    if (slot.IsOpen && slot.tank == null && ClickableLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
                     {
                         pendingSlot = slot;
                         panel = Panel.BuyTank;
@@ -1755,23 +1757,20 @@ namespace FishBreeder.Store
         {
             UiCheck.Begin("Buy a tank", panelRect, UiStyles.Window);
             var wall = Balance.Data.store.wallAquarium;
-            Ui.Label(pendingSlot.wall ? "The wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
-            Ui.Label(pendingSlot.wall
-                ? $"<i>One tank along the back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later. Make it a display tank to wow customers, or fill it with fish for sale.</i>"
+            Ui.Label(pendingSlot.WallBreeder ? "The wall breeding tank" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
+            Ui.Label(pendingSlot.WallBreeder
+                ? $"<i>A wall aquarium for breeding, along the big breeding room's back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It has room for the biggest fish to pair up and breed, and it can be raised taller later.</i>"
+                : pendingSlot.wall
+                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later. Make it a display tank to wow customers, or fill it with fish for sale. The East wing takes four.</i>"
                 : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
                 : "<i>Customers browse these. Breeder and quarantine tanks go in the breeding room.</i>", Rich());
             foreach (var role in BuyableRoles)
             {
                 if (!pendingSlot.Allows(role)) continue;
-                SupplierCatalog.TankLevel(role, out var track, out var level);
-                if (pendingSlot.wall)
-                {
-                    track = XpTrack.Shopkeeping;
-                    level = Mathf.Max(level, Balance.Data.store.wallAquariumLevel);
-                }
+                StoreLayout.TankLevel(pendingSlot, role, out var track, out var level);
                 GUI.enabled = !shopDay.IsOpen && store.CanBuyTank(pendingSlot, role, out _);
-                string kind = pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
+                string kind = pendingSlot.WallBreeder ? "Wall breeding tank" : pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
                 string text = Progression.IsUnlocked(track, level)
                     ? $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} {StoreTank.RoleName(role).ToLower()} owned)"
                     : $"{kind}: needs {Progression.LockText(track, level)}";

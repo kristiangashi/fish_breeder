@@ -167,7 +167,12 @@ namespace FishBreeder.Store
             // wheel zoom to the normal view, from the tank or a person to the store.
             bool zoomOut = Input.GetMouseButtonDown(1) && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
             if (focused != null && focused.Tank == null) ExitTank();
-            else if (focused != null && (escape || zoomOut)) StepBackInTank();
+            else if (focused != null && (escape || zoomOut))
+            {
+                if (hud.Arranging != FishTankHUD.ArrangeMode.None) hud.StopArranging();
+                else if (hud.HasSelection || hud.ZoomPoint.HasValue) hud.ClearSelection();
+                else if (!hud.ResetWheelZoom()) ExitTank();
+            }
             else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && GUIUtility.keyboardControl == 0) following++;
@@ -180,8 +185,8 @@ namespace FishBreeder.Store
                 if (wheel != 0f && hud.Arranging == FishTankHUD.ArrangeMode.None && !hud.MouseOverMenu && !AnyWindowOpen && panel == Panel.None && !UiLayout.Editing)
                     hud.ZoomWheel(wheel);
                 if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, null, null, Vector2.zero, 1f, cam, hud.MenuCover, out targetPosition, out targetRotation);
-                else if (hud.TopView) GetTopPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.ViewZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
-                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.ViewZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                else if (hud.TopView) GetTopPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.WheelZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.WheelZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
             {
@@ -221,17 +226,6 @@ namespace FishBreeder.Store
             cam.transform.SetPositionAndRotation(
                 Vector3.Lerp(cam.transform.position, targetPosition, blend),
                 Quaternion.Slerp(cam.transform.rotation, targetRotation, blend));
-        }
-
-        /// <summary>
-        /// Esc or a right click in a tank: stop arranging, else leave a close-up for the whole tank
-        /// (at the wheel zoom it had), else put the wheel zoom back to normal, else go back to the store.
-        /// </summary>
-        void StepBackInTank()
-        {
-            if (hud.Arranging != FishTankHUD.ArrangeMode.None) hud.StopArranging();
-            else if (hud.CloseUp) hud.ClearSelection();
-            else if (!hud.ResetWheelZoom()) ExitTank();
         }
 
         static bool AnyWindowOpen => JournalView.IsOpen || PerksView.IsOpen || ResearchView.IsOpen || ReputationView.IsOpen || FinancesView.IsOpen;
@@ -322,16 +316,13 @@ namespace FishBreeder.Store
                 // A spot slid to with the keys wins over the fish (clicking a fish follows it again).
                 var target = zoom.HasValue ? zoom.Value : follow.transform.position;
                 // Close-ups are as close in a wall aquarium as in a grand tank.
-                float near = Mathf.Min(back, 3.6f) * 0.5f;
-                // How far the target is behind the front glass (and a little room), where the camera has to stop.
+                back = Mathf.Min(back, 3.6f) * wheelZoom;
+                // Zoomed in with the wheel, the camera still stops just outside the front glass.
                 float glass = Vector3.Dot(bounds.center - target, front) + size.z * 0.5f + 0.12f;
-                // The wheel zooms the stretch in front of the glass, so it works however deep the tank
-                // is (in a deep one the target can be metres behind the glass).
-                float away = glass + Mathf.Max(near - glass, near * 0.5f) * wheelZoom;
-                position = target + front * away + Vector3.up * 0.05f;
+                position = target + front * Mathf.Max(back * 0.5f, glass) + Vector3.up * 0.05f;
                 rotation = Quaternion.LookRotation(target - position);
                 // Keep the fish (or spot) in the middle of the uncovered part.
-                position -= rotation * Vector3.right * (menuCover * away * halfWidth);
+                position -= rotation * Vector3.right * (menuCover * back * 0.5f * halfWidth);
                 return;
             }
             back = Mathf.Max(back * wheelZoom, size.z * 0.5f + 0.25f);

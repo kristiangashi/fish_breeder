@@ -43,6 +43,19 @@ namespace FishBreeder
         float backgroundZoom = 1f;
         Vector2 backgroundCenter = new Vector2(0.5f, 0.5f);
 
+        readonly List<Material> sideMaterials = new List<Material>();
+        string sideBackgroundId = "";
+
+        /// <summary>The picture on both side glasses of a wall aquarium (a <see cref="BackgroundBalance"/> id), or "" for plain glass.</summary>
+        public string SideBackgroundId => sideBackgroundId;
+
+        /// <summary>Puts one picture on both side glasses of a wall aquarium ("" or null takes it down).</summary>
+        public void SetSideBackground(string id)
+        {
+            sideBackgroundId = id ?? "";
+            BuildSideBackgrounds();
+        }
+
         /// <summary>How far the picture is zoomed in past just covering the glass (1 = as wide as it fits).</summary>
         public float BackgroundZoom => backgroundZoom;
         /// <summary>The middle of the part of the picture that shows, in texture space (0.5, 0.5 is centred).</summary>
@@ -520,7 +533,9 @@ namespace FishBreeder
             var color = WaterColor;
             if (backWallMaterial != null) backWallMaterial.color = color * 1.3f;
             // A picture shows through the water: clean water barely tints it, dirty water more.
-            if (backgroundMaterial != null) backgroundMaterial.color = Color.Lerp(Color.white, color * 1.6f, Mathf.Lerp(0.6f, 0.15f, waterQuality));
+            var tint = Color.Lerp(Color.white, color * 1.6f, Mathf.Lerp(0.6f, 0.15f, waterQuality));
+            if (backgroundMaterial != null) backgroundMaterial.color = tint;
+            foreach (var side in sideMaterials) side.color = tint;
             // Dirty water shows only inside the glass, through the water volume's murk.
             if (water != null) water.SetLook(color, waterQuality, algae);
         }
@@ -788,6 +803,36 @@ namespace FishBreeder
             ApplyWaterLook();
         }
 
+        /// <summary>
+        /// The picture on the side glasses of a wall aquarium, whose sides run deep into the wall
+        /// and are seen from the room. One quad just inside each side glass, facing in, the picture
+        /// cropped (not stretched) to the side's shape and centred, reading left to right from inside.
+        /// </summary>
+        void BuildSideBackgrounds()
+        {
+            if (visuals == null) return;
+            sideMaterials.Clear();
+            for (int i = visuals.childCount - 1; i >= 0; i--)
+                if (visuals.GetChild(i).name == "SideBackground") Destroy(visuals.GetChild(i).gameObject);
+            var texture = IsWallAquarium ? TankBackgrounds.Texture(sideBackgroundId) : null;
+            if (texture == null) return;
+            var b = innerSize;
+            float sideAspect = b.z / Mathf.Max(0.01f, b.y), textureAspect = texture.width / (float)Mathf.Max(1, texture.height);
+            var scale = sideAspect > textureAspect ? new Vector2(1f, textureAspect / sideAspect) : new Vector2(sideAspect / textureAspect, 1f);
+            for (int s = -1; s <= 1; s += 2)
+            {
+                var quad = MaterialFactory.Decor(PrimitiveType.Quad, "SideBackground", visuals, new Vector3(s * (b.x * 0.5f - 0.002f), b.y * 0.5f, 0f), new Vector3(b.z, b.y, 1f), Color.white);
+                quad.transform.localRotation = Quaternion.Euler(0f, s * 90f, 0f);
+                var material = quad.GetComponent<Renderer>().material;
+                material.mainTexture = texture;
+                if (material.HasProperty("_Glossiness")) material.SetFloat("_Glossiness", 0f);
+                material.mainTextureScale = scale;
+                material.mainTextureOffset = (Vector2.one - scale) * 0.5f;
+                sideMaterials.Add(material);
+            }
+            ApplyWaterLook();
+        }
+
         /// <summary>Simple tank made of primitives. Replace with a Meshy or hand-made tank model later.</summary>
         void BuildVisuals()
         {
@@ -803,6 +848,7 @@ namespace FishBreeder
             var wall = MaterialFactory.Decor(PrimitiveType.Cube, "BackWall", root, new Vector3(0f, b.y * 0.5f, b.z * 0.5f + 0.01f), new Vector3(b.x + 0.04f, b.y, 0.02f), ClearWater);
             backWallMaterial = wall.GetComponent<Renderer>().sharedMaterial;
             BuildBackground();
+            BuildSideBackgrounds();
 
             // Glass frame: the 12 edges of the box, the bottom ones down at the base below the substrate.
             const float t = 0.02f;

@@ -44,16 +44,6 @@ namespace FishBreeder.Core
         public Vector2 ViewPan { get; private set; }
         /// <summary>The scroll wheel's zoom: the camera's distance as a share of the normal view (below 1 is closer).</summary>
         public float WheelZoom { get; private set; } = 1f;
-        /// <summary>
-        /// The scroll wheel's zoom in a close-up (a picked fish or a clicked spot), kept apart from the
-        /// whole-tank view's: how far the camera stands out from the glass, as a share of the normal
-        /// close-up (below 1 is closer). Leaving the close-up puts it back to 1.
-        /// </summary>
-        public float CloseZoom { get; private set; } = 1f;
-        /// <summary>Whether the view is a close-up on a fish or a clicked spot, not the whole tank.</summary>
-        public bool CloseUp => HasSelection || ZoomPoint.HasValue;
-        /// <summary>The zoom the camera uses now: the close-up's own, or the whole-tank view's.</summary>
-        public float ViewZoom => CloseUp ? CloseZoom : WheelZoom;
         /// <summary>Looking straight down into the tank instead of through the front glass (T). It stays on when switching tanks.</summary>
         public bool TopView { get; private set; }
 
@@ -64,25 +54,18 @@ namespace FishBreeder.Core
             WheelZoom = 1f;
         }
         public const float MinWheelZoom = 0.3f, MaxWheelZoom = 1.5f;
-        public const float MinCloseZoom = 0.1f, MaxCloseZoom = 3f;
 
-        /// <summary>Lets go of the picked fish and the clicked spot: back to the whole tank, at the wheel zoom it had.</summary>
         public void ClearSelection()
         {
             selected.Clear();
             ZoomPoint = null;
-            CloseZoom = 1f;
+            WheelZoom = 1f;
         }
 
-        /// <summary>
-        /// Scroll wheel: each notch moves the camera 15% closer (up) or further (down), within the
-        /// limits of the view it's in (a close-up has its own).
-        /// </summary>
+        /// <summary>Scroll wheel: each notch moves the camera 15% closer (up) or further (down), within the limits.</summary>
         public void ZoomWheel(float notches)
         {
-            float step = Mathf.Pow(0.85f, notches);
-            if (CloseUp) CloseZoom = Mathf.Clamp(CloseZoom * step, MinCloseZoom, MaxCloseZoom);
-            else WheelZoom = Mathf.Clamp(WheelZoom * step, MinWheelZoom, MaxWheelZoom);
+            WheelZoom = Mathf.Clamp(WheelZoom * Mathf.Pow(0.85f, notches), MinWheelZoom, MaxWheelZoom);
         }
 
         /// <summary>Back to the normal distance; false if it already was.</summary>
@@ -146,7 +129,7 @@ namespace FishBreeder.Core
             selected.Clear();
             ZoomPoint = null;
             ViewPan = Vector2.zero;
-            WheelZoom = CloseZoom = 1f;
+            WheelZoom = 1f;
             Arranging = ArrangeMode.None;
             picker = Picker.None;
             showLevelInfo = false;
@@ -158,8 +141,6 @@ namespace FishBreeder.Core
         void Update()
         {
             selected.RemoveAll(f => f == null || f.Tank != tank);
-            // However the close-up ended (a click outside the water, the fish moved away), the next one starts at its normal distance.
-            if (!CloseUp) CloseZoom = 1f;
             if (tank == null || GUIUtility.keyboardControl != 0 || UiLayout.Editing) return;
             if (Arranging == ArrangeMode.Decorations && heldPiece >= 0 && tank.Decor != null)
             {

@@ -1461,11 +1461,13 @@ namespace FishBreeder.Core
         /// <summary>The next size up: what it holds, which fish need it, and the button once the quality is there.</summary>
         void DrawUpgrade()
         {
-            var sizes = Balance.Data.store.tankSizes;
             int next = tank.SizeIndex + 1;
-            if (next >= sizes.Count || upgradeTank == null) return;
-            var info = sizes[next];
-            Ui.Label($"<size=11>{info.name} tank: {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>", Rich());
+            var info = StoreLayout.SizeInfo(tank, next);
+            if (info == null || upgradeTank == null) return;
+            bool wall = tank.IsWallAquarium;
+            Ui.Label(wall
+                ? $"<size=11>{info.name}: raised to {info.height:0.0#} m tall, {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>"
+                : $"<size=11>{info.name} tank: {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>", Rich());
             var reason = StoreLayout.WhyCantUpgrade(storeTank, next);
             if (reason != null && reason != StoreLayout.NoMoney)
             {
@@ -1475,7 +1477,7 @@ namespace FishBreeder.Core
             bool wasEnabled = GUI.enabled;
             int price = Perks.Upgrade(info.upgradePrice);
             GUI.enabled = wasEnabled && reason == null;
-            if (Ui.Button($"Upgrade to {info.name.ToLower()} tank  {Economy.Format(price)}")) upgradeTank(storeTank, next);
+            if (Ui.Button(wall ? $"Raise to {info.height:0.0#} m  {Economy.Format(price)}" : $"Upgrade to {info.name.ToLower()} tank  {Economy.Format(price)}")) upgradeTank(storeTank, next);
             GUI.enabled = wasEnabled;
         }
 

@@ -308,7 +308,8 @@ const META = {
   minTankSize: ["Smallest tank", "The smallest tank size this fish will live in. The fish seller won't sell it for a smaller tank, it can't be moved into one, and it's cramped (less comfortable) if it ends up in one."],
   crampedComfortLoss: ["Cramped comfort loss", "Comfort a fish loses in a tank smaller than its smallest tank."],
   // Crowding, selling, wipes, health
-  wallAquarium: ["Wall aquarium", "The East wing's tank the length of its back wall. Never an upgrade from another size."],
+  wallAquarium: ["Wall aquarium", "The East wing's tank along its back wall. Never an upgrade from another size."],
+  wallAquariumHeights: ["Wall aquarium heights", "Upgrades that raise the wall aquarium, each taller than the last. Length and depth always match the wall aquarium; level is Shopkeeping. Taller ones sit lower so they fit under the roof, and over the tallest the back wall rises."],
   wallAquariumPrice: ["Wall aquarium price", "What the wall aquarium costs (it can be a display or for sale tank)."],
   wallAquariumLevel: ["Wall aquarium level", "Shopkeeping level needed to buy the wall aquarium."],
   changeTankTypePrice: ["Change tank type price", "Turning a tank into the other type for its room: for sale and display on the shop floor, breeder and quarantine in the breeding room."],
@@ -845,13 +846,15 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Tank mates"), objectForm(data.tankMates)));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Medicine"), objectForm(data.medicine)));
   } else if (key === "store") {
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, ["tankSizes", "wallAquarium"])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, ["tankSizes", "wallAquarium", "wallAquariumHeights"])));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers", "faults", ...REPAIR_SUPPLIER])));
   } else if (key === "stock") {
     cards.push(el("div", { class: "card" }, listTable("Egg and fry boxes", data.supplier.eggTiers)));
     cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
     cards.push(el("div", { class: "card" }, listTable("Tank sizes", data.store.tankSizes)));
     if (data.store.wallAquarium) cards.push(el("div", { class: "card" }, listTable("Wall aquarium (East wing)", [data.store.wallAquarium])));
+    if (data.store.wallAquariumHeights && data.store.wallAquariumHeights.length)
+      cards.push(el("div", { class: "card" }, listTable("Wall aquarium heights (raised in this order; level is Shopkeeping, length and depth follow the wall aquarium)", data.store.wallAquariumHeights)));
     if (!data.quality) data.quality = { equipmentPoints: 5, pointsPerEquipmentTier: 5, brokenEquipmentShare: 0.5, decorationPoints: 3, plantPoints: 2, varietyPoints: 1 };
     cards.push(el("div", { class: "card" }, el("h2", {}, "Aquarium quality"), objectForm(data.quality)));
   } else if (key === "equipment") {

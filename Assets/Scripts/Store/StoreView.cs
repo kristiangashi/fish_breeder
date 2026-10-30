@@ -1757,7 +1757,7 @@ namespace FishBreeder.Store
             var wall = Balance.Data.store.wallAquarium;
             Ui.Label(pendingSlot.wall ? "The wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
             Ui.Label(pendingSlot.wall
-                ? $"<i>One tank the whole length of the back wall ({wall.width:0.#} m), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth. Make it a display tank to wow customers, or fill it with fish for sale.</i>"
+                ? $"<i>One tank along the back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later. Make it a display tank to wow customers, or fill it with fish for sale.</i>"
                 : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
                 : "<i>Customers browse these. Breeder and quarantine tanks go in the breeding room.</i>", Rich());

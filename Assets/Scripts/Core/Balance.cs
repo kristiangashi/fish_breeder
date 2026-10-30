@@ -374,8 +374,10 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
-        [Tooltip("The East wing's wall aquarium: it fills the back wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 12f, height = 1.95f, depth = 1.333f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
+        [Tooltip("The East wing's wall aquarium: it fills most of the back wall, set into it and reaching out behind it. Never an upgrade from another size.")]
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
+        [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
+        public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
         [Tooltip("What the wall aquarium costs (a display or for sale tank).")]
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
@@ -386,6 +388,29 @@ namespace FishBreeder.Core
         public List<string> starterDecorations = new List<string>();
         [Tooltip("A tank's fish count is a soft limit: you can go over it (with serious problems for the fish) up to this many times the limit.")]
         public float tankHardLimitMultiplier = 1.5f;
+
+        public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>
+        {
+            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 245, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
+            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 290, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
+            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 340, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
+            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 390, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
+        };
+
+        /// <summary>
+        /// The wall aquarium at a height step (0 = as bought, then each upgrade), always as long and
+        /// deep as the one bought, since it's set into the wall.
+        /// </summary>
+        public TankSizeBalance WallAquariumStep(int step)
+        {
+            if (step <= 0 || wallAquariumHeights == null || wallAquariumHeights.Count == 0) return wallAquarium;
+            var info = wallAquariumHeights[Mathf.Min(step, wallAquariumHeights.Count) - 1];
+            info.width = wallAquarium.width;
+            info.depth = wallAquarium.depth;
+            return info;
+        }
+
+        public int WallAquariumSteps => 1 + (wallAquariumHeights != null ? wallAquariumHeights.Count : 0);
     }
 
     [Serializable]
@@ -848,7 +873,7 @@ namespace FishBreeder.Core
         /// 9: wall aquarium equipment, liked decorations and roaming.
         /// 10: the big wall-aquarium fish (Crimson Jewel Cichlid, Silver Flamefin): tank mates, crosses, egg boxes.
         /// </summary>
-        public const int CurrentDataVersion = 10;
+        public const int CurrentDataVersion = 11;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1123,6 +1148,21 @@ namespace FishBreeder.Core
                             if (BigFish.Contains(s.id) && !tier.hatch.Exists(h => h != null && h.species == s.id))
                                 tier.hatch.Add(new EggHatchBalance { species = s.id, weight = 2f, fromLevel = s.unlockLevel });
                     }
+            }
+            if (fromVersion < 11 && data.store != null)
+            {
+                // The wall aquarium is 30% deeper and shorter, holding the same water, and can be
+                // raised in steps.
+                var fresh = new StoreBalance();
+                var wall = data.store.wallAquarium;
+                if (wall == null) data.store.wallAquarium = fresh.wallAquarium;
+                else
+                {
+                    wall.width = fresh.wallAquarium.width;
+                    wall.depth = fresh.wallAquarium.depth;
+                }
+                if (data.store.wallAquariumHeights == null || data.store.wallAquariumHeights.Count == 0)
+                    data.store.wallAquariumHeights = StoreBalance.DefaultWallHeights();
             }
             data.dataVersion = CurrentDataVersion;
         }

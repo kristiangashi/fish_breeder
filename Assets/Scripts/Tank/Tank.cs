@@ -150,18 +150,21 @@ namespace FishBreeder
         /// <summary>Fed since the last time step (the to-do list uses it to know hungry fish were seen to).</summary>
         public bool FedSinceTimeStep { get; set; }
 
-        /// <summary>Which of the balance's tank sizes this is (0 = the standard size every tank starts as, <see cref="WallSize"/> the wall aquarium).</summary>
+        /// <summary>Which of the balance's tank sizes this is (0 = the standard size every tank starts as, <see cref="WallSize"/> and up the wall aquarium).</summary>
         public int SizeIndex => sizeIndex;
 
-        /// <summary>The size index of the East wing's wall aquarium: bigger than every other size, and never upgraded to.</summary>
+        /// <summary>
+        /// The size index of the East wing's wall aquarium: bigger than every other size, and never
+        /// upgraded to. Each height it's raised to is one more (<see cref="StoreBalance.WallAquariumStep"/>).
+        /// </summary>
         public const int WallSize = 100;
-        public bool IsWallAquarium => sizeIndex == WallSize;
+        public bool IsWallAquarium => sizeIndex >= WallSize;
 
         public TankSizeBalance SizeInfo
         {
             get
             {
-                if (sizeIndex == WallSize) return Balance.Data.store.wallAquarium;
+                if (IsWallAquarium) return Balance.Data.store.WallAquariumStep(sizeIndex - WallSize);
                 var sizes = Balance.Data.store.tankSizes;
                 if (sizes == null || sizes.Count == 0) return new TankSizeBalance { name = "Standard" };
                 return sizes[Mathf.Clamp(sizeIndex, 0, sizes.Count - 1)];

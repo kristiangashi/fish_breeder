@@ -44,6 +44,10 @@ namespace FishBreeder.Store
         public const int WallAquariumSection = 1;
         /// <summary>How far the wall aquarium reaches out behind the back wall, into the space north of the room.</summary>
         const float WallAquariumOutside = 0.2f;
+        /// <summary>Wall left above the wall aquarium's frame; a taller one sits lower to keep it.</summary>
+        const float WallAquariumHeadroom = 0.3f;
+        /// <summary>The lowest the wall aquarium's base goes, however tall it's raised.</summary>
+        const float WallAquariumLowestBase = 0.3f;
         /// <summary>
         /// With the back wall kept for the wall aquarium, the room's other two tanks stand side on at
         /// its west and east edges, out of the way of anyone looking at the big tank.
@@ -308,14 +312,40 @@ namespace FishBreeder.Store
 
         public const string NoMoney = "Not enough money.";
 
+        /// <summary>
+        /// What a tank would be at this size: one of the tank sizes, or for the wall aquarium one of
+        /// its heights. Null past the biggest.
+        /// </summary>
+        public static TankSizeBalance SizeInfo(Tank tank, int size)
+        {
+            var store = Balance.Data.store;
+            if (tank.IsWallAquarium) return size >= Tank.WallSize && size - Tank.WallSize < store.WallAquariumSteps ? store.WallAquariumStep(size - Tank.WallSize) : null;
+            return size >= 0 && size < store.tankSizes.Count ? store.tankSizes[size] : null;
+        }
+
+        /// <summary>
+        /// How high off the floor the wall aquarium's base sits: on the usual stand while there's
+        /// wall above it, then lower as it's raised (the back wall rises over the tallest).
+        /// </summary>
+        public static float WallAquariumBase(float innerHeight) =>
+            Mathf.Clamp(WallHeight - WallAquariumHeadroom - innerHeight, WallAquariumLowestBase, StandHeight);
+
         /// <summary>Why a tank can't be upgraded to this size right now (<see cref="NoMoney"/> last), or null if it can.</summary>
         public static string WhyCantUpgrade(StoreTank tank, int size)
         {
-            var sizes = Balance.Data.store.tankSizes;
-            if (size <= tank.Tank.SizeIndex || size >= sizes.Count) return "It's already this size or bigger.";
-            var info = sizes[size];
-            if (!Progression.IsUnlocked(XpTrack.Fishkeeping, info.unlockLevel)) return $"Needs {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}.";
-            if (tank.Tank.Quality < info.qualityNeeded) return $"Needs aquarium level {size + 1} (quality {info.qualityNeeded}, it's {tank.Tank.Quality}).";
+            var info = size > tank.Tank.SizeIndex ? SizeInfo(tank.Tank, size) : null;
+            if (info == null) return "It's already this size or bigger.";
+            if (tank.Tank.IsWallAquarium)
+            {
+                // Raising the wall aquarium is building work, so it goes with shopkeeping, like buying it.
+                if (!Progression.IsUnlocked(XpTrack.Shopkeeping, info.unlockLevel)) return $"Needs {Progression.LockText(XpTrack.Shopkeeping, info.unlockLevel)}.";
+                if (tank.Tank.Quality < info.qualityNeeded) return $"Needs quality {info.qualityNeeded} (it's {tank.Tank.Quality}).";
+            }
+            else
+            {
+                if (!Progression.IsUnlocked(XpTrack.Fishkeeping, info.unlockLevel)) return $"Needs {Progression.LockText(XpTrack.Fishkeeping, info.unlockLevel)}.";
+                if (tank.Tank.Quality < info.qualityNeeded) return $"Needs aquarium level {size + 1} (quality {info.qualityNeeded}, it's {tank.Tank.Quality}).";
+            }
             if (!Economy.CanAfford(Perks.Upgrade(info.upgradePrice))) return NoMoney;
             return null;
         }
@@ -328,12 +358,22 @@ namespace FishBreeder.Store
                 GameLog.Add(reason);
                 return false;
             }
-            var info = Balance.Data.store.tankSizes[size];
-            if (!Economy.TrySpend(Perks.Upgrade(info.upgradePrice), $"upgrading {tank.Title} to a {info.name.ToLower()} tank", MoneyKind.Tanks)) return false;
+            var info = SizeInfo(tank.Tank, size);
+            bool wall = tank.Tank.IsWallAquarium;
+            if (!Economy.TrySpend(Perks.Upgrade(info.upgradePrice), wall ? $"raising {tank.Title} to {info.height:0.0#} m" : $"upgrading {tank.Title} to a {info.name.ToLower()} tank", MoneyKind.Tanks)) return false;
+            if (wall)
+            {
+                // Once it reaches the roof it grows down as well as up, so every fish stays in the water.
+                var at = tank.transform.position;
+                tank.transform.position = new Vector3(at.x, WallAquariumBase(info.height), at.z);
+            }
             tank.Tank.Resize(size);
             BuildStand(tank);
+            if (wall) BuildShell();
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpTankUpgrade);
-            GameLog.Add($"{tank.Title} is now a {info.name.ToLower()} tank: room for {tank.Tank.Capacity} fish.");
+            GameLog.Add(wall
+                ? $"{tank.Title} is now a {info.name.ToLower()}, {info.height:0.0#} m tall: room for {tank.Tank.Capacity} fish."
+                : $"{tank.Title} is now a {info.name.ToLower()} tank: room for {tank.Tank.Capacity} fish.");
             return true;
         }
 
@@ -360,7 +400,8 @@ namespace FishBreeder.Store
 
         StoreTank PlaceTank(Slot slot, TankRole role, IEnumerable<string> decorations)
         {
-            var tank = StoreTank.Create(role, NextNumber(role), slot.position, slot.yaw, tankRoot, slot.wall ? Tank.WallSize : 0, decorations);
+            var position = slot.wall ? new Vector3(slot.position.x, WallAquariumBase(Balance.Data.store.wallAquarium.height), slot.position.z) : slot.position;
+            var tank = StoreTank.Create(role, NextNumber(role), position, slot.yaw, tankRoot, slot.wall ? Tank.WallSize : 0, decorations);
             slot.tank = tank;
             tank.Slot = slot;
             tanks.Add(tank);
@@ -426,11 +467,12 @@ namespace FishBreeder.Store
             var stand = new GameObject("Stand and click");
             stand.transform.SetParent(tank.transform, false);
             // The stand stops just under the tank's base, so the two never share a surface (which flickers).
-            float top = -Tank.BaseDepth;
-            MaterialFactory.Decor(PrimitiveType.Cube, "Stand", stand.transform, new Vector3(0f, (top - StandHeight) * 0.5f, 0f),
-                new Vector3(size.x + 0.12f, StandHeight + top, size.z + 0.12f), RoleColor(tank.Role));
-            var click = StoreClickable.Add(stand.transform, tank.Title, tank.transform.position + new Vector3(0f, size.y * 0.5f - StandHeight * 0.5f, 0f),
-                new Vector3(size.x + 0.16f, size.y + StandHeight + 0.1f, size.z + 0.16f), StoreClickable.Kind.Tank);
+            // It reaches the floor wherever the base is (a raised wall aquarium sits lower).
+            float top = -Tank.BaseDepth, standHeight = tank.transform.position.y;
+            MaterialFactory.Decor(PrimitiveType.Cube, "Stand", stand.transform, new Vector3(0f, (top - standHeight) * 0.5f, 0f),
+                new Vector3(size.x + 0.12f, standHeight + top, size.z + 0.12f), RoleColor(tank.Role));
+            var click = StoreClickable.Add(stand.transform, tank.Title, tank.transform.position + new Vector3(0f, size.y * 0.5f - standHeight * 0.5f, 0f),
+                new Vector3(size.x + 0.16f, size.y + standHeight + 0.1f, size.z + 0.16f), StoreClickable.Kind.Tank);
             click.tank = tank;
             click.slot = tank.Slot;
             tank.Stand = stand;
@@ -522,7 +564,9 @@ namespace FishBreeder.Store
                 }
                 Palm(root, new Vector3(cx + halfW - 0.45f, 0f, halfD - 0.45f));
                 if (section.index == 0) Palm(root, new Vector3(cx - halfW + 0.45f, 0f, halfD - 0.45f));
-                Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
+                // No room for the surfboard over a raised wall aquarium.
+                if (wallTank == null || wallTank.Tank.transform.position.y + wallTank.Tank.InnerSize.y < 2.9f)
+                    Surfboard(root, new Vector3(cx + (section.index % 2 == 0 ? 2f : -2f), 3.1f, halfD - 0.06f), BoardColors[section.index % BoardColors.Length]);
 
                 // The front wall is cut down (dollhouse style) so the overhead camera can see in.
                 if (section.index == 0)
@@ -584,7 +628,9 @@ namespace FishBreeder.Store
             Wall(root, "BackWall", new Vector3((west + left) * 0.5f, WallHeight * 0.5f, z), new Vector3(left - west, WallHeight, t), WallColor);
             Wall(root, "BackWall", new Vector3((right + east) * 0.5f, WallHeight * 0.5f, z), new Vector3(east - right, WallHeight, t), WallColor);
             Wall(root, "BackWall", new Vector3(centre.x, bottom * 0.5f, z), new Vector3(right - left, bottom, t), WallColor);
-            Wall(root, "BackWall", new Vector3(centre.x, (top + WallHeight) * 0.5f, z), new Vector3(right - left, WallHeight - top, t), WallColor);
+            // Over the tallest wall aquarium the wall rises above the rest, like a bulkhead.
+            float above = Mathf.Max(WallHeight, top + WallAquariumHeadroom);
+            Wall(root, "BackWall", new Vector3(centre.x, (top + above) * 0.5f, z), new Vector3(right - left, above - top, t), WallColor);
             // The housing round the back: a roof, two sides and a back, just clear of the glass.
             float outer = centre.z + size.z * 0.5f + 0.05f, depth = outer + 0.25f - (halfD + t);
             float mid = halfD + t + depth * 0.5f;

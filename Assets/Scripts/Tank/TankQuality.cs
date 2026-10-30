@@ -177,7 +177,7 @@ namespace FishBreeder
 
         public static string SizeName(int size)
         {
-            if (size == Tank.WallSize) return Balance.Data.store.wallAquarium != null ? Balance.Data.store.wallAquarium.name : "Wall aquarium";
+            if (size >= Tank.WallSize) return Balance.Data.store.wallAquarium != null ? Balance.Data.store.wallAquarium.name : "Wall aquarium";
             var sizes = Balance.Data.store.tankSizes;
             if (sizes == null || sizes.Count == 0) return "Standard";
             return sizes[Mathf.Clamp(size, 0, sizes.Count - 1)].name;

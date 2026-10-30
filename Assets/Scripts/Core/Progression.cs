@@ -201,6 +201,9 @@ namespace FishBreeder.Core
                 foreach (var section in store.sections) if (section.unlockLevel == lvl && section.price > 0) list.Add($"the {section.name}");
                 if (store.forSaleTankLevel == lvl) list.Add("more for sale tanks");
                 if (store.displayTankLevel == lvl) list.Add("more display tanks");
+                if (store.wallAquariumHeights != null)
+                    foreach (var height in store.wallAquariumHeights)
+                        if (height != null && height.unlockLevel == lvl) list.Add($"the {height.name.ToLower()} ({height.height:0.0#} m)");
             }
             return list;
         }

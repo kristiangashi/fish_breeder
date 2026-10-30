@@ -12,6 +12,7 @@ namespace FishBreeder
     /// That's where every piece goes unless the player moves it (Setup tab, top view): a moved
     /// piece keeps its own place and turn, as a share of the tank's size, so it stays put when
     /// the tank is upgraded. Pieces are always kept wholly inside the glass.
+    /// Plants bend and sway (<see cref="PlantBender"/>); grassy ones let fish swim through.
     /// </summary>
     public class TankDecor : MonoBehaviour
     {
@@ -360,9 +361,11 @@ namespace FishBreeder
             bounds = WorldBounds(renderers);
             t.position += Vector3.up * (root.position.y - bounds.min.y);
 
-            piece.AddComponent<TankObstacle>();
+            piece.AddComponent<TankObstacle>().passable = item.passable;
             // A low-poly copy for the store view; the full model inside the tank you're looking at.
             FarCopies.Add(piece, renderers, FarCells, NearShare, CullShare);
+            // Plants sway, and bend out of the way of fish swimming into them.
+            if (item.plant) piece.AddComponent<PlantBender>().Init(GetComponent<Tank>(), WorldBounds(renderers));
             return piece;
         }
 

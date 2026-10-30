@@ -6,6 +6,8 @@ namespace FishBreeder
     /// <summary>
     /// Marks a collider (on this object or its children) as something fish swim around:
     /// rocks, plants, driftwood, castles. Fish ignore every collider without this.
+    /// Passable obstacles (grassy plants, see <see cref="PlantBender"/>) are swum through instead:
+    /// fish still nose around them, but never steer away from them or get pushed out.
     /// </summary>
     public class TankObstacle : MonoBehaviour
     {
@@ -14,9 +16,15 @@ namespace FishBreeder
         /// <summary>Every active obstacle, for fish that want to go and nose around one.</summary>
         public static IReadOnlyList<TankObstacle> All => all;
 
+        /// <summary>Fish swim through it (it bends out of the way) rather than round it.</summary>
+        public bool passable;
+
+        /// <summary>True for a collider fish must swim round (not a passable plant).</summary>
         public static bool IsObstacle(Collider collider)
         {
-            return collider != null && collider.GetComponentInParent<TankObstacle>() != null;
+            if (collider == null) return false;
+            var obstacle = collider.GetComponentInParent<TankObstacle>();
+            return obstacle != null && !obstacle.passable;
         }
 
         /// <summary>World bounds of all this obstacle's colliders.</summary>

@@ -77,6 +77,8 @@ namespace FishBreeder
         float airDashIn = -1f;
         Vector3 target;
         float currentSpeed; // body lengths per second
+        /// <summary>How fast it's swimming, in body lengths per second.</summary>
+        public float Speed => currentSpeed;
         float blockedTime;
         float bank;
         float yaw, pitch, yawVelocity, pitchVelocity;
@@ -687,8 +689,16 @@ namespace FishBreeder
             return distanceToWall >= comfort ? 0f : 1f - Mathf.Clamp01(distanceToWall / comfort);
         }
 
-        /// <summary>A fish's body as a capsule: half its length along its heading, about a fifth of its length thick.</summary>
-        const float BodyRadius = 0.22f;
+        /// <summary>
+        /// A fish's body as a capsule: a segment along its heading (<see cref="BodyHalfSpan"/> body
+        /// lengths either side of its middle) with this radius, so nose and tail end about where
+        /// the model does. It was 0.22 round a full-length segment, which kept fish half a body
+        /// apart and got them stuck in crowds.
+        /// </summary>
+        const float BodyRadius = 0.15f;
+        const float BodyHalfSpan = 0.38f;
+        /// <summary>How far past touching tank mates start steering apart, as a multiple of the gap that's touching.</summary>
+        const float CrowdReach = 1.6f;
 
         /// <summary>
         /// Steering away from tank mates that are close: each fish is a capsule along its body, and
@@ -699,25 +709,29 @@ namespace FishBreeder
         {
             var steer = Vector3.zero;
             var me = transform.position;
-            var heading = transform.forward * (bodyLength * 0.5f);
+            var heading = transform.forward * (bodyLength * BodyHalfSpan);
             float myRadius = bodyLength * BodyRadius;
             foreach (var other in Owner.Tank.Residents)
             {
                 if (other == null || other == Owner || other == ignore || other.IsDead) continue;
                 float otherLength = other.VisualLength;
                 float clear = myRadius + otherLength * BodyRadius;
-                float reach = clear * 2.2f;
+                float reach = clear * CrowdReach;
                 var offset = other.transform.position - me;
-                float far = bodyLength * 0.5f + otherLength * 0.5f + reach;
+                float far = (bodyLength + otherLength) * BodyHalfSpan + reach;
                 if (offset.sqrMagnitude > far * far) continue;
-                ClosestPoints(me - heading, me + heading, other.transform.position - other.transform.forward * (otherLength * 0.5f),
-                    other.transform.position + other.transform.forward * (otherLength * 0.5f), out var a, out var b);
+                ClosestPoints(me - heading, me + heading, other.transform.position - other.transform.forward * (otherLength * BodyHalfSpan),
+                    other.transform.position + other.transform.forward * (otherLength * BodyHalfSpan), out var a, out var b);
                 var away = a - b;
                 float d = away.magnitude;
                 if (d >= reach) continue;
                 if (d < 1e-4f) away = offset.sqrMagnitude > 1e-8f ? -offset : transform.right;
+                away.Normalize();
+                // Nose to nose, pushing straight back only makes them stall in front of each other:
+                // both veer to their own right instead, so they slide past.
+                if (Vector3.Dot(away, transform.forward) < -0.7f) away = (away + transform.right * 0.8f).normalized;
                 float t = 1f - d / reach;
-                steer += away.normalized * t * t * 1.6f * Mathf.Clamp(otherLength / Mathf.Max(0.01f, bodyLength), 0.3f, 2f);
+                steer += away * t * t * 1.6f * Mathf.Clamp(otherLength / Mathf.Max(0.01f, bodyLength), 0.3f, 2f);
             }
             return steer;
         }
@@ -725,7 +739,7 @@ namespace FishBreeder
         /// <summary>Safety net after moving: if its body still overlaps a tank mate's, slide out by half the overlap (the other fish does the other half).</summary>
         Vector3 PushApart(Vector3 position, float bodyLength, Fish ignore, bool keepHeight)
         {
-            var heading = transform.forward * (bodyLength * 0.5f);
+            var heading = transform.forward * (bodyLength * BodyHalfSpan);
             float myRadius = bodyLength * BodyRadius;
             foreach (var other in Owner.Tank.Residents)
             {
@@ -733,10 +747,10 @@ namespace FishBreeder
                 float otherLength = other.VisualLength;
                 float clear = (myRadius + otherLength * BodyRadius) * 0.85f;
                 var offset = other.transform.position - position;
-                float far = bodyLength * 0.5f + otherLength * 0.5f + clear;
+                float far = (bodyLength + otherLength) * BodyHalfSpan + clear;
                 if (offset.sqrMagnitude > far * far) continue;
-                ClosestPoints(position - heading, position + heading, other.transform.position - other.transform.forward * (otherLength * 0.5f),
-                    other.transform.position + other.transform.forward * (otherLength * 0.5f), out var a, out var b);
+                ClosestPoints(position - heading, position + heading, other.transform.position - other.transform.forward * (otherLength * BodyHalfSpan),
+                    other.transform.position + other.transform.forward * (otherLength * BodyHalfSpan), out var a, out var b);
                 var away = a - b;
                 if (keepHeight) away.y = 0f;
                 float d = away.magnitude;

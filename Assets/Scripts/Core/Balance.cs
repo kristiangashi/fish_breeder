@@ -307,6 +307,8 @@ namespace FishBreeder.Core
         public int unlockLevel = 1;
         [Tooltip("Counts as a plant: some fish love plants.")]
         public bool plant;
+        [Tooltip("A grassy plant: fish swim straight through it and the leaves bend out of their way.")]
+        public bool passable;
         [Tooltip("Height in a standard tank (metres). Bigger tanks get bigger pieces.")]
         public float height = 0.3f;
         [Tooltip("Goes along the back of the tank (tall pieces) rather than the front.")]
@@ -464,10 +466,10 @@ namespace FishBreeder.Core
         public List<DecorationBalance> decorations = new List<DecorationBalance>
         {
             new DecorationBalance { id = "Rock", name = "Rock", price = 15, unlockLevel = 1, height = 0.2f },
-            new DecorationBalance { id = "Plant", name = "Leafy plant", price = 20, unlockLevel = 1, plant = true, height = 0.5f, back = true },
-            new DecorationBalance { id = "Seaweed", name = "Seaweed", price = 20, unlockLevel = 1, plant = true, height = 0.4f },
+            new DecorationBalance { id = "Plant", name = "Leafy plant", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.5f, back = true },
+            new DecorationBalance { id = "Seaweed", name = "Seaweed", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.4f },
             new DecorationBalance { id = "Driftwood", name = "Driftwood", price = 35, unlockLevel = 2, height = 0.3f, back = true },
-            new DecorationBalance { id = "TallPlant", name = "Tall plant", price = 30, unlockLevel = 3, plant = true, height = 0.55f, back = true },
+            new DecorationBalance { id = "TallPlant", name = "Tall plant", price = 30, unlockLevel = 3, plant = true, passable = true, height = 0.55f, back = true },
             new DecorationBalance { id = "FernRock", name = "Fern on a rock", price = 40, unlockLevel = 4, plant = true, height = 0.16f },
             new DecorationBalance { id = "Clam", name = "Clam shell", price = 45, unlockLevel = 5, height = 0.06f },
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
@@ -924,6 +926,7 @@ namespace FishBreeder.Core
                 if (parsed.finances == null) parsed.finances = new FinanceBalance();
                 if (parsed.supplier != null && (parsed.supplier.faults == null || parsed.supplier.faults.Count == 0)) parsed.supplier.faults = EquipmentFaultBalance.CreateDefaults();
                 if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
+                if (parsed.supplier != null && !json.Contains("\"passable\"")) FillPassable(parsed.supplier.decorations);
                 return parsed;
             }
             catch (Exception e)
@@ -961,6 +964,16 @@ namespace FishBreeder.Core
             foreach (var p in projects) if (p != null && !string.IsNullOrEmpty(p.id)) known.Add(p.id);
             foreach (var p in ResearchProjectBalance.CreateDefaults())
                 if (!known.Contains(p.id)) projects.Add(p);
+        }
+
+        /// <summary>A file saved before plants could be swum through: the grassy ones get their default.</summary>
+        static void FillPassable(List<DecorationBalance> decorations)
+        {
+            if (decorations == null) return;
+            var defaults = new SupplierBalance().decorations;
+            foreach (var item in decorations)
+                foreach (var d in defaults)
+                    if (item != null && d.id == item.id) item.passable = d.passable;
         }
 
         static int ReadDataVersion(string json)

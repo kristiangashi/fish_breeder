@@ -17,7 +17,7 @@ namespace FishBreeder.EditorTools
     ///
     /// Runtime materials use the Standard shader, which a build only carries in the variants that
     /// some material asset uses: Resources/BuildShaders holds one material per combination the game
-    /// switches on (plain, normal map, normal + metallic map, see-through).
+    /// switches on (plain, normal map, normal + metallic map, see-through), plus the instanced plant shader.
     ///
     /// Fish Breeder > Build and Run builds a Windows player to Builds/Windows and starts it.
     /// </summary>
@@ -91,6 +91,13 @@ namespace FishBreeder.EditorTools
             made |= Keep(standard, "StandardNormalMetallic", false, "_NORMALMAP", "_METALLICGLOSSMAP");
             made |= Keep(standard, "StandardMetallic", false, "_METALLICGLOSSMAP");
             made |= Keep(standard, "StandardFade", true);
+            // Plants bend in their own shader, drawn instanced (see PlantBender).
+            var plant = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Resources/Shaders/PlantBend.shader");
+            if (plant != null && !File.Exists($"{ShaderFolder}/PlantBendInstanced.mat"))
+            {
+                AssetDatabase.CreateAsset(new Material(plant) { name = "PlantBendInstanced", enableInstancing = true }, $"{ShaderFolder}/PlantBendInstanced.mat");
+                made = true;
+            }
             if (made) AssetDatabase.SaveAssets();
         }
 

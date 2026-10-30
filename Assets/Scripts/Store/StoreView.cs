@@ -163,14 +163,15 @@ namespace FishBreeder.Store
                 FinancesView.Close();
                 escape = false;
             }
-            // A right click zooms out one level too: from a fish or a close-up to the tank, from the tank or a person to the store.
+            // A right click zooms out one level too: from a fish or a close-up to the tank, from a
+            // wheel zoom to the normal view, from the tank or a person to the store.
             bool zoomOut = Input.GetMouseButtonDown(1) && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && (escape || zoomOut))
             {
                 if (hud.Arranging != FishTankHUD.ArrangeMode.None) hud.StopArranging();
                 else if (hud.HasSelection || hud.ZoomPoint.HasValue) hud.ClearSelection();
-                else ExitTank();
+                else if (!hud.ResetWheelZoom()) ExitTank();
             }
             else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
@@ -178,8 +179,12 @@ namespace FishBreeder.Store
             var person = focused == null ? FollowedPerson() : null;
             if (focused != null)
             {
+                // The scroll wheel zooms in and out (arranging uses it to turn pieces; over a menu it scrolls the menu).
+                float wheel = Input.mouseScrollDelta.y;
+                if (wheel != 0f && hud.Arranging == FishTankHUD.ArrangeMode.None && !hud.MouseOverMenu && !AnyWindowOpen && panel == Panel.None && !UiLayout.Editing)
+                    hud.ZoomWheel(wheel);
                 if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, cam, hud.MenuCover, out targetPosition, out targetRotation);
-                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                else GetTankPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.WheelZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
             {
@@ -294,7 +299,7 @@ namespace FishBreeder.Store
         /// the menu, as far as it can without the tank going off the right edge (backing off a
         /// little to make room when it's tight).
         /// </summary>
-        static void GetTankPose(StoreTank tank, Fish follow, Vector3? zoom, Vector2 pan, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
+        static void GetTankPose(StoreTank tank, Fish follow, Vector3? zoom, Vector2 pan, float wheelZoom, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
         {
             var bounds = tank.Tank.InnerBounds;
             var size = tank.Tank.InnerSize;
@@ -309,13 +314,16 @@ namespace FishBreeder.Store
                 // A spot slid to with the keys wins over the fish (clicking a fish follows it again).
                 var target = zoom.HasValue ? zoom.Value : follow.transform.position;
                 // Close-ups are as close in a wall aquarium as in a grand tank.
-                back = Mathf.Min(back, 3.6f);
-                position = target + front * (back * 0.5f) + Vector3.up * 0.05f;
+                back = Mathf.Min(back, 3.6f) * wheelZoom;
+                // Zoomed in with the wheel, the camera still stops just outside the front glass.
+                float glass = Vector3.Dot(bounds.center - target, front) + size.z * 0.5f + 0.12f;
+                position = target + front * Mathf.Max(back * 0.5f, glass) + Vector3.up * 0.05f;
                 rotation = Quaternion.LookRotation(target - position);
                 // Keep the fish (or spot) in the middle of the uncovered part.
                 position -= rotation * Vector3.right * (menuCover * back * 0.5f * halfWidth);
                 return;
             }
+            back = Mathf.Max(back * wheelZoom, size.z * 0.5f + 0.25f);
             var center = bounds.center;
             float shift = 0f;
             if (menuCover > 0f && halfWidth > 1e-4f)

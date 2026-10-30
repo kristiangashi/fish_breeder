@@ -42,11 +42,42 @@ namespace FishBreeder.Core
         public Vector3? ZoomPoint { get; private set; }
         /// <summary>How far WASD has slid the whole-tank view (metres along the glass and up), without zooming in.</summary>
         public Vector2 ViewPan { get; private set; }
+        /// <summary>The scroll wheel's zoom: the camera's distance as a share of the normal view (below 1 is closer).</summary>
+        public float WheelZoom { get; private set; } = 1f;
+        public const float MinWheelZoom = 0.3f, MaxWheelZoom = 1.5f;
 
         public void ClearSelection()
         {
             selected.Clear();
             ZoomPoint = null;
+            WheelZoom = 1f;
+        }
+
+        /// <summary>Scroll wheel: each notch moves the camera 15% closer (up) or further (down), within the limits.</summary>
+        public void ZoomWheel(float notches)
+        {
+            WheelZoom = Mathf.Clamp(WheelZoom * Mathf.Pow(0.85f, notches), MinWheelZoom, MaxWheelZoom);
+        }
+
+        /// <summary>Back to the normal distance; false if it already was.</summary>
+        public bool ResetWheelZoom()
+        {
+            if (Mathf.Abs(WheelZoom - 1f) < 0.01f) return false;
+            WheelZoom = 1f;
+            return true;
+        }
+
+        /// <summary>Whether the mouse is over one of the tank menus (so the wheel scrolls the menu, not the view).</summary>
+        public bool MouseOverMenu
+        {
+            get
+            {
+                if (!enabled || tank == null) return false;
+                float scale = Mathf.Max(1f, Screen.height / 900f);
+                var m = new Vector2(Input.mousePosition.x / scale, (Screen.height - Input.mousePosition.y) / scale);
+                return leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m)
+                    || pickerRect.Contains(m) || levelPopup.Contains(m);
+            }
         }
 
         public void Select(Fish fish)
@@ -89,6 +120,7 @@ namespace FishBreeder.Core
             selected.Clear();
             ZoomPoint = null;
             ViewPan = Vector2.zero;
+            WheelZoom = 1f;
             Arranging = ArrangeMode.None;
             picker = Picker.None;
             showLevelInfo = false;

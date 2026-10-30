@@ -49,8 +49,8 @@ namespace FishBreeder.Store
         public const int WallAquariumSection = 1;
         /// <summary>Rooms this shop can have: the main floor and the East wing. Later growth is more shops.</summary>
         public const int MaxSections = 2;
-        /// <summary>How far a wall aquarium reaches out behind its wall, into the space outside the room.</summary>
-        const float WallAquariumOutside = 0.2f;
+        /// <summary>The share of a wall aquarium's depth in front of its wall, in the room; the rest is in the wall and behind it.</summary>
+        const float WallAquariumInRoom = 0.2f;
         /// <summary>Wall left above the wall aquarium's frame; a taller one sits lower to keep it.</summary>
         const float WallAquariumHeadroom = 0.3f;
         /// <summary>The lowest the wall aquarium's base goes, however tall it's raised.</summary>
@@ -135,6 +135,20 @@ namespace FishBreeder.Store
 
             /// <summary>The big breeding room's wall breeding tank.</summary>
             public bool WallBreeder => wall && backRoom;
+
+            /// <summary>
+            /// The floor in front of the tank here: its middle for a free-standing tank, and just
+            /// off the glass for a wall aquarium, which is mostly in the wall.
+            /// </summary>
+            public Vector3 FloorFront
+            {
+                get
+                {
+                    var floor = new Vector3(position.x, 0f, position.z);
+                    if (!wall) return floor;
+                    return floor + Quaternion.Euler(0f, yaw, 0f) * Vector3.back * (Balance.Data.store.wallAquarium.depth * 0.5f + 0.4f);
+                }
+            }
 
             /// <summary>
             /// Breeder and quarantine tanks go in the back room, display and for sale tanks on the
@@ -248,14 +262,18 @@ namespace FishBreeder.Store
 
         /// <summary>
         /// A spot for a wall aquarium set into a wall: the middle of the wall's thickness at floor
-        /// level, and which way the tank faces (its back goes through the wall, reaching out behind it).
+        /// level, and which way the tank faces. Only its front fifth stands out in the room; the
+        /// rest goes through the wall, reaching out behind it.
         /// </summary>
         static Slot WallSlot(Section section, Vector3 wallMiddle, float yaw)
         {
             var outward = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
-            var at = wallMiddle + outward * (WallThickness * 0.5f + WallAquariumOutside - Balance.Data.store.wallAquarium.depth * 0.5f);
+            var at = wallMiddle + outward * (Balance.Data.store.wallAquarium.depth * (0.5f - WallAquariumInRoom) - WallThickness * 0.5f);
             return new Slot { section = section, backRoom = section == null, position = new Vector3(at.x, StandHeight, at.z), yaw = yaw, wall = true };
         }
+
+        /// <summary>How far a wall aquarium's housing reaches out behind the middle of its wall.</summary>
+        static float WallAquariumReach => Balance.Data.store.wallAquarium.depth * (1f - WallAquariumInRoom) - WallThickness * 0.5f + 0.3f;
 
         /// <summary>Where a slot sits in walking order (back room first), for flicking between tanks.</summary>
         public int SlotOrder(Slot slot) => slot == null ? int.MaxValue : slots.IndexOf(slot);
@@ -565,9 +583,9 @@ namespace FishBreeder.Store
                     var marker = new GameObject("Empty tank spot");
                     marker.transform.SetParent(transform, false);
                     marker.transform.SetPositionAndRotation(floorPoint, Quaternion.Euler(0f, slot.yaw, 0f));
-                    // The wall aquarium's spot runs the length of the wall, along the front of where it will stand.
+                    // The wall aquarium's spot runs the length of the wall, along the floor just in front of where its glass will be.
                     var pad = slot.wall ? new Vector3(Balance.Data.store.wallAquarium.width, 0.02f, 0.8f) : new Vector3(1.72f, 0.02f, 0.82f);
-                    var padAt = slot.wall ? new Vector3(0f, 0.01f, -Balance.Data.store.wallAquarium.depth * 0.5f + 0.6f) : Vector3.up * 0.01f;
+                    var padAt = slot.wall ? new Vector3(0f, 0.01f, -Balance.Data.store.wallAquarium.depth * 0.5f - 0.05f) : Vector3.up * 0.01f;
                     MaterialFactory.Decor(PrimitiveType.Cube, "Empty tank spot", marker.transform, padAt, pad, new Color(0.45f, 0.74f, 0.74f));
                     var click = StoreClickable.Add(marker.transform, "Empty spot", floorPoint + padAt + Vector3.up * 0.29f, new Vector3(pad.x, 0.6f, pad.z), StoreClickable.Kind.EmptySlot);
                     click.slot = slot;
@@ -922,9 +940,12 @@ namespace FishBreeder.Store
             var lot = new GameObject("Parking lot").transform;
             lot.SetParent(transform, false);
             float near = halfD + wall;
-            // The sand runs behind the whole building, from the big breeding room to the East wing.
-            float groundWest = BuildingWestX - 4f, groundEast = east + 4f;
-            Wall(lot, "Pavement", new Vector3((groundWest + groundEast) * 0.5f, -0.08f, (near + GroundFarZ) * 0.5f), new Vector3(groundEast - groundWest, 0.1f, GroundFarZ - near), new Color(0.86f, 0.78f, 0.6f));
+            // The sand runs behind the whole building, from the big breeding room to the East wing,
+            // and well past the housings of the wall aquariums reaching out behind its walls.
+            float groundWest = BuildingWestX - 4f, groundEast = east + Mathf.Max(4f, WallAquariumReach + 1.5f);
+            float groundFar = GroundFarZ;
+            if (sections.Count > WallAquariumSection) groundFar = Mathf.Max(groundFar, sections[WallAquariumSection].BackZ + wall * 0.5f + WallAquariumReach + 1.5f);
+            Wall(lot, "Pavement", new Vector3((groundWest + groundEast) * 0.5f, -0.08f, (near + groundFar) * 0.5f), new Vector3(groundEast - groundWest, 0.1f, groundFar - near), new Color(0.86f, 0.78f, 0.6f));
             float lotWest = west - 1f, lotEast = BackRoomCenterX + BackRoomWidth * 0.5f + 1.2f;
             float lotNear = near + 0.6f, lotFar = LotFarZ - 1.5f;
             var asphalt = new Color(0.3f, 0.31f, 0.33f);

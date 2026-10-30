@@ -1177,7 +1177,7 @@ namespace FishBreeder.Store
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
-                    if (slot.IsOpen && slot.tank == null && ClickableLabel(new Vector3(slot.position.x, 0.3f, slot.position.z), slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
+                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
                     {
                         pendingSlot = slot;
                         panel = Panel.BuyTank;

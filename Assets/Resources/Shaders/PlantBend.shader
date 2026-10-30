@@ -1,10 +1,12 @@
 // Aquarium plants for the Built-in Render Pipeline: the Standard look of the decoration atlas,
-// with the leaves bending in the vertex shader. The plant sways gently all the time, and fish
-// swimming through it push the leaves aside: PlantBender (C#) keeps up to four springy "contacts"
-// per plant, each a spot where a fish is (or just was), how far the leaves part around it and how
-// far they're dragged along with it. Leaves bend from the base up (the base never moves) and keep
-// roughly their length. Everything per plant is an instanced property, so plants still draw
-// together with GPU instancing.
+// with the whole plant bending like a stem in the vertex shader. The plant is treated as one
+// flexible stem standing on its base: the stem's tilt grows from nothing at the base to the tip,
+// each vertex rides on the stem at its own height, and its offset from the stem (a leaf sticking
+// out) is turned rigidly with the stem there. So nothing stretches or squashes: the stem keeps
+// its length and every leaf keeps its shape, it only bends and waves.
+// The tilt is a slow wave (always on, out of step from plant to plant) plus the push from fish,
+// which PlantBender (C#) keeps as one springy tilt per plant. Everything per plant is an
+// instanced property, so plants still draw together with GPU instancing.
 Shader "FishBreeder/PlantBend"
 {
     Properties
@@ -14,18 +16,11 @@ Shader "FishBreeder/PlantBend"
         [Normal] _BumpMap ("Normal Map", 2D) = "bump" {}
         _MetallicGlossMap ("Metallic (R) Smoothness (A)", 2D) = "black" {}
         _GlossMapScale ("Smoothness Scale", Range(0,1)) = 1
-        _SwayAmount ("Idle Sway (share of height)", Range(0,0.2)) = 0.025
-        _SwaySpeed ("Idle Sway Speed", Range(0,5)) = 0.9
+        _WaveTilt ("Wave (tip tilt, radians)", Range(0,0.4)) = 0.07
+        _WaveSpeed ("Wave Speed", Range(0,5)) = 0.9
         // Per plant (instanced, set from a MaterialPropertyBlock):
         [HideInInspector] _BendBase ("Base (world), w = height", Vector) = (0,0,0,0)
-        [HideInInspector] _Contact0 ("Contact centre, w = radius", Vector) = (0,0,0,0)
-        [HideInInspector] _Contact1 ("Contact centre, w = radius", Vector) = (0,0,0,0)
-        [HideInInspector] _Contact2 ("Contact centre, w = radius", Vector) = (0,0,0,0)
-        [HideInInspector] _Contact3 ("Contact centre, w = radius", Vector) = (0,0,0,0)
-        [HideInInspector] _Push0 ("Drag offset, w = parting", Vector) = (0,0,0,0)
-        [HideInInspector] _Push1 ("Drag offset, w = parting", Vector) = (0,0,0,0)
-        [HideInInspector] _Push2 ("Drag offset, w = parting", Vector) = (0,0,0,0)
-        [HideInInspector] _Push3 ("Drag offset, w = parting", Vector) = (0,0,0,0)
+        [HideInInspector] _BendTilt ("Tip tilt from fish (xz radians)", Vector) = (0,0,0,0)
     }
     SubShader
     {
@@ -38,24 +33,22 @@ Shader "FishBreeder/PlantBend"
         #pragma target 3.0
         #pragma multi_compile_instancing
 
+        // Steps along the stem when working out where a height ends up.
+        #define STEM_STEPS 6
+        // The tilt never goes past this (radians), however hard it's pushed.
+        #define MAX_TILT 0.9
+
         sampler2D _MainTex;
         sampler2D _BumpMap;
         sampler2D _MetallicGlossMap;
         fixed4 _Color;
         half _GlossMapScale;
-        float _SwayAmount;
-        float _SwaySpeed;
+        float _WaveTilt;
+        float _WaveSpeed;
 
         UNITY_INSTANCING_BUFFER_START(Props)
             UNITY_DEFINE_INSTANCED_PROP(float4, _BendBase)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Contact0)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Contact1)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Contact2)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Contact3)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Push0)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Push1)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Push2)
-            UNITY_DEFINE_INSTANCED_PROP(float4, _Push3)
+            UNITY_DEFINE_INSTANCED_PROP(float4, _BendTilt)
         UNITY_INSTANCING_BUFFER_END(Props)
 
         struct Input
@@ -63,34 +56,24 @@ Shader "FishBreeder/PlantBend"
             float2 uv_MainTex;
         };
 
-        // Share of a push that moves the whole plant, tip most.
-        #define WholePlantLean 0.6
-
-        // How far one contact moves a leaf at wp (up = height above the plant's base).
-        float3 ContactOffset(float3 wp, float up, float heightShare, float3 baseWs, float4 contact, float4 push)
+        // The stem's tilt (xz, radians) at share s of its height: none at the base, growing to the
+        // tip, so the stem is stiff at the bottom. The wave runs up the stem, so it ripples a little.
+        float2 Tilt(float s, float2 push, float2 wave, float t, float phase)
         {
-            if (contact.w <= 0) return 0;
-            float3 d = wp - contact.xyz;
-            float horizontal = length(d.xz);
-            // Stems carry the bend upwards, so leaves above the fish move too (less as they get further).
-            float above = max(d.y, 0) * 0.35;
-            float distance = length(float2(horizontal, above));
-            // From the base up to the fish's height the stem curves in gradually.
-            float stem = saturate(up / max(contact.y - baseWs.y, contact.w * 0.5));
-            stem *= stem;
-            // Leaves right round the fish part to let it through...
-            float x = saturate(distance / (contact.w * 2.5));
-            float part = (1 - x) * (1 - x) * stem;
-            // ...and the stems it brushes are dragged along with it, further out than the parting.
-            float y = saturate(distance / (contact.w * 5));
-            float drag = (1 - y) * (1 - y) * stem;
-            // The leaves share one stem, so the whole plant leans a little with every push (and
-            // sways back with it when the fish has gone).
-            drag = max(drag, WholePlantLean * heightShare * heightShare);
-            float2 apart = horizontal > 1e-4 ? d.xz / horizontal : float2(0, 0);
-            float3 offset = push.xyz * drag;
-            offset.xz += apart * (push.w * contact.w * part);
-            return offset;
+            float2 ripple = float2(sin(t + phase - 2.2 * s), sin(t * 0.77 + phase * 1.3 - 2.2 * s));
+            float2 tilt = (push * s + wave * ripple) * s;
+            float size = length(tilt);
+            return size > MAX_TILT ? tilt * (MAX_TILT / size) : tilt;
+        }
+
+        // Turns v the way the upright stem turns when it tilts by this much (Rodrigues).
+        float3 Turn(float3 v, float2 tilt)
+        {
+            float angle = length(tilt);
+            if (angle < 1e-5) return v;
+            float3 axis = normalize(float3(tilt.y, 0, -tilt.x)); // up x tilt direction
+            float c = cos(angle), s = sin(angle);
+            return v * c + cross(axis, v) * s + axis * dot(axis, v) * (1 - c);
         }
 
         void vert(inout appdata_full v)
@@ -98,26 +81,39 @@ Shader "FishBreeder/PlantBend"
             UNITY_SETUP_INSTANCE_ID(v);
             float4 base = UNITY_ACCESS_INSTANCED_PROP(Props, _BendBase);
             if (base.w <= 0) return;
+            float height = base.w;
+            float2 push = UNITY_ACCESS_INSTANCED_PROP(Props, _BendTilt).xz;
 
             float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
-            float up = max(wp.y - base.y, 0);
-            float h = saturate(up / base.w);
+            float3 wn = UnityObjectToWorldNormal(v.normal);
+            float3 wt = UnityObjectToWorldDir(v.tangent.xyz);
 
-            // A slow idle sway, out of step from plant to plant and from the bottom of a leaf to its tip.
-            float phase = dot(base.xz, float2(7.3, 5.1)) + h * 1.2;
-            float t = _Time.y * _SwaySpeed;
-            float3 offset = float3(sin(t + phase), 0, sin(t * 0.77 + phase * 1.3)) * (_SwayAmount * base.w * h * h);
+            float up = clamp(wp.y - base.y, 0, height * 1.5);
+            float s = up / height;
+            float t = _Time.y * _WaveSpeed;
+            float phase = dot(base.xz, float2(7.3, 5.1));
+            float2 wave = float2(_WaveTilt, _WaveTilt * 0.7);
 
-            offset += ContactOffset(wp, up, h, base.xyz, UNITY_ACCESS_INSTANCED_PROP(Props, _Contact0), UNITY_ACCESS_INSTANCED_PROP(Props, _Push0));
-            offset += ContactOffset(wp, up, h, base.xyz, UNITY_ACCESS_INSTANCED_PROP(Props, _Contact1), UNITY_ACCESS_INSTANCED_PROP(Props, _Push1));
-            offset += ContactOffset(wp, up, h, base.xyz, UNITY_ACCESS_INSTANCED_PROP(Props, _Contact2), UNITY_ACCESS_INSTANCED_PROP(Props, _Push2));
-            offset += ContactOffset(wp, up, h, base.xyz, UNITY_ACCESS_INSTANCED_PROP(Props, _Contact3), UNITY_ACCESS_INSTANCED_PROP(Props, _Push3));
+            // Walk up the stem to this height: each step goes along the stem's direction there,
+            // so the stem keeps its length as it bends.
+            float3 stem = 0;
+            float step = up / STEM_STEPS;
+            for (int i = 0; i < STEM_STEPS; i++)
+            {
+                float2 tilt = Tilt((i + 0.5) * step / height, push, wave, t, phase);
+                float angle = length(tilt);
+                float2 dir = angle > 1e-5 ? tilt / angle : float2(0, 0);
+                stem += float3(dir.x * sin(angle), cos(angle), dir.y * sin(angle)) * step;
+            }
 
-            // A bent leaf keeps its length, so its tip comes down a little instead of stretching.
-            float sideways = dot(offset.xz, offset.xz);
-            offset.y -= min(sideways / (2 * max(up, 1e-3)), up * 0.6);
+            // Whatever sticks out from the stem at this height turns with it, rigidly.
+            float2 here = Tilt(s, push, wave, t, phase);
+            float3 offset = wp - (base.xyz + float3(0, up, 0));
+            wp = base.xyz + stem + Turn(offset, here);
 
-            v.vertex.xyz = mul(unity_WorldToObject, float4(wp + offset, 1)).xyz;
+            v.vertex.xyz = mul(unity_WorldToObject, float4(wp, 1)).xyz;
+            v.normal = normalize(mul((float3x3)unity_WorldToObject, Turn(wn, here)));
+            v.tangent.xyz = mul((float3x3)unity_WorldToObject, Turn(wt, here));
         }
 
         void surf(Input IN, inout SurfaceOutputStandard o)

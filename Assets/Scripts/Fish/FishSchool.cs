@@ -84,17 +84,18 @@ namespace FishBreeder
             if (Time.time < phaseEnds && !arrived) return;
             if (Milling || phaseEnds == 0f)
             {
-                // Off somewhere new: a free spot well across the tank, in the band the species likes.
                 Milling = false;
                 var species = Members[0].Species;
+                if (VisitLikedPiece(species, bodyLength)) return;
+                // Off somewhere new: a free spot well across the tank, mostly in the band the species likes.
+                atPiece = -1;
                 var b = tank.InnerBounds;
                 float margin = Mathf.Max(bodyLength * 2f, 0.06f);
                 Destination = Center;
                 for (int attempt = 0; attempt < 8; attempt++)
                 {
                     var point = tank.RandomFreePoint(margin);
-                    float low = b.min.y + margin, high = b.max.y - margin;
-                    point.y = GameRandom.Range(Mathf.Lerp(low, high, species.depthMin), Mathf.Lerp(low, high, species.depthMax));
+                    point.y = FishSwimmer.TripHeight(species, b.min.y + margin, b.max.y - margin);
                     Destination = point;
                     if ((point - Center).magnitude > b.size.x * 0.3f) break;
                 }
@@ -107,6 +108,32 @@ namespace FishBreeder
                 Destination = Center;
                 phaseEnds = Time.time + GameRandom.Range(3f, 7f);
             }
+        }
+
+        readonly List<int> liked = new List<int>();
+        /// <summary>The decoration the school is working its way round, or -1.</summary>
+        int atPiece = -1;
+
+        /// <summary>
+        /// Schools of fish that like a decoration (tetras and their plants) spend most of their time
+        /// at one: each leg goes to another part of it, low or high, round the side or in among the
+        /// leaves, until they move on to another favourite or out into the tank. True if it picked one.
+        /// </summary>
+        bool VisitLikedPiece(Genetics.Species species, float bodyLength)
+        {
+            FishSwimmer.LikedPieces(tank, species, liked);
+            if (liked.Count == 0 || !GameRandom.Chance(0.75f)) return false;
+            int piece = liked.Contains(atPiece) && GameRandom.Chance(0.7f) ? atPiece : liked[GameRandom.Range(0, liked.Count)];
+            for (int attempt = 0; attempt < 6; attempt++)
+            {
+                var point = FishSwimmer.PointAroundPiece(tank, piece, bodyLength, Mathf.Max(bodyLength, 0.05f), 0.3f, 1.5f);
+                if (point == null) continue;
+                atPiece = piece;
+                Destination = point.Value;
+                phaseEnds = Time.time + GameRandom.Range(5f, 9f);
+                return true;
+            }
+            return false;
         }
     }
 }

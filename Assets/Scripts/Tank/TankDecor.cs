@@ -187,6 +187,13 @@ namespace FishBreeder
 
         public string IdAt(int index) => index >= 0 && index < placed.Count ? placed[index].id : null;
         public Bounds BoundsAt(int index) => index >= 0 && index < placed.Count && placed[index].piece != null ? Footprint(placed[index].piece) : default;
+        /// <summary>True when fish can swim right through the piece (a grassy plant that bends out of their way).</summary>
+        public bool IsPassableAt(int index)
+        {
+            if (index < 0 || index >= placed.Count || placed[index].piece == null) return false;
+            var obstacle = placed[index].piece.GetComponent<TankObstacle>();
+            return obstacle != null && obstacle.passable;
+        }
 
         /// <summary>
         /// Moves a piece so its middle (seen from above) sits over this point, then keeps it inside

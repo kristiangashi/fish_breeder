@@ -211,7 +211,7 @@ namespace FishBreeder
             desired = (desired + WallPush(bodyLength * wallComfortBodyLengths, !bottomDweller,
                 activity != Activity.AirDash || targetFood != null)).normalized;
             // Swim round tank mates instead of through them.
-            var room = Crowding(bodyLength, bursting ? burstPrey : null);
+            var room = Crowding(bodyLength, bursting ? burstPrey : null, !bursting && !bottomDweller, dt);
             if (bottomDweller) room.y = 0f;
             desired = (desired + room).normalized;
             Perf.FishProbes.End();
@@ -238,7 +238,7 @@ namespace FishBreeder
 
             var next = transform.position + transform.forward * currentSpeed * bodyLength * dt;
             float floorMargin = bottomDweller ? FloorClearance(bodyLength) : bodyLength * 0.5f;
-            next = PushApart(next, bodyLength, bursting ? burstPrey : null, bottomDweller);
+            next = PushApart(next, bodyLength, bursting ? burstPrey : null, bottomDweller, dt);
             transform.position = Owner.Tank.Clamp(PushOutOfObstacles(next, bodyLength * 0.3f), bodyLength * 0.5f, floorMargin);
             Perf.FishBrain.End();
 
@@ -450,35 +450,60 @@ namespace FishBreeder
         /// <summary>Indexes of the decorations in this fish's tank that its kind likes to stay near.</summary>
         List<int> LikedPieces()
         {
-            liked.Clear();
-            var species = Owner.Phenotype.species;
-            var decor = Owner.Tank != null ? Owner.Tank.Decor : null;
-            if (decor == null || species.likedDecorations == null || species.likedDecorations.Count == 0) return liked;
-            var ids = decor.Ids;
-            for (int i = 0; i < ids.Count; i++)
-                if (species.LikesDecoration(ids[i])) liked.Add(i);
+            LikedPieces(Owner.Tank, Owner.Phenotype.species, liked);
             return liked;
         }
 
         readonly List<int> liked = new List<int>();
 
-        /// <summary>A free spot close beside one of the decorations it likes, at its own depth, or null.</summary>
+        /// <summary>Fills <paramref name="into"/> with the indexes of the decorations in <paramref name="tank"/> that <paramref name="species"/> likes to stay near.</summary>
+        public static void LikedPieces(Tank tank, Species species, List<int> into)
+        {
+            into.Clear();
+            var decor = tank != null ? tank.Decor : null;
+            if (decor == null || species == null || species.likedDecorations == null || species.likedDecorations.Count == 0) return;
+            var ids = decor.Ids;
+            for (int i = 0; i < ids.Count; i++)
+                if (species.LikesDecoration(ids[i])) into.Add(i);
+        }
+
+        /// <summary>A free spot close beside one of the decorations it likes, or null.</summary>
         Vector3? NearLikedPiece(float bodyLength, float margin, float minLengths, float maxLengths)
         {
             var pieces = LikedPieces();
             if (pieces.Count == 0) return null;
-            var tank = Owner.Tank;
             for (int attempt = 0; attempt < 8; attempt++)
             {
-                var b = tank.Decor.BoundsAt(pieces[GameRandom.Range(0, pieces.Count)]);
-                if (b.size == Vector3.zero) continue;
-                var around = Quaternion.Euler(0f, GameRandom.Range(0f, 360f), 0f) * Vector3.forward;
-                var point = b.center + around * (new Vector2(b.extents.x, b.extents.z).magnitude + bodyLength * GameRandom.Range(minLengths, maxLengths));
-                point.y = GameRandom.Range(b.min.y + bodyLength * 0.5f, Mathf.Max(b.min.y + bodyLength * 0.5f, b.max.y + bodyLength));
-                point = InDepthBand(tank.Clamp(point, margin), bodyLength);
-                if (!Tank.OverlapsObstacle(point, margin * 0.5f)) return point;
+                var point = PointAroundPiece(Owner.Tank, pieces[GameRandom.Range(0, pieces.Count)], bodyLength, margin, minLengths, maxLengths);
+                if (point != null) return point;
             }
             return null;
+        }
+
+        /// <summary>
+        /// A spot anywhere on a decoration a fish is drawn to: any height from its foot to just over
+        /// its top, and all the way round its outline (or right in among the leaves of a plant fish
+        /// can swim through). The fish's own depth band doesn't apply here, so a fish that likes a
+        /// low plant goes right down to it instead of hanging over its crown. Null if the spot is blocked.
+        /// </summary>
+        public static Vector3? PointAroundPiece(Tank tank, int index, float bodyLength, float margin, float minLengths, float maxLengths)
+        {
+            var b = tank.Decor.BoundsAt(index);
+            if (b.size == Vector3.zero) return null;
+            Vector3 point;
+            if (tank.Decor.IsPassableAt(index) && GameRandom.Chance(0.5f))
+                point = new Vector3(GameRandom.Range(b.min.x, b.max.x), 0f, GameRandom.Range(b.min.z, b.max.z));
+            else
+            {
+                // Out from the middle to the edge of its footprint, then a little way past it.
+                var around = Quaternion.Euler(0f, GameRandom.Range(0f, 360f), 0f) * Vector3.forward;
+                float toEdgeX = Mathf.Abs(around.x) > 1e-4f ? b.extents.x / Mathf.Abs(around.x) : float.MaxValue;
+                float toEdgeZ = Mathf.Abs(around.z) > 1e-4f ? b.extents.z / Mathf.Abs(around.z) : float.MaxValue;
+                point = b.center + around * (Mathf.Min(toEdgeX, toEdgeZ) + bodyLength * GameRandom.Range(minLengths, maxLengths));
+            }
+            point.y = GameRandom.Range(b.min.y + bodyLength * 0.4f, Mathf.Max(b.min.y + bodyLength * 0.4f, b.max.y + bodyLength * 0.5f));
+            point = tank.Clamp(point, margin, bodyLength * 0.5f);
+            return Tank.OverlapsObstacle(point, margin * 0.5f) ? (Vector3?)null : point;
         }
 
         void StartActivity(Activity next, float bodyLength)
@@ -548,15 +573,37 @@ namespace FishBreeder
             }
         }
 
-        /// <summary>Moves a point's height into this species' preferred depth band.</summary>
+        /// <summary>
+        /// Moves a point's height into this species' depth range: its preferred band, or now and then
+        /// the wider range it visits (see <see cref="TripHeight"/>). A point below or above even that
+        /// is moved; one between the two is kept half the time, so a trip down low lasts a while.
+        /// </summary>
         Vector3 InDepthBand(Vector3 point, float bodyLength)
         {
             var species = Owner.Phenotype.species;
             var b = Owner.Tank.InnerBounds;
             float low = b.min.y + bodyLength * 0.5f, high = b.max.y - bodyLength * 0.5f;
             float min = Mathf.Lerp(low, high, species.depthMin), max = Mathf.Lerp(low, high, species.depthMax);
-            if (point.y < min || point.y > max) point.y = GameRandom.Range(min, max);
+            if (point.y >= min && point.y <= max) return point;
+            float wideMin = Mathf.Lerp(low, high, WideDepthMin(species)), wideMax = Mathf.Lerp(low, high, WideDepthMax(species));
+            if (point.y >= wideMin && point.y <= wideMax && GameRandom.Chance(0.5f)) return point;
+            point.y = TripHeight(species, low, high);
             return point;
+        }
+
+        /// <summary>
+        /// How often a trip leaves the species' preferred band for the wider range it visits. Without
+        /// it the tetras (band 0.3 to 0.8) never went near the bottom third of a tall wall aquarium.
+        /// </summary>
+        const float WideDepthChance = 0.3f;
+        static float WideDepthMin(Species species) => species.depthMin * 0.15f;
+        static float WideDepthMax(Species species) => Mathf.Lerp(species.depthMax, 1f, 0.6f);
+
+        /// <summary>A height between <paramref name="low"/> and <paramref name="high"/> for a trip: mostly in the band the species likes, sometimes anywhere from just over the sand to near the surface.</summary>
+        public static float TripHeight(Species species, float low, float high)
+        {
+            bool wide = species.style != SwimStyle.Bottom && GameRandom.Chance(WideDepthChance);
+            return Mathf.Lerp(low, high, wide ? GameRandom.Range(WideDepthMin(species), WideDepthMax(species)) : GameRandom.Range(species.depthMin, species.depthMax));
         }
 
         /// <summary>A spot on the sand right next to a decoration.</summary>
@@ -699,24 +746,47 @@ namespace FishBreeder
         const float BodyHalfSpan = 0.38f;
         /// <summary>How far past touching tank mates start steering apart, as a multiple of the gap that's touching.</summary>
         const float CrowdReach = 1.6f;
+        /// <summary>
+        /// How much harder a medium fish pushes than a small one. Between two fish, each gives way in
+        /// proportion to the other's heft: two small fish each take half, but a small fish takes 12/13
+        /// of the room a medium fish needs, so a medium fish swims through a crowd of small fish and
+        /// they get out of its way, not the other way round.
+        /// </summary>
+        const float MediumHeft = 12f;
+        /// <summary>Small fish start getting out of a medium fish's way this much further off than from each other.</summary>
+        const float MediumReachScale = 1.6f;
+
+        static float Heft(Fish fish) => fish.Phenotype.species.IsMedium ? MediumHeft : 1f;
+
+        /// <summary>How much of the room between this fish and <paramref name="other"/> this fish gives up (0.5 between equals).</summary>
+        float GiveWay(Fish other)
+        {
+            float mine = Heft(Owner), theirs = Heft(other);
+            return theirs / (mine + theirs);
+        }
+
+        float dartCooldown;
 
         /// <summary>
         /// Steering away from tank mates that are close: each fish is a capsule along its body, and
         /// the push grows as the gap shrinks, more from a bigger fish. Without this the metre-long
-        /// fish swam straight through each other. The fish being hunted is left out.
+        /// fish swam straight through each other. The fish being hunted is left out. A small fish
+        /// that a medium fish is bearing down on darts aside.
         /// </summary>
-        Vector3 Crowding(float bodyLength, Fish ignore)
+        Vector3 Crowding(float bodyLength, Fish ignore, bool canDart, float dt)
         {
             var steer = Vector3.zero;
             var me = transform.position;
             var heading = transform.forward * (bodyLength * BodyHalfSpan);
             float myRadius = bodyLength * BodyRadius;
+            dartCooldown -= dt;
             foreach (var other in Owner.Tank.Residents)
             {
                 if (other == null || other == Owner || other == ignore || other.IsDead) continue;
                 float otherLength = other.VisualLength;
                 float clear = myRadius + otherLength * BodyRadius;
-                float reach = clear * CrowdReach;
+                float giveWay = GiveWay(other);
+                float reach = clear * CrowdReach * (giveWay > 0.75f ? MediumReachScale : 1f);
                 var offset = other.transform.position - me;
                 float far = (bodyLength + otherLength) * BodyHalfSpan + reach;
                 if (offset.sqrMagnitude > far * far) continue;
@@ -731,13 +801,37 @@ namespace FishBreeder
                 // both veer to their own right instead, so they slide past.
                 if (Vector3.Dot(away, transform.forward) < -0.7f) away = (away + transform.right * 0.8f).normalized;
                 float t = 1f - d / reach;
-                steer += away * t * t * 1.6f * Mathf.Clamp(otherLength / Mathf.Max(0.01f, bodyLength), 0.3f, 2f);
+                steer += away * t * t * 1.6f * Mathf.Clamp(otherLength / Mathf.Max(0.01f, bodyLength), 0.3f, 2f) * (giveWay * 2f);
+
+                // Out of the way of a medium fish heading at it: a quick dart off to the side of its path.
+                if (canDart && giveWay > 0.75f && t > 0.35f && dartCooldown <= 0f && other.Swimmer.Speed > 0.15f
+                    && Vector3.Dot(other.transform.forward, me - other.transform.position) > 0f)
+                {
+                    var side = away - other.transform.forward * Vector3.Dot(away, other.transform.forward);
+                    side.y *= 0.3f;
+                    Dart(side.sqrMagnitude > 1e-6f ? side.normalized : away, GameRandom.Range(0.03f, 0.12f));
+                    dartCooldown = GameRandom.Range(1.5f, 3f);
+                }
             }
             return steer;
         }
 
-        /// <summary>Safety net after moving: if its body still overlaps a tank mate's, slide out by half the overlap (the other fish does the other half).</summary>
-        Vector3 PushApart(Vector3 position, float bodyLength, Fish ignore, bool keepHeight)
+        /// <summary>A short dart in <paramref name="direction"/> after a split-second <paramref name="reaction"/>.</summary>
+        void Dart(Vector3 direction, float reaction)
+        {
+            burstAway = direction;
+            burstPrey = null;
+            burstDelay = reaction;
+            burstLeft = 0.35f;
+        }
+
+        /// <summary>
+        /// Safety net after moving: if its body still overlaps a tank mate's, slide out of the overlap
+        /// by its share (<see cref="GiveWay"/>: half between equals, nearly all of it for a small fish
+        /// against a medium one). A medium fish swimming at a small one also shoves it along ahead of
+        /// it, like the water a big body pushes, so small fish are swept aside rather than sliding over it.
+        /// </summary>
+        Vector3 PushApart(Vector3 position, float bodyLength, Fish ignore, bool keepHeight, float dt)
         {
             var heading = transform.forward * (bodyLength * BodyHalfSpan);
             float myRadius = bodyLength * BodyRadius;
@@ -745,17 +839,28 @@ namespace FishBreeder
             {
                 if (other == null || other == Owner || other == ignore || other.IsDead) continue;
                 float otherLength = other.VisualLength;
-                float clear = (myRadius + otherLength * BodyRadius) * 0.85f;
+                float giveWay = GiveWay(other);
+                bool shoved = giveWay > 0.75f;
+                float clear = (myRadius + otherLength * BodyRadius) * (shoved ? 1f : 0.85f);
+                // The water a medium fish pushes ahead of it reaches a little past its body.
+                float wake = shoved ? clear * MediumReachScale : clear;
                 var offset = other.transform.position - position;
-                float far = (bodyLength + otherLength) * BodyHalfSpan + clear;
+                float far = (bodyLength + otherLength) * BodyHalfSpan + wake;
                 if (offset.sqrMagnitude > far * far) continue;
                 ClosestPoints(position - heading, position + heading, other.transform.position - other.transform.forward * (otherLength * BodyHalfSpan),
                     other.transform.position + other.transform.forward * (otherLength * BodyHalfSpan), out var a, out var b);
                 var away = a - b;
                 if (keepHeight) away.y = 0f;
                 float d = away.magnitude;
-                if (d >= clear || d < 1e-4f) continue;
-                position += away / d * ((clear - d) * 0.5f);
+                if (d >= wake || d < 1e-4f) continue;
+                var outward = away / d;
+                if (d < clear) position += outward * ((clear - d) * giveWay);
+                if (shoved)
+                {
+                    float coming = Vector3.Dot(other.transform.forward, outward);
+                    if (coming > 0f)
+                        position += outward * (other.Swimmer.Speed * otherLength * dt * coming * (1f - d / wake) * 1.2f);
+                }
             }
             return position;
         }

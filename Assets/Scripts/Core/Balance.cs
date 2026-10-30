@@ -127,8 +127,10 @@ namespace FishBreeder.Core
         public string name;
         [Tooltip("Inside of the glass, in metres.")]
         public float width = 1.6f, height = 0.9f, depth = 0.7f;
-        [Tooltip("Most fish it holds.")]
+        [Tooltip("Most small fish it holds.")]
         public int capacity = 24;
+        [Tooltip("Most medium fish (the big kinds) it holds. A separate limit from the small fish, and a hard one.")]
+        public int mediumCapacity = 4;
         [Tooltip("Cost to upgrade a tank to this size (the first size is what every tank starts as).")]
         public int upgradePrice;
         [Tooltip("Fishkeeping level needed.")]
@@ -370,14 +372,18 @@ namespace FishBreeder.Core
         public List<SectionBalance> sections = SectionBalance.CreateDefaults();
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
-            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
-            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
+            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, mediumCapacity = 4, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
+            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, mediumCapacity = 4, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
+            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, mediumCapacity = 5, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
         [Tooltip("The wall aquarium (the East wing has four, the big breeding room one): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, unlockLevel = 1, decorationSlots = 48 };
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
+        [Tooltip("How big decorations come out in the wall aquarium, as a share of what its height would make them (1 = scaled with the tank like every other tank).")]
+        public float wallDecorationSize = 1f;
+        [Tooltip("Smallest and biggest the player can make one decoration in the wall aquarium (Move decorations), as a share of its normal size.")]
+        public float wallDecorationMinSize = 0.4f, wallDecorationMaxSize = 2f;
         [Tooltip("What the wall aquarium costs (a display or for sale tank).")]
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
@@ -395,10 +401,10 @@ namespace FishBreeder.Core
 
         public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 245, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
-            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 290, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
-            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 340, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
-            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 390, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
+            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 245, mediumCapacity = 5, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
+            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 290, mediumCapacity = 5, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
+            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 340, mediumCapacity = 6, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
+            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 390, mediumCapacity = 6, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
         };
 
         /// <summary>
@@ -876,8 +882,10 @@ namespace FishBreeder.Core
         /// 8: where each species' body starts to wiggle (bendStart), set on the console's Swimming tab.
         /// 9: wall aquarium equipment, liked decorations and roaming.
         /// 10: the big wall-aquarium fish (Crimson Jewel Cichlid, Silver Flamefin): tank mates, crosses, egg boxes.
+        /// 11: the wall aquarium 30% deeper at the same volume, and its height upgrades.
+        /// 12: medium fish (the big kinds) get their own, much smaller limit in every tank size.
         /// </summary>
-        public const int CurrentDataVersion = 11;
+        public const int CurrentDataVersion = 12;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1179,6 +1187,21 @@ namespace FishBreeder.Core
                 if (data.store.wallAquariumHeights == null || data.store.wallAquariumHeights.Count == 0)
                     data.store.wallAquariumHeights = StoreBalance.DefaultWallHeights();
             }
+            if (fromVersion < 12)
+            {
+                // Medium fish have their own limit: the default per size, and which fish are medium.
+                var fresh = new StoreBalance();
+                if (data.store != null)
+                {
+                    CopyMediumCapacity(data.store.tankSizes, fresh.tankSizes);
+                    if (data.store.wallAquarium != null) data.store.wallAquarium.mediumCapacity = fresh.wallAquarium.mediumCapacity;
+                    CopyMediumCapacity(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
+                }
+                var defaults = new Dictionary<string, Species>();
+                foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
+                foreach (var s in data.species)
+                    if (s != null && s.id != null && defaults.TryGetValue(s.id, out var d)) s.bodyClass = d.bodyClass;
+            }
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1194,6 +1217,13 @@ namespace FishBreeder.Core
         {
             if (saved == null || defaults == null || saved.Exists(t => t != null && t.wallAquariumOnly)) return;
             foreach (var tier in defaults) if (tier.wallAquariumOnly) saved.Add(tier);
+        }
+
+        static void CopyMediumCapacity(List<TankSizeBalance> saved, List<TankSizeBalance> defaults)
+        {
+            if (saved == null || defaults == null || defaults.Count == 0) return;
+            for (int i = 0; i < saved.Count; i++)
+                if (saved[i] != null) saved[i].mediumCapacity = defaults[Mathf.Min(i, defaults.Count - 1)].mediumCapacity;
         }
 
         static void CopyRepairCosts(List<EquipmentTierBalance> saved, List<EquipmentTierBalance> defaults)

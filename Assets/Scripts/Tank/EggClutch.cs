@@ -81,6 +81,17 @@ namespace FishBreeder
             return eggs;
         }
 
+        /// <summary>Eggs waiting in this tank that will hatch into medium fish (or into small ones).</summary>
+        public static int EggsIn(Tank tank, bool medium)
+        {
+            int eggs = 0;
+            foreach (var clutch in all)
+                if (clutch.Tank == tank)
+                    foreach (var genome in clutch.genomes)
+                        if (Species.Get(genome.species).IsMedium == medium) eggs++;
+            return eggs;
+        }
+
         /// <summary>
         /// Time step for every clutch in every tank: filthy water may kill eggs, and clutches that
         /// are due hatch. Returns how many fry were born.
@@ -123,7 +134,7 @@ namespace FishBreeder
                 var hatched = new List<Fish>();
                 foreach (var genome in genomes)
                 {
-                    if (Tank.IsFull) break;
+                    if (!Tank.HasRoomFor(Species.Get(genome.species))) continue;
                     var position = Tank.Clamp(transform.position + new Vector3(GameRandom.Range(-0.05f, 0.05f), 0.05f, GameRandom.Range(-0.05f, 0.05f)), 0.05f);
                     var fry = FishFactory.Spawn(genome, generation, 0.05f, Tank, position, parents);
                     hatched.Add(fry);

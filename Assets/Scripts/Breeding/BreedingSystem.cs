@@ -30,8 +30,19 @@ namespace FishBreeder.Breeding
             else if (!CrossBreeding.Compatible(a.Species, b.Species)) reason = $"A {a.Species} and a {b.Species} can't breed together.";
             else if (a.Sex == b.Sex) reason = $"Both are {a.Sex.ToString().ToLower()}s. You need a male and a female.";
             else reason = WhyNotReady(a, tank) ?? WhyNotReady(b, tank);
-            if (reason == null && tank.FreeSpace - EggClutch.EggsIn(tank) <= 0) reason = "The tank is full.";
+            if (reason == null && RoomForYoung(tank, a, b) <= 0)
+                reason = (a.Sex == Sex.Female ? a : b).Species.IsMedium ? $"There's no room for more medium fish here ({tank.MediumCount} of {tank.MediumCapacity})." : "The tank is full.";
             return reason == null;
+        }
+
+        /// <summary>
+        /// How many young the pair's tank has room for. The mother's species is what they'll be, so
+        /// medium mothers count against the medium limit (and the eggs of medium fish already waiting).
+        /// </summary>
+        static int RoomForYoung(Tank tank, Fish a, Fish b)
+        {
+            var species = (a.Sex == Sex.Female ? a : b).Species;
+            return tank.FreeSpaceFor(species) - EggClutch.EggsIn(tank, species.IsMedium);
         }
 
         /// <summary>Why this fish can't breed right now, or null if it can.</summary>
@@ -79,7 +90,7 @@ namespace FishBreeder.Breeding
             // The mother's species decides how the young come: live fry or eggs, and how many.
             var species = mother.Species;
             bool cross = mother.Species != father.Species;
-            int count = Mathf.Min(LitterSize(species), tank.FreeSpace - EggClutch.EggsIn(tank));
+            int count = Mathf.Min(LitterSize(species), RoomForYoung(tank, a, b));
             if (count <= 0) return 0;
 
             int generation = Mathf.Max(a.Generation, b.Generation) + 1;

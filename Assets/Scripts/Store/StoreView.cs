@@ -177,13 +177,15 @@ namespace FishBreeder.Store
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && GUIUtility.keyboardControl == 0) following++;
             var person = focused == null ? FollowedPerson() : null;
+            HideOverTank(focused != null && (hud.TopView || hud.Arranging == FishTankHUD.ArrangeMode.Decorations) ? focused : null);
             if (focused != null)
             {
                 // The scroll wheel zooms in and out (arranging uses it to turn pieces; over a menu it scrolls the menu).
                 float wheel = Input.mouseScrollDelta.y;
                 if (wheel != 0f && hud.Arranging == FishTankHUD.ArrangeMode.None && !hud.MouseOverMenu && !AnyWindowOpen && panel == Panel.None && !UiLayout.Editing)
                     hud.ZoomWheel(wheel);
-                if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, null, null, Vector2.zero, 1f, cam, hud.MenuCover, out targetPosition, out targetRotation);
+                else if (hud.TopView) GetTopPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.WheelZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
                 else GetTankPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.WheelZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
             }
             else if (person != null)
@@ -353,9 +355,11 @@ namespace FishBreeder.Store
 
         /// <summary>
         /// Straight down onto the tank, its back at the top of the screen, high enough to see the
-        /// whole floor inside the glass beside the menu: for moving decorations about.
+        /// whole floor inside the glass beside the menu: for moving decorations about, and the tank
+        /// view's top view (T). There the wheel zooms, WASD slides the view about, and a selected
+        /// fish (or a clicked spot) is looked down on from closer, as the front view does.
         /// </summary>
-        static void GetTopPose(StoreTank tank, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
+        static void GetTopPose(StoreTank tank, Fish follow, Vector3? zoom, Vector2 pan, float wheelZoom, Camera cam, float menuCover, out Vector3 position, out Quaternion rotation)
         {
             var size = tank.Tank.InnerSize;
             float tanV = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
@@ -365,9 +369,50 @@ namespace FishBreeder.Store
             float above = Mathf.Max((size.x * 0.5f + 0.12f) / (halfWidth * open), (size.z * 0.5f + 0.12f) / tanV);
             var top = tank.Tank.InnerBounds.center + Vector3.up * size.y * 0.5f;
             rotation = Quaternion.LookRotation(Vector3.down, tank.transform.forward);
+            if ((follow != null && follow.Tank == tank.Tank) || zoom.HasValue)
+            {
+                var target = zoom.HasValue ? zoom.Value : follow.transform.position;
+                // As close as a front close-up, but never down inside the water.
+                float height = Mathf.Max(top.y - target.y + 0.2f, Mathf.Min(above, 3.6f) * 0.5f * wheelZoom + (top.y - target.y));
+                position = new Vector3(target.x, target.y + height, target.z);
+                position -= rotation * Vector3.right * (menuCover * height * halfWidth);
+                return;
+            }
+            above = Mathf.Max(above * wheelZoom, 0.3f);
             position = top + Vector3.up * above;
+            position += tank.transform.right * pan.x + tank.transform.forward * pan.y;
             // The tank's middle goes to the middle of the part of the screen right of the menu.
             position -= rotation * Vector3.right * (menuCover * above * halfWidth);
+        }
+
+        /// <summary>Parts of the store above the tank being looked down into, hidden while looking (see <see cref="HideOverTank"/>).</summary>
+        readonly List<Renderer> hiddenOverTank = new List<Renderer>();
+        StoreTank hiddenFor;
+
+        /// <summary>
+        /// Looking straight down into a tank, nothing of the store may be in the way: the housing
+        /// over the back of a wall aquarium, the wall it's set into, a stripe along that wall. Every
+        /// part of the store that rises above the sand within the tank's outline is hidden until
+        /// the view leaves (null shows them again).
+        /// </summary>
+        void HideOverTank(StoreTank tank)
+        {
+            if (hiddenFor == tank && !hiddenOverTank.Exists(r => r == null)) return;
+            foreach (var r in hiddenOverTank) if (r != null) r.enabled = true;
+            hiddenOverTank.Clear();
+            hiddenFor = tank;
+            if (tank == null || store == null) return;
+            var b = tank.Tank.InnerBounds;
+            foreach (var r in store.GetComponentsInChildren<Renderer>())
+            {
+                if (!r.enabled || r.transform.IsChildOf(tank.transform)) continue;
+                var rb = r.bounds;
+                // Anything rising above the sand inside the tank's outline (by more than a few centimetres).
+                if (rb.max.y <= b.min.y + 0.05f) continue;
+                if (rb.min.x >= b.max.x - 0.05f || rb.max.x <= b.min.x + 0.05f || rb.min.z >= b.max.z - 0.05f || rb.max.z <= b.min.z + 0.05f) continue;
+                r.enabled = false;
+                hiddenOverTank.Add(r);
+            }
         }
 
         void EnterTank(StoreTank tank)
@@ -1110,7 +1155,7 @@ namespace FishBreeder.Store
             {
                 var t = tank.Tank;
                 int eggs = EggClutch.EggsIn(t);
-                string count = $"{t.Residents.Count}/{t.Capacity} fish";
+                string count = $"{t.SmallCount}/{t.Capacity} fish" + (t.MediumCount > 0 ? $", {t.MediumCount}/{t.MediumCapacity} medium" : "");
                 string contents = (t.IsOvercrowded ? $"<color=#ff8080>{count}</color>" : count) + (eggs > 0 ? $", {eggs} eggs" : "");
                 int sick = 0;
                 foreach (var fish in t.Residents) if (!fish.IsDead && fish.Health.IsSick) sick++;
@@ -1448,7 +1493,7 @@ namespace FishBreeder.Store
         }
 
         // Orders only fill a tank up to its limit; moving or breeding fish can push it over.
-        static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpaceBeforeLimit - EggClutch.EggsIn(tank.Tank));
+        static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpaceBeforeLimit - EggClutch.EggsIn(tank.Tank, false));
 
         /// <summary>
         /// One thing for sale: its picture (a photo of the 3D design, or a drawn filler), name and
@@ -1583,7 +1628,8 @@ namespace FishBreeder.Store
         void OrderEggs(EggTierBalance tier)
         {
             if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower(), MoneyKind.FishAndEggs)) return;
-            var eggs = EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), true, orderTarget.Tank.SizeIndex);
+            var target = orderTarget.Tank;
+            var eggs = EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), true, target.SizeIndex, target.MediumFreeSpace - EggClutch.EggsIn(target, true));
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {tier.name.ToLower()} delivered to {orderTarget.Title}. They hatch at the next time step.");
@@ -1593,7 +1639,7 @@ namespace FishBreeder.Store
         {
             if (!Economy.TrySpend(Perks.Supplier(tier.fryPrice), EggBoxes.FryName(tier).ToLower(), MoneyKind.FishAndEggs)) return;
             var tank = orderTarget.Tank;
-            foreach (var genome in EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), false, tank.SizeIndex))
+            foreach (var genome in EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), false, tank.SizeIndex, tank.MediumFreeSpace - EggClutch.EggsIn(tank, true)))
                 FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {EggBoxes.FryName(tier).ToLower()} delivered to {orderTarget.Title}. You'll see what they are when they grow.");
@@ -1692,7 +1738,7 @@ namespace FishBreeder.Store
                 string livebearer = species.reproduction == Reproduction.Livebearer ? ", livebearer" : "";
                 string details = $"{species.rarity}, {Category(species.category)}{livebearer}, {species.tempMin:0}-{species.tempMax:0} C, Fishkeeping {species.unlockLevel}";
                 if (OfferRow(ItemPreviews.Fish(species), species.displayName, details, XpTrack.Fishkeeping, 0, $"1 fry  {Economy.Format(species.fryPrice)}",
-                        free >= 1 && Economy.CanAfford(species.fryPrice), 48f))
+                        (species.IsMedium ? (orderTarget != null ? orderTarget.Tank.MediumFreeSpace : 0) : free) >= 1 && Economy.CanAfford(species.fryPrice), 48f))
                     OrderFry(species);
             }
         }
@@ -1761,7 +1807,7 @@ namespace FishBreeder.Store
             Ui.Label(pendingSlot.WallBreeder
                 ? $"<i>A wall aquarium for breeding, along the big breeding room's back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It has room for the biggest fish to pair up and breed, and it can be raised taller later.</i>"
                 : pendingSlot.wall
-                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later. Make it a display tank to wow customers, or fill it with fish for sale. The East wing takes four.</i>"
+                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later. Make it a display tank to wow customers, or fill it with fish for sale. The East wing takes four.</i>"
                 : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
                 : "<i>Customers browse these. Breeder and quarantine tanks go in the breeding room.</i>", Rich());

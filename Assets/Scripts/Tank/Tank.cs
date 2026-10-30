@@ -179,11 +179,30 @@ namespace FishBreeder
         public static int CapacityOf(TankSizeBalance size) => Mathf.Max(1, Mathf.RoundToInt(size.capacity * Perks.More(PerkEffect.RoomierTanks)));
         /// <summary>Decoration spots: the size's own, plus any from the Aquascaper perk.</summary>
         public int DecorationSlots => SizeInfo.decorationSlots + Perks.Count(PerkEffect.DecorationSpots);
-        /// <summary>No more fish than this fit at all.</summary>
+        /// <summary>No more small fish than this fit at all.</summary>
         public int HardCapacity => Mathf.Max(Capacity, Mathf.FloorToInt(Capacity * Balance.Data.store.tankHardLimitMultiplier));
-        /// <summary>Fish over the limit (0 when within it).</summary>
-        public int OverLimit => Mathf.Max(0, residents.Count - Capacity);
-        public bool IsOvercrowded => residents.Count > Capacity;
+        /// <summary>
+        /// Medium fish (the big kinds) have their own limit, apart from the small fish, and it's a
+        /// hard one: there's simply no room for another.
+        /// </summary>
+        public int MediumCapacity => MediumCapacityOf(SizeInfo);
+        public static int MediumCapacityOf(TankSizeBalance size) => Mathf.Max(0, size.mediumCapacity);
+        /// <summary>Living medium fish here.</summary>
+        public int MediumCount
+        {
+            get
+            {
+                int n = 0;
+                foreach (var fish in residents) if (fish != null && fish.Species != null && fish.Species.IsMedium) n++;
+                return n;
+            }
+        }
+        /// <summary>Living small fish here: what <see cref="Capacity"/> and crowding count.</summary>
+        public int SmallCount => residents.Count - MediumCount;
+        public int MediumFreeSpace => Mathf.Max(0, MediumCapacity - MediumCount);
+        /// <summary>Small fish over the limit (0 when within it).</summary>
+        public int OverLimit => Mathf.Max(0, SmallCount - Capacity);
+        public bool IsOvercrowded => SmallCount > Capacity;
         public Vector3 InnerSize => innerSize;
         /// <summary>Aquarium quality from its equipment and decorations; it opens up bigger sizes (see <see cref="TankQuality"/>).</summary>
         public int Quality => TankQuality.Score(this);
@@ -218,12 +237,16 @@ namespace FishBreeder
         public Vector3 Front => -transform.forward;
         /// <summary>Height of the water's surface, where bubbles pop and ripples spread.</summary>
         public float SurfaceY => InnerBounds.max.y - 0.04f;
-        /// <summary>Not even one more fish fits (the hard limit, well past the soft one).</summary>
-        public bool IsFull => residents.Count >= HardCapacity;
-        /// <summary>Room left before the hard limit.</summary>
-        public int FreeSpace => Mathf.Max(0, HardCapacity - residents.Count);
-        /// <summary>Room left before the tank is overcrowded.</summary>
-        public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - residents.Count);
+        /// <summary>Not even one more small fish fits (the hard limit, well past the soft one).</summary>
+        public bool IsFull => SmallCount >= HardCapacity;
+        /// <summary>Room left for small fish before the hard limit.</summary>
+        public int FreeSpace => Mathf.Max(0, HardCapacity - SmallCount);
+        /// <summary>Room left for small fish before the tank is overcrowded.</summary>
+        public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - SmallCount);
+        /// <summary>Whether one more of this kind fits: medium fish against their own limit, small fish against the hard limit.</summary>
+        public bool HasRoomFor(Genetics.Species species) => species != null && species.IsMedium ? MediumFreeSpace > 0 : !IsFull;
+        /// <summary>How many more of this kind fit (medium: their own limit; small: the hard limit).</summary>
+        public int FreeSpaceFor(Genetics.Species species) => species != null && species.IsMedium ? MediumFreeSpace : FreeSpace;
 
         /// <summary>1 in clean water, up to GameConfig.dirtyWaterInfectionMultiplier in filthy water; more again when overcrowded.</summary>
         public float InfectionMultiplier => Mathf.Lerp(GameConfig.Active.dirtyWaterInfectionMultiplier, 1f, waterQuality) * (pests ? 1.3f : 1f)
@@ -246,9 +269,20 @@ namespace FishBreeder
             ph = GameConfig.Active.startingPh;
             WipesLeft = WipesPerSession;
             Perks.Changed += OnPerksChanged;
+            Balance.Changed += OnBalanceChanged;
         }
 
-        void OnDestroy() => Perks.Changed -= OnPerksChanged;
+        void OnDestroy()
+        {
+            Perks.Changed -= OnPerksChanged;
+            Balance.Changed -= OnBalanceChanged;
+        }
+
+        /// <summary>The console's wall decoration size applies to a wall aquarium's pieces straight away.</summary>
+        void OnBalanceChanged()
+        {
+            if (IsWallAquarium && decor != null) decor.Refresh();
+        }
 
         /// <summary>A perk can add decoration spots: lay the tank's decorations out again with the new count.</summary>
         void OnPerksChanged() => decor.SetSpotCount(DecorationSlots);
@@ -786,6 +820,7 @@ namespace FishBreeder
 
             foreach (var kind in Equipment.Kinds) BuildEquipment(kind);
             UpdateEquipmentLook();
+            decor.WallAquarium = IsWallAquarium;
             decor.Rebuild(root, b, DecorationSlots);
             BuildSubstrate();
             water = TankWater.Build(root, b);

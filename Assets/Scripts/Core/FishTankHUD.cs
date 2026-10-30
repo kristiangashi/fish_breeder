@@ -44,6 +44,15 @@ namespace FishBreeder.Core
         public Vector2 ViewPan { get; private set; }
         /// <summary>The scroll wheel's zoom: the camera's distance as a share of the normal view (below 1 is closer).</summary>
         public float WheelZoom { get; private set; } = 1f;
+        /// <summary>Looking straight down into the tank instead of through the front glass (T). It stays on when switching tanks.</summary>
+        public bool TopView { get; private set; }
+
+        public void ToggleTopView()
+        {
+            TopView = !TopView;
+            ViewPan = Vector2.zero;
+            WheelZoom = 1f;
+        }
         public const float MinWheelZoom = 0.3f, MaxWheelZoom = 1.5f;
 
         public void ClearSelection()
@@ -137,8 +146,14 @@ namespace FishBreeder.Core
             {
                 if (Input.GetKeyDown(KeyCode.Q)) tank.Decor.Turn(heldPiece, -15f);
                 if (Input.GetKeyDown(KeyCode.E)) tank.Decor.Turn(heldPiece, 15f);
+                if (tank.IsWallAquarium)
+                {
+                    if (Input.GetKeyDown(KeyCode.Minus) || Input.GetKeyDown(KeyCode.KeypadMinus)) tank.Decor.Resize(heldPiece, 1f / DecorSizeStep);
+                    if (Input.GetKeyDown(KeyCode.Equals) || Input.GetKeyDown(KeyCode.KeypadPlus)) tank.Decor.Resize(heldPiece, DecorSizeStep);
+                }
             }
             if (Arranging != ArrangeMode.None) return;
+            if (Input.GetKeyDown(KeyCode.T)) ToggleTopView();
             SlideZoom(Time.unscaledDeltaTime);
             int step = Input.GetKeyDown(KeyCode.RightArrow) ? 1 : Input.GetKeyDown(KeyCode.LeftArrow) ? -1 : 0;
             if (step == 0 || ZoomPoint.HasValue) return;
@@ -172,13 +187,15 @@ namespace FishBreeder.Core
                 var size = tank.InnerSize;
                 float pace = Mathf.Max(0.6f, size.x * 0.3f);
                 var pan = ViewPan + new Vector2(Mathf.Clamp(x, -1f, 1f), Mathf.Clamp(y, -1f, 1f)) * pace * dt;
-                ViewPan = new Vector2(Mathf.Clamp(pan.x, -size.x * 0.5f, size.x * 0.5f), Mathf.Clamp(pan.y, -size.y * 0.5f, size.y * 0.5f));
+                // From above, up the screen is towards the back of the tank.
+                float reachY = TopView ? size.z * 0.5f : size.y * 0.5f;
+                ViewPan = new Vector2(Mathf.Clamp(pan.x, -size.x * 0.5f, size.x * 0.5f), Mathf.Clamp(pan.y, -reachY, reachY));
                 return;
             }
             var from = ZoomPoint ?? Focus.transform.position;
             // About a third of the view's width a second, whatever the tank's size.
             float speed = Mathf.Max(0.5f, Mathf.Min(tank.InnerSize.x, 3f) * 0.35f);
-            var move = (tank.transform.right * Mathf.Clamp(x, -1f, 1f) + Vector3.up * Mathf.Clamp(y, -1f, 1f)) * speed * dt;
+            var move = (tank.transform.right * Mathf.Clamp(x, -1f, 1f) + (TopView ? tank.transform.forward : Vector3.up) * Mathf.Clamp(y, -1f, 1f)) * speed * dt;
             ZoomPoint = tank.Clamp(from + move, 0.12f, 0.08f);
         }
 
@@ -722,7 +739,7 @@ namespace FishBreeder.Core
 
             GUILayout.Space(4f);
             bool showFish = devShowFish;
-            if (Ui.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>{tank.Residents.Count} / {tank.Capacity}</size>", SectionHeader())) devShowFish = !devShowFish;
+            if (Ui.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>{tank.SmallCount} / {tank.Capacity}, medium {tank.MediumCount} / {tank.MediumCapacity}</size>", SectionHeader())) devShowFish = !devShowFish;
             if (!showFish) return;
             foreach (var species in Species.All)
             {
@@ -768,8 +785,15 @@ namespace FishBreeder.Core
         /// </summary>
         void DrawFishCount(string sizeName)
         {
-            int count = tank.Residents.Count;
+            int count = tank.SmallCount;
             string dead = tank.Corpses.Count > 0 ? $"   <color=#ff8080>Dead: {tank.Corpses.Count}</color>" : "";
+            // Medium fish have their own limit; it shows where they can live or already do.
+            int medium = tank.MediumCount;
+            if (medium > 0 || tank.IsWallAquarium)
+            {
+                string mediumColor = medium >= tank.MediumCapacity ? "#ffd27f" : "#ffffff";
+                dead = $"   <color={mediumColor}>Medium: {medium} / {tank.MediumCapacity}</color>" + dead;
+            }
             if (tank.IsOvercrowded)
             {
                 Ui.Label($"{sizeName}. <color=#ff8080><b>Fish: {count} / {tank.Capacity}</b></color>{dead}", Rich());
@@ -1017,13 +1041,13 @@ namespace FishBreeder.Core
         /// <summary>Buttons to step to the previous and next tank (the arrow keys do the same when no fish is picked).</summary>
         void DrawTankBar()
         {
-            if (neighbourTank == null || switchTank == null) return;
-            var previous = neighbourTank(-1);
-            var next = neighbourTank(1);
-            if (previous == null && next == null) return;
+            var previous = neighbourTank != null && switchTank != null ? neighbourTank(-1) : null;
+            var next = neighbourTank != null && switchTank != null ? neighbourTank(1) : null;
             UiCheck.Begin("Tank switch bar", tankBar);
             GUILayout.BeginHorizontal();
             if (previous != null && Ui.Button($"< {previous.Title}", GUILayout.Height(30f))) switchTank(-1);
+            GUILayout.FlexibleSpace();
+            if (Ui.Button(new GUIContent(TopView ? "Front view (T)" : "Top view (T)", TopView ? "Look in through the front glass" : "Look straight down into the tank"), GUILayout.Height(30f))) ToggleTopView();
             GUILayout.FlexibleSpace();
             if (next != null && Ui.Button($"{next.Title} >", GUILayout.Height(30f))) switchTank(1);
             GUILayout.EndHorizontal();
@@ -1294,6 +1318,9 @@ namespace FishBreeder.Core
             picker = Picker.None;
         }
 
+        /// <summary>Each Smaller or Bigger press changes a wall aquarium decoration's size by this factor.</summary>
+        const float DecorSizeStep = 1.15f;
+
         public void StopArranging()
         {
             Arranging = ArrangeMode.None;
@@ -1307,7 +1334,7 @@ namespace FishBreeder.Core
             {
                 var decor = tank.Decor;
                 Ui.Label("MOVE DECORATIONS", UiTheme.Heading);
-                Ui.Label("Seen from above. Drag a decoration to move it. Q and E, the mouse wheel or the buttons turn the one you last moved. Nothing can go past the glass.", Rich());
+                Ui.Label("Seen from above. Drag a decoration to move it. Q and E, the mouse wheel or the buttons turn the one you last moved." + (tank.IsWallAquarium ? " Here in the wall aquarium, - and + make it smaller or bigger." : "") + " Nothing can go past the glass.", Rich());
                 GUILayout.Space(4f);
                 string held = decor != null ? decor.IdAt(heldPiece) : null;
                 var item = held != null ? TankDecor.Find(held) : null;
@@ -1318,6 +1345,19 @@ namespace FishBreeder.Core
                 if (Ui.Button("Turn right (E)")) decor.Turn(heldPiece, 15f);
                 GUI.enabled = true;
                 GUILayout.EndHorizontal();
+                if (tank.IsWallAquarium)
+                {
+                    // Only the wall aquarium is big enough for pieces of different sizes.
+                    GUILayout.Space(2f);
+                    Ui.Label(held != null ? $"Size: <b>{Mathf.RoundToInt(decor.SizeAt(heldPiece) * 100f)}%</b>" : "Size: <i>pick one up first</i>", Rich());
+                    GUILayout.BeginHorizontal();
+                    GUI.enabled = held != null;
+                    if (Ui.Button("Smaller (-)")) decor.Resize(heldPiece, 1f / DecorSizeStep);
+                    if (Ui.Button("Bigger (+)")) decor.Resize(heldPiece, DecorSizeStep);
+                    if (Ui.Button("100%", GUILayout.Width(48f))) decor.Resize(heldPiece, 1f / Mathf.Max(0.01f, decor.SizeAt(heldPiece)));
+                    GUI.enabled = true;
+                    GUILayout.EndHorizontal();
+                }
                 GUI.enabled = decor != null && decor.MovedCount > 0;
                 if (Ui.Button("Back to automatic spots"))
                 {
@@ -1466,7 +1506,7 @@ namespace FishBreeder.Core
             if (info == null || upgradeTank == null) return;
             bool wall = tank.IsWallAquarium;
             Ui.Label(wall
-                ? $"<size=11>{info.name}: raised to {info.height:0.0#} m tall, {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>"
+                ? $"<size=11>{info.name}: raised to {info.height:0.0#} m tall, {Tank.CapacityOf(info)} fish and {Tank.MediumCapacityOf(info)} medium fish, {info.decorationSlots} decorations.</size>"
                 : $"<size=11>{info.name} tank: {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>", Rich());
             var reason = StoreLayout.WhyCantUpgrade(storeTank, next);
             if (reason != null && reason != StoreLayout.NoMoney)
@@ -1735,8 +1775,10 @@ namespace FishBreeder.Core
                 bool wasEnabled = GUI.enabled;
                 var t = other.Tank;
                 bool tooSmall = fish.MinTankSize > t.SizeIndex;
-                GUI.enabled = wasEnabled && !t.IsFull && !tooSmall;
-                string count = tooSmall ? "<color=#ff9a8a>too small</color>" : t.Residents.Count >= t.Capacity ? $"<color=#ff9a8a>{t.Residents.Count}/{t.Capacity}</color>" : $"{t.Residents.Count}/{t.Capacity}";
+                bool medium = fish.Species.IsMedium;
+                GUI.enabled = wasEnabled && t.HasRoomFor(fish.Species) && !tooSmall;
+                int have = medium ? t.MediumCount : t.SmallCount, limit = medium ? t.MediumCapacity : t.Capacity;
+                string count = tooSmall ? "<color=#ff9a8a>too small</color>" : have >= limit ? $"<color=#ff9a8a>{have}/{limit}</color>" : $"{have}/{limit}";
                 if (Ui.Button($"{other.Title} ({count})", RichButton(), GUILayout.Width(146f)))
                 {
                     var next = NextLivingFish(fish);

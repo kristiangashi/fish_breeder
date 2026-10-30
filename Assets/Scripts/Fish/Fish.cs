@@ -288,7 +288,12 @@ namespace FishBreeder
         /// <summary>Moves the fish into another tank. Fish in a For Sale tank get the appraised price if they had none.</summary>
         public bool MoveTo(Tank destination)
         {
-            if (destination == null || destination == Tank || destination.IsFull || IsDead) return false;
+            if (destination == null || destination == Tank || IsDead) return false;
+            if (!destination.HasRoomFor(Species))
+            {
+                if (Species.IsMedium) GameLog.Add($"{FishName} won't fit in {destination.Title}: it already has {destination.MediumCount} of {destination.MediumCapacity} medium fish.");
+                return false;
+            }
             if (MinTankSize > destination.SizeIndex)
             {
                 GameLog.Add($"{FishName} won't go in {destination.Title}: {TankQuality.WantsText(MinTankSize).ToLower()}.");
@@ -352,7 +357,7 @@ namespace FishBreeder
             var children = new List<Fish>();
             foreach (var genome in unborn)
             {
-                if (Tank.IsFull) break;
+                if (!Tank.HasRoomFor(Genetics.Species.Get(genome.species))) continue;
                 var position = Tank.Clamp(transform.position + Random.insideUnitSphere * 0.05f, 0.05f);
                 var child = FishFactory.Spawn(genome, unbornGeneration, 0.05f, Tank, position, parents);
                 children.Add(child);

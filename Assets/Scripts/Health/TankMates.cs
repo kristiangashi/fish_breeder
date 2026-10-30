@@ -57,7 +57,7 @@ namespace FishBreeder.Health
         public static bool IsFighting(Tank tank)
         {
             var rules = Balance.Data.tankMates;
-            bool crowded = tank.Residents.Count > tank.Capacity * rules.crowdedAbove;
+            bool crowded = tank.SmallCount > tank.Capacity * rules.crowdedAbove;
             foreach (var a in tank.Residents)
             {
                 if (a == null || a.IsDead || a.Stage != LifeStage.Adult) continue;
@@ -101,7 +101,7 @@ namespace FishBreeder.Health
                 }
             }
 
-            if (tank.Residents.Count <= tank.Capacity * rules.crowdedAbove) return;
+            if (tank.SmallCount <= tank.Capacity * rules.crowdedAbove) return;
             foreach (var victim in new List<Fish>(tank.Residents))
             {
                 if (victim == null || victim.IsDead || victim.Stage != LifeStage.Adult) continue;
@@ -227,7 +227,7 @@ namespace FishBreeder.Health
 
             var pairs = new List<Fish>();
             var rules = Balance.Data.tankMates;
-            bool crowded = tank.Residents.Count > tank.Capacity * rules.crowdedAbove;
+            bool crowded = tank.SmallCount > tank.Capacity * rules.crowdedAbove;
             Group();
             foreach (var hunterKind in kinds)
                 foreach (var preyKind in kinds)

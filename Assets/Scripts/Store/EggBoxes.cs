@@ -134,8 +134,11 @@ namespace FishBreeder.Store
             return pool;
         }
 
-        /// <summary>The fish in one box, only of kinds that will live in a tank of <paramref name="tankSize"/>.</summary>
-        public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
+        /// <summary>
+        /// The fish in one box, only of kinds that will live in a tank of <paramref name="tankSize"/>,
+        /// and no more medium fish than <paramref name="mediumRoom"/> (the tank's own medium limit).
+        /// </summary>
+        public static List<Genome> Roll(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue, int mediumRoom = int.MaxValue)
         {
             var entries = Available(tier, fishkeepingLevel, eggLayersOnly, tankSize);
             var eggs = new List<Genome>();
@@ -145,20 +148,26 @@ namespace FishBreeder.Store
             {
                 float rareFactor = Mathf.Pow(Mathf.Clamp01(tier.rareFalloff), rares);
                 float total = 0f;
-                foreach (var e in entries) total += e.weight * (e.rare ? rareFactor : 1f);
+                foreach (var e in entries) total += Weight(e, rareFactor, mediumRoom);
                 if (total <= 0f) break;
                 float roll = GameRandom.Range(0f, total);
-                var pick = entries[entries.Count - 1];
+                var pick = default(Entry);
                 foreach (var e in entries)
                 {
-                    roll -= e.weight * (e.rare ? rareFactor : 1f);
-                    if (roll <= 0f) { pick = e; break; }
+                    float w = Weight(e, rareFactor, mediumRoom);
+                    if (w <= 0f) continue;
+                    pick = e;
+                    roll -= w;
+                    if (roll <= 0f) break;
                 }
                 if (pick.rare) rares++;
+                if (pick.species.IsMedium) mediumRoom--;
                 eggs.Add(Genome.CreateRandom(pick.species));
             }
             return eggs;
         }
+
+        static float Weight(Entry e, float rareFactor, int mediumRoom) => e.species.IsMedium && mediumRoom <= 0 ? 0f : e.weight * (e.rare ? rareFactor : 1f);
 
         /// <summary>Chance one egg hatches into each species right now, before any rare fish is in the box (sums to 1).</summary>
         public static Dictionary<Species, float> FirstEggOdds(EggTierBalance tier, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)

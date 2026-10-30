@@ -388,7 +388,7 @@ namespace FishBreeder.Health
                     Note(notes, $"Unhappy with the aquarium: needs level {needed} (quality {TankQuality.QualityForLevel(needed)}), it's {quality}", -loss);
                 }
             }
-            if (tank.Residents.Count > tank.Capacity * 0.75f) { comfort -= 0.15f; Note(notes, tank.IsOvercrowded ? "Overcrowded" : "Crowded", -0.15f); }
+            if (tank.SmallCount > tank.Capacity * 0.75f) { comfort -= 0.15f; Note(notes, tank.IsOvercrowded ? "Overcrowded" : "Crowded", -0.15f); }
             if (MedicineStress > 0.01f) { comfort -= MedicineStress; Note(notes, "Upset by medicine", -MedicineStress); }
             return Mathf.Clamp01(comfort);
         }

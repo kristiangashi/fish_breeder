@@ -39,6 +39,8 @@ namespace FishBreeder
             /// <summary>Moved by the player: <see cref="x"/>, <see cref="z"/> and <see cref="yaw"/> replace the spot's.</summary>
             public bool moved;
             public float x, z, yaw;
+            /// <summary>Its size as set by the player (wall aquarium only), as a share of its normal size.</summary>
+            public float size = 1f;
         }
 
         readonly List<Placed> placed = new List<Placed>();
@@ -46,6 +48,12 @@ namespace FishBreeder
         Transform root;
         Vector3 tankSize;
         static Material material;
+
+        /// <summary>
+        /// The tank is a wall aquarium: its pieces come out at the balance's wall decoration size,
+        /// and the player can make each one bigger or smaller (<see cref="Resize"/>).
+        /// </summary>
+        public bool WallAquarium { get; set; }
 
         public int Count => placed.Count;
         public int Capacity => spots.Length;
@@ -96,7 +104,7 @@ namespace FishBreeder
             placed.Clear();
             foreach (var old in keep)
             {
-                if (!Add(old.id) || !old.moved) continue;
+                if (!Add(old.id, WallAquarium ? old.size : 1f) || !old.moved) continue;
                 var p = placed[placed.Count - 1];
                 p.moved = true;
                 p.x = old.x;
@@ -107,6 +115,12 @@ namespace FishBreeder
             Physics.SyncTransforms();
         }
 
+        /// <summary>Builds every piece again at the same spots and sizes (the balance changed).</summary>
+        public void Refresh()
+        {
+            if (root != null) Rebuild(root, tankSize, spots.Length);
+        }
+
         /// <summary>Changes how many spots the tank has (a perk added some), keeping what's placed.</summary>
         public void SetSpotCount(int count)
         {
@@ -115,14 +129,16 @@ namespace FishBreeder
         }
 
         /// <summary>Puts a decoration in the next free spot that suits it. False if the tank has no room.</summary>
-        public bool Add(string id)
+        public bool Add(string id) => Add(id, 1f);
+
+        bool Add(string id, float size)
         {
             var item = Find(id);
             if (item == null || root == null) return false;
             int spot = FreeSpot(item.back);
             if (spot < 0) return false;
-            var piece = Build(item, spots[spot]);
-            placed.Add(new Placed { id = id, spot = spot, piece = piece });
+            var piece = Build(item, spots[spot], size);
+            placed.Add(new Placed { id = id, spot = spot, piece = piece, size = size });
             // New colliders must be in the physics scene before fish look for room around them.
             Physics.SyncTransforms();
             return true;
@@ -195,6 +211,32 @@ namespace FishBreeder
             var t = p.piece.transform;
             var centre = Footprint(p.piece).center;
             t.RotateAround(centre, Vector3.up, degrees);
+            var local = root.InverseTransformPoint(t.position);
+            Keep(p, local.x, local.z, t.localEulerAngles.y);
+        }
+
+        /// <summary>A piece's size as the player set it (1 = normal).</summary>
+        public float SizeAt(int index) => index >= 0 && index < placed.Count ? placed[index].size : 1f;
+
+        /// <summary>
+        /// Wall aquarium only: makes a piece this many times its current size, within the balance's
+        /// limits, still standing on the sand and inside the glass. It stays where it is from now on.
+        /// </summary>
+        public void Resize(int index, float factor)
+        {
+            if (!WallAquarium || index < 0 || index >= placed.Count || placed[index].piece == null) return;
+            var p = placed[index];
+            var store = Balance.Data.store;
+            float size = Mathf.Clamp(p.size * factor, Mathf.Min(store.wallDecorationMinSize, 1f), Mathf.Max(store.wallDecorationMaxSize, 1f));
+            if (Mathf.Abs(size - 1f) < 0.02f) size = 1f;
+            if (Mathf.Approximately(size, p.size)) return;
+            var t = p.piece.transform;
+            var centre = Footprint(p.piece).center;
+            t.localScale *= size / p.size;
+            p.size = size;
+            // Grow about its middle, then rest it on the sand again.
+            var moved = Footprint(p.piece);
+            t.position += new Vector3(centre.x - moved.center.x, root.position.y - moved.min.y, centre.z - moved.center.z);
             var local = root.InverseTransformPoint(t.position);
             Keep(p, local.x, local.z, t.localEulerAngles.y);
         }
@@ -334,9 +376,9 @@ namespace FishBreeder
         const int FarCells = 22;
         const float NearShare = 0.12f, CullShare = 0.004f;
 
-        GameObject Build(DecorationBalance item, Spot spot)
+        GameObject Build(DecorationBalance item, Spot spot, float size)
         {
-            float height = item.height * tankSize.y / StandardTankHeight;
+            float height = item.height * tankSize.y / StandardTankHeight * (WallAquarium ? Mathf.Max(0.1f, Balance.Data.store.wallDecorationSize) * size : 1f);
             var prefab = Resources.Load<GameObject>(Folder + item.id);
             GameObject piece;
             if (prefab == null)

@@ -26,6 +26,12 @@ namespace FishBreeder.Genetics
     public enum SpeciesRarity { Common, Uncommon, Rare, Exotic, Legendary, Ancient }
 
     /// <summary>
+    /// Which fish limit a species counts against: small fish share the tank's main limit, medium
+    /// fish (the big wall-aquarium kinds) have their own much smaller one (<see cref="Core.TankSizeBalance.mediumCapacity"/>).
+    /// </summary>
+    public enum BodyClass { Small, Medium }
+
+    /// <summary>
     /// A kind of fish and all its balancing numbers. Species is fixed for life and passed from
     /// mother to fry. Genes then vary the individual within the species' ranges.
     /// The list lives in the balance file (see <see cref="Balance"/>), editable in the balance console.
@@ -70,6 +76,8 @@ namespace FishBreeder.Genetics
         public float bendStart = 0.2f;
         /// <summary>How big small, medium and large fish of this kind look, as a share of the species' length (medium is normally 1).</summary>
         public float sizeSmall = 0.85f, sizeMedium = 1f, sizeLarge = 1.18f;
+        /// <summary>Small fish count against a tank's fish limit; medium fish against its separate medium limit.</summary>
+        public BodyClass bodyClass;
 
         /// <summary>How much of the body (fraction of its length) the wiggle takes to reach full strength after <see cref="bendStart"/>.</summary>
         public const float BendRamp = 0.3f;
@@ -104,6 +112,8 @@ namespace FishBreeder.Genetics
         public int eggHatchSteps = 2;
         /// <summary>Grazes algae off the glass and decorations at every time step.</summary>
         public bool eatsAlgae;
+
+        public bool IsMedium => bodyClass == BodyClass.Medium;
 
         public bool IsSaltwater => category == FishCategory.SaltwaterCold || category == FishCategory.SaltwaterTropical;
 
@@ -354,6 +364,7 @@ namespace FishBreeder.Genetics
                 s.daysToAdult = 8f;
                 s.litterMin = 3; s.litterMax = 6;
                 if (s.id == "CrimsonJewelCichlid") s.likesPlants = false;
+                s.bodyClass = BodyClass.Medium;
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }

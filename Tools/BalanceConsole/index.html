@@ -115,6 +115,25 @@
   .diary { max-height: 320px; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; }
   .sim-tank { border-left: 3px solid var(--accent); }
   .sim-tank h3 { font-size: 12.5px; margin: 12px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(470px, 100%), 1fr)); gap: 14px; }
+  .tank-card h2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tank-card .grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px 10px; margin-top: 8px; }
+  .tank-card input:disabled { opacity: .55; }
+  .tank-facts { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .tank-facts b { color: var(--ink); font-weight: 600; }
+  .tank-facts .warn { color: var(--warn); }
+  svg.tank { width: 100%; height: auto; display: block; background: var(--bg); border-radius: 6px; }
+  svg.tank .glass { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+  svg.tank .back { fill: none; stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  svg.tank .water { fill: var(--accent); opacity: .2; }
+  svg.tank .water-top { fill: var(--accent); opacity: .34; }
+  svg.tank .prev { fill: none; stroke: var(--warn); stroke-width: 1.3; stroke-dasharray: 5 4; }
+  svg.tank .stand { fill: var(--muted); opacity: .3; }
+  svg.tank .floor { stroke: var(--muted); stroke-width: 1; }
+  svg.tank .roof { stroke: var(--warn); stroke-width: 1; stroke-dasharray: 7 5; opacity: .8; }
+  svg.tank .dim { fill: var(--muted); font-size: 11px; }
+  svg.tank .label { fill: var(--ink); font-size: 11.5px; font-weight: 600; }
+  svg.tank .person { fill: var(--muted); opacity: .45; }
 </style>
 </head>
 <body>
@@ -151,6 +170,7 @@ const ENUMS = {
   // Tank size indexes; 100 is the wall aquarium (Tank.WallSize), so this one is a value -> name map.
   minTankSize: { 0: "Any (Standard)", 1: "Large", 2: "Grand", 100: "Wall aquarium only" },
   style: ["Midwater", "Bottom"],
+  bodyClass: ["Small", "Medium"],
   type: ["Flakes", "Premium", "AlgaeWafers", "Bloodworms", "BrineShrimp"],
   cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
   tree: ["Aquariums", "Biology", "Breeding", "Finances", "Construction", "Public Relations"],
@@ -243,8 +263,14 @@ const META = {
   passable: ["Fish swim through", "A grassy plant: fish swim straight through it and the leaves bend out of their way, then sway back."],
   height: ["Height in a standard tank (m)", ""],
   back: ["Goes at the back", "Tall pieces fill the back row first."],
-  capacity: ["Fish capacity", ""], upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
+  capacity: ["Small fish capacity", "Most small fish it holds. A soft limit: fish can go over it (up to the hard limit) with overcrowding penalties."],
+  mediumCapacity: ["Medium fish capacity", "Most medium fish (the big kinds, see each species' Body class) it holds. Its own limit, apart from the small fish, and a hard one."],
+  upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
   decorationSlots: ["Decoration spots", ""],
+  bodyClass: ["Body class", "Small fish share a tank's main fish limit. Medium fish (the big kinds) count against the tank's much smaller medium limit instead (Aquariums tab)."],
+  wallDecorationSize: ["Wall decoration size (x)", "How big decorations come out in the wall aquarium, as a share of what its height would make them. 1 = scaled up with the tank like every other tank; 0.6 = 60% of that."],
+  wallDecorationMinSize: ["Smallest a player can make one (x)", "In the wall aquarium the player can make each decoration smaller or bigger (Move decorations). This is the smallest, as a share of its normal size."],
+  wallDecorationMaxSize: ["Biggest a player can make one (x)", "The biggest the player can make one decoration in the wall aquarium, as a share of its normal size."],
   // Equipment
   effect: ["Effect", "Filter: share of waste left (lower is better). Heater: how far the water drifts from the setting (C). Bubbler: fish kept in full oxygen."],
   breakChance: ["Break chance when new", "Per time step."],
@@ -380,7 +406,8 @@ const TABS = [
   ["timeStep", "Time steps"],
   ["health", "Health"],
   ["store", "Store & supplier"],
-  ["stock", "Eggs, decor & tanks"],
+  ["stock", "Eggs, decor & quality"],
+  ["tanks", "Aquariums"],
   ["equipment", "Equipment & repairs"],
   ["research", "Research"],
   ["eggs", "Egg hatching"],
@@ -399,7 +426,7 @@ const SPECIES_GROUPS = [
   ["Habits", ["likedDecorations", "roams"]],
   ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
-  ["Body and swimming", ["minLength", "maxLength", "sizeSmall", "sizeMedium", "sizeLarge", "speed", "depthMin", "depthMax", "style", "bendStart"]],
+  ["Body and swimming", ["bodyClass", "minLength", "maxLength", "sizeSmall", "sizeMedium", "sizeLarge", "speed", "depthMin", "depthMax", "style", "bendStart"]],
 ];
 
 let data = null;
@@ -847,15 +874,12 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Tank mates"), objectForm(data.tankMates)));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Medicine"), objectForm(data.medicine)));
   } else if (key === "store") {
-    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, ["tankSizes", "wallAquarium", "wallAquariumHeights"])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, [...AQUARIUM_STORE_KEYS])));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers", "faults", ...REPAIR_SUPPLIER])));
   } else if (key === "stock") {
     cards.push(el("div", { class: "card" }, listTable("Egg and fry boxes", data.supplier.eggTiers)));
     cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
-    cards.push(el("div", { class: "card" }, listTable("Tank sizes", data.store.tankSizes)));
-    if (data.store.wallAquarium) cards.push(el("div", { class: "card" }, listTable("Wall aquarium (East wing)", [data.store.wallAquarium])));
-    if (data.store.wallAquariumHeights && data.store.wallAquariumHeights.length)
-      cards.push(el("div", { class: "card" }, listTable("Wall aquarium heights (raised in this order; level is Shopkeeping, length and depth follow the wall aquarium)", data.store.wallAquariumHeights)));
+    cards.push(el("p", { class: "hint" }, "Tank sizes, the wall aquarium and its heights are on the Aquariums tab, with a live preview of each shape."));
     if (!data.quality) data.quality = { equipmentPoints: 5, pointsPerEquipmentTier: 5, brokenEquipmentShare: 0.5, decorationPoints: 3, plantPoints: 2, varietyPoints: 1 };
     cards.push(el("div", { class: "card" }, el("h2", {}, "Aquarium quality"), objectForm(data.quality)));
   } else if (key === "equipment") {
@@ -2365,6 +2389,252 @@ function renderSwim() {
   ];
 }
 
+// ---------------------------------------------------------------- aquariums
+
+// Store settings shown on the Aquariums tab rather than Store & supplier.
+const AQUARIUM_STORE_KEYS = ["tankSizes", "wallAquarium", "wallAquariumHeights", "wallDecorationSize", "wallDecorationMinSize", "wallDecorationMaxSize"];
+// Mirrors StoreLayout: 4 m walls, tanks on a 0.85 m stand, and the wall aquarium sitting lower once
+// it's tall (0.3 m under the roof, never below 0.3 m off the floor). A 1.75 m person for scale.
+const ROOM = { wall: 4, stand: 0.85, headroom: 0.3, lowestBase: 0.3, person: 1.75 };
+const wallBase = (h) => Math.min(ROOM.stand, Math.max(ROOM.lowestBase, ROOM.wall - ROOM.headroom - h));
+const TANK_FIELDS = [["width", "Length (m)"], ["height", "Height (m)"], ["depth", "Depth (m)"], ["capacity", "Small fish"], ["mediumCapacity", "Medium fish"],
+  ["decorationSlots", "Decoration spots"], ["upgradePrice", "Upgrade price ($)"], ["unlockLevel", "Level"], ["qualityNeeded", "Quality needed"]];
+// Oblique view: depth runs up and to the right at 30 degrees, drawn at half length.
+const OBLIQUE = { x: Math.cos(Math.PI / 6) * 0.5, y: Math.sin(Math.PI / 6) * 0.5 };
+
+/**
+ * Aquariums drawn to scale, side by side on one floor: the glass, the water, the stand, a person
+ * for scale and (roof) the store's 4 m roof. An item's "prev" size, and any "outlines", are drawn
+ * dashed over it, so an upgrade shows how much it grows.
+ */
+function tankSvg(items, { width = 460, height = 230, roof = false, names = false } = {}) {
+  // With names (several tanks side by side) each gets one caption under it instead of measurements along its edges.
+  const NS = "http://www.w3.org/2000/svg";
+  const project = (x, y, z) => [x + z * OBLIQUE.x, y + z * OBLIQUE.y];
+  const dims = (s) => [Math.max(0.05, +s.width || 0), Math.max(0.05, +s.height || 0), Math.max(0.05, +s.depth || 0)];
+  const baseOf = (s, wall) => (wall ? wallBase(+s.height || 0) : ROOM.stand);
+  // Lay the tanks out left to right in metres, after the person.
+  let cursor = 0.9;
+  const placed = items.map((item) => {
+    const [L, H, D] = dims(item.size);
+    const others = [item.prev, ...(item.outlines || [])].filter(Boolean).map(dims);
+    const at = { ...item, x: cursor, base: baseOf(item.size, item.wall), L, H, D, others };
+    const wide = Math.max(L + D * OBLIQUE.x, ...others.map(([l, , d]) => l + d * OBLIQUE.x));
+    cursor += wide + 0.6;
+    return at;
+  });
+  // Everything that has to fit: the floor, the person, every tank and outline, the roof.
+  let maxX = cursor - 0.4, maxY = ROOM.person + 0.1;
+  for (const t of placed) {
+    maxY = Math.max(maxY, t.base + t.H + t.D * OBLIQUE.y);
+    for (const s of [t.prev, ...(t.outlines || [])].filter(Boolean)) {
+      const [, h, d] = dims(s);
+      maxY = Math.max(maxY, baseOf(s, t.wall) + h + d * OBLIQUE.y);
+    }
+  }
+  if (roof) maxY = Math.max(maxY, ROOM.wall + 0.15);
+  const pad = 22, labelRoom = names ? 30 : 0;
+  const scale = Math.min((width - pad * 2) / maxX, (height - pad * 2 - labelRoom) / maxY);
+  const px = ([x, y]) => [pad + x * scale, height - pad - (names ? 14 : 0) - y * scale];
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("class", "tank");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", placed.map((t) => `${t.size.name || "Tank"}: ${t.L} by ${t.H} by ${t.D} m`).join("; "));
+  const add = (tag, attrs, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    svg.append(n);
+    return n;
+  };
+  const poly = (pts, cls) => add("polygon", { points: pts.map((p) => px(p).map((v) => v.toFixed(1)).join(",")).join(" "), class: cls });
+  const line = (a, b, cls) => { const [x1, y1] = px(a), [x2, y2] = px(b); return add("line", { x1, y1, x2, y2, class: cls }); };
+  const label = (p, s, cls, anchor, dx = 0, dy = 0) => { const [x, y] = px(p); return add("text", { x: x + dx, y: y + dy, class: cls, "text-anchor": anchor }, s); };
+
+  line([-0.2, 0], [maxX, 0], "floor");
+  if (roof) {
+    line([-0.2, ROOM.wall], [maxX, ROOM.wall], "roof");
+    label([-0.2, ROOM.wall], `${ROOM.wall} m roof`, "dim", "start", 0, -4);
+  }
+  // The person: head, body and legs.
+  const [hx, hy] = px([0.35, ROOM.person - 0.12]);
+  add("circle", { cx: hx, cy: hy, r: 0.12 * scale, class: "person" });
+  poly([[0.2, 0.85], [0.5, 0.85], [0.47, ROOM.person - 0.27], [0.23, ROOM.person - 0.27]], "person");
+  poly([[0.23, 0], [0.33, 0], [0.35, 0.85], [0.21, 0.85]], "person");
+  poly([[0.37, 0], [0.47, 0], [0.49, 0.85], [0.35, 0.85]], "person");
+
+  const box = (x, base, L, H, D, cls) => {
+    const c = (dx, dy, dz) => project(x + dx, base + dy, dz);
+    // The hidden back edges, faint, then the front, top and right side.
+    if (cls === "glass") {
+      line(c(0, 0, D), c(L, 0, D), "back"); line(c(0, 0, D), c(0, H, D), "back"); line(c(0, 0, 0), c(0, 0, D), "back");
+    }
+    poly([c(0, 0, 0), c(L, 0, 0), c(L, H, 0), c(0, H, 0)], cls);
+    poly([c(0, H, 0), c(L, H, 0), c(L, H, D), c(0, H, D)], cls);
+    poly([c(L, 0, 0), c(L, 0, D), c(L, H, D), c(L, H, 0)], cls);
+  };
+  const fmt = (v) => `${(+v).toFixed(2).replace(/\.?0+$/, "")} m`;
+  for (const t of placed) {
+    const c = (dx, dy, dz) => project(t.x + dx, t.base + dy, dz);
+    // The stand, under the front.
+    if (t.base > 0.01) poly([c(0.04, -t.base, 0), c(t.L - 0.04, -t.base, 0), c(t.L - 0.04, 0, 0), c(0.04, 0, 0)], "stand");
+    // Water to just under the rim.
+    const w = t.H * 0.94;
+    poly([c(0, 0, 0), c(t.L, 0, 0), c(t.L, w, 0), c(0, w, 0)], "water");
+    poly([c(0, w, 0), c(t.L, w, 0), c(t.L, w, t.D), c(0, w, t.D)], "water-top");
+    poly([c(t.L, 0, 0), c(t.L, 0, t.D), c(t.L, w, t.D), c(t.L, w, 0)], "water");
+    box(t.x, t.base, t.L, t.H, t.D, "glass");
+    for (const s of [t.prev, ...(t.outlines || [])].filter(Boolean)) {
+      const [l, h, d] = dims(s);
+      box(t.x, baseOf(s, t.wall), l, h, d, "prev");
+    }
+    if (names) {
+      label(c(t.L / 2, Math.max(t.H, ...t.others.map(([, h]) => h)), t.D), t.size.name || "", "label", "middle", 0, -6);
+      label([t.x + t.L / 2, 0], `${fmt(t.L).slice(0, -2)} × ${fmt(t.H).slice(0, -2)} × ${fmt(t.D)}`, "dim", "middle", 0, 14);
+      continue;
+    }
+    // Measurements: length under the front, height up the left, depth along the floor on the right.
+    label(c(t.L / 2, 0, 0), fmt(t.L), "dim", "middle", 0, 13);
+    label(c(0, t.H / 2, 0), fmt(t.H), "dim", "end", -5, 4);
+    label(c(t.L, 0, t.D / 2), fmt(t.D), "dim", "start", 6, 4);
+  }
+  return svg;
+}
+
+/** What a size's numbers come to: how much water, room per fish, and where it sits in the room. */
+function tankFacts(size, wall) {
+  const L = +size.width || 0, H = +size.height || 0, D = +size.depth || 0;
+  const litres = L * H * D * 1000;
+  const perFish = size.capacity > 0 ? litres / size.capacity : 0;
+  const base = wall ? wallBase(H) : ROOM.stand;
+  const top = base + H;
+  const parts = [
+    el("span", {}, "Water ", el("b", {}, `${(L * H * D).toFixed(2)} m³`), ` (${Math.round(litres).toLocaleString()} L), `),
+    el("span", {}, el("b", {}, `${Math.round(perFish)} L`), " per small fish, room for ", el("b", {}, `${size.mediumCapacity ?? 0}`), " medium fish. "),
+    el("span", {}, `Sits ${base.toFixed(2)} m off the floor, top at ${top.toFixed(2)} m.`),
+  ];
+  if (wall && top > ROOM.wall) parts.push(el("span", { class: "warn" }, ` Taller than the ${ROOM.wall} m walls: the back wall rises over it.`));
+  if (!wall && top > ROOM.wall - 0.2) parts.push(el("span", { class: "warn" }, " Too tall for the room."));
+  return el("p", { class: "tank-facts" }, parts);
+}
+
+/** A size's numbers as a small form. Locked keys show their value but follow another size. */
+function tankFields(size, redraw, locked = []) {
+  return el("div", { class: "grid" }, TANK_FIELDS.map(([k, label]) => {
+    if (typeof size[k] !== "number") size[k] = 0;
+    const control = input(size, k, redraw);
+    if (locked.includes(k)) {
+      control.disabled = true;
+      control.title = "Follows the wall aquarium: every height is as long and deep as it, since it's set into the wall.";
+    }
+    return el("label", { class: "field", title: help(k) || label }, el("span", {}, label, pinButton(size, k)), control);
+  }));
+}
+
+function renderAquariums() {
+  const store = data.store;
+  store.tankSizes = store.tankSizes || [];
+  store.wallAquariumHeights = store.wallAquariumHeights || [];
+  const wall = store.wallAquarium;
+  const redraws = [];
+  const redrawAll = () => redraws.forEach((f) => f());
+
+  // Wall heights are always as long and deep as the wall aquarium (the game makes them so too).
+  const lockedInputs = [];
+  const syncHeights = () => {
+    if (!wall) return;
+    for (const h of store.wallAquariumHeights) { h.width = wall.width; h.depth = wall.depth; }
+    for (const [obj, key, control] of lockedInputs) control.value = obj[key];
+  };
+  syncHeights();
+
+  const card = (title, size, { prev = null, isWall = false, locked = [], remove = null, note = null } = {}) => {
+    const picture = el("div");
+    const facts = el("div");
+    const heading = el("span", {}, size.name || title);
+    const draw = () => {
+      picture.replaceChildren(tankSvg([{ size, prev, wall: isWall }], { roof: isWall, height: isWall ? 250 : 210 }));
+      facts.replaceChildren(tankFacts(size, isWall));
+      heading.textContent = size.name || title;
+    };
+    redraws.push(draw);
+    draw();
+    const fields = tankFields(size, () => { if (size === wall) syncHeights(); redrawAll(); }, locked);
+    for (const k of locked) {
+      const control = fields.children[TANK_FIELDS.findIndex(([key]) => key === k)].querySelector("input");
+      if (control) lockedInputs.push([size, k, control]);
+    }
+    return el("div", { class: "card tank-card" },
+      el("h2", {}, heading, remove ? el("button", { class: "small", title: "Remove this size", onclick: remove }, "Remove") : null),
+      note ? el("p", { class: "hint" }, note) : null,
+      picture, facts,
+      el("div", { class: "grid" }, el("label", { class: "field" }, el("span", {}, "Name"), input(size, "name", redrawAll))),
+      fields);
+  };
+
+  // To scale, side by side: every tank size, then the wall aquarium with each height it can be raised to.
+  const overview = el("div");
+  redraws.push(() => {
+    const items = store.tankSizes.map((size) => ({ size }));
+    if (wall) items.push({ size: wall, wall: true, outlines: store.wallAquariumHeights });
+    overview.replaceChildren(tankSvg(items, { width: 1100, height: 300, roof: true, names: true }));
+  });
+
+  const sizeCards = store.tankSizes.map((size, i) => card(`Size ${i + 1}`, size, {
+    prev: i > 0 ? store.tankSizes[i - 1] : null,
+    note: i === 0 ? "Every tank starts this size." : `An upgrade from ${store.tankSizes[i - 1].name || "the size before"} (dashed).`,
+    remove: i > 0 ? () => { store.tankSizes.splice(i, 1); markDirty(); render(); } : null,
+  }));
+  const addSize = el("button", { class: "small", onclick: () => {
+    const last = store.tankSizes[store.tankSizes.length - 1];
+    const next = JSON.parse(JSON.stringify(last));
+    next.name = "New size";
+    next.width = round2(last.width * 1.25); next.height = round2(last.height * 1.1); next.depth = round2(last.depth * 1.1);
+    next.capacity = Math.round(last.capacity * 1.4); next.upgradePrice = Math.round((last.upgradePrice || 500) * 2);
+    store.tankSizes.push(next); markDirty(); render();
+  } }, "+ Add a bigger size");
+
+  const wallCards = [];
+  if (wall) {
+    wallCards.push(card("Wall aquarium", wall, { isWall: true, note: "Set into a wall, and never an upgrade from another size. Its length and depth go for every height below." }));
+    store.wallAquariumHeights.forEach((h, i) => wallCards.push(card(`Height ${i + 1}`, h, {
+      isWall: true, prev: i > 0 ? store.wallAquariumHeights[i - 1] : wall, locked: ["width", "depth"],
+      note: `Raised from ${(i > 0 ? store.wallAquariumHeights[i - 1] : wall).name || "the one before"} (dashed). Its level is Shopkeeping.`,
+      remove: () => { store.wallAquariumHeights.splice(i, 1); markDirty(); render(); },
+    })));
+  }
+  const addHeight = el("button", { class: "small", onclick: () => {
+    const list = store.wallAquariumHeights;
+    const last = list.length ? list[list.length - 1] : wall;
+    const next = JSON.parse(JSON.stringify(last));
+    next.name = "Taller wall aquarium";
+    next.height = round2(last.height + 0.45); next.capacity = Math.round(last.capacity * 1.15);
+    next.upgradePrice = Math.round((last.upgradePrice || 3000) * 1.4); next.unlockLevel = (last.unlockLevel || 10) + 6;
+    list.push(next); syncHeights(); markDirty(); render();
+  } }, "+ Add a taller height");
+
+  const decor = el("div", { class: "grid" }, ["wallDecorationSize", "wallDecorationMinSize", "wallDecorationMaxSize"].map((k) => {
+    if (typeof store[k] !== "number") store[k] = k === "wallDecorationMinSize" ? 0.4 : k === "wallDecorationMaxSize" ? 2 : 1;
+    return field(store, k);
+  }));
+
+  redrawAll();
+  return [
+    el("p", { class: "hint" }, "Every aquarium size and upgrade: length, height, depth and how many fish it holds. Small fish share the main limit (going over it is allowed, with overcrowding penalties, up to the hard limit on the Store tab); medium fish, the big kinds (each species' Body class), have their own, much smaller limit. The pictures redraw as you type, to scale with a 1.75 m person and the store's 4 m roof; dashed outlines are the size each one is upgraded from. Saving applies new limits straight away; new shapes show on tanks built or upgraded after that."),
+    el("div", { class: "card" }, el("h2", {}, "All sizes to scale"), overview),
+    el("h2", { style: "font-size:15px;margin:18px 0 8px" }, "Tank sizes"),
+    el("div", { class: "tank-grid" }, sizeCards),
+    addSize,
+    wall ? el("h2", { style: "font-size:15px;margin:22px 0 8px" }, "Wall aquarium and its heights") : null,
+    el("div", { class: "tank-grid" }, wallCards),
+    wall ? addHeight : null,
+    el("div", { class: "card", style: "margin-top:18px" }, el("h2", {}, "Decorations in the wall aquarium"),
+      el("p", { class: "hint" }, "Only the wall aquarium's decorations can be resized. This size goes for every piece; in the game the player can then make each piece smaller or bigger when moving decorations (- and +), within these limits."),
+      decor),
+  ];
+}
+
 function render() {
   indexPaths();
   $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
@@ -2386,6 +2656,7 @@ function render() {
     case "sim": content = renderSim(); break;
     case "eggs": content = renderEggs(); break;
     case "swim": content = renderSwim(); break;
+    case "tanks": content = renderAquariums(); break;
     default: content = renderSection(tab);
   }
   $("#view").replaceChildren(...content);

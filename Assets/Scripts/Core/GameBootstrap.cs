@@ -5,9 +5,10 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// Builds the game at runtime: the store with its starting tanks, camera, light and the
-    /// closed-shop view. If the open scene has no GameBootstrap, one is created automatically when
-    /// you press Play, so a brand-new empty scene is enough to try the game.
+    /// Builds the game at runtime: the main menu, or once a save (or a new game) is picked, the
+    /// store with its starting tanks, camera, light and the closed-shop view. If the open scene has
+    /// no GameBootstrap, one is created automatically when you press Play (and whenever the menus
+    /// reload the scene), so a brand-new empty scene is enough to try the game.
     /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
@@ -19,11 +20,33 @@ namespace FishBreeder.Core
         static void AutoCreate()
         {
             // Remove this once real scenes contain a GameBootstrap (or a menu scene exists).
+            CreateIfMissing();
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode) => CreateIfMissing();
+
+        static void CreateIfMissing()
+        {
             if (FindAnyObjectByType<GameBootstrap>() == null)
                 new GameObject("Fish Breeder").AddComponent<GameBootstrap>();
         }
 
         void Start()
+        {
+            Time.timeScale = 1f;
+            if (!GameSession.TakeStart(out int slot, out bool isNew))
+            {
+                // Nothing picked yet: the title screen, over an empty scene.
+                SetupCamera().backgroundColor = UiTheme.Abyss;
+                gameObject.AddComponent<MainMenu>();
+                return;
+            }
+            StartGame(slot, isNew);
+        }
+
+        void StartGame(int slot, bool isNew)
         {
             if (randomSeed != 0) GameRandom.Seed(randomSeed);
             Balance.Load();
@@ -37,8 +60,9 @@ namespace FishBreeder.Core
             Journal.Reset();
             EggBoxes.Reset();
             Milestones.Reset();
-            // The one save, if there is one: everything but the store now, the store once it's built.
-            bool loaded = SaveGame.LoadState();
+            // The picked save: everything but the store now, the store once it's built.
+            SaveGame.UseSlot(slot);
+            bool loaded = !isNew && SaveGame.LoadState();
             Research.Refresh();
             Fx.Reset();
             ViewMode.Set(false);
@@ -64,6 +88,7 @@ namespace FishBreeder.Core
             gameObject.AddComponent<UiLayoutEditor>();
             if (loaded) SaveGame.LoadStore(store, shopDay);
             gameObject.AddComponent<AutoSave>().Initialize(store, shopDay);
+            gameObject.AddComponent<PauseMenu>();
             int setup = Economy.DaysUntilOpening;
             if (loaded) GameLog.Add($"Welcome back! It's day {Economy.Day} and you have {Economy.Format(Economy.Money)}.");
             else if (setup > 0)

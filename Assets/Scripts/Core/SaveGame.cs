@@ -12,20 +12,98 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// The game's one save, like Animal Crossing: no save slots and no going back. Everything is
-    /// written to a single file (money, levels, research, rooms, every tank with its water,
-    /// equipment, decorations, eggs and fish) and read back when the game starts. <see cref="AutoSave"/>
-    /// decides when it is written.
+    /// The game's saves. Each game lives in its own numbered slot file (money, levels, research,
+    /// rooms, every tank with its water, equipment, decorations, eggs and fish) in a save folder of
+    /// its own: play mode in the Unity editor and real builds never share saves. <see cref="AutoSave"/>
+    /// decides when the slot being played is written; the main menu and pause menu pick slots.
     /// </summary>
     public static class SaveGame
     {
         const int Version = 1;
-        const string FileName = "savegame.json";
+        const string OldFileName = "savegame.json";
 
-        public static string FilePath => Path.Combine(Application.persistentDataPath, FileName);
+        /// <summary>Editor play mode and builds keep their saves in different folders.</summary>
+        public static string Folder => Path.Combine(Application.persistentDataPath, Application.isEditor ? "Saves (Editor)" : "Saves");
+        /// <summary>The slot being played (and written by autosave).</summary>
+        public static int Slot { get; private set; } = 1;
+        public static string SlotPath(int slot) => Path.Combine(Folder, $"save{slot}.json");
+        public static string FilePath => SlotPath(Slot);
         public static bool Exists => File.Exists(FilePath);
         /// <summary>Real time (unscaled seconds) of the last successful save, or -1.</summary>
         public static float LastSaved { get; private set; } = -1f;
+
+        /// <summary>Picks the slot the game plays from and saves to.</summary>
+        public static void UseSlot(int slot) => Slot = Mathf.Max(1, slot);
+
+        /// <summary>The lowest slot number with no save in it, for a new game.</summary>
+        public static int FreeSlot()
+        {
+            Migrate();
+            int slot = 1;
+            while (File.Exists(SlotPath(slot))) slot++;
+            return slot;
+        }
+
+        /// <summary>Every save in the folder, the most recently saved first.</summary>
+        public static List<SaveSlot> Slots()
+        {
+            Migrate();
+            var list = new List<SaveSlot>();
+            if (!Directory.Exists(Folder)) return list;
+            foreach (var path in Directory.GetFiles(Folder, "save*.json"))
+            {
+                string name = Path.GetFileNameWithoutExtension(path);
+                if (!int.TryParse(name.Substring(4), out int slot) || slot < 1) continue;
+                var info = new SaveSlot { slot = slot, written = File.GetLastWriteTime(path) };
+                try
+                {
+                    var header = JsonUtility.FromJson<SaveHeader>(File.ReadAllText(path));
+                    if (header != null && header.version > 0)
+                    {
+                        info.day = header.day;
+                        info.money = header.money;
+                        info.levels = header.levels ?? new int[0];
+                        info.readable = true;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[FishBreeder] Save {slot} couldn't be read: {e.Message}");
+                }
+                list.Add(info);
+            }
+            list.Sort((a, b) => b.written.CompareTo(a.written));
+            return list;
+        }
+
+        /// <summary>The save played most recently (for Continue), or null.</summary>
+        public static SaveSlot Latest()
+        {
+            foreach (var slot in Slots()) if (slot.readable) return slot;
+            return null;
+        }
+
+        /// <summary>
+        /// Before slots, the editor wrote one savegame.json next to the folders. It becomes editor
+        /// save 1, so nothing played so far is lost.
+        /// </summary>
+        static void Migrate()
+        {
+            if (!Application.isEditor) return;
+            string old = Path.Combine(Application.persistentDataPath, OldFileName);
+            if (!File.Exists(old)) return;
+            try
+            {
+                Directory.CreateDirectory(Folder);
+                int slot = 1;
+                while (File.Exists(SlotPath(slot))) slot++;
+                File.Move(old, SlotPath(slot));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[FishBreeder] The old save couldn't be moved into the save folder: {e.Message}");
+            }
+        }
 
         static SaveData pending;
 
@@ -50,6 +128,7 @@ namespace FishBreeder.Core
                 store.Save(data);
                 if (shopDay != null) shopDay.Save(data);
 
+                Directory.CreateDirectory(Folder);
                 string path = FilePath, temp = path + ".tmp";
                 File.WriteAllText(temp, JsonUtility.ToJson(data));
                 if (File.Exists(path)) File.Replace(temp, path, null);
@@ -72,6 +151,7 @@ namespace FishBreeder.Core
         public static bool LoadState()
         {
             pending = null;
+            Migrate();
             if (!Exists) return false;
             SaveData data;
             try
@@ -108,10 +188,18 @@ namespace FishBreeder.Core
             pending = null;
         }
 
-        /// <summary>Deletes the save, so the next play starts a new game (developer use).</summary>
-        public static void Delete()
+        /// <summary>Deletes one save for good.</summary>
+        public static void Delete(int slot)
         {
-            if (Exists) File.Delete(FilePath);
+            string path = SlotPath(slot);
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        /// <summary>Deletes every save in this folder (developer use: editor saves from the editor).</summary>
+        public static void DeleteAll()
+        {
+            Migrate();
+            foreach (var slot in Slots()) Delete(slot.slot);
         }
 
         // ---------------------------------------------------------------- helpers for the parts
@@ -139,20 +227,22 @@ namespace FishBreeder.Core
     }
 
     /// <summary>
-    /// Saves the game every 15 real minutes, whenever the part of the day changes (opening,
-    /// closing, staying closed, going to sleep), and when the game is quit or put in the background.
-    /// Shows "Game saved" in the corner for a moment.
+    /// Saves the game every few real minutes (15 unless changed in Settings), whenever the part of
+    /// the day changes (opening, closing, staying closed, going to sleep), and when the game is
+    /// quit or put in the background. With autosave turned off in Settings only the pause menu
+    /// saves. Shows "Game saved" in the corner for a moment.
     /// </summary>
     public class AutoSave : MonoBehaviour
     {
-        public const float IntervalSeconds = 15f * 60f;
-
         StoreLayout store;
         ShopDay shopDay;
         float timer;
         DayPhase lastPhase;
         int lastDay;
         bool ready;
+
+        /// <summary>The game being played's autosave, or null on the main menu.</summary>
+        public static AutoSave Current { get; private set; }
 
         public void Initialize(StoreLayout layout, ShopDay day)
         {
@@ -161,31 +251,49 @@ namespace FishBreeder.Core
             lastPhase = day != null ? day.Phase : DayPhase.Morning;
             lastDay = Economy.Day;
             ready = true;
+            Current = this;
+        }
+
+        void OnDestroy()
+        {
+            if (Current == this) Current = null;
         }
 
         void Update()
         {
             if (!ready) return;
+            if (!GameSettings.Autosave)
+            {
+                timer = 0f;
+                return;
+            }
             timer += Time.unscaledDeltaTime;
             bool phaseChanged = shopDay != null && shopDay.Phase != lastPhase;
-            if (timer >= IntervalSeconds || phaseChanged || Economy.Day != lastDay) SaveNow();
+            if (timer >= GameSettings.AutosaveMinutes * 60f || phaseChanged || Economy.Day != lastDay) SaveNow();
         }
 
-        public void SaveNow()
+        /// <summary>Saves right away (the pause menu's Save uses it too). False if saving failed.</summary>
+        public bool SaveNow()
         {
-            if (!ready) return;
+            if (!ready) return false;
             timer = 0f;
             lastPhase = shopDay != null ? shopDay.Phase : lastPhase;
             lastDay = Economy.Day;
-            SaveGame.Save(store, shopDay);
+            return SaveGame.Save(store, shopDay);
         }
+
+        /// <summary>Stops all saving from here on: leaving without saving.</summary>
+        public void Stop() => ready = false;
 
         void OnApplicationPause(bool paused)
         {
-            if (paused) SaveNow();
+            if (paused && GameSettings.Autosave) SaveNow();
         }
 
-        void OnApplicationQuit() => SaveNow();
+        void OnApplicationQuit()
+        {
+            if (GameSettings.Autosave) SaveNow();
+        }
 
         void OnGUI()
         {
@@ -204,6 +312,26 @@ namespace FishBreeder.Core
     }
 
     // ==================================================================== the save file
+
+    /// <summary>One save as the load menu lists it.</summary>
+    public class SaveSlot
+    {
+        public int slot;
+        public DateTime written;
+        public bool readable;
+        public int day, money;
+        public int[] levels = new int[0];
+    }
+
+    /// <summary>Just the start of a save file, for listing saves without restoring them.</summary>
+    [Serializable]
+    class SaveHeader
+    {
+        public int version;
+        public int money;
+        public int day;
+        public int[] levels;
+    }
 
     [Serializable] public class KeyInt { public string key; public int value; }
     [Serializable] public class KeyFloat { public string key; public float value; }

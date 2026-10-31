@@ -131,7 +131,7 @@ namespace FishBreeder.Store
             Vector3 targetPosition;
             Quaternion targetRotation;
             // Esc steps back one level: from a fish to its tank, from the tank to the store.
-            bool escape = Input.GetKeyDown(KeyCode.Escape);
+            bool escape = Input.GetKeyDown(KeyCode.Escape) && !PauseMenu.JustClosed;
             if (Input.GetKeyDown(KeyCode.V) && GUIUtility.keyboardControl == 0 && panel != Panel.DayReport) ToggleWatch();
             if (Input.GetKeyDown(KeyCode.B) && GUIUtility.keyboardControl == 0 && !shopDay.IsOpen) ToggleSupplier();
             if (escape && ViewMode.Watching)
@@ -170,6 +170,8 @@ namespace FishBreeder.Store
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && (escape || zoomOut)) StepBackInTank();
             else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
+            // With nothing left to step back from, Esc opens the pause menu.
+            else if (focused == null && escape && panel == Panel.None && following < 0 && !UiLayout.Editing) PauseMenu.Open();
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && GUIUtility.keyboardControl == 0) following++;
             var person = focused == null ? FollowedPerson() : null;

@@ -5,7 +5,7 @@ namespace FishBreeder.People
 {
     /// <summary>
     /// The fish seller at his stall: where egg and fry boxes are bought (equipment, food and
-    /// decorations stay on the supplier computer). Stands with his arms folded, keeps an eye on
+    /// decorations stay on the supplier menu). Stands with his arms folded, keeps an eye on
     /// you, beckons you over while the shop is shut, and shows off his stock when you buy.
     /// </summary>
     public class FishSeller : MonoBehaviour

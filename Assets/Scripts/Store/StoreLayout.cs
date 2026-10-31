@@ -15,8 +15,7 @@ namespace FishBreeder.Store
     /// the main floor (it reaches north past the main floor's back wall), with a wall aquarium set
     /// into each of its walls, four in all. Tanks stand round the walls, facing into the room,
     /// which leaves the middle free to walk about. Breeder and quarantine tanks live round the
-    /// walls of the breeding room (the back room) to the west, which customers never see, with the
-    /// supplier computer; through a door in its west wall is the big breeding room, whose back
+    /// walls of the breeding room (the back room) to the west, which customers never see; through a door in its west wall is the big breeding room, whose back
     /// wall takes a wall breeding tank for the big fish. The fish seller parks his van in the empty
     /// parking lot behind the breeding room, by its back door. Every spot has room for the biggest
     /// tank size, so tanks can be upgraded where they stand.
@@ -169,7 +168,6 @@ namespace FishBreeder.Store
         /// <summary>Tanks on the shop floor, the ones customers look at (not the back room).</summary>
         public IReadOnlyList<StoreTank> PublicTanks => publicTanks;
         public Vector3 RegisterPoint { get; private set; }
-        public Vector3 ComputerPoint { get; private set; }
         public Vector3 FishSellerPoint { get; private set; }
         public Vector3 EntrancePoint => new Vector3(0f, 0.1f, -SectionDepth * 0.5f - 0.6f);
         /// <summary>Where customers appear and disappear, out on the pavement.</summary>
@@ -218,7 +216,7 @@ namespace FishBreeder.Store
             foreach (var spot in BackRoomSpots)
                 slots.Add(new Slot { backRoom = true, position = new Vector3(BackRoomCenterX + spot.x, StandHeight, spot.y), yaw = spot.z });
             // Round the walls in walking order. The main floor: up the west wall (its front is the
-            // staff door and the computer), then along the back. The others: along the back wall,
+            // staff door), then along the back. The others: along the back wall,
             // then back along the front wall facing in. Their east side stays open into the next one.
             foreach (var section in sections)
             {
@@ -247,7 +245,6 @@ namespace FishBreeder.Store
             BuildShell();
             BuildBackRoom();
             BuildRegister();
-            BuildComputer();
             BuildPavement();
             BuildParkingLot();
             RefreshEmptySlots();
@@ -804,7 +801,7 @@ namespace FishBreeder.Store
 
         /// <summary>
         /// Staff only: the breeding room, where the breeder and quarantine tanks stand round the
-        /// walls, the supplier computer sits by the front wall, a little back door opens onto the
+        /// walls, a little back door opens onto the
         /// parking lot where the fish seller parks his van, and a door in the west wall leads
         /// through to the big breeding room.
         /// </summary>
@@ -831,7 +828,7 @@ namespace FishBreeder.Store
             Wall(root, "SideWall", new Vector3(sideX, FrontWallHeight * 0.5f, (doorSouth - halfD - t) * 0.5f), new Vector3(t, FrontWallHeight, doorSouth + halfD + t), WallColor);
             Wall(root, "StaffDoorLintel", new Vector3(sideX, 2.5f, BigRoomDoorZ), new Vector3(t * 1.4f, 0.15f, StaffDoorWidth + t), CounterColor);
             Wall(root, "FrontWall", new Vector3(cx, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(BackRoomWidth + t * 2f, FrontWallHeight, t), WallColor);
-            // A work bench along the front wall, beside the computer desk.
+            // A work bench along the front wall.
             Wall(root, "Bench", new Vector3(cx + 1.5f, 0.45f, -halfD + 0.45f), new Vector3(2.6f, 0.9f, 0.6f), CounterColor);
             Wall(root, "Buckets", new Vector3(cx + 0.7f, 1.05f, -halfD + 0.45f), new Vector3(0.3f, 0.3f, 0.3f), new Color(0.3f, 0.5f, 0.75f));
             Wall(root, "Nets", new Vector3(cx + 2.2f, 0.98f, -halfD + 0.4f), new Vector3(0.5f, 0.16f, 0.36f), new Color(0.3f, 0.62f, 0.66f));
@@ -893,24 +890,6 @@ namespace FishBreeder.Store
             keeper.gameObject.AddComponent<Shopkeeper>().Build(placeholder.gameObject);
             ShopkeeperHand = keeper.position + new Vector3(-0.35f, 1.05f * Customer.PersonScale, 0f);
             StoreClickable.Add(root, "Register", counter + new Vector3(0f, 0.75f, 0f), new Vector3(0.7f, 1.5f, 2.1f), StoreClickable.Kind.Register);
-        }
-
-        void BuildComputer()
-        {
-            var root = new GameObject("Supplier computer").transform;
-            root.SetParent(transform, false);
-            // In the breeding room, by the front wall.
-            var desk = new Vector3(BackRoomCenterX - 1.9f, 0f, -3.75f);
-            Wall(root, "Desk", desk + new Vector3(0f, 0.72f, 0f), new Vector3(1.4f, 0.06f, 0.7f), CounterColor);
-            for (int sx = -1; sx <= 1; sx += 2)
-                Wall(root, "DeskLeg", desk + new Vector3(sx * 0.62f, 0.35f, 0f), new Vector3(0.06f, 0.7f, 0.62f), CounterColor);
-            Wall(root, "MonitorStand", desk + new Vector3(0f, 0.84f, 0.18f), new Vector3(0.08f, 0.18f, 0.08f), DarkColor);
-            Wall(root, "Monitor", desk + new Vector3(0f, 1.1f, 0.18f), new Vector3(0.62f, 0.4f, 0.05f), DarkColor);
-            Wall(root, "Screen", desk + new Vector3(0f, 1.1f, 0.15f), new Vector3(0.56f, 0.34f, 0.01f), new Color(0.35f, 0.6f, 0.9f));
-            Wall(root, "Keyboard", desk + new Vector3(0f, 0.76f, -0.12f), new Vector3(0.45f, 0.02f, 0.15f), DarkColor);
-            Wall(root, "Chair", desk + new Vector3(0f, 0.25f, -0.65f), new Vector3(0.5f, 0.5f, 0.5f), StripeColor);
-            ComputerPoint = desk + new Vector3(0f, 1.45f, 0.18f);
-            StoreClickable.Add(root, "Supplier computer", desk + new Vector3(0f, 0.7f, -0.1f), new Vector3(1.45f, 1.4f, 1.3f), StoreClickable.Kind.Computer);
         }
 
         /// <summary>The pavement along the shop front and the street beyond it, where customers come from.</summary>

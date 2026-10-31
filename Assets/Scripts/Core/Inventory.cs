@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// Decorations and background pictures bought at the supplier computer and not in a tank yet.
+    /// Decorations and background pictures bought from the supplier menu and not in a tank yet.
     /// They're put in (and taken back out) from each aquarium's Tank tab, so three plants bought at
     /// once can go one in one tank and two in another. Taking something out of a tank puts it back here.
     /// </summary>

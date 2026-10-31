@@ -85,7 +85,7 @@ namespace FishBreeder.Core
             int count = FoodPortions(type);
             if (count <= 0)
             {
-                GameLog.Add($"You're out of {type.ToString().ToLower()}. Order more at the supplier computer.");
+                GameLog.Add($"You're out of {type.ToString().ToLower()}. Order more from the Supplier menu (B).");
                 return false;
             }
             food[type] = count - 1;

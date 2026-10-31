@@ -42,7 +42,7 @@ namespace FishBreeder.Core
             ViewMode.Set(false);
             Tank.Focused = null;
 
-            // The tanks start empty: the first fish come from the supplier computer.
+            // The tanks start empty: the first fish come from the fish seller.
             var store = new GameObject("Store").AddComponent<StoreLayout>();
             store.Build();
 

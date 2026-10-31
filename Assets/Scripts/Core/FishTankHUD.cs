@@ -863,7 +863,7 @@ namespace FishBreeder.Core
                 string name = info != null ? info.name : food.ToString();
                 if (Ui.Button($"Feed {name.ToLower()} ({left} left)") && Economy.TryUseFood(food)) storeTank.Feeding.Feed(food, 8);
             }
-            if (!any) Ui.Label("<color=#ff9a8a>No food! Order some at the supplier computer.</color>", Rich());
+            if (!any) Ui.Label("<color=#ff9a8a>No food! Order some from the Supplier menu (B).</color>", Rich());
         }
 
         // ------------------------------------------------------------ upgrades
@@ -1195,7 +1195,7 @@ namespace FishBreeder.Core
                 }
                 GUI.enabled = wasEnabled;
             }
-            if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
+            if (!any) Ui.Label("<size=11><i>None in stock. Buy them from the Supplier menu (B).</i></size>", Rich());
 
             var ids = decor.Ids;
             if (ids.Count == 0) return;
@@ -1245,7 +1245,7 @@ namespace FishBreeder.Core
                 tank.SetBackground(pair.Key);
                 GameLog.Add($"Put the {item.name.ToLower()} background up in {storeTank.Title}.");
             }
-            if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
+            if (!any) Ui.Label("<size=11><i>None in stock. Buy them from the Supplier menu (B).</i></size>", Rich());
         }
 
         /// <summary>
@@ -1274,7 +1274,7 @@ namespace FishBreeder.Core
                 tank.SetSideBackground(pair.Key);
                 GameLog.Add($"Put the {item.name.ToLower()} picture up on the sides of {storeTank.Title}.");
             }
-            if (!any) Ui.Label("<size=11><i>None in stock. Buy them at the supplier computer.</i></size>", Rich());
+            if (!any) Ui.Label("<size=11><i>None in stock. Buy them from the Supplier menu (B).</i></size>", Rich());
         }
 
         /// <summary>One row of a picker: a picture, a name and a button. True when the button is clicked.</summary>

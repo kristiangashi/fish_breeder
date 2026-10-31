@@ -31,14 +31,14 @@ namespace FishBreeder.Store
         static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment" };
 #endif
         const int EggsTab = 0, FryTab = 1, DecorTab = 2, FoodTab = 3, EquipmentTab = 4, DevFryTab = 5;
-        // The fish seller sells the fish; the supplier computer everything else.
+        // The fish seller sells the fish; the supplier menu (top bar) everything else.
 #if UNITY_EDITOR
         static readonly int[] FishSellerTabs = { EggsTab, FryTab, DevFryTab };
 #else
         static readonly int[] FishSellerTabs = { EggsTab, FryTab };
 #endif
         // Equipment is bought from each aquarium's Upgrades tab, since what fits depends on the tank.
-        static readonly int[] ComputerTabs = { DecorTab, FoodTab };
+        static readonly int[] SupplierMenuTabs = { DecorTab, FoodTab };
         static readonly float[] Speeds = { 1f, 5f, 20f };
 
         StoreLayout store;
@@ -133,6 +133,7 @@ namespace FishBreeder.Store
             // Esc steps back one level: from a fish to its tank, from the tank to the store.
             bool escape = Input.GetKeyDown(KeyCode.Escape);
             if (Input.GetKeyDown(KeyCode.V) && GUIUtility.keyboardControl == 0 && panel != Panel.DayReport) ToggleWatch();
+            if (Input.GetKeyDown(KeyCode.B) && GUIUtility.keyboardControl == 0 && !shopDay.IsOpen) ToggleSupplier();
             if (escape && ViewMode.Watching)
             {
                 ViewMode.Set(false);
@@ -644,6 +645,7 @@ namespace FishBreeder.Store
                     GUILayout.BeginHorizontal();
                     GUILayout.FlexibleSpace();
                 }
+                if (Ui.Button("Supplier (B)", GUILayout.Width(96f))) ToggleSupplier();
                 if (Ui.Button("Journal (J)", GUILayout.Width(92f))) JournalView.Toggle();
                 if (Ui.Button(ResearchView.ButtonLabel(), PerkButtonStyle(), GUILayout.Width(118f))) ResearchView.Toggle();
                 if (Ui.Button(PerksButtonLabel(), PerkButtonStyle(), GUILayout.Width(Perks.TotalAvailable > 0 ? 104f : 84f))) PerksView.Toggle();
@@ -1073,7 +1075,7 @@ namespace FishBreeder.Store
             panel = Panel.Register;
             yield return Frames();
             foreach (bool seller in new[] { false, true })
-                foreach (int tab in seller ? FishSellerTabs : ComputerTabs)
+                foreach (int tab in seller ? FishSellerTabs : SupplierMenuTabs)
                 {
                     if (shopDay.IsOpen) break;
                     atFishSeller = seller;
@@ -1173,7 +1175,6 @@ namespace FishBreeder.Store
                 WorldLabel(t.InnerBounds.center + Vector3.up * 0.65f, $"<b>{tank.Title}</b>\n{contents}{warning}", scale, height);
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
-            WorldLabel(store.ComputerPoint, "<b>Supplier computer</b>\nfood, decorations, equipment", scale, height);
             // The seller is behind the breeding room's back wall: only labelled once the view is out there.
             if (panZ >= 4f) WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
             // The van is out of sight behind the breeding room: a sign over the back door slides the view there.
@@ -1399,6 +1400,13 @@ namespace FishBreeder.Store
             UiCheck.End();
         }
 
+        /// <summary>The supplier menu (food, decorations, backgrounds): the Supplier button or B, shop closed only.</summary>
+        void ToggleSupplier()
+        {
+            if (panel == Panel.Supplier && !atFishSeller) panel = Panel.None;
+            else if (panel == Panel.None || panel == Panel.Supplier) OpenSupplier(false);
+        }
+
         void OpenSupplier(bool fishSeller)
         {
             atFishSeller = fishSeller;
@@ -1441,10 +1449,10 @@ namespace FishBreeder.Store
 
         void DrawSupplier()
         {
-            string id = atFishSeller ? "Fish seller" : "Supplier computer";
+            string id = atFishSeller ? "Fish seller" : "Supplier";
             UiCheck.Begin(id, panelRect, UiStyles.Window);
             GUILayout.BeginHorizontal();
-            Ui.Label(atFishSeller ? "Fish seller" : "Supplier computer", UiTheme.Title);
+            Ui.Label(atFishSeller ? "Fish seller" : "Supplier", UiTheme.Title);
             GUILayout.FlexibleSpace();
             Ui.Label($"Fishkeeping {Progression.Fishkeeping}   Shopkeeping {Progression.Shopkeeping}   Balance: <b>{Economy.Format(Economy.Money)}</b>", Rich());
             GUILayout.EndHorizontal();
@@ -1455,13 +1463,13 @@ namespace FishBreeder.Store
                 UiCheck.End();
                 return;
             }
-            var tabs = atFishSeller ? FishSellerTabs : ComputerTabs;
+            var tabs = atFishSeller ? FishSellerTabs : SupplierMenuTabs;
             var tabNames = new string[tabs.Length];
             for (int i = 0; i < tabs.Length; i++) tabNames[i] = SupplierTabs[tabs[i]];
             int shown = Mathf.Max(0, System.Array.IndexOf(tabs, supplierTab));
             shown = Mathf.Clamp(Ui.Toolbar(shown, tabNames), 0, tabs.Length - 1);
             supplierTab = tabs[shown];
-            Ui.Label(atFishSeller ? "<size=11><i>Food and decorations are on the supplier computer.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall. Equipment is bought from each aquarium's Upgrades tab.</i></size>", Rich());
+            Ui.Label(atFishSeller ? "<size=11><i>Food and decorations are on the supplier menu: the Supplier (B) button up top.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall. Equipment is bought from each aquarium's Upgrades tab.</i></size>", Rich());
             if (atFishSeller && FishSeller.Away)
                 Ui.Label($"<color={UiTheme.SunHex}>The fish seller has gone home for the night. He's back in the morning.</color>", Rich());
             GUILayout.Space(2f);
@@ -1866,7 +1874,6 @@ namespace FishBreeder.Store
             {
                 case StoreClickable.Kind.Tank: EnterTank(clickable.tank); break;
                 case StoreClickable.Kind.Register: panel = Panel.Register; break;
-                case StoreClickable.Kind.Computer: OpenSupplier(false); break;
                 case StoreClickable.Kind.FishSeller: OpenSupplier(true); break;
                 case StoreClickable.Kind.EmptySlot: pendingSlot = clickable.slot; panel = Panel.BuyTank; break;
                 case StoreClickable.Kind.LockedSection: pendingSection = clickable.section; panel = Panel.Unlock; break;

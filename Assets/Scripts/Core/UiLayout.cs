@@ -1,0 +1,749 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace FishBreeder.Core
+{
+    /// <summary>
+    /// Hand-tuned nudges for the menus. Every window (anything drawn through <see cref="UiCheck"/>)
+    /// and every named item (<see cref="Item"/>, like the XP bars) can be moved and resized by a
+    /// saved offset, kept in Resources/UiLayout.json so builds ship with it.
+    /// The layout editor (F7, in the editor and in dev mode) shows an outline round each of them:
+    /// drag a window by its name tag (or hold Ctrl and drag anywhere in it), drag the corner square
+    /// to resize it, drag an item to move it (Shift-drag resizes it), and right-click a tag or item
+    /// to put it back where the code puts it. Every change is saved straight away.
+    /// Drags snap: an edge or middle that comes near another window's (or, for a piece, another
+    /// piece's in the same window) lines up with it and shows a guide line, and otherwise the
+    /// corner snaps to an 8 px grid. Hold Alt to drag freely. The arrow keys nudge the last thing
+    /// touched by a pixel (Shift: 8), Ctrl with the arrows resizes it.
+    /// A picked label, button or toggle can also get new text (typed in the editor's bar; "{text}"
+    /// stands for what the code says, so a number can be kept) or be hidden (Delete, or the bar's
+    /// Hide button): a hidden piece takes no room once the editor closes, and shows faintly while
+    /// it's open so it can be brought back.
+    /// Shift-click picks more than one piece: dragging any picked piece moves them all, the arrow
+    /// keys nudge them all, and Delete hides them all. While the editor is open, menu buttons don't
+    /// click (see <see cref="Ui"/>).
+    /// </summary>
+    public static class UiLayout
+    {
+        [Serializable]
+        class Entry
+        {
+            public string id;
+            public float x, y, width, height;
+            // New text for a label or button ("" or missing: the code's own), and whether it's hidden.
+            public string text;
+            public bool hidden;
+        }
+
+        [Serializable]
+        class SavedLayout
+        {
+            public List<Entry> entries = new List<Entry>();
+        }
+
+        const string ResourceName = "UiLayout";
+        static Dictionary<string, Rect> offsets;
+        static Dictionary<string, string> texts;
+        static HashSet<string> hidden;
+        // What the code says for each piece drawn while editing, for the editor's text box.
+        static readonly Dictionary<string, string> originals = new Dictionary<string, string>();
+
+        /// <summary>The layout editor is showing (F7).</summary>
+        public static bool Editing { get; set; }
+        /// <summary>Items (bars and labels inside windows) get outlines too, not just windows.</summary>
+        public static bool ShowItems = true;
+
+        static string dragging;
+        static bool resizing;
+        static Vector2 dragFrom;
+        static Rect dragStart;
+        // Every picked piece's offset when the drag began, so the group moves (or grows) together.
+        static readonly Dictionary<string, Rect> groupStart = new Dictionary<string, Rect>();
+
+        /// <summary>The pieces picked (Shift-click adds or takes one away). The last one clicked is <see cref="LastTouched"/>.</summary>
+        static readonly List<string> picked = new List<string>();
+        public static int PickedCount => picked.Count;
+        public static bool IsPicked(string id) => picked.Contains(id);
+        public static void ClearPicked()
+        {
+            picked.Clear();
+            LastTouched = null;
+        }
+
+        static void Pick(string id, bool add)
+        {
+            if (!add)
+            {
+                picked.Clear();
+                picked.Add(id);
+                LastTouched = id;
+                return;
+            }
+            if (picked.Remove(id))
+            {
+                LastTouched = picked.Count > 0 ? picked[picked.Count - 1] : null;
+                return;
+            }
+            picked.Add(id);
+            LastTouched = id;
+        }
+
+        /// <summary>The last window or item touched, shown in the editor's bar.</summary>
+        public static string LastTouched { get; private set; }
+
+        /// <summary>Drags line up with other edges and the grid (hold Alt to drag freely).</summary>
+        public static bool Snap = true;
+        /// <summary>The editor draws the grid over the screen.</summary>
+        public static bool ShowGrid = true;
+        public const float GridSize = 8f;
+        // How close (in GUI pixels) an edge has to come to another to line up with it.
+        const float EdgeReach = 6f;
+
+        // Where every window and item was last drawn, so drags can line up with them. Windows are
+        // in screen GUI space (parent null), items in their window's space.
+        struct Drawn
+        {
+            public Rect rect;
+            public string parent;
+            public int frame;
+        }
+        static readonly Dictionary<string, Drawn> drawn = new Dictionary<string, Drawn>();
+        static string currentWindow;
+        // The guide lines for the drag going on, in the dragged thing's space.
+        static readonly List<Rect> guides = new List<Rect>();
+
+        /// <summary>Where the last touched window or item is now (in its own space), for the editor's bar.</summary>
+        public static Rect? LastRect => LastTouched != null && drawn.TryGetValue(LastTouched, out var d) ? d.rect : (Rect?)null;
+
+        static Dictionary<string, Rect> Offsets
+        {
+            get
+            {
+                if (offsets == null) Load();
+                return offsets;
+            }
+        }
+
+        static Dictionary<string, string> Texts
+        {
+            get
+            {
+                if (offsets == null) Load();
+                return texts;
+            }
+        }
+
+        static HashSet<string> Hidden
+        {
+            get
+            {
+                if (offsets == null) Load();
+                return hidden;
+            }
+        }
+
+        static void Load()
+        {
+            offsets = new Dictionary<string, Rect>();
+            texts = new Dictionary<string, string>();
+            hidden = new HashSet<string>();
+            var asset = Resources.Load<TextAsset>(ResourceName);
+            if (asset == null || string.IsNullOrWhiteSpace(asset.text)) return;
+            try
+            {
+                var saved = JsonUtility.FromJson<SavedLayout>(asset.text);
+                if (saved?.entries == null) return;
+                foreach (var entry in saved.entries)
+                {
+                    if (string.IsNullOrEmpty(entry.id)) continue;
+                    var r = new Rect(entry.x, entry.y, entry.width, entry.height);
+                    if (r != Rect.zero) offsets[entry.id] = r;
+                    if (!string.IsNullOrEmpty(entry.text)) texts[entry.id] = entry.text;
+                    if (entry.hidden) hidden.Add(entry.id);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[FishBreeder] Couldn't read UiLayout.json: " + e.Message);
+            }
+        }
+
+        static void Save()
+        {
+#if UNITY_EDITOR
+            savePending = false;
+            var saved = new SavedLayout();
+            var all = new HashSet<string>(offsets.Keys);
+            all.UnionWith(texts.Keys);
+            all.UnionWith(hidden);
+            var ids = new List<string>(all);
+            ids.Sort(StringComparer.Ordinal);
+            foreach (var id in ids)
+            {
+                offsets.TryGetValue(id, out var r);
+                texts.TryGetValue(id, out var text);
+                bool hide = hidden.Contains(id);
+                if (r == Rect.zero && string.IsNullOrEmpty(text) && !hide) continue;
+                saved.entries.Add(new Entry { id = id, x = Round(r.x), y = Round(r.y), width = Round(r.width), height = Round(r.height), text = text, hidden = hide });
+            }
+            string path = System.IO.Path.Combine(Application.dataPath, "Resources", ResourceName + ".json");
+            System.IO.File.WriteAllText(path, JsonUtility.ToJson(saved, true));
+            UnityEditor.AssetDatabase.ImportAsset("Assets/Resources/" + ResourceName + ".json");
+#endif
+        }
+
+        static float Round(float v) => Mathf.Round(v);
+
+        static Rect Apply(string id, Rect rect)
+        {
+            if (!Offsets.TryGetValue(id, out var o)) return rect;
+            return new Rect(rect.x + o.x, rect.y + o.y, Mathf.Max(8f, rect.width + o.width), Mathf.Max(4f, rect.height + o.height));
+        }
+
+        /// <summary>Puts one window or item back the way the code has it: place, size, text and showing.</summary>
+        public static void Reset(string id)
+        {
+            bool changed = Offsets.Remove(id);
+            changed |= Texts.Remove(id);
+            changed |= Hidden.Remove(id);
+            if (changed) Save();
+        }
+
+        public static void ResetAll()
+        {
+            Offsets.Clear();
+            Texts.Clear();
+            Hidden.Clear();
+            Save();
+        }
+
+        /// <summary>How many windows and pieces are changed from the code's layout.</summary>
+        public static int Count
+        {
+            get
+            {
+                var all = new HashSet<string>(Offsets.Keys);
+                all.UnionWith(Texts.Keys);
+                all.UnionWith(Hidden);
+                return all.Count;
+            }
+        }
+
+        // ------------------------------------------------------------ text and hiding
+
+        static bool savePending;
+        static float saveAt;
+
+        /// <summary>Saves a moment later, so typing new text doesn't write the file on every key.</summary>
+        static void SaveSoon()
+        {
+            savePending = true;
+            saveAt = Time.realtimeSinceStartup + 0.8f;
+        }
+
+        /// <summary>Writes a waiting save once typing has paused (the editor calls this every frame).</summary>
+        public static void SaveIfDue(bool now = false)
+        {
+            if (savePending && (now || Time.realtimeSinceStartup >= saveAt)) Save();
+        }
+
+        /// <summary>
+        /// A label's or button's content with its new text, if it has one. False when it's hidden
+        /// and the editor is closed: draw nothing and take no room.
+        /// </summary>
+        public static bool Content(string id, ref GUIContent content)
+        {
+            if (Editing && content != null) originals[id] = content.text ?? "";
+            if (!Editing && Hidden.Contains(id)) return false;
+            if (Texts.TryGetValue(id, out var text) && content != null)
+                content = new GUIContent(text.Replace("{text}", content.text ?? ""), content.image, content.tooltip);
+            return true;
+        }
+
+        /// <summary>The piece is hidden (only drawn, faintly, while the editor is open).</summary>
+        public static bool IsHidden(string id) => Hidden.Contains(id);
+
+        /// <summary>The last touched piece can have its text changed and be hidden (labels, buttons, toggles).</summary>
+        public static bool LastHasText => LastTouched != null && originals.ContainsKey(LastTouched) && picked.Count <= 1;
+
+        public static string OriginalText(string id) => id != null && originals.TryGetValue(id, out var text) ? text : "";
+
+        /// <summary>The piece's new text, or what the code says when it has none.</summary>
+        public static string TextFor(string id) => id != null && Texts.TryGetValue(id, out var text) ? text : OriginalText(id);
+
+        public static bool HasNewText(string id) => id != null && Texts.ContainsKey(id);
+
+        public static void SetText(string id, string text)
+        {
+            if (id == null) return;
+            if (text == OriginalText(id)) Texts.Remove(id);
+            else Texts[id] = text;
+            SaveSoon();
+        }
+
+        public static void ResetText(string id)
+        {
+            if (id != null && Texts.Remove(id)) Save();
+        }
+
+        public static void SetHidden(string id, bool hide)
+        {
+            if (id == null) return;
+            if (hide ? Hidden.Add(id) : Hidden.Remove(id)) Save();
+        }
+
+        // ------------------------------------------------------------ windows
+
+        /// <summary>
+        /// A window's rect with its saved nudge. While editing, its name tag and corner take mouse
+        /// drags (call before the window's content, in the window's parent space).
+        /// </summary>
+        public static Rect Window(string id, Rect rect)
+        {
+            var moved = Apply(id, rect);
+            // The pieces drawn next are named after this window, editing or not, so their nudges
+            // are found when the editor is closed too.
+            currentWindow = id;
+            autoCounts.Clear();
+            if (!Editing) return moved;
+            var e = Event.current;
+            var tag = TagRect(id, moved);
+            var corner = new Rect(moved.xMax - 12f, moved.yMax - 12f, 12f, 12f);
+            if (e.type == EventType.MouseDown)
+            {
+                if (e.button == 1 && tag.Contains(e.mousePosition))
+                {
+                    Reset(id);
+                    LastTouched = id;
+                    e.Use();
+                    return rect;
+                }
+                if (e.button == 0 && (tag.Contains(e.mousePosition) || corner.Contains(e.mousePosition) || (e.control && moved.Contains(e.mousePosition))))
+                {
+                    picked.Clear();
+                    StartDrag(id, corner.Contains(e.mousePosition), e);
+                }
+            }
+            HandleDrag(id, rect, null, e);
+            moved = Apply(id, rect);
+            Record(id, moved, null);
+            currentWindow = id;
+            autoCounts.Clear();
+            return moved;
+        }
+
+        /// <summary>Draws the window's outline, name tag and corner while editing (call after the window).</summary>
+        public static void WindowOutline(string id, Rect moved)
+        {
+            if (currentWindow == id) currentWindow = null;
+            if (!Editing || Event.current.type != EventType.Repaint) return;
+            var color = dragging == id ? UiTheme.Sun : new Color(1f, 0.45f, 0.6f, 0.9f);
+            Outline(moved, color, 2f);
+            var tag = TagRect(id, moved);
+            GUI.DrawTexture(tag, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(color.r, color.g, color.b, 0.85f), 0f, 3f);
+            GUI.Label(tag, id, TagStyle());
+            GUI.DrawTexture(new Rect(moved.xMax - 12f, moved.yMax - 12f, 12f, 12f), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 2f);
+            if (dragging == id) DrawGuides();
+        }
+
+        static Rect TagRect(string id, Rect window)
+        {
+            float w = Mathf.Min(window.width, TagStyle().CalcSize(new GUIContent(id)).x + 8f);
+            return new Rect(window.x, window.y, w, 16f);
+        }
+
+        // ------------------------------------------------------------ items
+
+        /// <summary>
+        /// A piece inside a window (a button, label, toggle, bar, picture) with its saved nudge.
+        /// Every button and label drawn through <see cref="Ui"/> comes through here with a name made
+        /// from its window and text (see <see cref="AutoId"/>); bars and pictures pass their own.
+        /// While editing (with pieces shown) it gets a thin outline: a plain click still clicks it
+        /// (so tabs and buttons keep working), dragging it moves it, Shift-drag resizes it, and
+        /// right-click puts it back.
+        /// </summary>
+        public static Rect Item(string id, Rect rect)
+        {
+            if (!Editing && Offsets.Count == 0) return rect;
+            var moved = Apply(id, rect);
+            if (!Editing || !ShowItems) return moved;
+            string parent = currentWindow ?? "";
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && moved.Contains(e.mousePosition) && !e.control)
+            {
+                if (e.button == 1)
+                {
+                    Reset(id);
+                    LastTouched = id;
+                    e.Use();
+                    return rect;
+                }
+                // The editor's text box lets go, so it shows this piece's text.
+                GUIUtility.keyboardControl = 0;
+                if (e.button == 0)
+                {
+                    // Decided when the mouse moves (a drag) or lets go (a click, which picks it).
+                    // Pieces drawn later are on top, so the last one hit wins. The corner square of
+                    // a picked piece resizes it, like Shift-drag.
+                    pressed = id;
+                    pressedFrom = e.mousePosition;
+                    pressedShift = e.shift;
+                    pressedCorner = picked.Contains(id) && CornerRect(moved).Contains(e.mousePosition);
+                }
+            }
+            if (e.type == EventType.MouseDrag && pressed == id && dragging == null && (e.mousePosition - pressedFrom).sqrMagnitude > 9f)
+            {
+                if (!picked.Contains(id)) Pick(id, false);
+                LastTouched = id;
+                dragging = id;
+                resizing = pressedShift || pressedCorner;
+                dragFrom = pressedFrom;
+                dragStart = Offsets.TryGetValue(id, out var o) ? o : Rect.zero;
+                groupStart.Clear();
+                foreach (var other in picked) groupStart[other] = Offsets.TryGetValue(other, out var g) ? g : Rect.zero;
+                pressed = null;
+                // A button that took the press lets go of it.
+                GUIUtility.hotControl = 0;
+            }
+            if (e.rawType == EventType.MouseUp && pressed == id)
+            {
+                Pick(id, pressedShift);
+                pressed = null;
+            }
+            HandleDrag(id, rect, parent, e);
+            moved = Apply(id, rect);
+            Record(id, moved, parent);
+            if (e.type == EventType.Repaint)
+            {
+                var r = new Rect(moved.x - 1f, moved.y - 1f, moved.width + 2f, moved.height + 2f);
+                bool hot = dragging == id || picked.Contains(id);
+                bool over = r.Contains(e.mousePosition);
+                var teal = Hidden.Contains(id) ? new Color(1f, 0.45f, 0.6f, 1f) : new Color(0.4f, 1f, 0.9f, 1f);
+                Outline(r, hot ? UiTheme.Sun : new Color(teal.r, teal.g, teal.b, over ? 0.95f : 0.3f), 1f);
+                if (picked.Contains(id))
+                    GUI.DrawTexture(CornerRect(moved), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, UiTheme.Sun, 0f, 1f);
+                if (dragging == id) DrawGuides();
+            }
+            return moved;
+        }
+
+        // The little square at a picked piece's bottom right that resizes it.
+        static Rect CornerRect(Rect piece) => new Rect(piece.xMax - 5f, piece.yMax - 5f, 7f, 7f);
+
+        // A press on a piece that hasn't turned into a click or a drag yet.
+        static string pressed;
+        static Vector2 pressedFrom;
+        static bool pressedShift, pressedCorner;
+
+        // How many pieces with the same name the current window has drawn so far this pass.
+        static readonly Dictionary<string, int> autoCounts = new Dictionary<string, int>();
+        static readonly System.Text.StringBuilder idBuilder = new System.Text.StringBuilder();
+
+        /// <summary>
+        /// A name for a piece from its window and its text, with numbers, prices and markup left out
+        /// so it stays the same as the numbers change ("Tank panel / Move decorations (top view)").
+        /// A second piece with the same text in the same window gets " #2", and so on.
+        /// </summary>
+        public static string AutoId(string kind, string text)
+        {
+            string scope = currentWindow ?? "Screen";
+            idBuilder.Clear();
+            bool inTag = false, space = false;
+            if (text != null)
+                foreach (char c in text)
+                {
+                    if (c == '<') { inTag = true; continue; }
+                    if (c == '>' && inTag) { inTag = false; continue; }
+                    if (inTag) continue;
+                    if (char.IsDigit(c) || c == '$' || c == '%' || c == ',' || c == '.' || c == '/' || c == '+' || c == '-' || c == ':')
+                        continue;
+                    if (char.IsWhiteSpace(c)) { space = idBuilder.Length > 0; continue; }
+                    if (space) idBuilder.Append(' ');
+                    space = false;
+                    idBuilder.Append(c);
+                    if (idBuilder.Length >= 40) break;
+                }
+            string name = idBuilder.Length > 0 ? idBuilder.ToString() : kind;
+            string id = scope + " / " + name;
+            if (currentWindow == null) return id;
+            autoCounts.TryGetValue(id, out int n);
+            autoCounts[id] = n + 1;
+            return n == 0 ? id : id + " #" + (n + 1);
+        }
+
+        /// <summary>Whether pieces need their names at all (something is nudged, or the editor is open).</summary>
+        public static bool Active => Editing || Offsets.Count > 0 || Texts.Count > 0 || Hidden.Count > 0;
+
+        // ------------------------------------------------------------ dragging
+
+        static void StartDrag(string id, bool resize, Event e)
+        {
+            groupStart.Clear();
+            dragging = id;
+            resizing = resize;
+            dragFrom = e.mousePosition;
+            dragStart = Offsets.TryGetValue(id, out var o) ? o : Rect.zero;
+            LastTouched = id;
+            e.Use();
+        }
+
+        static void HandleDrag(string id, Rect code, string parent, Event e)
+        {
+            if (dragging != id) return;
+            if (e.type == EventType.MouseDrag)
+            {
+                var d = e.mousePosition - dragFrom;
+                // Whole pixels, so text stays crisp.
+                d = new Vector2(Mathf.Round(d.x), Mathf.Round(d.y));
+                var offset = resizing
+                    ? new Rect(dragStart.x, dragStart.y, dragStart.width + d.x, dragStart.height + d.y)
+                    : new Rect(dragStart.x + d.x, dragStart.y + d.y, dragStart.width, dragStart.height);
+                guides.Clear();
+                if (Snap && !e.alt) offset = Snapped(id, code, offset, parent);
+                Offsets[id] = offset;
+                // The other picked pieces go the same way (snapping follows the one being dragged).
+                var by = new Rect(offset.x - dragStart.x, offset.y - dragStart.y, offset.width - dragStart.width, offset.height - dragStart.height);
+                foreach (var pair in groupStart)
+                    if (pair.Key != id)
+                        Offsets[pair.Key] = new Rect(pair.Value.x + by.x, pair.Value.y + by.y, pair.Value.width + by.width, pair.Value.height + by.height);
+                e.Use();
+            }
+            else if (e.rawType == EventType.MouseUp)
+            {
+                dragging = null;
+                groupStart.Clear();
+                guides.Clear();
+                Save();
+                e.Use();
+            }
+        }
+
+        static void Record(string id, Rect rect, string parent)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            drawn[id] = new Drawn { rect = rect, parent = parent, frame = Time.frameCount };
+        }
+
+        /// <summary>
+        /// The offset moved so the dragged rect lines up: with the nearest edge or middle of another
+        /// window (or piece in the same window) within reach, else its corner on the grid. Moving
+        /// lines up the left, middle and right (top, middle and bottom); resizing only the far edges.
+        /// </summary>
+        static Rect Snapped(string id, Rect code, Rect offset, string parent)
+        {
+            var r = new Rect(code.x + offset.x, code.y + offset.y, code.width + offset.width, code.height + offset.height);
+            var others = new List<Rect>();
+            foreach (var pair in drawn)
+                if (pair.Key != id && pair.Value.parent == parent && pair.Value.frame >= Time.frameCount - 3)
+                    others.Add(pair.Value.rect);
+
+            float[] xs = resizing ? new[] { r.xMax } : new[] { r.xMin, r.center.x, r.xMax };
+            float[] ys = resizing ? new[] { r.yMax } : new[] { r.yMin, r.center.y, r.yMax };
+            float dx = Nearest(xs, others, true, out var lineX, out var otherX);
+            float dy = Nearest(ys, others, false, out var lineY, out var otherY);
+            if (float.IsNaN(dx)) dx = resizing ? Grid(r.xMax) - r.xMax : Grid(r.xMin) - r.xMin;
+            if (float.IsNaN(dy)) dy = resizing ? Grid(r.yMax) - r.yMax : Grid(r.yMin) - r.yMin;
+
+            var after = resizing ? new Rect(r.x, r.y, r.width + dx, r.height + dy) : new Rect(r.x + dx, r.y + dy, r.width, r.height);
+            if (!float.IsNaN(lineX))
+            {
+                float top = Mathf.Min(after.yMin, otherX.yMin), bottom = Mathf.Max(after.yMax, otherX.yMax);
+                guides.Add(new Rect(lineX, top - 6f, 1f, bottom - top + 12f));
+            }
+            if (!float.IsNaN(lineY))
+            {
+                float left = Mathf.Min(after.xMin, otherY.xMin), right = Mathf.Max(after.xMax, otherY.xMax);
+                guides.Add(new Rect(left - 6f, lineY, right - left + 12f, 1f));
+            }
+            return resizing
+                ? new Rect(offset.x, offset.y, offset.width + dx, offset.height + dy)
+                : new Rect(offset.x + dx, offset.y + dy, offset.width, offset.height);
+        }
+
+        /// <summary>The smallest shift (within reach) that puts one of these lines on another rect's edge or middle, or NaN.</summary>
+        static float Nearest(float[] mine, List<Rect> others, bool across, out float line, out Rect other)
+        {
+            float best = float.NaN;
+            line = float.NaN;
+            other = default;
+            foreach (var o in others)
+            {
+                var theirs = across ? new[] { o.xMin, o.center.x, o.xMax } : new[] { o.yMin, o.center.y, o.yMax };
+                foreach (var m in mine)
+                    foreach (var t in theirs)
+                    {
+                        float shift = t - m;
+                        if (Mathf.Abs(shift) > EdgeReach || (!float.IsNaN(best) && Mathf.Abs(shift) >= Mathf.Abs(best))) continue;
+                        best = shift;
+                        line = t;
+                        other = o;
+                    }
+            }
+            return float.IsNaN(best) ? best : Mathf.Round(best);
+        }
+
+        static float Grid(float v) => Mathf.Round(v / GridSize) * GridSize;
+
+        static void DrawGuides()
+        {
+            foreach (var g in guides)
+                GUI.DrawTexture(g, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(1f, 0.25f, 0.85f, 1f), 0f, 0f);
+        }
+
+        /// <summary>Moves (or, with resize, grows) the last touched window or item by whole pixels.</summary>
+        public static void Nudge(Vector2 by, bool resize)
+        {
+            if (LastTouched == null) return;
+            var ids = picked.Contains(LastTouched) ? new List<string>(picked) : new List<string> { LastTouched };
+            foreach (var id in ids)
+            {
+                var o = Offsets.TryGetValue(id, out var old) ? old : Rect.zero;
+                Offsets[id] = resize ? new Rect(o.x, o.y, o.width + by.x, o.height + by.y) : new Rect(o.x + by.x, o.y + by.y, o.width, o.height);
+            }
+            Save();
+        }
+
+        /// <summary>Hides (or, when the last one clicked is hidden, shows) every picked piece.</summary>
+        public static void ToggleHiddenPicked()
+        {
+            if (LastTouched == null) return;
+            bool hide = !Hidden.Contains(LastTouched);
+            var ids = picked.Contains(LastTouched) ? picked : new List<string> { LastTouched };
+            foreach (var id in ids)
+            {
+                if (hide) Hidden.Add(id);
+                else Hidden.Remove(id);
+            }
+            Save();
+        }
+
+        /// <summary>Lets go of a drag that lost its window (it closed while dragging).</summary>
+        public static void EndStrayDrag()
+        {
+            if (dragging == null) return;
+            dragging = null;
+            Save();
+        }
+
+        static void Outline(Rect r, Color color, float t)
+        {
+            GUI.DrawTexture(new Rect(r.x, r.y, r.width, t), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 0f);
+            GUI.DrawTexture(new Rect(r.x, r.yMax - t, r.width, t), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 0f);
+            GUI.DrawTexture(new Rect(r.x, r.y, t, r.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 0f);
+            GUI.DrawTexture(new Rect(r.xMax - t, r.y, t, r.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, color, 0f, 0f);
+        }
+
+        static GUIStyle tagStyle;
+        static GUIStyle TagStyle() => tagStyle != null ? tagStyle : tagStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 10, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Clip,
+            alignment = TextAnchor.MiddleLeft, padding = new RectOffset(4, 2, 0, 0), margin = new RectOffset(),
+            normal = { textColor = new Color(0.05f, 0.1f, 0.15f) },
+        };
+    }
+
+    /// <summary>
+    /// The layout editor's switch and help bar: F7 (in the editor, or in dev mode) turns it on and
+    /// off. See <see cref="UiLayout"/>.
+    /// </summary>
+    public class UiLayoutEditor : MonoBehaviour
+    {
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.F7) && DevMode.Available) UiLayout.Editing = !UiLayout.Editing;
+            if (!Input.GetMouseButton(0) && !Input.GetMouseButton(1)) UiLayout.EndStrayDrag();
+            UiLayout.SaveIfDue(!UiLayout.Editing);
+        }
+
+        void OnGUI()
+        {
+            if (!UiLayout.Editing) return;
+            UiTheme.Apply();
+            // Drawn after (over) the game's menus.
+            GUI.depth = -100;
+            float scale = Mathf.Max(1f, Screen.height / 900f);
+            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+            float width = Screen.width / scale, height = Screen.height / scale;
+            var e = Event.current;
+            // Keys go to the text box while it's being typed in.
+            bool typing = GUIUtility.keyboardControl != 0;
+            if (e.type == EventType.KeyDown && !typing && UiLayout.PickedCount > 0 && (e.keyCode == KeyCode.Delete || e.keyCode == KeyCode.Backspace))
+            {
+                UiLayout.ToggleHiddenPicked();
+                e.Use();
+            }
+            if (e.type == EventType.KeyDown && !typing && e.keyCode == KeyCode.Escape)
+            {
+                UiLayout.ClearPicked();
+                e.Use();
+            }
+            if (e.type == EventType.KeyDown && !typing && UiLayout.LastTouched != null)
+            {
+                float step = e.shift ? UiLayout.GridSize : 1f;
+                var by = e.keyCode == KeyCode.LeftArrow ? new Vector2(-step, 0f) : e.keyCode == KeyCode.RightArrow ? new Vector2(step, 0f)
+                    : e.keyCode == KeyCode.UpArrow ? new Vector2(0f, -step) : e.keyCode == KeyCode.DownArrow ? new Vector2(0f, step) : Vector2.zero;
+                if (by != Vector2.zero)
+                {
+                    UiLayout.Nudge(by, e.control);
+                    e.Use();
+                }
+            }
+            if (UiLayout.ShowGrid && e.type == EventType.Repaint) DrawGrid(width, height);
+
+            bool textRow = UiLayout.LastHasText;
+            float barHeight = textRow ? 126f : 94f;
+            var bar = new Rect(Mathf.Max(10f, width * 0.5f - 360f), height - barHeight - 10f, Mathf.Min(720f, width - 20f), barHeight);
+            GUILayout.BeginArea(bar, UiStyles.Window);
+            GUILayout.Label("<b>Menu layout editor (F7 to close)</b>  <size=11>Drag a window's pink name tag to move it (or Ctrl-drag anywhere in it), its corner square to resize. Every button, label and bar has a teal outline: click it to pick it (it still clicks), drag it to move it, Shift-drag to resize. Edges snap to other edges (pink guide line) or the grid; hold Alt to drag freely. Arrow keys nudge the last one 1 px (Shift: 8, Ctrl: resize). Buttons don't click while this is open. Shift-click picks more than one (drag, nudge or Delete them together; Esc unpicks). Picked text can be retyped below, and Delete hides it (pink outline; Delete again shows it). Right-click resets. Saved as you go.</size>", Rich());
+            if (textRow) DrawTextRow();
+            GUILayout.BeginHorizontal();
+            UiLayout.ShowItems = GUILayout.Toggle(UiLayout.ShowItems, " Pieces", GUILayout.Width(70f));
+            UiLayout.Snap = GUILayout.Toggle(UiLayout.Snap, " Snap", GUILayout.Width(62f));
+            UiLayout.ShowGrid = GUILayout.Toggle(UiLayout.ShowGrid, " Grid", GUILayout.Width(58f));
+            GUILayout.FlexibleSpace();
+            var r = UiLayout.LastRect;
+            string last = UiLayout.PickedCount > 1 ? $", {UiLayout.PickedCount} picked"
+                : UiLayout.LastTouched == null ? "" : $", last: {UiLayout.LastTouched}" + (r.HasValue ? $"  ({r.Value.x:0}, {r.Value.y:0}  {r.Value.width:0} x {r.Value.height:0})" : "");
+            GUILayout.Label($"<size=11>{UiLayout.Count} nudged{last}</size>", Rich());
+            if (UiLayout.PickedCount > 1 && GUILayout.Button(new GUIContent("Hide / show", "Hide the picked pieces, or show them again"), GUILayout.Width(90f))) UiLayout.ToggleHiddenPicked();
+            if (GUILayout.Button("Reset all", GUILayout.Width(80f))) UiLayout.ResetAll();
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+        }
+
+        /// <summary>The picked piece's text to retype ("{text}" keeps the code's), and buttons to hide it or put its text back.</summary>
+        static void DrawTextRow()
+        {
+            string id = UiLayout.LastTouched;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("<size=11>Text</size>", Rich(), GUILayout.Width(32f));
+            string now = UiLayout.TextFor(id);
+            string typed = GUILayout.TextField(now, GUILayout.MinWidth(200f));
+            if (typed != now) UiLayout.SetText(id, typed);
+            if (GUILayout.Button(new GUIContent("Original", "Put the code's text back"), GUILayout.Width(70f)))
+            {
+                GUIUtility.keyboardControl = 0;
+                UiLayout.ResetText(id);
+            }
+            bool hiddenNow = UiLayout.IsHidden(id);
+            if (GUILayout.Button(hiddenNow ? "Show" : "Hide", GUILayout.Width(56f))) UiLayout.ToggleHiddenPicked();
+            GUILayout.EndHorizontal();
+        }
+
+        /// <summary>Faint lines every 8 px, stronger every 32, so things can be lined up by eye too.</summary>
+        static void DrawGrid(float width, float height)
+        {
+            var fine = new Color(1f, 1f, 1f, 0.05f);
+            var major = new Color(1f, 1f, 1f, 0.13f);
+            float g = UiLayout.GridSize;
+            for (int i = 0; i * g <= width; i++)
+                GUI.DrawTexture(new Rect(i * g, 0f, 1f, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, i % 4 == 0 ? major : fine, 0f, 0f);
+            for (int i = 0; i * g <= height; i++)
+                GUI.DrawTexture(new Rect(0f, i * g, width, 1f), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, i % 4 == 0 ? major : fine, 0f, 0f);
+        }
+
+        static GUIStyle rich;
+        static GUIStyle Rich() => rich != null ? rich : rich = new GUIStyle(GUI.skin.label) { richText = true, wordWrap = true };
+    }
+}

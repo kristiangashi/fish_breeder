@@ -1,0 +1,2678 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balance Console</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --ink: #1d232b; --muted: #66707c; --line: #dde1e6;
+    --accent: #1f7a8c; --accent-ink: #ffffff; --warn: #b5541c; --ok: #2e7d4f; --chip: #eef2f5;
+    --series-1: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #15191e; --panel: #1d232a; --ink: #e6e9ed; --muted: #9aa4af; --line: #2e3640; --accent: #3fa7bb; --accent-ink: #0d1115; --warn: #e08a5a; --ok: #6cc690; --chip: #262e37; --series-1: #3987e5; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0 12px 0 0; }
+  #status { color: var(--muted); font-size: 13px; flex: 1; min-width: 200px; }
+  #status.dirty { color: var(--warn); }
+  button { font: inherit; padding: 6px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.small { padding: 2px 8px; font-size: 12px; }
+  nav { display: flex; gap: 2px; padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav button { border: none; border-bottom: 2px solid transparent; border-radius: 0; padding: 10px 12px; white-space: nowrap; background: none; }
+  nav button.active { border-bottom-color: var(--accent); color: var(--accent); font-weight: 600; }
+  main { padding: 18px; max-width: 1400px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 16px; }
+  label.field { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+  label.field span { display: flex; justify-content: space-between; gap: 6px; }
+  label.field.check { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); }
+  input, select, textarea { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; width: 100%; }
+  input[type=checkbox] { width: auto; }
+  input[type=color] { padding: 0; height: 30px; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .split { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+  .list { display: flex; flex-direction: column; gap: 2px; }
+  .list button { text-align: left; display: flex; justify-content: space-between; border-color: transparent; }
+  .list button.active { border-color: var(--accent); background: var(--chip); }
+  .chip { font-size: 11px; padding: 1px 6px; border-radius: 9px; background: var(--chip); color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; font-size: 13px; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td input, td select { padding: 3px 5px; min-width: 64px; }
+  td select { min-width: 130px; }
+  table.matrix th.rot { height: 120px; vertical-align: bottom; }
+  table.matrix th.rot div { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; }
+  table.matrix td { text-align: center; }
+  table.matrix td.self { background: var(--chip); }
+  table.matrix td select.rel { min-width: 0; width: 34px; padding: 2px; text-align: center; font-weight: 600; appearance: none; -webkit-appearance: none; cursor: pointer; }
+  select.rel.r0 { color: var(--muted); }
+  select.rel.r1 { background: #c0392b; color: #fff; border-color: #c0392b; }
+  select.rel.r2 { background: #d68910; color: #fff; border-color: #d68910; }
+  select.rel.r3 { background: #229954; color: #fff; border-color: #229954; }
+  .legend span { display: inline-block; margin-right: 14px; }
+  .legend b { display: inline-block; width: 22px; text-align: center; border-radius: 4px; color: #fff; margin-right: 4px; }
+  textarea.raw { min-height: 60vh; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  #toast { position: fixed; right: 18px; bottom: 18px; background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 420px; }
+  #toast.show { opacity: 0.95; }
+  .crumbs { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+  .foods { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  td.readout { color: var(--muted); white-space: nowrap; }
+  table.sortable th.sorthead { cursor: pointer; user-select: none; }
+  table.sortable th.sorthead:hover { color: var(--ink); }
+  table.sortable th.sorthead::after { content: " ↕"; opacity: .35; }
+  table.sortable th.sorthead.asc::after { content: " ▲"; opacity: .9; }
+  table.sortable th.sorthead.desc::after { content: " ▼"; opacity: .9; }
+  td.pct { font-variant-numeric: tabular-nums; }
+  tr.off td { opacity: .5; }
+  .pin { border: none; background: none; padding: 0 2px; font-size: 13px; line-height: 1; color: var(--muted); opacity: .45; cursor: pointer; }
+  .pin:hover { opacity: 1; color: var(--accent); }
+  .pin.on { opacity: 1; color: #d4a017; }
+  .swim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 14px; }
+  .swim-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .swim-head h2 { margin: 0; }
+  .swim-head input { width: 70px; }
+  .swim-stage { position: relative; cursor: ew-resize; user-select: none; touch-action: none; border-radius: 6px; background: var(--bg); }
+  .swim-frame { width: fit-content; max-width: 100%; margin: 0 auto; }
+  .swim-stage img { display: block; max-width: 100%; max-height: 210px; pointer-events: none; }
+  .swim-stiff { position: absolute; top: 0; bottom: 0; left: 0; background: repeating-linear-gradient(135deg, rgba(120,130,140,.28) 0 6px, rgba(120,130,140,.12) 6px 12px); pointer-events: none; }
+  .swim-ramp { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+  .swim-line { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; }
+  .swim-line::after { content: ""; position: absolute; top: -5px; left: -5px; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+  .swim-ruler { position: relative; height: 22px; border-top: 1px solid var(--muted); margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .swim-ruler i { position: absolute; top: 0; width: 1px; background: var(--muted); }
+  .swim-ruler span { position: absolute; top: 7px; transform: translateX(-50%); white-space: nowrap; }
+  .swim-top { display: block; max-width: 100%; max-height: 120px; margin: 6px auto 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .tile-label { font-size: 12px; color: var(--muted); }
+  .tile-value { font-size: 22px; font-weight: 650; margin: 2px 0; }
+  .tile-sub { font-size: 12px; color: var(--muted); }
+  .charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; }
+  @media (max-width: 520px) { .charts { grid-template-columns: 1fr; } }
+  .chart-wrap { position: relative; }
+  .chart-title { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+  svg.chart .axis { fill: var(--muted); font-size: 10px; }
+  svg.chart .band { fill: var(--series-1); opacity: .15; stroke: none; }
+  svg.chart .line { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  svg.chart .hair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+  svg.chart .dot { fill: var(--series-1); stroke: var(--panel); stroke-width: 2; }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15); white-space: nowrap; display: none; z-index: 2; }
+  .split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .split2 { grid-template-columns: 1fr; } }
+  .diary { max-height: 320px; overflow: auto; font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; }
+  .sim-tank { border-left: 3px solid var(--accent); }
+  .sim-tank h3 { font-size: 12.5px; margin: 12px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(470px, 100%), 1fr)); gap: 14px; }
+  .tank-card h2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tank-card .grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px 10px; margin-top: 8px; }
+  .tank-card input:disabled { opacity: .55; }
+  .tank-facts { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; }
+  .tank-facts b { color: var(--ink); font-weight: 600; }
+  .tank-facts .warn { color: var(--warn); }
+  svg.tank { width: 100%; height: auto; display: block; background: var(--bg); border-radius: 6px; }
+  svg.tank .glass { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+  svg.tank .back { fill: none; stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  svg.tank .water { fill: var(--accent); opacity: .2; }
+  svg.tank .water-top { fill: var(--accent); opacity: .34; }
+  svg.tank .prev { fill: none; stroke: var(--warn); stroke-width: 1.3; stroke-dasharray: 5 4; }
+  svg.tank .stand { fill: var(--muted); opacity: .3; }
+  svg.tank .floor { stroke: var(--muted); stroke-width: 1; }
+  svg.tank .roof { stroke: var(--warn); stroke-width: 1; stroke-dasharray: 7 5; opacity: .8; }
+  svg.tank .dim { fill: var(--muted); font-size: 11px; }
+  svg.tank .label { fill: var(--ink); font-size: 11.5px; font-weight: 600; }
+  svg.tank .person { fill: var(--muted); opacity: .45; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Fish Breeder · Balance Console</h1>
+  <input id="search" type="search" placeholder="Search settings…" title="Find any setting by name, help text or section" style="width:220px">
+  <div id="status">Loading…</div>
+  <button id="reload" title="Throw away unsaved edits and load the saved file">Reload</button>
+  <button id="defaults" title="Load the defaults from the game code (not saved until you press Save)">Load defaults</button>
+  <button id="save" class="primary">Save</button>
+</header>
+<nav id="tabs"></nav>
+<main id="view"></main>
+<div id="toast"></div>
+
+<script>
+// Balance console for Fish Breeder. Served by the Unity editor (BalanceConsoleServer.cs).
+// Edits Assets/Resources/Balance/balance.json; Save writes it and applies it to a running game.
+
+const ENUMS = {
+  category: ["FreshwaterCold", "FreshwaterTropical", "SaltwaterCold", "SaltwaterTropical", "BottomFeeder", "Shellfish"],
+  reproduction: ["EggLayer", "Livebearer"],
+  rarity: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  normalMin: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  normalMax: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  rarePool: ["Common", "Uncommon", "Rare", "Exotic", "Legendary", "Ancient"],
+  track: ["Fishkeeping", "Shopkeeping", "Research"],
+  fact: ["Temperature", "Ph", "Plants", "School", "Breeding", "Lifespan"],
+  relation: ["Neutral", "Predator", "Competitive", "Preferred"],
+  kind: ["BreedFish", "HatchEggs", "FeedTanks", "CleanTanks", "SellFish", "HappyCustomers", "EarnMoney", "BuyDecorations"],
+  goal: ["GetFish", "KeepFish", "DiscoverSpecies", "GrowUp", "FeedFish", "CleanTank", "HatchEggs", "BreedFish", "LearnFact", "BuyEquipment", "BuyDecoration", "OpenShop", "SellFish", "EarnMoney", "HappyCustomers", "FishkeepingLevel", "CureFish", "RepairEquipment", "TreatWater"],
+  bounty: ["GetFish", "KeepFish", "DiscoverSpecies", "GrowUp", "FeedFish", "CleanTank", "HatchEggs", "BreedFish", "LearnFact", "BuyEquipment", "BuyDecoration", "OpenShop", "SellFish", "EarnMoney", "HappyCustomers", "FishkeepingLevel", "CureFish", "RepairEquipment", "TreatWater"],
+  unlock: ["HealthDetails", "Temperature", "TankMates", "WaterTesting", "FavouriteFoods", "Breeding", "Shoaling", "Pathology", "Plants", "Ph", "Lifespan"],
+  // Tank size indexes; 100 is the wall aquarium (Tank.WallSize), so this one is a value -> name map.
+  minTankSize: { 0: "Any (Standard)", 1: "Large", 2: "Grand", 100: "Wall aquarium only" },
+  style: ["Midwater", "Bottom"],
+  bodyClass: ["Small", "Medium"],
+  type: ["Flakes", "Premium", "AlgaeWafers", "Bloodworms", "BrineShrimp"],
+  cure: ["None", "Antiviral", "Antibacterial", "Antiparasitic"],
+  tree: ["Aquariums", "Biology", "Breeding", "Finances", "Construction", "Public Relations"],
+  effect: [
+    "CleanerWater", "StrongerWipes", "SlowerAlgae", "DecorationSpots", "SturdierEquipment", "BetterRepairs", "RoomierTanks", "ExtraWipes",
+    "FewerIllnesses", "SlowerHunger", "WiderTolerance", "GentlerMedicine", "FasterGrowth", "BetterFood", "LongerLife", "FasterResearch",
+    "BreedingChance", "ShorterRest", "BiggerLitters", "HardyEggs", "QuickerBirths", "MoreMutations", "CrossChance", "PedigreeValue",
+    "SupplierDiscount", "PriceTolerance", "SaleTips", "BiggerAllowance", "PurchaseChance", "Interest",
+    "BuildDiscount", "DecorDiscount", "MoreShopTanks", "TankTraffic", "DecorTraffic", "UpgradeDiscount", "BiggerCrowds",
+    "MoreCustomers", "ReputationGain", "ReputationShield", "GrossTolerance", "DeadFishTolerance", "ExtraTankVisits", "DailyReputation",
+    "Bookkeeping", "StockBook",
+  ],
+  complaint: ["DeadFish", "DirtyWater", "SickFish", "HighPrices", "FewFish", "Fighting"],
+  equipment: ["Filter", "Heater", "Bubbler"],
+};
+
+// Friendly labels and help text. Anything missing gets a label made from its name.
+const META = {
+  crossChanceMultiplier: ["Cross chance multiplier", "At each time step, a fish with no partner of its own species may breed with a compatible species at the normal breeding chance times this (0.5 = half as likely)."],
+  tailWithFins: ["Tail follows fins", "Chance a first-cross fry's tail comes from the same parent as its fins (otherwise it comes from the body's parent)."],
+  chance: ["Chance", "Relative chance a fry of this cross comes out this way round. The two ways round of a pair are compared: 1 and 1 is 50/50, 3 and 1 is 75/25."],
+  id: ["Id", "Used in save data and the compatibility list. Change with care."],
+  displayName: ["Name", ""],
+  category: ["Category", "Water type and group. Which species can cross-breed is set on the Cross-breeding tab."],
+  reproduction: ["Reproduction", "Livebearers give birth to fry; egg-layers lay eggs that hatch at the next time step."],
+  rarity: ["Rarity", "How rare the species is. Customers and prices respond to it."],
+  family: ["Family", "The real fish's family."],
+  scientificName: ["Latin name", ""],
+  wallAquariumOnly: ["Wall aquariums only", "A background that only goes up in wall aquariums (back or sides)."],
+  unlockLevel: ["Level to unlock", "Fishkeeping level for fish, food, equipment, eggs and tank sizes; Shopkeeping level for decorations and store sections."],
+  baseValue: ["Value of a healthy adult ($)", "Fry are worth 30%, juveniles 60%. Rare looks multiply it (x1.5 to x4)."],
+  fryPrice: ["Fry price ($)", "Species: price in the editor's dev fry list. Egg tiers: price of the same tier sold as a box of fry (any fish; egg boxes only hold egg-layers)."],
+  minLength: ["Adult length min (m)", ""], maxLength: ["Adult length max (m)", ""],
+  speed: ["Swim speed", "Relative to a goldfish, in body lengths per second."],
+  depthMin: ["Depth band low (0 sand)", ""], depthMax: ["Depth band high (1 surface)", ""],
+  style: ["Swimming style", "Bottom = hops and sifts along the sand."],
+  tempMin: ["Temperature min (C)", ""], tempMax: ["Temperature max (C)", ""],
+  phMin: ["pH min", ""], phMax: ["pH max", ""],
+  salinityMin: ["Salt min (ppt)", "0 is fresh water, about 35 is sea water."], salinityMax: ["Salt max (ppt)", ""],
+  hungerToleranceDays: ["Days before starving", "One day is two time steps (shop open + close)."],
+  favoriteFoods: ["Favourite foods", "More filling and a small comfort boost. Players discover them by feeding; fish still eat any food."],
+  likesPlants: ["Likes plants", "Comfort bonus in planted tanks."],
+  likedDecorations: ["Favourite decorations", "It stays close to these when they're in its tank (pottering and inspecting near them) and gets a small comfort boost."],
+  roams: ["Roams", "Swims long laps round the whole tank instead of keeping near decorations."],
+  wallAquariumOnly: ["Wall aquarium only", "Only fits the wall aquarium, and the wall aquarium only takes models with this ticked. Lets the big tank have its own, more serious gear."],
+  fightRange: ["Fight range", "How close (m) two fish that fight have to be to actually fight. In a big tank they can stay out of each other's way."],
+  huntRange: ["Hunt range", "How close (m) a predator has to get to prey to hunt it."],
+  fullAggressionShare: ["Full aggression share", "Share of the time two fish spend within range at which fights, nipping and hunting happen at the full chance. Less time near each other scales them down."],
+  calmShare: ["Calm share", "Share of the time within range at or below which two fish never fight or hunt each other."],
+  lowLevelComfortLoss: ["Low level comfort loss", "Comfort a fish loses when its aquarium's level is below what it needs (for example after decorations or gear were taken out)."],
+  lowLevelLossPerPoint: ["Loss per quality point short", "Extra comfort lost for every quality point the aquarium is short of the level the fish needs."],
+  lowLevelMaxLoss: ["Most low level loss", "The most comfort an aquarium that's too low a level can take away."],
+  likedDecorComfort: ["Favourite decoration comfort", "Comfort bonus when one of a fish's favourite decorations is in its tank."],
+  schoolSize: ["School size", "Stressed with fewer of its own kind than this (0 = fine alone)."],
+  daysToAdult: ["Days to adult", ""], lifespanDays: ["Lifespan (days)", "After this, old age slowly lowers health."],
+  litterMin: ["Litter / clutch min", ""], litterMax: ["Litter / clutch max", ""],
+  gestationSteps: ["Pregnancy length (time steps)", "Livebearers: half days from getting pregnant to giving birth."],
+  eggHatchSteps: ["Eggs hatch after (time steps)", "Egg-layers: half days from laying to hatching."],
+  eatsAlgae: ["Eats algae", "Grazes algae down at every time step."],
+  progressionPerStep: ["Worsens per step", "Severity gained each time step (0..1)."],
+  lethality: ["Lethality", "Share of the illness health weight taken at full severity."],
+  recoveryChancePerStep: ["Heals on its own (chance per step)", ""],
+  contagionChancePerStep: ["Spreads (chance per tank mate per step)", "0 = not contagious."],
+  swimSpeedMultiplier: ["Swim speed when sick", ""],
+  symptomTint: ["Symptom tint", "Body tint at full severity."],
+  cure: ["Cured by", ""],
+  // Egg boxes
+  eggs: ["Eggs per box", ""],
+  normalMin: ["Normal pool from", "Rarest and commonest species a normal egg can be."], normalMax: ["Normal pool to", ""],
+  normalRarityFalloff: ["Normal pool falloff", "Each rarity step up in the normal pool is this many times as likely (0.3 = rarer kinds are uncommon)."],
+  rarePool: ["Rare egg rarity", "The rarity a 'rare' egg hatches into."],
+  rareChance: ["Rare chance (first egg)", "Chance an egg is rare while the box has no rare eggs yet."],
+  sizeSmall: ["Small size (x length)", "How big a small fish of this kind looks, as a share of the species' length. Medium is normally 1."],
+  sizeMedium: ["Medium size (x length)", "Normally 1: the species' own length."],
+  sizeLarge: ["Large size (x length)", "How big a large fish of this kind looks, e.g. 1.3 for 30% longer than medium."],
+  bendStart: ["Wiggle starts at", "Where the body starts to wiggle when swimming, as a fraction of its length from the nose: 0 = the whole fish snakes, 0.5 = the front half stays stiff and only the back swings. Set it by eye on the Swimming tab."],
+  maxBendFlexible: ["Most bend, wiggly fish (°)", "Most a fish that wiggles from the head (wiggle starts at 10% or less) bends from nose to tail, turns and wiggle together. Fish in between get a mix of this and the stiff limit."],
+  maxBendStiff: ["Most bend, stiff fish (°)", "Most a stiff, deep-bodied fish (wiggle starts at 55% or more) bends from nose to tail, turns and wiggle together."],
+  sharpestBend: ["Tightest curve (° per 10%)", "The sharpest the body may curve anywhere along it, in degrees per tenth of its length. Lower keeps the tail from kinking; too low and the wiggle goes flat."],
+  frontBend: ["Front bend share", "How much of that curve the stiff front of the body (in front of where the wiggle starts) can still take: 0 = rigid, 1 = as bendy as the back."],
+  maxPitchBend: ["Most bend up/down (°)", "Most the body bends up or down from nose to tail when the fish climbs or dives. Fish bend sideways, not up and down, so keep it small."],
+  bankTwist: ["Bank twist", "When a fish leans into a turn, how much less its tail leans than its head: 0 = it banks as one piece."],
+  onlyInBox: ["Only in box", "Id of the only egg/fry box this fish comes in (e.g. WildTetra). Empty = any box whose rarity settings include it. A box with its own fish hatches nothing else."],
+  raiseSpecies: ["Raise species", "Species ids, comma separated (e.g. NeonTetra,TigerBarb): the box opens once you've raised 'Raise count' of these fish to adulthood. Empty = no goal."],
+  raiseCount: ["Raise count", "How many of the raise species you must raise to adulthood before the fish seller sells this box (0 = no goal)."],
+  rareFalloff: ["Rare falloff", "The rare chance is multiplied by this for every rare egg already in the box, so 2 rares is much harder than 1."],
+  speckled: ["Speckled", ""],
+  blurb: ["Blurb", "Shown in the supplier."],
+  // Decorations and tanks
+  plant: ["Is a plant", "Fish that like plants are happier with one."],
+  passable: ["Fish swim through", "A grassy plant: fish swim straight through it and the leaves bend out of their way, then sway back."],
+  height: ["Height (m)", ""],
+  back: ["Goes at the back", "Tall pieces fill the back row first."],
+  capacity: ["Small fish capacity", "Most small fish it holds. A soft limit: fish can go over it (up to the hard limit) with overcrowding penalties."],
+  mediumCapacity: ["Medium fish capacity", "Most medium fish (the big kinds, see each species' Body class) it holds. Its own limit, apart from the small fish, and a hard one."],
+  upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
+  decorationSlots: ["Decoration spots", ""],
+  bodyClass: ["Body class", "Small fish share a tank's main fish limit. Medium fish (the big kinds) count against the tank's much smaller medium limit instead (Aquariums tab)."],
+  wallDecorationSize: ["Wall decoration size (x)", "How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). 2 = twice as big. Raising the aquarium never changes it."],
+  wallDecorationMinSize: ["Smallest a player can make one (x)", "In the wall aquarium the player can make each decoration smaller or bigger (Move decorations). This is the smallest, as a share of its normal size."],
+  wallDecorationMaxSize: ["Biggest a player can make one (x)", "The biggest the player can make one decoration in the wall aquarium, as a share of its normal size. A piece never grows taller than the water."],
+  // Equipment
+  effect: ["Effect", "Filter: share of waste left (lower is better). Heater: how far the water drifts from the setting (C). Bubbler: fish kept in full oxygen."],
+  breakChance: ["Break chance when new", "Per time step."],
+  breakChancePerStep: ["Extra break chance per step of wear", ""],
+  maxBreakChance: ["Highest break chance", ""],
+  // Progression
+  baseTarget: ["Target at level 1", ""],
+  text: ["Text ({0} = target)", ""],
+  title: ["Title", ""],
+  goal: ["Goal", "What the player has to do. KeepFish and FishkeepingLevel count what you have now; the rest are running totals."],
+  target: ["Target", "How many times (or how much money for EarnMoney)."],
+  reward: ["Cash reward ($)", ""],
+  xp: ["XP reward", "Goes to the track on the right."],
+  setupDays: ["Setup days", "Days at the start before the shop can open, to raise some fish to sell. The grand opening is the day after."],
+  // Food
+  feedings: ["Feedings per pack", ""],
+  nutrition: ["Nutrition", "How much hunger one pellet takes away."],
+  contamination: ["Dirt", "How much uneaten food fouls the water (x4 when it's spoiled)."],
+  spoilChance: ["Spoiled chance", "Chance a pellet is off: dirtier and can make fish ill."],
+  sinkSpeed: ["Sink speed (m/s)", "Flakes float a while; wafers drop to the bottom-feeders."],
+  color: ["Colour", ""],
+  // Research
+  speedPerLevel: ["Speed per level", "Research speed = 1 + this x (Research level - 1). Every night's research points are multiplied by it."],
+  xpPerSpeciesPerStep: ["Research XP per kept species per step", "Every kind of fish you keep earns this much Research XP each time step."],
+  projects: ["Research projects", ""],
+  name: ["Name", ""],
+  teaches: ["Teaches", "What finishing it teaches, shown to the player."],
+  unlock: ["Shows", "What the game starts showing once it's done."],
+  bounty: ["Bounty", "What the player has to do before the research can start. KeepFish, DiscoverSpecies and FishkeepingLevel count what you have at once; the rest count from when the bounty is posted."],
+  points: ["Research points", "Points the project needs once started. The bench earns points every night."],
+  basePointsPerDay: ["Points per night", "Research points the bench earns every night with no money put in."],
+  pointsPerDollar: ["Points per budget dollar", "Extra points a night for every dollar of the player's daily research budget (paid each night while a project is at the bench)."],
+  maxDailyBudget: ["Highest daily budget ($)", ""],
+  budgetStep: ["Budget step ($)", "How much the +/- buttons change the budget."],
+  starsNeeded: ["Stars needed", "Reputation (0 to 5 stars) the shop needs before this room can be bought. Rooms open in order."],
+  fightingUpsetChance: ["Upset by fighting (chance)", "Chance a shopper is upset (and complains) when fish are fighting in a tank they look at: a grown predator with its prey, or fish that don't get on in a crowded tank."],
+  fightingPurchaseMultiplier: ["Buying with fighting fish (x)", "Purchase chance multiplier in a For Sale tank where fish are fighting."],
+  fewFishBelow: ["Few fish below", "A shopper at a For Sale tank with fewer fish they could buy than this may complain there's not much for sale."],
+  fewFishComplaintChance: ["Few fish complaint chance", ""],
+  memory: ["Complaint memory", "Share of yesterday's complaints still remembered today. 0.6 means a bad day fades over three or four days."],
+  reviewsKept: ["Reviews kept", "Reviews listed on the reputation screen."],
+  complaint: ["Complaint", ""],
+  label: ["Label", "What the reputation screen calls it."],
+  sales: ["Hurts sales", "Ticked: lowers the chance shoppers buy. Unticked: lowers foot traffic."],
+  perShare: ["Penalty per share", "Penalty for each share of visitors complaining: 1 means 10% of shoppers complaining takes off 10%."],
+  maxPenalty: ["Most it takes off", ""],
+  spendingLevel: ["Spending by category at", "Shopkeeping level."],
+  incomeAfterSales: ["Income by category after", "Fish sold in total."],
+  historyLevel: ["Day-by-day history at", "Shopkeeping level."],
+  historyDays: ["History days", ""],
+  perTankAfterEarning: ["Earnings per tank after ($)", "Money earned from sales in total."],
+  level: ["Research level", "Research level needed before the bounty is posted."],
+  requires: ["Needs project", "Id of a project that has to be finished first (empty for none)."],
+  xpBounty: ["XP for the bounty", "Research XP."], xpResearch: ["XP for finishing", "Research XP."],
+  // Aquarium quality
+  equipmentPoints: ["Points per piece of equipment", "Quality for a filter, heater or bubbler of the first model."],
+  pointsPerEquipmentTier: ["Points per better model", "Extra quality for each model above the first."],
+  brokenEquipmentShare: ["Broken equipment counts", "Share of its points broken equipment keeps until repaired."],
+  decorationPoints: ["Points per decoration", ""], plantPoints: ["Extra points per plant", ""], backgroundPoints: ["Points for a background", "Quality a tank gets for having a background picture."],
+  varietyPoints: ["Points per different decoration", "Variety looks better: each kind of decoration in the tank adds this once."],
+  qualityNeeded: ["Quality needed", "Aquarium quality a tank needs before it can be upgraded to this size (it still costs the upgrade price)."],
+  minTankSize: ["Smallest tank", "The smallest tank size this fish will live in. The fish seller won't sell it for a smaller tank, it can't be moved into one, and it's cramped (less comfortable) if it ends up in one."],
+  crampedComfortLoss: ["Cramped comfort loss", "Comfort a fish loses in a tank smaller than its smallest tank."],
+  // Crowding, selling, wipes, health
+  wallAquarium: ["Wall aquarium", "The East wing's tank along its back wall. Never an upgrade from another size."],
+  wallAquariumHeights: ["Wall aquarium heights", "Upgrades that raise the wall aquarium, each taller than the last. Length and depth always match the wall aquarium; level is Shopkeeping. Taller ones sit lower so they fit under the roof, and over the tallest the back wall rises."],
+  wallAquariumPrice: ["Wall aquarium price", "What the wall aquarium costs (it can be a display or for sale tank)."],
+  wallAquariumLevel: ["Wall aquarium level", "Shopkeeping level needed to buy the wall aquarium."],
+  changeTankTypePrice: ["Change tank type price", "Turning a tank into the other type for its room: for sale and display on the shop floor, breeder and quarantine in the breeding room."],
+  tankHardLimitMultiplier: ["Hard limit (x capacity)", "Fish can go over a tank's capacity up to this, with overcrowding penalties."],
+  sadChancePerDeadFish: ["Sad chance per dead fish", "Chance a customer turns sad per corpse in view."],
+  maxSadChance: ["Highest sad chance", ""],
+  deadFishPurchaseMultiplier: ["Buying with dead fish around (x)", "Purchase chance multiplier while corpses are in the shop."],
+  wipesPerSession: ["Wipes per tank", "Glass wipes each tank gets per closed session."],
+  extraWipeEveryFishkeepingLevels: ["+1 wipe every N Fishkeeping levels", "0 = never."],
+  overcrowdedWastePerFish: ["Extra dirt per fish over", "Water quality lost per time step for each fish over capacity."],
+  overcrowdedIllnessPerFish: ["Extra illness per fish over", "Infection chance multiplier per fish over capacity."],
+  overcrowdedHealthPerFish: ["Health lost per fish over", ""], overcrowdedMaxPenalty: ["Highest overcrowding penalty", ""],
+  healthChangePerStep: ["Health change per step", "How far health moves toward its target at each time step."],
+  favouriteFoodNutrition: ["Favourite food nutrition (x)", ""], favouriteFoodComfort: ["Favourite food comfort", "Comfort bonus for a step after eating a favourite."],
+  // Repairs
+  repairWearRemoved: ["Wear removed by a repair", "0.25 = a repair takes off a quarter of the wear, so old kit keeps breaking more."],
+  xpRepairEquipment: ["XP per repair", "Fishkeeping XP."],
+  repairCost: ["Repair cost ($)", "A typical repair for this model, before the fault's multiplier and a bit of luck. Better models break less but cost more to fix."],
+  repairPriceSpread: ["Repair price spread", "Repair prices vary by up to this much either way (0.15 = 15%)."],
+  backgrounds: ["Backgrounds", "Pictures for a tank's back glass, bought per tank from the supplier's Decorations tab. The id is the picture's file name in Resources/Backgrounds."],
+  waterTreatmentPrice: ["Water treatment price", "Cost of treating one tank's water (resets pH, clears snails and worms), paid from the tank's Care tab."],
+  faults: ["Faults", "What can go wrong with each kind of equipment."],
+  cost: ["Cost (x)", "Repair price = the model's repair cost × this."],
+  weight: ["Relative chance", "How often this one comes up compared with the others: the disease that strikes, the fault when equipment of that kind breaks, the fish in an egg box."],
+  // Phase D: shoppers, attractiveness, reputation, research queue, to-do
+  sickChancePerFish: ["Put off per sick fish (chance)", "Chance a shopper is put off by a tank for each sick fish they can see in it, up to the max."],
+  maxSickChance: ["Most put off by sick fish", ""],
+  sickFishPurchaseMultiplier: ["Buying with sick fish (x)", "Purchase chance multiplier in a For Sale tank with any sick fish. Sick fish themselves never sell."],
+  plainFishPurchase: ["Purchase x at attractiveness 0", "Purchase chance multiplier for the plainest fish."],
+  stunningFishPurchase: ["Purchase x at attractiveness 100", "Purchase chance multiplier for the most eye-catching fish."],
+  attentionPower: ["Attention power", "How strongly attractiveness steers which fish a shopper looks at: 0 = all alike, 2 = the eye-catching ones get most of the looks."],
+  attractivenessTraffic: ["Traffic from attractive fish", "Foot traffic bonus when the shop-floor fish average 100 attractiveness (nothing at 50, a penalty below)."],
+  startingReputation: ["Starting reputation", "0..1, a fifth per star: 0.1 = half a star."],
+  gainPerDay: ["Reputation gain per perfect day", "Near zero stars. Reputation runs 0..1, so 0.02 is a tenth of a star."],
+  gainFalloff: ["Gain falloff", "Gains shrink as the shop gets better known: gain × (1 - reputation)^this. Higher = later stars are much harder."],
+  lossPerDay: ["Reputation loss per terrible day", ""],
+  neutralScore: ["Neutral day score", "Share of good reactions (happy shoppers, sales count twice) a day needs before reputation goes up. Below it goes down."],
+  fullDayVisitors: ["Full day visitors", "A day with fewer visitors moves reputation less, in proportion."],
+  trafficAtNoStars: ["Traffic at 0 stars (x)", ""], trafficAtFiveStars: ["Traffic at 5 stars (x)", ""],
+  wishesPerDay: ["Wishes in reviews", "How many \"Wish they had more ...\" lines (the most wanted kinds nobody could buy) a day's reviews carry."],
+  queueSize: ["Research queue", "Ready projects that can wait in line behind the one at the bench."],
+  grimyAbove: ["Wipe suggestion above (dirt)", "Last item on the evening list: tanks at least this dirty (0.1 = 10%) get a wipe suggestion."],
+  tree: ["Tree", "Aquariums, Biology and Breeding spend Fishkeeping points; Finances, Construction and Public Relations spend Shopkeeping points."],
+  tier: ["Tier", "1 is open from the start. Each later tier opens once enough points (Points per tier) are spent in the tiers above it in the same tree."],
+  text: ["Text", "What the perk does ({0} is replaced by its value at the current rank), or for a fault, what broke."],
+  maxRank: ["Max rank", "How many points the perk can take."],
+  perRank: ["Per rank", "Added to the effect for each rank. For percentages, 0.05 = 5%."],
+  percent: ["Percent", "Show the value as a percentage."],
+  effect: ["Effect", "What it changes in the game. Perks with the same effect add up."],
+  pointsPerLevel: ["Points per level", "Perk points for every Fishkeeping or Shopkeeping level gained."],
+  pointsPerTier: ["Points per tier", "Points spent in a tree's earlier tiers to open each next tier (tier 2 needs this many, tier 3 twice as many...)."],
+  tiers: ["Tiers", "Tiers shown per tree."],
+  maxInterestPerNight: ["Most interest per night ($)", "Cap on what the Savings account perk pays each night."],
+};
+
+const REPAIR_SUPPLIER = ["repairWearRemoved", "repairPriceSpread"];
+const FOOD_NAMES = ["Flakes", "Premium pellets", "Algae wafers", "Frozen bloodworms", "Frozen brine shrimp"];
+
+const TABS = [
+  ["pinned", "Pinned"],
+  ["species", "Species"],
+  ["compat", "Relationships"],
+  ["cross", "Cross-breeding"],
+  ["swim", "Swimming"],
+  ["diseases", "Diseases"],
+  ["shop", "Shop & customers"],
+  ["timeStep", "Time steps"],
+  ["health", "Health"],
+  ["store", "Store & supplier"],
+  ["stock", "Eggs, decor & quality"],
+  ["tanks", "Aquariums"],
+  ["equipment", "Equipment & repairs"],
+  ["research", "Research"],
+  ["eggs", "Egg hatching"],
+  ["reputation", "Reputation & finances"],
+  ["progression", "Levels & XP"],
+  ["perks", "Perks"],
+  ["sim", "Simulator"],
+  ["rules", "Rules"],
+  ["raw", "Raw JSON"],
+];
+
+const SPECIES_GROUPS = [
+  ["Identity", ["id", "displayName", "scientificName", "family", "category", "reproduction", "rarity", "unlockLevel"]],
+  ["Money", ["baseValue", "fryPrice"]],
+  ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "likesPlants", "schoolSize", "minTankSize"]],
+  ["Habits", ["likedDecorations", "roams"]],
+  ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
+  ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
+  ["Body and swimming", ["bodyClass", "minLength", "maxLength", "sizeSmall", "sizeMedium", "sizeLarge", "speed", "depthMin", "depthMax", "style", "bendStart"]],
+];
+
+let data = null;
+let tab = "species";
+let selectedSpecies = 0;
+let selectedDisease = 0;
+let dirty = false;
+let query = "";
+
+const $ = (sel) => document.querySelector(sel);
+const el = (tag, attrs = {}, ...children) => {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null) node.setAttribute(k, v);
+  }
+  for (const child of children.flat()) if (child != null) node.append(child.nodeType ? child : document.createTextNode(child));
+  return node;
+};
+const nice = (key) => (META[key] && META[key][0]) || key.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase());
+const help = (key) => (META[key] && META[key][1]) || "";
+
+function toast(text) {
+  const t = $("#toast");
+  t.textContent = text;
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function markDirty() {
+  dirty = true;
+  keepDraft();
+  $("#status").textContent = "Unsaved changes";
+  $("#status").classList.add("dirty");
+}
+
+async function refreshStatus(text) {
+  try {
+    const status = await (await fetch("/api/status")).json();
+    $("#status").classList.remove("dirty");
+    $("#status").textContent = (text ? text + " · " : "") + (status.playing ? "Game is playing: Save applies instantly" : "Game not playing: values apply next Play") + (status.saved ? "" : " · no balance file yet (showing code defaults)");
+  } catch {
+    $("#status").textContent = "Can't reach Unity. Is the editor open?";
+  }
+}
+
+// Every number is kept to 2 decimals. Small non-zero values round up to 0.01 so they never vanish.
+function round2(value) {
+  if (Array.isArray(value)) return value.map(round2);
+  if (value && typeof value === "object") {
+    for (const key of Object.keys(value)) value[key] = round2(value[key]);
+    return value;
+  }
+  if (typeof value !== "number" || Number.isInteger(value)) return value;
+  const rounded = Math.round(value * 100) / 100;
+  if (rounded === 0 && value !== 0) return value > 0 ? 0.01 : -0.01;
+  return rounded;
+}
+
+const DRAFT_KEY = "fishBreederBalanceDraft";
+function keepDraft() { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch {} }
+function dropDraft() { try { localStorage.removeItem(DRAFT_KEY); } catch {} }
+function readDraft() { try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"); } catch { return null; } }
+
+async function load(url) {
+  const res = await fetch(url);
+  data = round2(await res.json());
+  dirty = url !== "/api/balance";
+  const draft = url === "/api/balance" ? readDraft() : null;
+  if (draft && JSON.stringify(round2(draft)) !== JSON.stringify(data) &&
+      confirm("You have unsaved edits from an earlier visit that never reached the game. Bring them back?")) {
+    data = round2(draft);
+    dirty = true;
+  } else if (url === "/api/balance") dropDraft();
+  render();
+  if (dirty) markDirty(); else refreshStatus("Loaded");
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Unity stops answering for a few seconds while it recompiles, so a failed save is retried
+// for up to a minute, and the edits stay in this browser until one gets through.
+async function save() {
+  round2(data);
+  keepDraft();
+  const body = JSON.stringify(data, null, 2);
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    try {
+      const res = await fetch("/api/balance", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      const reply = await res.json().catch(() => ({ ok: false }));
+      if (!reply.ok) { toast("Save failed: " + (reply.error || res.status) + ". Your edits are kept in this browser."); return; }
+      dirty = false;
+      dropDraft();
+      render();
+      refreshStatus("Saved");
+      toast(reply.applied ? "Saved and applied to the running game." : "Saved. The game uses it next time you press Play.");
+      return;
+    } catch {
+      $("#status").textContent = `Unity isn't answering (it may be recompiling). Retrying save ${attempt}/20...`;
+      $("#status").classList.add("dirty");
+      await sleep(3000);
+    }
+  }
+  toast("Couldn't reach Unity, so nothing was saved. Your edits are kept in this browser; press Save again once Unity is open.");
+}
+
+// ---------------------------------------------------------------- inputs
+
+// A filter, heater or bubbler's "effect" is a number, not the perk effect list.
+const enumFor = (obj, key) => (key === "effect" && obj && "breakChance" in obj ? null : ENUMS[key]);
+
+function input(obj, key, onChange) {
+  const value = obj[key];
+  const changed = (v) => { obj[key] = v; markDirty(); if (onChange) onChange(); };
+  const options = enumFor(obj, key);
+  if (options) {
+    const pairs = Array.isArray(options) ? options.map((name, i) => [i, name]) : Object.entries(options);
+    const select = el("select", { onchange: (e) => changed(parseInt(e.target.value, 10)) },
+      pairs.map(([i, name]) => el("option", { value: i }, name)));
+    select.value = value;
+    return select;
+  }
+  if (typeof value === "boolean") {
+    const box = el("input", { type: "checkbox", onchange: (e) => changed(e.target.checked) });
+    box.checked = value;
+    return box;
+  }
+  if (typeof value === "number") {
+    return el("input", { type: "number", step: "0.01", value, oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) changed(n); } });
+  }
+  if (value && typeof value === "object" && "r" in value && "g" in value) {
+    const hex = "#" + ["r", "g", "b"].map((c) => Math.round(Math.min(1, Math.max(0, value[c])) * 255).toString(16).padStart(2, "0")).join("");
+    return el("input", { type: "color", value: hex, oninput: (e) => {
+      const h = e.target.value;
+      obj[key] = { r: parseInt(h.slice(1, 3), 16) / 255, g: parseInt(h.slice(3, 5), 16) / 255, b: parseInt(h.slice(5, 7), 16) / 255, a: value.a ?? 1 };
+      markDirty();
+    } });
+  }
+  return el("input", { type: "text", value: value ?? "", oninput: (e) => changed(e.target.value) });
+}
+
+/** Favourite foods: one checkbox per food type. */
+function foodChecks(obj, key) {
+  obj[key] = obj[key] || [];
+  const boxes = ENUMS.type.map((_, i) => {
+    const box = el("input", { type: "checkbox", onchange: (e) => {
+      obj[key] = obj[key].filter((f) => f !== i);
+      if (e.target.checked) obj[key].push(i);
+      obj[key].sort((a, b) => a - b);
+      markDirty();
+    } });
+    box.checked = obj[key].includes(i);
+    return el("label", { class: "check" }, box, FOOD_NAMES[i]);
+  });
+  return el("div", { class: "field", title: help(key) }, el("span", {}, nice(key)), el("div", { class: "foods" }, boxes));
+}
+
+/** A species' favourite decorations as ticks, one per decoration the supplier sells. */
+function decorChecks(obj, key) {
+  obj[key] = obj[key] || [];
+  const boxes = (data.supplier.decorations || []).map((d) => {
+    const box = el("input", { type: "checkbox", onchange: (e) => {
+      obj[key] = obj[key].filter((id) => id !== d.id);
+      if (e.target.checked) obj[key].push(d.id);
+      markDirty();
+    } });
+    box.checked = obj[key].includes(d.id);
+    return el("label", { class: "check" }, box, d.name || d.id);
+  });
+  return el("div", { class: "field", title: help(key) }, el("span", {}, nice(key)), el("div", { class: "foods" }, boxes));
+}
+
+function field(obj, key, onChange) {
+  if (key === "favoriteFoods") return foodChecks(obj, key);
+  if (key === "likedDecorations") return decorChecks(obj, key);
+  const control = input(obj, key, onChange);
+  const pin = pinButton(obj, key);
+  if (control.type === "checkbox") return el("label", { class: "field check", title: help(key) }, control, nice(key), pin);
+  return el("label", { class: "field", title: help(key) }, el("span", {}, nice(key), pin), control);
+}
+
+/** Every simple field of an object as a form; lists of objects become small tables. */
+function objectForm(obj, skip = []) {
+  const grid = el("div", { class: "grid" });
+  const extras = [];
+  for (const key of Object.keys(obj)) {
+    if (skip.includes(key)) continue;
+    const value = obj[key];
+    if (Array.isArray(value) && value.length && typeof value[0] === "object") extras.push(listTable(nice(key), value));
+    else if (!Array.isArray(value)) grid.append(field(obj, key));
+    else if (key === "favoriteFoods") grid.append(foodChecks(obj, key));
+    else if (!value.length || typeof value[0] !== "object") grid.append(listField(obj, key));
+  }
+  return [grid, ...extras];
+}
+
+/** A list of plain values (like decoration ids) as comma separated text. */
+function listField(obj, key) {
+  const numbers = obj[key].length && typeof obj[key][0] === "number";
+  const box = el("input", { type: "text", value: obj[key].join(", "), oninput: (e) => {
+    const parts = e.target.value.split(",").map((t) => t.trim()).filter((t) => t);
+    obj[key] = numbers ? parts.map(Number).filter((n) => !isNaN(n)) : parts;
+    markDirty();
+  } });
+  return el("label", { class: "field", title: help(key) }, el("span", {}, nice(key)), box);
+}
+
+/** A list of objects as an editable table; extra columns are [heading, item => text] read-outs. */
+function listTable(title, list, extra = []) {
+  const keys = Object.keys(list[0]).filter((k) => !Array.isArray(list[0][k]));
+  const wrap = el("div", { class: "scroll" });
+  const body = el("tbody");
+  const draw = () => {
+    body.replaceChildren(...list.map((item, i) => {
+      const readouts = extra.map(([, read]) => el("td", { class: "readout" }, read(item)));
+      const refresh = () => extra.forEach(([, read], j) => { readouts[j].textContent = read(item); });
+      return el("tr", {},
+      keys.map((k) => el("td", {}, input(item, k, refresh))),
+      readouts,
+      el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { list.splice(i, 1); markDirty(); draw(); } }, "×")));
+    }));
+  };
+  draw();
+  wrap.append(el("table", {}, el("thead", {}, el("tr", {}, keys.map((k) => el("th", { title: help(k) }, nice(k))), extra.map(([heading]) => el("th", {}, heading)), el("th"))), body));
+  return el("div", {}, el("h2", { style: "margin-top:14px" }, title), wrap,
+    el("button", { class: "small", style: "margin-top:6px", onclick: () => { list.push(JSON.parse(JSON.stringify(list[list.length - 1]))); markDirty(); draw(); } }, "+ Add row"));
+}
+
+// ---------------------------------------------------------------- tabs
+
+function renderSpecies() {
+  const species = data.species;
+  selectedSpecies = Math.min(selectedSpecies, species.length - 1);
+
+  const overviewKeys = ["rarity", "baseValue", "unlockLevel", "category"];
+  const overview = el("div", { class: "card" },
+    el("h2", {}, "Prices and rarity at a glance"),
+    el("p", { class: "hint" }, "Edit here or in the full form below. Value is what a healthy, common-looking adult is worth. Unlock level is the Fishkeeping level at which the species can hatch from egg boxes."),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), overviewKeys.map((k) => el("th", { title: help(k) }, nice(k))))),
+      el("tbody", {}, species.map((s, i) => el("tr", {},
+        el("td", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); selectedSpecies = i; render(); } }, s.displayName)),
+        overviewKeys.map((k) => el("td", {}, input(s, k)))))))));
+
+  const list = el("div", { class: "list" }, species.map((s, i) =>
+    el("button", { class: i === selectedSpecies ? "active" : "", onclick: () => { selectedSpecies = i; render(); } },
+      s.displayName, el("span", { class: "chip" }, ENUMS.rarity[s.rarity]))));
+  const actions = el("div", { class: "row", style: "margin-top:10px" },
+    el("button", { class: "small", onclick: () => {
+      const copy = JSON.parse(JSON.stringify(species[selectedSpecies]));
+      copy.id += "Copy"; copy.displayName += " (copy)";
+      species.push(copy); selectedSpecies = species.length - 1; markDirty(); render();
+    } }, "Duplicate"),
+    el("button", { class: "small", onclick: () => {
+      if (species.length <= 1 || !confirm(`Delete ${species[selectedSpecies].displayName}?`)) return;
+      const gone = species.splice(selectedSpecies, 1)[0];
+      data.relationships = (data.relationships || []).filter((r) => r.a !== gone.id && r.b !== gone.id);
+      crossData().pairs = crossData().pairs.filter((p) => p.a !== gone.id && p.b !== gone.id);
+      selectedSpecies = 0; markDirty(); render();
+    } }, "Delete"));
+
+  const s = species[selectedSpecies];
+  if (typeof s.roams !== "boolean") s.roams = false;
+  const form = el("div", {}, SPECIES_GROUPS.map(([title, keys]) =>
+    el("div", { class: "card" }, el("h2", {}, title), el("div", { class: "grid" }, keys.filter((k) => k in s || k === "likedDecorations" || k === "roams").map((k) => field(s, k))))));
+  const note = el("p", { class: "hint" }, "Tank mates it doesn't get on with are set on the Relationships tab, and which species it can breed with on the Cross-breeding tab. New species need a Meshy model to look right; without one they use a placeholder body.");
+
+  return [overview, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
+}
+
+const REL_LETTER = ["·", "P", "C", "+"];
+const SYMMETRIC = [0, 2, 3];
+
+function relationOf(a, b) {
+  const entry = (data.relationships || []).find((r) => r.a === a.id && r.b === b.id);
+  return entry ? entry.relation : 0;
+}
+
+function setRelation(a, b, relation) {
+  data.relationships = (data.relationships || []).filter((r) => !(r.a === a.id && r.b === b.id));
+  if (relation !== 0) data.relationships.push({ a: a.id, b: b.id, relation });
+}
+
+function renderCompat() {
+  const species = data.species;
+  data.relationships = data.relationships || [];
+  const change = (a, b, relation) => {
+    setRelation(a, b, relation);
+    if (a !== b) {
+      const back = relationOf(b, a);
+      // Nipping, liking and getting along go both ways; prey of a predator doesn't like it back.
+      if (SYMMETRIC.includes(relation) && back !== 1) setRelation(b, a, relation);
+      if (relation === 1 && (back === 2 || back === 3)) setRelation(b, a, 0);
+    }
+    markDirty();
+    render();
+  };
+  const cell = (a, b) => {
+    const value = relationOf(a, b);
+    const select = el("select", { class: `rel r${value}`, title: `${a.displayName} → ${b.displayName}: ${ENUMS.relation[value]}`, onchange: (e) => change(a, b, parseInt(e.target.value, 10)) },
+      ENUMS.relation.map((name, i) => el("option", { value: i }, `${REL_LETTER[i]}  ${name}`)));
+    select.value = value;
+    return el("td", { class: a === b ? "self" : "" }, select);
+  };
+  const table = el("table", { class: "matrix" },
+    el("thead", {}, el("tr", {}, el("th", {}, "This fish ↓ treats →"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
+    el("tbody", {}, species.map((a) => el("tr", {}, el("th", {}, a.displayName), species.map((b) => cell(a, b))))));
+  const legend = el("p", { class: "legend" },
+    el("span", {}, el("b", { style: "background:#c0392b" }, "P"), "Predator: the row fish attacks the column fish and eats it if it fits in its mouth"),
+    el("span", {}, el("b", { style: "background:#d68910" }, "C"), "Competitive: they nip each other; injuries when the tank is crowded"),
+    el("span", {}, el("b", { style: "background:#229954" }, "+"), "Preferred: the row fish is happier and healthier with the column fish"),
+    el("span", {}, el("b", { style: "background:var(--chip);color:var(--muted)" }, "·"), "Neutral"));
+  return [el("div", { class: "card" },
+    el("h2", {}, "How each fish treats the others"),
+    el("p", { class: "hint" }, "Read across: the fish on the left (row) treats the fish at the top (column) this way. Setting Competitive, Preferred or Neutral also sets it the other way round; Predator is one way only. The diagonal is a fish with its own kind (male bettas fight, schooling fish like company). What each relationship does is set on the Health tab."),
+    legend,
+    el("div", { class: "scroll" }, table))];
+}
+
+const crossData = () => {
+  const cross = data.crossBreeding = data.crossBreeding || { crossChanceMultiplier: 0.5, tailWithFins: 0.75, pairs: [], combos: [] };
+  cross.pairs = cross.pairs || [];
+  cross.combos = cross.combos || [];
+  return cross;
+};
+const speciesById = (id) => data.species.find((s) => s.id === id);
+const crossPaired = (a, b) => crossData().pairs.some((p) => (p.a === a && p.b === b) || (p.a === b && p.b === a));
+
+/** The combo for this body and fins, made with the game's default values if missing. */
+function crossCombo(body, fins) {
+  const cross = crossData();
+  let combo = cross.combos.find((c) => c.body === body && c.fins === fins);
+  if (!combo) {
+    const value = (id) => (speciesById(id) || { baseValue: 20 }).baseValue;
+    combo = { body, fins, name: "", chance: 1, value: Math.round((value(body) + value(fins)) * 1.5) };
+    cross.combos.push(combo);
+  }
+  return combo;
+}
+
+function renderCross() {
+  const species = data.species;
+  const cross = crossData();
+  const toggle = (a, b, on) => {
+    cross.pairs = cross.pairs.filter((p) => !((p.a === a && p.b === b) || (p.a === b && p.b === a)));
+    if (on) {
+      cross.pairs.push({ a, b });
+      crossCombo(a, b);
+      crossCombo(b, a);
+    }
+    markDirty();
+    render();
+  };
+  const cell = (a, b) => {
+    if (a === b) return el("td", { class: "self", title: "Every species breeds with its own kind" }, "✓");
+    const box = el("input", { type: "checkbox", title: `${a.displayName} × ${b.displayName}`, onchange: (e) => toggle(a.id, b.id, e.target.checked) });
+    box.checked = crossPaired(a.id, b.id);
+    return el("td", {}, box);
+  };
+  const matrix = el("table", { class: "matrix" },
+    el("thead", {}, el("tr", {}, el("th", {}, "Can cross with →"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
+    el("tbody", {}, species.map((a) => el("tr", {}, el("th", {}, a.displayName), species.map((b) => cell(a, b))))));
+
+  const pairs = cross.pairs.filter((p) => p.a !== p.b && speciesById(p.a) && speciesById(p.b));
+  const rows = [];
+  for (const pair of pairs) {
+    const ways = [crossCombo(pair.a, pair.b), crossCombo(pair.b, pair.a)];
+    const odds = [];
+    const refreshOdds = () => {
+      const total = Math.max(0, ways[0].chance) + Math.max(0, ways[1].chance);
+      ways.forEach((c, i) => { odds[i].textContent = total > 0 ? `${Math.round(Math.max(0, c.chance) / total * 100)}%` : "50%"; });
+    };
+    rows.push(el("tr", {}, el("th", { colspan: 8, style: "padding-top:12px" }, `${speciesById(pair.a).displayName} × ${speciesById(pair.b).displayName}`)));
+    ways.forEach((combo, i) => {
+      const body = speciesById(combo.body), fins = speciesById(combo.fins);
+      odds[i] = el("td", { class: "readout" });
+      rows.push(el("tr", {},
+        el("td", {}, body.displayName),
+        el("td", {}, fins.displayName),
+        el("td", {}, (() => { const box = input(combo, "name"); box.placeholder = `${body.displayName} with ${fins.displayName} fins`; return box; })()),
+        el("td", {}, input(combo, "chance", refreshOdds)),
+        odds[i],
+        el("td", {}, input(combo, "value")),
+        el("td", { class: "readout" }, `$${body.baseValue} / $${fins.baseValue}`)));
+    });
+    refreshOdds();
+  }
+  const combos = el("div", { class: "scroll" }, el("table", {},
+    el("thead", {}, el("tr", {},
+      el("th", {}, "Body"), el("th", {}, "Fins"), el("th", { title: "Shown in game. Empty uses the placeholder name." }, "Name"),
+      el("th", { title: help("chance") }, "Chance"), el("th", {}, "This way round"),
+      el("th", { title: "What a healthy, common-looking adult with this look is worth. Replaces the body species' value." }, "Value ($)"),
+      el("th", { title: "The base values of the body and fins species, for reference" }, "Parents' values"))),
+    el("tbody", {}, rows)));
+
+  return [
+    el("div", { class: "card" },
+      el("h2", {}, "Which species can cross-breed"),
+      el("p", { class: "hint" }, "Tick a box to let a male and female of those two species breed. Their fry get the body of one parent and the fins of the other (the tail usually follows the fins). The body decides everything else: needs, behaviour, and how it's born. Hybrids breeding on mix parts from both parents, but only into looks a ticked pair could make. Any species can be ticked: every fin fits every body."),
+      el("div", { class: "scroll" }, matrix)),
+    el("div", { class: "card" },
+      el("h2", {}, "Cross-breeding rules"),
+      el("div", { class: "grid" }, field(cross, "crossChanceMultiplier"), field(cross, "tailWithFins"))),
+    el("div", { class: "card" },
+      el("h2", {}, "Hybrid looks and prices"),
+      el("p", { class: "hint" }, pairs.length
+        ? "Every look the ticked pairs can make, both ways round. Value replaces the body species' value; looks, age and health still multiply it like any fish. A fish with only another species' tail is worth halfway between its species and that combo. Untick a pair and its prices are kept here in the file in case you tick it again."
+        : "Tick a pair above to set what its hybrids are called and worth."),
+      pairs.length ? combos : null),
+  ];
+}
+
+function renderDiseases() {
+  const diseases = data.diseases;
+  selectedDisease = Math.min(selectedDisease, diseases.length - 1);
+  const list = el("div", { class: "list" }, diseases.map((d, i) =>
+    el("button", { class: i === selectedDisease ? "active" : "", onclick: () => { selectedDisease = i; render(); } }, d.displayName)));
+  const actions = el("div", { class: "row", style: "margin-top:10px" },
+    el("button", { class: "small", onclick: () => { const c = JSON.parse(JSON.stringify(diseases[selectedDisease])); c.id += "_copy"; c.displayName += " (copy)"; diseases.push(c); selectedDisease = diseases.length - 1; markDirty(); render(); } }, "Duplicate"),
+    el("button", { class: "small", onclick: () => { if (diseases.length > 1 && confirm("Delete this disease?")) { diseases.splice(selectedDisease, 1); selectedDisease = 0; markDirty(); render(); } } }, "Delete"));
+  const d = diseases[selectedDisease];
+  return [el("p", { class: "hint" }, "All rates are per time step (one when the shop opens, one when it closes). Fish only die from the time-step death roll, which gets likelier as health drops."),
+    el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", { class: "card" }, el("h2", {}, d.displayName), objectForm(d)))];
+}
+
+const SECTION_HINTS = {
+  shop: "Customers and the open-shop day. Traffic = customers per hour × (1 + bonus per tank and decoration + attractive fish) × reputation × perks × complaints (Reputation tab). Each fish has an attractiveness (looks, kind, size, age, health and a bit of charm): shoppers look at eye-catching fish more and buy them more readily. Sick fish put shoppers off and never sell.",
+  timeStep: "What happens at each time step: once when the shop opens and once when it closes (a day with the shop kept shut runs both). Nothing changes while you work in the closed shop.",
+  health: "How much each factor can take off a fish's health (1 = all of it). Fish below the death threshold roll for death at each time step. Below: what tank mate relationships do, and how medicine works (it goes into the whole tank).",
+  store: "Starting money, tank and section prices, the levels that unlock more tanks, and the supplier's food and equipment.",
+  stock: "Egg and fry boxes, decorations, tank sizes and aquarium quality. Which fish each box hatches, and how likely, is on the Egg hatching tab (the pool and rare chance settings here only build a hatch table that's empty). Decorations bring customers (Shop tab) but too many speed up algae. A tank's quality comes from its equipment and decorations; reaching a size's quality lets it be upgraded.",
+  progression: "Two tracks, each up to the max level. XP to reach level n+1 = XP for level 2 × growth^(n-1). Daily goals: one per track each day; the target grows per level and finishing it gives the goal XP. Closing notifications are at the bottom.",
+  equipment: "Filters, heaters and bubblers, and repairs. Equipment breaks at a time step with its break chance, which grows by the extra chance for every step of wear, up to the highest break chance. A broken piece gets a fault (Faults table) and is fixed for a price: its repair cost × the fault's cost; the repair takes off some of its wear. 'Expected life' is how long a new piece runs on average before its first breakdown (2 time steps a day).",
+  research: "Research (R in game): each project posts a bounty once the Research level allows. Doing the bounty lets the player start the project at the research bench (one at a time; switching keeps a project's points). Like Civilization, the bench earns points every night: (points per night + daily budget × points per budget dollar) × research speed. The budget is paid each night, never while the bench is empty. Up to Research queue more projects wait in line and start by themselves. Bounty targets (Target column) are how many times the player must do the thing. Finished projects make the game show more: health numbers, ranges, tank mate details, pH and so on.",
+  reputation: "Reputation (Y in game) and finances (F). Every complaint a shopper makes is counted; at closing, the share of visitors who made it joins a fading memory (Complaint memory), and that share × Penalty per share, up to Most it takes off, comes off foot traffic or the chance of a sale. Rooms are on the Store & supplier tab (Stars needed). The finances screen opens up in parts, set below.",
+  rules: "General rules: feeding and disease from meals, water basics, breeding.",
+};
+
+function renderSection(key) {
+  const cards = [el("p", { class: "hint" }, SECTION_HINTS[key] || "")];
+  if (key === "health") {
+    cards.push(el("div", { class: "card" }, objectForm(data.health)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Tank mates"), objectForm(data.tankMates)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Medicine"), objectForm(data.medicine)));
+  } else if (key === "store") {
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, [...AQUARIUM_STORE_KEYS])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers", "faults", ...REPAIR_SUPPLIER])));
+  } else if (key === "stock") {
+    cards.push(el("div", { class: "card" }, listTable("Egg and fry boxes", data.supplier.eggTiers)));
+    cards.push(el("div", { class: "card" }, listTable("Decorations", data.supplier.decorations)));
+    cards.push(el("p", { class: "hint" }, "Tank sizes, the wall aquarium and its heights are on the Aquariums tab, with a live preview of each shape."));
+    if (!data.quality) data.quality = { equipmentPoints: 5, pointsPerEquipmentTier: 5, brokenEquipmentShare: 0.5, decorationPoints: 3, plantPoints: 2, varietyPoints: 1 };
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Aquarium quality"), objectForm(data.quality)));
+  } else if (key === "equipment") {
+    const repairs = el("div", { class: "grid" }, REPAIR_SUPPLIER.filter((k) => k in data.supplier).map((k) => field(data.supplier, k)));
+    if ("xpRepairEquipment" in data.progression) repairs.append(field(data.progression, "xpRepairEquipment"));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Repairs"), repairs));
+    const life = [["Expected life", expectedLife]];
+    cards.push(el("div", { class: "card" }, listTable("Filters", data.supplier.filters, life)));
+    cards.push(el("div", { class: "card" }, listTable("Heaters", data.supplier.heaters, life)));
+    cards.push(el("div", { class: "card" }, listTable("Bubblers", data.supplier.bubblers, life)));
+    if (!data.supplier.faults) data.supplier.faults = [];
+    const priceOf = (f) => {
+      const tiers = [data.supplier.filters, data.supplier.heaters, data.supplier.bubblers][f.equipment] || [];
+      return tiers.map((t) => "$" + Math.round((t.repairCost || 0) * f.cost)).join(" / ");
+    };
+    if (data.supplier.faults.length) cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, "When equipment breaks, one of its faults is picked by weight. The repair price is the model's repair cost × the fault's cost, give or take the price spread. Repairs cost less with the Handyman perk."), listTable("Faults", data.supplier.faults, [["Price by model", priceOf]])));
+  } else if (key === "reputation") {
+    if (!data.reputation) data.reputation = { memory: 0.6, reviewsKept: 12, complaints: [] };
+    if (!data.finances) data.finances = { spendingLevel: 2, incomeAfterSales: 1, historyLevel: 3, historyDays: 7, perTankAfterEarning: 1000 };
+    // How long each star takes at a steady quality of day, from the settings above.
+    const climb = el("div");
+    const drawClimb = () => {
+      const r = data.reputation;
+      const daysTo = (score) => {
+        const n = Math.min(0.95, Math.max(0.05, r.neutralScore ?? 0.6));
+        if (score <= n) return null;
+        let rep = data.shop.startingReputation ?? 0.1, day = 0;
+        const out = [];
+        for (let star = Math.floor(rep * 5) + 1; star <= 5 && day < 5000; star++) {
+          while (rep < star / 5 && day < 5000) { rep += (score - n) / (1 - n) * (r.gainPerDay ?? 0.02) * Math.pow(Math.max(0, 1 - rep), r.gainFalloff ?? 1.5); day++; }
+          out.push(day < 5000 ? day : "never");
+        }
+        return out;
+      };
+      const rows = [0.7, 0.8, 0.9, 1].map((score) => {
+        const days = daysTo(score);
+        return el("tr", {}, el("td", {}, `${Math.round(score * 100)}% good reactions`), ...(days || []).map((d) => el("td", {}, String(d))));
+      });
+      const first = Math.floor((data.shop.startingReputation ?? 0.1) * 5) + 1;
+      const heads = [];
+      for (let star = first; star <= 5; star++) heads.push(el("th", {}, `${star}★`));
+      climb.replaceChildren(el("p", { class: "hint" }, "Days open (with a full day's visitors) to reach each star from the starting reputation, if every day goes this well. Perks and bad days not counted."),
+        el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "Every day"), ...heads)), el("tbody", {}, ...rows)));
+    };
+    drawClimb();
+    cards.push(el("div", { class: "card", oninput: drawClimb }, el("h2", {}, "Reputation"), objectForm(data.reputation, ["complaints"]), el("h2", { style: "margin-top:14px" }, "How fast stars come"), climb));
+    if (data.reputation.complaints.length) cards.push(el("div", { class: "card" }, listTable("Complaints", data.reputation.complaints, [["At 10% of shoppers", (c) => `-${Math.round(Math.min(c.maxPenalty, 0.1 * c.perShare) * 100)}% ${c.sales ? "sales" : "traffic"}`]])));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Finances screen"), el("p", { class: "hint" }, "The daily summary is always shown; these open the rest. Best-selling fish come with the Bookkeeper perk."), objectForm(data.finances)));
+  } else if (key === "research") {
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Research"), objectForm(data.research || {})));
+  } else if (key === "progression") {
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Levels and XP"), objectForm(data.progression, ["dailyGoals"])));
+    cards.push(el("div", { class: "card" }, listTable("Daily goals", data.progression.dailyGoals)));
+    if (!data.milestones) data.milestones = [];
+    cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, "Milestones are one-off achievements that pay cash and XP, in this order. The next three show on the right of the store screen."), listTable("Milestones", data.milestones)));
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Closing notifications"), objectForm(data.notifications)));
+  } else if (key === "perks") {
+    if (!data.perkSettings) data.perkSettings = { pointsPerLevel: 1, pointsPerTier: 5, tiers: 4, maxInterestPerNight: 150 };
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Perk points"),
+      el("p", { class: "hint" }, "Each Fishkeeping or Shopkeeping level gives perk points to spend in that track's three trees (P in game). A tree's tiers open as points are spent in the tiers above."),
+      objectForm(data.perkSettings)));
+    if (data.perks && data.perks.length) {
+      const atMax = (p) => {
+        const v = p.perRank * p.maxRank;
+        return (p.text || "").split("{0}").join(p.percent ? `${+(v * 100).toFixed(1)}%` : `${+v.toFixed(2)}`);
+      };
+      const points = (tree) => data.perks.filter((p) => p.tree === tree).reduce((n, p) => n + p.maxRank, 0);
+      const totals = ENUMS.tree.map((name, i) => `${name} ${points(i)}`).join(" · ");
+      cards.push(el("div", { class: "card" }, el("p", { class: "hint" }, `Points to max each tree: ${totals}. Players earn ${(data.progression.maxLevel - 1) * data.perkSettings.pointsPerLevel} per track by the max level.`),
+        listTable("Perks", data.perks, [["At max rank", atMax]])));
+    }
+  } else {
+    cards.push(el("div", { class: "card" }, objectForm(data[key])));
+  }
+  return cards;
+}
+
+/** Average days a new piece of equipment runs before its first breakdown. */
+function expectedLife(item) {
+  let survive = 1, steps = 0;
+  for (let n = 0; n < 5000 && survive > 1e-4; n++) {
+    const chance = Math.min(1, Math.min(item.maxBreakChance, item.breakChance + item.breakChancePerStep * n));
+    steps += survive;
+    survive *= 1 - chance;
+  }
+  return `${(steps / 2).toFixed(1)} days`;
+}
+
+// ---------------------------------------------------------------- pinned settings
+
+// Pins are kept in this browser (they're your own shortlist, not part of the balance file).
+// Each pin is a path into the balance data; list items are found by id or name, so a pin
+// survives reordering and reloading.
+const PIN_KEY = "fishBreederPinnedSettings";
+let pins = (() => { try { return JSON.parse(localStorage.getItem(PIN_KEY) || "[]"); } catch { return []; } })();
+let pathIndex = new WeakMap();
+
+function savePins() { try { localStorage.setItem(PIN_KEY, JSON.stringify(pins)); } catch {} }
+
+function itemKey(item, i) {
+  for (const f of ["id", "name", "title", "displayName"]) if (typeof item[f] === "string" && item[f]) return `@${f}=${item[f]}`;
+  if (item.body && item.fins) return `@combo=${item.body}+${item.fins}`;
+  return `#${i}`;
+}
+
+/** Remembers where every object in the balance data lives, so a field can name its own path. */
+function indexPaths() {
+  pathIndex = new WeakMap();
+  const walk = (obj, segs) => {
+    pathIndex.set(obj, segs);
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (Array.isArray(v)) v.forEach((item, i) => { if (item && typeof item === "object") walk(item, [...segs, k, itemKey(item, i)]); });
+      else if (v && typeof v === "object" && !("r" in v && "g" in v)) walk(v, [...segs, k]);
+    }
+  };
+  if (data) walk(data, []);
+}
+
+function pinPath(obj, key) {
+  const segs = pathIndex.get(obj);
+  return segs ? JSON.stringify([...segs, key]) : null;
+}
+
+function resolveItem(list, seg) {
+  if (!Array.isArray(list)) return undefined;
+  if (seg.startsWith("#")) return list[parseInt(seg.slice(1), 10)];
+  if (seg.startsWith("@combo=")) { const [b, f] = seg.slice(7).split("+"); return list.find((x) => x && x.body === b && x.fins === f); }
+  const [f, v] = seg.slice(1).split(/=(.*)/s);
+  return list.find((x) => x && x[f] === v);
+}
+
+/** The object and key a pin points at, or null if that setting no longer exists. */
+function resolvePin(path) {
+  let segs;
+  try { segs = JSON.parse(path); } catch { return null; }
+  let cur = data;
+  for (let i = 0; i < segs.length - 1 && cur; i++) {
+    const seg = segs[i];
+    cur = Array.isArray(cur) ? resolveItem(cur, seg) : cur[seg];
+  }
+  const key = segs[segs.length - 1];
+  return cur && typeof cur === "object" && key in cur ? { obj: cur, key, segs } : null;
+}
+
+function pinCrumbs(segs) {
+  let cur = data;
+  return segs.slice(0, -1).map((seg, i) => {
+    const list = cur;
+    cur = cur && cur[seg];
+    if (!seg.startsWith("@") && !seg.startsWith("#")) return i === 0 ? (TOP_NAMES[seg] || nice(seg)) : nice(seg);
+    cur = resolveItem(list, seg);
+    if (cur && (cur.displayName || cur.name || cur.title)) return cur.displayName || cur.name || cur.title;
+    return seg.startsWith("#") ? `#${parseInt(seg.slice(1), 10) + 1}` : seg.slice(1).split(/=(.*)/s)[1].replace("+", " with ");
+  }).join(" › ");
+}
+
+function pinButton(obj, key) {
+  const path = pinPath(obj, key);
+  if (!path) return null;
+  const on = pins.includes(path);
+  return el("button", {
+    class: "pin" + (on ? " on" : ""), type: "button", title: on ? "Unpin" : "Pin to Pinned settings",
+    onclick: (e) => {
+      e.preventDefault(); e.stopPropagation();
+      pins = on ? pins.filter((p) => p !== path) : [...pins, path];
+      savePins();
+      render();
+    },
+  }, on ? "★" : "☆");
+}
+
+function renderPinned() {
+  if (!pins.length) return [el("div", { class: "card" }, el("h2", {}, "Pinned settings"),
+    el("p", { class: "hint" }, "Click the ☆ next to any setting to pin it here, so the ones you tweak most are in one place. Settings that only appear in tables (like decoration prices) can be pinned from the search results. Pins are kept in this browser."))];
+  const cards = [];
+  const missing = [];
+  let last = null, grid = null;
+  for (const path of pins) {
+    const found = resolvePin(path);
+    if (!found) { missing.push(path); continue; }
+    const where = pinCrumbs(found.segs);
+    if (where !== last) {
+      grid = el("div", { class: "grid" });
+      cards.push(el("div", { class: "card" }, el("p", { class: "crumbs" }, where), grid));
+      last = where;
+    }
+    grid.append(field(found.obj, found.key));
+  }
+  const head = el("p", { class: "hint" }, `${pins.length - missing.length} pinned. Click ★ to unpin. Edits here are the same as on the tabs.`);
+  const out = [head, ...cards];
+  if (missing.length) out.push(el("div", { class: "card" },
+    el("p", { class: "hint" }, `${missing.length} pinned setting${missing.length === 1 ? " no longer exists" : "s no longer exist"} (renamed or removed).`),
+    el("button", { class: "small", onclick: () => { pins = pins.filter((p) => !missing.includes(p)); savePins(); render(); } }, "Remove them")));
+  return out;
+}
+
+// ---------------------------------------------------------------- simulator
+
+// A stand-alone copy of the game's time-step rules (Shop/TimeStep.cs, Tank.OnTimeStep,
+// Fish.OnTimeStep, FishHealth, TankMates, BreedingSystem, EggClutch), run on the numbers in
+// this console without the game. Each simulated day: your routine while the shop is closed
+// (remove dead fish, repair, treat water, medicine, wipes, feeding, selling), then the two time
+// steps (opening and closing), then the night (Grandma's gift before the grand opening, or her
+// rescue when broke after it). Perks, research,
+// customers and decorations' looks are left out; selling surplus fish is at their appraised value.
+const SIM_KEY = "fishBreederSimSetup";
+const SIM_STAGES = ["Fry", "Juvenile", "Adult"];
+const SIM_GROWTH = [0.05, 0.5, 1];
+const SIM_ROLES = ["For sale", "Display", "Breeder", "Quarantine"];
+const MEDICINES = ["None", "Antiviral", "Antibacterial", "Antiparasitic"];
+let simSetup = null;
+let simResult = null;
+let simRunning = false;
+
+function simDefaultTank() {
+  const first = data.species[0] ? data.species[0].id : "";
+  return {
+    role: 0, size: 0, salt: false, decorations: 4, plants: false,
+    filter: -1, heater: -1, bubbler: -1, heaterTemp: 0,
+    feedings: 1, food: 0, wipes: 2,
+    removeDead: true, treatSick: true, treatWater: true, repair: true, breeding: true, sellAbove: 0,
+    fish: [{ species: first, count: 5, stage: 2 }],
+  };
+}
+
+function simDefaults() {
+  return { days: 60, runs: 20, seed: 1, money: data.store.startingMoney, level: 1, allowance: true, payUpfront: true, tanks: [simDefaultTank()] };
+}
+
+function simSetupData() {
+  if (!simSetup) {
+    try { simSetup = JSON.parse(localStorage.getItem(SIM_KEY) || "null"); } catch { simSetup = null; }
+    if (!simSetup || !Array.isArray(simSetup.tanks)) simSetup = simDefaults();
+  }
+  return simSetup;
+}
+
+function saveSimSetup() { try { localStorage.setItem(SIM_KEY, JSON.stringify(simSetup)); } catch {} }
+
+// ---- the rules
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+const lerp = (a, b, t) => a + (b - a) * clamp01(t);
+const moveTowards = (v, target, step) => (Math.abs(target - v) <= step ? target : v + Math.sign(target - v) * step);
+const outsideBy = (v, lo, hi) => (v < lo ? lo - v : v > hi ? v - hi : 0);
+
+function simulate(setup, B, seed) {
+  const rnd = mulberry32(seed);
+  const chance = (p) => rnd() < p;
+  const range = (lo, hi) => lo + (hi - lo) * rnd();
+  const rangeInt = (lo, hiExclusive) => lo + Math.floor(rnd() * Math.max(0, hiExclusive - lo));
+  const pick = (list) => list[Math.floor(rnd() * list.length)];
+
+  const ts = B.timeStep, hb = B.health, rules = B.rules, med = B.medicine, mates = B.tankMates, sup = B.supplier, store = B.store;
+  const species = new Map(B.species.map((s) => [s.id, s]));
+  const relations = new Map();
+  for (const r of B.relationships || []) {
+    if (!relations.has(r.a)) relations.set(r.a, new Map());
+    relations.get(r.a).set(r.b, r.relation);
+  }
+  const relation = (a, b) => { const row = relations.get(a); return (row && row.get(b)) || 0; };
+  const competitive = (a, b) => relation(a, b) === 2 || relation(b, a) === 2;
+  const pairs = (B.crossBreeding && B.crossBreeding.pairs) || [];
+  const canCross = (a, b) => a !== b && pairs.some((p) => (p.a === a && p.b === b) || (p.a === b && p.b === a));
+  const foods = sup.food || [];
+  const foodInfo = (type) => foods.find((f) => f.type === type) || { type, name: ENUMS.type[type], price: 0, feedings: 1, nutrition: 0.35, contamination: 1, spoilChance: 0 };
+  const diseases = (B.diseases || []).filter((d) => d);
+  const every = ts.extraWipeEveryFishkeepingLevels;
+  const wipesPerSession = Math.max(1, ts.wipesPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
+  const wipeSkill = 1 + B.progression.wipeBonusPerFishkeepingLevel * (setup.level - 1);
+
+  const out = {
+    alive: [], money: [], sick: [], tankAlive: setup.tanks.map(() => []), tankWater: setup.tanks.map(() => []),
+    born: 0, died: 0, eaten: 0, causes: {}, fellIll: 0, cured: 0, recovered: 0, overdoses: 0, doses: 0,
+    cost: { fish: 0, tanks: 0, equipment: 0, food: 0, medicine: 0, conditioner: 0, repairs: 0 },
+    income: { sales: 0, allowance: 0 }, sold: 0, brokeDay: null, bailouts: 0, missedFeedings: 0, breakdowns: 0,
+    speciesStats: {}, start: 0, diary: [],
+  };
+  const diary = (day, text) => { if (out.diary.length < 400) out.diary.push(`Day ${day}: ${text}`); };
+  const spStat = (id) => out.speciesStats[id] || (out.speciesStats[id] = { start: 0, end: 0, born: 0, died: 0, eaten: 0, sold: 0 });
+
+  let money = setup.money;
+  let day = 0;
+  const stock = { food: {} };
+  const spend = (amount, what, bucket) => {
+    if (amount <= 0) return true;
+    if (money < amount) {
+      if (out.brokeDay === null) { out.brokeDay = day; diary(day, `couldn't afford ${what} ($${amount}, had $${money})`); }
+      return false;
+    }
+    money -= amount;
+    out.cost[bucket] += amount;
+    return true;
+  };
+
+  // ---- fish
+
+  const randomGenes = () => ({ h: [rnd(), rnd()], l: [rnd(), rnd()] });
+  const childGenes = (m, f) => {
+    const allele = (a, b) => {
+      let v = chance(0.5) ? a[Math.floor(rnd() * 2)] : b[Math.floor(rnd() * 2)];
+      if (chance(rules.mutationChance)) v = clamp01(v + range(-rules.mutationStrength, rules.mutationStrength));
+      return v;
+    };
+    return { h: [allele(m.h, m.h), allele(f.h, f.h)], l: [allele(m.l, m.l), allele(f.l, f.l)] };
+  };
+  const makeFish = (sp, genes, growth, gen) => {
+    const s = species.get(sp);
+    return {
+      sp, s, genes, gen, growth, age: growth * s.daysToAdult, hunger: range(0, 0.2), male: chance(0.5),
+      hard: (genes.h[0] + genes.h[1]) / 2, len: lerp(s.minLength, s.maxLength, (genes.l[0] + genes.l[1]) / 2),
+      health: 1, disease: null, severity: 0, injury: 0, load: 0, stress: 0, damage: 0, cooldown: 0, sinceFav: 99,
+      pregnant: null, valueFactor: range(0.8, 1.25), dead: false,
+    };
+  };
+  const stage = (f) => (f.growth >= 1 ? 2 : f.growth >= 0.4 ? 1 : 0);
+  const bodyLength = (f) => (stage(f) === 0 ? 0.045 : f.len) * lerp(0.5, 1, f.growth);
+  const starving = (f) => f.hunger >= rules.starvingThreshold;
+  const infertile = (f) => f.damage > 0 && f.damage >= med.infertileAtDamage;
+  const value = (f) => {
+    const st = [0.3, 0.6, 1][stage(f)];
+    return Math.max(1, Math.round(f.s.baseValue * st * lerp(0.4, 1, f.health) * clamp01(1 - f.damage * med.damageValue)));
+  };
+
+  // ---- tanks
+
+  const tanks = setup.tanks.map((cfg, index) => {
+    const sizes = store.tankSizes || [];
+    const size = sizes[Math.min(cfg.size, sizes.length - 1)] || { capacity: 24, decorationSlots: 12 };
+    const capacity = Math.max(1, Math.round(size.capacity));
+    const eq = (list, tier, kind) => (tier >= 0 && list && list[tier] ? { info: list[tier], kind, wear: 0, broken: false } : null);
+    const t = {
+      cfg, index, capacity, volume: Math.max(0.01, (size.width || 1.6) * (size.height || 0.9) * (size.depth || 0.7)), hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
+      wq: 1, algae: 0, temp: rules.roomTemperature, ph: cfg.salt ? 8.1 : rules.startingPh, salinity: cfg.salt ? 35 : 0, pests: false,
+      filter: eq(sup.filters, cfg.filter, 0), heater: eq(sup.heaters, cfg.heater, 1), bubbler: eq(sup.bubblers, cfg.bubbler, 2),
+      residents: [], corpses: 0, clutches: [], wipesLeft: wipesPerSession, decor: Math.max(0, Math.min(cfg.decorations, size.decorationSlots || 99)),
+    };
+    for (const row of cfg.fish) {
+      if (!species.has(row.species)) continue;
+      for (let i = 0; i < row.count; i++) {
+        if (t.residents.length >= t.hardCap) break;
+        t.residents.push(makeFish(row.species, randomGenes(), SIM_GROWTH[row.stage] ?? 1, 1));
+        spStat(row.species).start++;
+        out.start++;
+      }
+    }
+    if (setup.payUpfront) {
+      const free = index === setup.tanks.findIndex((c) => c.role === 0) ? 0 : 1;
+      const tankPrice = [store.forSaleTankPrice, store.displayTankPrice, store.breederTankPrice, store.quarantineTankPrice][cfg.role] || 0;
+      out.cost.tanks += tankPrice * free;
+      for (let i = 1; i <= cfg.size && i < sizes.length; i++) out.cost.tanks += sizes[i].upgradePrice || 0;
+      for (const item of [t.filter, t.heater, t.bubbler]) if (item) out.cost.equipment += item.info.price || 0;
+      out.cost.equipment += 0;
+      for (const f of t.residents) out.cost.fish += f.s.fryPrice || 0;
+    }
+    return t;
+  });
+  if (setup.payUpfront) {
+    const upfront = out.cost.tanks + out.cost.equipment + out.cost.fish;
+    money -= upfront;
+    if (money < 0) { out.brokeDay = 0; diary(0, `the starting setup ($${upfront}) costs more than the budget`); }
+  }
+
+  const alive = (t) => t.residents.length;
+  const overLimit = (t) => Math.max(0, alive(t) - t.capacity);
+  const oxygenFor = (t) => (t.bubbler && !t.bubbler.broken ? Math.max(1, Math.round(t.bubbler.info.effect)) : Math.max(1, rules.fishPerTankWithoutBubbler));
+  const oxygen = (t) => { const n = oxygenFor(t); return clamp01(1 - Math.max(0, alive(t) - n) / n); };
+  const infectionMultiplier = (t) => lerp(rules.dirtyWaterInfectionMultiplier, 1, t.wq) * (t.pests ? 1.3 : 1) * (1 + overLimit(t) * ts.overcrowdedIllnessPerFish);
+  const eggsIn = (t) => t.clutches.reduce((n, c) => n + c.genes.length, 0);
+  const hasPlants = (t) => t.cfg.plants && t.decor > 0;
+  // Fish only fight or hunt when they meet: in a big tank they spend less time within range.
+  const strength = (t, hunting) => {
+    const r = hunting ? mates.huntRange ?? 0.7 : mates.fightRange ?? 0.45;
+    const share = clamp01((4 / 3) * Math.PI * r * r * r / t.volume);
+    const calm = mates.calmShare ?? 0.06, full = Math.max(calm + 0.001, mates.fullAggressionShare ?? 0.3);
+    return share <= calm ? 0 : clamp01((share - calm) / (full - calm));
+  };
+
+  const envMismatch = (s, t) => {
+    const temp = outsideBy(t.temp, s.tempMin, s.tempMax) * hb.tempPenaltyPerDegree;
+    const ph = outsideBy(t.ph, s.phMin, s.phMax) * hb.phPenaltyPerUnit;
+    const salt = outsideBy(t.salinity, s.salinityMin, s.salinityMax) * hb.saltPenaltyPerPpt;
+    return clamp01(temp + ph + salt + (1 - t.wq) * 0.5 + (1 - oxygen(t)) * 0.4);
+  };
+
+  const comfort = (f, t) => {
+    let c = 0.75, liked = 0, sameKind = 0;
+    if (f.s.likesPlants && hasPlants(t)) c += hb.plantsBonus;
+    if (f.sinceFav <= 1) c += hb.favouriteFoodComfort;
+    const grown = new Set(t.residents.filter((o) => o !== f && stage(o) === 2).map((o) => o.sp));
+    const seen = new Set();
+    const canFight = stage(f) === 2;
+    for (const o of t.residents) {
+      if (o === f) continue;
+      if (o.sp === f.sp) sameKind++;
+      if (seen.has(o.sp)) continue;
+      seen.add(o.sp);
+      const otherGrown = grown.has(o.sp);
+      if (otherGrown && relation(o.sp, f.sp) === 1) c -= mates.predatorFear * strength(t, true);
+      if (canFight && otherGrown && competitive(f.sp, o.sp)) c -= mates.competitiveStress * strength(t, false);
+      if (relation(f.sp, o.sp) === 3 && liked < 2) { liked++; c += mates.preferredComfort; }
+    }
+    if (f.s.schoolSize > 0 && sameKind + 1 < f.s.schoolSize) c -= hb.tooFewSchoolmates;
+    if (t.decor > hb.idealDecorMax) c -= 0.15; else if (t.decor < hb.idealDecorMin) c -= 0.1; else c += 0.1;
+    if (t.pests) c -= hb.pestsComfortLoss;
+    if (alive(t) > t.capacity * 0.75) c -= 0.15;
+    if (f.stress > 0.01) c -= f.stress;
+    return { level: clamp01(c), liked };
+  };
+
+  const report = (f, t) => {
+    const r = {};
+    r.hunger = f.hunger > 0.5 ? (f.hunger - 0.5) / 0.5 * hb.hungerWeight : 0;
+    r.illness = f.disease ? (0.25 + 0.75 * f.severity) * f.disease.lethality * hb.illnessWeight : 0;
+    const life = f.s.lifespanDays;
+    r.oldAge = f.age > life ? clamp01((f.age - life) / Math.max(1, life * 0.5)) * hb.oldAgeWeight : 0;
+    r.deadTankmates = t.corpses * hb.perDeadTankmate;
+    r.overcrowding = Math.min(hb.overcrowdedMaxPenalty, overLimit(t) * hb.overcrowdedHealthPerFish);
+    const cf = comfort(f, t);
+    r.comfort = (1 - cf.level) * hb.comfortWeight;
+    r.companionship = cf.liked * mates.preferredHealth;
+    r.environment = envMismatch(f.s, t) * hb.environmentWeight;
+    r.injury = f.injury * mates.injuryWeight;
+    r.medicineDamage = f.damage * med.damageHealth;
+    r.total = clamp01(1 - r.hunger - r.illness - r.comfort - r.environment - r.oldAge - r.deadTankmates - r.injury - r.medicineDamage - r.overcrowding + r.companionship);
+    return r;
+  };
+
+  const worstCause = (r, f) => {
+    let worst = r.hunger, cause = "starvation";
+    const check = (v, name) => { if (v > worst) { worst = v; cause = name; } };
+    check(r.illness, f.disease ? f.disease.displayName : "illness");
+    check(r.environment, "poor water");
+    check(r.comfort, "stress");
+    check(r.oldAge, "old age");
+    check(r.injury, "wounds");
+    check(r.medicineDamage, "medicine poisoning");
+    check(r.overcrowding, "an overcrowded tank");
+    if (r.deadTankmates > worst) cause = "rot from dead tank mates";
+    return cause;
+  };
+
+  const pickDisease = () => {
+    const total = diseases.reduce((n, d) => n + Math.max(0, d.weight), 0);
+    let roll = rnd() * total;
+    for (const d of diseases) { roll -= Math.max(0, d.weight); if (roll <= 0) return d; }
+    return diseases[diseases.length - 1] || null;
+  };
+  const infect = (f, d) => {
+    if (!d || f.disease) return false;
+    f.disease = d; f.severity = 0.1;
+    out.fellIll++;
+    return true;
+  };
+
+  const killFish = (t, f, cause, corpse) => {
+    f.dead = true;
+    f.pregnant = null;
+    t.residents.splice(t.residents.indexOf(f), 1);
+    if (corpse) t.corpses++;
+    out.causes[cause] = (out.causes[cause] || 0) + 1;
+    if (cause === "eaten by a tank mate") { out.eaten++; spStat(f.sp).eaten++; } else { out.died++; spStat(f.sp).died++; }
+  };
+
+  const addFry = (t, sp, genes, gen) => {
+    if (alive(t) >= t.hardCap || !species.has(sp)) return false;
+    t.residents.push(makeFish(sp, genes, 0.05, gen));
+    out.born++;
+    spStat(sp).born++;
+    return true;
+  };
+
+  const whyNotReady = (f, t) => stage(f) !== 2 || f.pregnant || f.disease || infertile(f) || starving(f) || f.cooldown > 0 || envMismatch(f.s, t) > ts.maxStressToBreed;
+
+  const conceive = (t, a, b) => {
+    const mother = a.male ? b : a, father = mother === a ? b : a;
+    const s = mother.s;
+    const count = Math.min(rangeInt(s.litterMin, s.litterMax + 1), t.hardCap - alive(t) - eggsIn(t));
+    if (count <= 0) return 0;
+    const gen = Math.max(a.gen, b.gen) + 1;
+    const genes = [];
+    for (let i = 0; i < count; i++) genes.push(childGenes(mother.genes, father.genes));
+    father.cooldown = rules.breedingCooldownSteps;
+    if (s.reproduction === 1) mother.pregnant = { genes, gen, steps: Math.max(1, s.gestationSteps), sp: mother.sp };
+    else {
+      mother.cooldown = rules.breedingCooldownSteps;
+      t.clutches.push({ genes, gen, steps: Math.max(1, s.eggHatchSteps), sp: mother.sp });
+    }
+    return count;
+  };
+
+  const shuffle = (list) => { for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; } return list; };
+
+  const chanceBreeding = (t, p) => {
+    const groups = new Map();
+    for (const f of t.residents) {
+      if (whyNotReady(f, t)) continue;
+      if (!groups.has(f.sp)) groups.set(f.sp, { females: [], males: [] });
+      groups.get(f.sp)[f.male ? "males" : "females"].push(f);
+    }
+    const singleF = [], singleM = [];
+    for (const g of groups.values()) {
+      shuffle(g.females); shuffle(g.males);
+      const n = Math.min(g.females.length, g.males.length);
+      for (let i = 0; i < n; i++) if (chance(p)) conceive(t, g.females[i], g.males[i]);
+      singleF.push(...g.females.slice(n)); singleM.push(...g.males.slice(n));
+    }
+    const crossP = clamp01(p * clamp01((B.crossBreeding && B.crossBreeding.crossChanceMultiplier) ?? 0.5));
+    shuffle(singleF); shuffle(singleM);
+    for (const female of singleF) {
+      const i = singleM.findIndex((m) => canCross(female.sp, m.sp));
+      if (i < 0) continue;
+      const male = singleM.splice(i, 1)[0];
+      if (chance(crossP)) conceive(t, female, male);
+    }
+  };
+
+  const receiveMedicine = (f, cure) => {
+    if (f.disease && cure !== 0 && cure === f.disease.cure) {
+      f.disease = null; f.severity = 0;
+      out.cured++;
+      f.load += med.loadPerNeededDose;
+    } else {
+      f.stress = clamp01(f.stress + med.stressPerDose);
+      f.load += med.loadPerDose;
+    }
+    if (f.load >= med.overdoseLoad && f.damage < med.maxDamage) {
+      f.damage++;
+      f.load = med.overdoseLoad * 0.5;
+      out.overdoses++;
+    }
+  };
+
+  const suggestedTemp = (t) => {
+    if (!t.residents.length) return 25;
+    let lo = -Infinity, hi = Infinity, mid = 0;
+    for (const f of t.residents) { lo = Math.max(lo, f.s.tempMin); hi = Math.min(hi, f.s.tempMax); mid += (f.s.tempMin + f.s.tempMax) / 2; }
+    return Math.round(lo <= hi ? (lo + hi) / 2 : mid / t.residents.length);
+  };
+  for (const t of tanks) {
+    t.heaterSetting = t.cfg.heaterTemp > 0 ? t.cfg.heaterTemp : suggestedTemp(t);
+    if (t.heater) t.temp = t.heaterSetting;
+  }
+
+  // ---- your routine while the shop is closed
+
+  const feed = (t) => {
+    const type = t.cfg.food;
+    const info = foodInfo(type);
+    if (!(stock.food[type] > 0)) {
+      if (!spend(info.price, `${info.name || "food"}`, "food")) { out.missedFeedings++; return; }
+      stock.food[type] = (stock.food[type] || 0) + Math.max(1, info.feedings);
+    }
+    stock.food[type]--;
+    let pellets = Math.max(8, alive(t) + 2);
+    const mult = infectionMultiplier(t);
+    let hungry = shuffle(t.residents.filter((f) => f.hunger > 0.25));
+    while (pellets > 0 && hungry.length) {
+      for (const f of hungry) {
+        if (pellets <= 0) break;
+        if (f.hunger <= 0.25) continue;
+        pellets--;
+        const wasStarving = starving(f);
+        let nutrition = info.nutrition;
+        if ((f.s.favoriteFoods || []).includes(type)) { nutrition *= hb.favouriteFoodNutrition; f.sinceFav = 0; }
+        f.hunger = Math.max(0, f.hunger - nutrition);
+        if (!f.disease) {
+          const spoiled = chance(info.spoilChance);
+          let p = rules.baseInfectionChancePerMeal * info.contamination * (spoiled ? 4 : 1) * mult;
+          if (wasStarving) p *= rules.starvingInfectionMultiplier;
+          p *= 1 - f.hard * rules.hardinessProtection;
+          if (chance(clamp01(p))) infect(f, pickDisease());
+        }
+      }
+      hungry = hungry.filter((f) => f.hunger > 0.25);
+    }
+    t.wq = clamp01(t.wq - pellets * rules.waterQualityLossPerRottenPellet);
+  };
+
+  // A breakdown picks one of that equipment's faults by weight; the repair costs the model's repair cost × the fault's cost, give or take the spread.
+  const repairPrice = (item) => {
+    const faults = (sup.faults || []).filter((f) => f.equipment === item.kind && f.weight > 0);
+    let pickCost = 1;
+    if (faults.length) {
+      let roll = rnd() * faults.reduce((n, f) => n + f.weight, 0);
+      for (const f of faults) { roll -= f.weight; if (roll <= 0) { pickCost = f.cost; break; } }
+    }
+    const spread = clamp01(sup.repairPriceSpread || 0);
+    return Math.max(1, Math.round((item.info.repairCost || 15) * pickCost * range(1 - spread, 1 + spread)));
+  };
+
+  const routine = (t) => {
+    const cfg = t.cfg;
+    if (cfg.removeDead) t.corpses = 0;
+    if (cfg.repair) for (const item of [t.filter, t.heater, t.bubbler]) {
+      if (!item || !item.broken) continue;
+      if (!spend(item.repairCost || item.info.repairCost || 15, "repairs", "repairs")) continue;
+      item.broken = false;
+      item.wear *= 1 - clamp01(sup.repairWearRemoved);
+      if (item === t.heater) t.temp = t.heaterSetting;
+    }
+    if (cfg.treatWater && (t.pests || t.residents.some((f) => t.ph < f.s.phMin || t.ph > f.s.phMax))) {
+      if (spend(sup.waterTreatmentPrice || 5, "water conditioner", "conditioner")) {
+        t.ph = cfg.salt ? 8.1 : 7.0;
+        t.pests = false;
+        t.wq = clamp01(t.wq + 0.1);
+      }
+    }
+    if (cfg.treatSick) {
+      const cures = [...new Set(t.residents.filter((f) => f.disease && f.disease.cure).map((f) => f.disease.cure))];
+      for (const cure of cures) {
+        if (!spend(sup.medicinePrice, `${MEDICINES[cure].toLowerCase()} medicine`, "medicine")) break;
+        out.doses++;
+        for (const f of [...t.residents]) receiveMedicine(f, cure);
+      }
+    }
+    for (let i = 0; i < cfg.wipes && t.wipesLeft > 0; i++) {
+      t.wipesLeft--;
+      t.algae = clamp01(t.algae - ts.wipeAlgaeRemoved * wipeSkill);
+      t.wq = clamp01(t.wq + ts.wipeQualityRestored * wipeSkill);
+    }
+    for (let i = 0; i < cfg.feedings; i++) feed(t);
+    if (cfg.heaterTemp <= 0) {
+      t.heaterSetting = suggestedTemp(t);
+      if (t.heater && !t.heater.broken) t.temp = t.heaterSetting;
+    }
+    if (cfg.sellAbove > 0 && alive(t) > cfg.sellAbove) {
+      const forSale = t.residents.filter((f) => stage(f) > 0 && !f.pregnant).sort((a, b) => b.age - a.age);
+      while (alive(t) > cfg.sellAbove && forSale.length) {
+        const f = forSale.shift();
+        const price = value(f);
+        money += price;
+        out.income.sales += price;
+        out.sold++;
+        spStat(f.sp).sold++;
+        t.residents.splice(t.residents.indexOf(f), 1);
+      }
+    }
+  };
+
+  // ---- one time step (the shop opening or closing)
+
+  const timeStep = () => {
+    for (const t of tanks) {
+      for (const c of [...t.clutches]) {
+        const loss = ts.eggLossInFilthyWater * clamp01((0.5 - t.wq) * 2);
+        if (loss > 0) c.genes = c.genes.filter(() => !chance(loss));
+        if (!c.genes.length) { t.clutches.splice(t.clutches.indexOf(c), 1); continue; }
+        if (--c.steps <= 0) {
+          t.clutches.splice(t.clutches.indexOf(c), 1);
+          for (const g of c.genes) if (!addFry(t, c.sp, g, c.gen)) break;
+        }
+      }
+    }
+    for (const t of tanks) for (const f of [...t.residents]) {
+      if (!f.pregnant || --f.pregnant.steps > 0) continue;
+      const p = f.pregnant;
+      f.pregnant = null;
+      for (const g of p.genes) if (!addFry(t, p.sp, g, p.gen)) break;
+      f.cooldown = rules.breedingCooldownSteps;
+    }
+
+    for (const t of tanks) {
+      const waste = t.filter && !t.filter.broken ? t.filter.info.effect : 1;
+      t.wq = clamp01(t.wq - ts.waterQualityLossPerStep * waste - alive(t) * ts.wasteQualityLossPerFish * waste
+        - t.corpses * ts.corpseQualityLoss - overLimit(t) * ts.overcrowdedWastePerFish);
+      const growth = ts.algaePerStep + t.decor * ts.algaePerDecoration;
+      const grazers = t.residents.filter((f) => f.s.eatsAlgae).length;
+      t.algae = clamp01(t.algae + growth * (1.5 - t.wq) - grazers * ts.algaeEatenPerGrazer);
+      t.ph = moveTowards(t.ph, (t.salinity > 15 ? 8.1 : 7) - 1.2, ts.phDriftPerStep * (1 - t.wq) * 2);
+      if (!t.pests && t.wq < 0.5 && chance(ts.pestChance * (1.5 - t.wq))) t.pests = true;
+      for (const item of [t.filter, t.heater, t.bubbler]) {
+        if (!item || item.broken) continue;
+        item.wear += 1;
+        const info = item.info;
+        if (chance(clamp01(Math.min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * item.wear)))) { item.broken = true; item.repairCost = repairPrice(item); out.breakdowns++; }
+      }
+      if (t.heater && !t.heater.broken) t.temp = Math.round((t.heaterSetting + range(-t.heater.info.effect, t.heater.info.effect)) * 10) / 10;
+      else t.temp = rules.roomTemperature;
+      t.wipesLeft = wipesPerSession;
+    }
+
+    for (const t of tanks) for (const f of t.residents) {
+      f.age += 0.5;
+      f.hunger = clamp01(f.hunger + 0.5 / Math.max(0.5, f.s.hungerToleranceDays) * rules.starvingThreshold);
+      if (f.growth < 1 && !starving(f)) f.growth = Math.min(1, f.growth + 0.5 / Math.max(0.5, f.s.daysToAdult));
+      if (f.cooldown > 0) f.cooldown--;
+      if (f.sinceFav < 99) f.sinceFav++;
+    }
+
+    const newly = new Set();
+    for (const t of tanks) {
+      const mult = infectionMultiplier(t);
+      for (const f of t.residents) {
+        f.injury = Math.max(0, f.injury - mates.injuryHealPerStep);
+        f.load = Math.max(0, f.load - med.loadClearedPerStep);
+        f.stress = Math.max(0, f.stress - med.stressRecoveryPerStep);
+        if (f.disease) {
+          const d = f.disease;
+          f.severity = clamp01(f.severity + d.progressionPerStep * (1 - 0.5 * f.hard));
+          if (chance(d.recoveryChancePerStep * (0.5 + f.hard))) { f.disease = null; f.severity = 0; out.recovered++; continue; }
+          if (d.contagionChancePerStep > 0)
+            for (const o of t.residents)
+              if (o !== f && !o.disease && !newly.has(o) && chance(d.contagionChancePerStep * (1 - o.hard * rules.hardinessProtection)) && infect(o, d)) newly.add(o);
+          continue;
+        }
+        if (newly.has(f)) continue;
+        const p = ts.diseaseChance * (1 + (1 - f.health)) * (1 - f.hard * rules.hardinessProtection) * mult;
+        if (chance(p)) infect(f, pickDisease());
+      }
+    }
+
+    for (const t of tanks) {
+      if (!t.cfg.breeding) continue;
+      chanceBreeding(t, t.cfg.role === 2 ? ts.pregnancyChanceBreederTank : ts.pregnancyChanceOtherTank);
+    }
+
+    for (const t of tanks) {
+      const reports = new Map();
+      for (const f of t.residents) {
+        f.health = moveTowards(f.health, report(f, t).total, hb.healthChangePerStep);
+        reports.set(f, report(f, t));
+      }
+      for (const f of [...t.residents]) {
+        if (f.health >= ts.deathHealthThreshold) continue;
+        const danger = (ts.deathHealthThreshold - f.health) / Math.max(0.01, ts.deathHealthThreshold);
+        if (chance(ts.deathChanceAtZeroHealth * Math.pow(danger, 1.5))) killFish(t, f, worstCause(reports.get(f), f), true);
+      }
+    }
+
+    for (const t of tanks) {
+      const hunt = strength(t, true), fight = strength(t, false);
+      for (const hunter of [...t.residents]) {
+        if (hunter.dead || stage(hunter) !== 2) continue;
+        const prey = t.residents.filter((o) => o !== hunter && relation(hunter.sp, o.sp) === 1);
+        if (!prey.length) continue;
+        const target = pick(prey);
+        if (hunt <= 0) continue;
+        if (bodyLength(target) <= bodyLength(hunter) * mates.preyMaxSizeRatio && chance(mates.eatChance * hunt)) killFish(t, target, "eaten by a tank mate", false);
+        else if (chance(mates.biteChance * hunt)) target.injury = clamp01(target.injury + mates.biteInjury);
+      }
+      if (alive(t) <= t.capacity * mates.crowdedAbove) continue;
+      for (const victim of [...t.residents]) {
+        if (stage(victim) !== 2) continue;
+        const nippers = t.residents.filter((o) => o !== victim && stage(o) === 2 && competitive(victim.sp, o.sp));
+        if (nippers.length && fight > 0 && chance(mates.nipChance * fight)) victim.injury = clamp01(victim.injury + mates.nipInjury);
+      }
+    }
+  };
+
+  // ---- the days
+
+  const record = () => {
+    let total = 0, sick = 0;
+    tanks.forEach((t, i) => {
+      total += alive(t);
+      sick += t.residents.filter((f) => f.disease).length;
+      out.tankAlive[i].push(alive(t));
+      out.tankWater[i].push(t.wq);
+    });
+    out.alive.push(total);
+    out.money.push(money);
+    out.sick.push(sick);
+  };
+  record();
+  for (day = 1; day <= setup.days; day++) {
+    const before = { died: out.died, eaten: out.eaten, born: out.born, ill: out.fellIll, cured: out.cured };
+    for (const t of tanks) routine(t);
+    timeStep();
+    timeStep();
+    // Grandma: a gift every night before the grand opening; after it, only when you're broke.
+    const gift = store.grandmaGift ?? 100;
+    if (day <= (data.shop.setupDays ?? 0)) { out.income.allowance += gift; money += gift; }
+    else if (money < (store.brokeBelow ?? 10) && setup.allowance) { out.income.allowance += gift; money += gift; out.bailouts++; }
+    record();
+    const notes = [];
+    if (out.born > before.born) notes.push(`${out.born - before.born} born`);
+    if (out.fellIll > before.ill) notes.push(`${out.fellIll - before.ill} fell ill`);
+    if (out.cured > before.cured) notes.push(`${out.cured - before.cured} cured`);
+    if (out.died > before.died) notes.push(`${out.died - before.died} died`);
+    if (out.eaten > before.eaten) notes.push(`${out.eaten - before.eaten} eaten`);
+    if (notes.length) diary(day, `${notes.join(", ")}. ${out.alive[out.alive.length - 1]} alive, $${money}.`);
+  }
+  for (const t of tanks) for (const f of t.residents) spStat(f.sp).end++;
+  out.endMoney = money;
+  out.endWater = tanks.map((t) => t.wq);
+  return out;
+}
+
+/** Runs the setup many times with different luck and sums it all up. */
+/** Runs the setup many times and averages them; yields to the page now and then so it can show progress. */
+async function runSimulation(setup, onProgress) {
+  const runs = [];
+  const n = Math.max(1, Math.min(500, Math.round(setup.runs)));
+  let pause = performance.now();
+  for (let i = 0; i < n; i++) {
+    runs.push(simulate(setup, data, (Math.round(setup.seed) || 1) * 1000 + i));
+    if (performance.now() - pause > 100) {
+      if (onProgress) onProgress(i + 1, n);
+      await new Promise((done) => setTimeout(done, 0));
+      pause = performance.now();
+    }
+  }
+  const mean = (f) => runs.reduce((s, r) => s + f(r), 0) / runs.length;
+  const series = (get) => {
+    const len = get(runs[0]).length;
+    const m = [], lo = [], hi = [];
+    for (let d = 0; d < len; d++) {
+      const vals = runs.map((r) => get(r)[d]);
+      m.push(vals.reduce((a, b) => a + b, 0) / vals.length);
+      lo.push(Math.min(...vals));
+      hi.push(Math.max(...vals));
+    }
+    return { mean: m, lo, hi };
+  };
+  const causes = {};
+  for (const r of runs) for (const [k, v] of Object.entries(r.causes)) causes[k] = (causes[k] || 0) + v / runs.length;
+  const speciesIds = [...new Set(runs.flatMap((r) => Object.keys(r.speciesStats)))];
+  const perSpecies = speciesIds.map((id) => {
+    const avg = (k) => mean((r) => (r.speciesStats[id] ? r.speciesStats[id][k] : 0));
+    return { id, start: avg("start"), end: avg("end"), born: avg("born"), died: avg("died"), eaten: avg("eaten"), sold: avg("sold") };
+  });
+  const ends = runs.map((r) => r.alive[r.alive.length - 1]);
+  const broke = runs.filter((r) => r.brokeDay !== null);
+  return {
+    setup: JSON.parse(JSON.stringify(setup)), runs: runs.length, start: runs[0].start,
+    endAlive: { mean: mean((r) => r.alive[r.alive.length - 1]), lo: Math.min(...ends), hi: Math.max(...ends) },
+    born: mean((r) => r.born), died: mean((r) => r.died), eaten: mean((r) => r.eaten), sold: mean((r) => r.sold),
+    fellIll: mean((r) => r.fellIll), cured: mean((r) => r.cured), recovered: mean((r) => r.recovered), overdoses: mean((r) => r.overdoses),
+    doses: mean((r) => r.doses), breakdowns: mean((r) => r.breakdowns), missedFeedings: mean((r) => r.missedFeedings),
+    cost: Object.fromEntries(Object.keys(runs[0].cost).map((k) => [k, mean((r) => r.cost[k])])),
+    income: Object.fromEntries(Object.keys(runs[0].income).map((k) => [k, mean((r) => r.income[k])])),
+    endMoney: mean((r) => r.endMoney), bailouts: mean((r) => r.bailouts),
+    brokeShare: broke.length / runs.length, brokeDay: broke.length ? broke.reduce((s, r) => s + r.brokeDay, 0) / broke.length : null,
+    causes, perSpecies,
+    alive: series((r) => r.alive), money: series((r) => r.money), sick: series((r) => r.sick),
+    tankAlive: setup.tanks.map((_, i) => series((r) => r.tankAlive[i])),
+    tankWater: setup.tanks.map((_, i) => series((r) => r.tankWater[i])),
+    diary: runs[0].diary,
+  };
+}
+
+// ---- the tab
+
+function simInput(obj, key, opts = {}) {
+  const changed = (v) => { obj[key] = v; saveSimSetup(); if (opts.rerender) render(); };
+  let control;
+  if (opts.options) {
+    control = el("select", { onchange: (e) => changed(opts.numeric === false ? e.target.value : parseInt(e.target.value, 10)) },
+      opts.options.map(([v, label]) => el("option", { value: v }, label)));
+    control.value = obj[key];
+  } else if (typeof obj[key] === "boolean") {
+    control = el("input", { type: "checkbox", onchange: (e) => changed(e.target.checked) });
+    control.checked = obj[key];
+    return el("label", { class: "field check", title: opts.help || "" }, control, opts.label);
+  } else {
+    control = el("input", { type: "number", step: opts.step || "1", min: opts.min ?? 0, value: obj[key], oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n)) changed(n); } });
+  }
+  return el("label", { class: "field", title: opts.help || "" }, el("span", {}, opts.label), control);
+}
+
+// The simulator's tanks are the normal sizes, so the wall aquarium's own gear is left out.
+const tierOptions = (list) => [[-1, "None"], ...(list || []).map((t, i) => [i, t]).filter(([, t]) => !t.wallAquariumOnly).map(([i, t]) => [i, `${t.name} ($${t.price})`])];
+
+function simTankCard(cfg, index, setup) {
+  const sp = data.species;
+  const fishRows = cfg.fish.map((row, i) => el("tr", {},
+    el("td", {}, simInput(row, "species", { label: "", options: sp.map((s) => [s.id, s.displayName]), numeric: false })),
+    el("td", {}, simInput(row, "count", { label: "", min: 0 })),
+    el("td", {}, simInput(row, "stage", { label: "", options: SIM_STAGES.map((s, j) => [j, s]) })),
+    el("td", { class: "readout" }, (() => { const s = sp.find((x) => x.id === row.species); return s ? `${s.tempMin}-${s.tempMax} C, pH ${s.phMin}-${s.phMax}${s.schoolSize > 0 ? `, school ${s.schoolSize}+` : ""}` : ""; })()),
+    el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { cfg.fish.splice(i, 1); saveSimSetup(); render(); } }, "×"))));
+  const every = data.timeStep.extraWipeEveryFishkeepingLevels;
+  const wipeLimit = Math.max(1, data.timeStep.wipesPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
+  return el("div", { class: "card sim-tank" },
+    el("div", { class: "row" },
+      el("h2", { style: "margin:0;flex:1" }, `Tank ${index + 1}: ${SIM_ROLES[cfg.role]}`),
+      el("button", { class: "small", onclick: () => { setup.tanks.splice(index + 1, 0, JSON.parse(JSON.stringify(cfg))); saveSimSetup(); render(); } }, "Duplicate"),
+      setup.tanks.length > 1 ? el("button", { class: "small", onclick: () => { setup.tanks.splice(index, 1); saveSimSetup(); render(); } }, "Remove") : null),
+    el("h3", {}, "Tank"),
+    el("div", { class: "grid" },
+      simInput(cfg, "role", { label: "Kind", options: SIM_ROLES.map((r, i) => [i, r]), rerender: true, help: "Breeder tanks use the breeder pregnancy chance; the rest use the other-tank chance." }),
+      simInput(cfg, "size", { label: "Size", options: (data.store.tankSizes || []).map((s, i) => [i, `${s.name} (${s.capacity} fish)`]) }),
+      simInput(cfg, "salt", { label: "Salt water" }),
+      simInput(cfg, "decorations", { label: "Decorations", help: `Fish like ${data.health.idealDecorMin}-${data.health.idealDecorMax}. Each one also adds algae.` }),
+      simInput(cfg, "plants", { label: "Some decorations are plants", help: "Fish that like plants get a comfort bonus." })),
+    el("h3", {}, "Equipment"),
+    el("div", { class: "grid" },
+      simInput(cfg, "filter", { label: "Filter", options: tierOptions(data.supplier.filters) }),
+      simInput(cfg, "heater", { label: "Heater", options: tierOptions(data.supplier.heaters) }),
+      simInput(cfg, "heaterTemp", { label: "Heater setting (C, 0 = best for the fish)", help: "0 sets it every day to the middle of the range the fish share." }),
+      simInput(cfg, "bubbler", { label: "Bubbler", options: tierOptions(data.supplier.bubblers), help: `Without one, a tank has air for ${data.rules.fishPerTankWithoutBubbler} fish.` })),
+    el("h3", {}, "Your routine each day (while the shop is closed)"),
+    el("div", { class: "grid" },
+      simInput(cfg, "feedings", { label: "Feedings per day" }),
+      simInput(cfg, "food", { label: "Food", options: (data.supplier.food || []).map((f) => [f.type, `${f.name} ($${f.price} for ${f.feedings})`]) }),
+      simInput(cfg, "wipes", { label: `Wipes per day (the game allows ${wipeLimit})`, help: "Capped at the game's limit for your Fishkeeping level." }),
+      simInput(cfg, "sellAbove", { label: "Sell grown fish above (0 = never)", help: "Sells the oldest juveniles and adults at their appraised value until the tank is down to this many." }),
+      simInput(cfg, "removeDead", { label: "Remove dead fish" }),
+      simInput(cfg, "treatSick", { label: "Dose sick fish with the right medicine" }),
+      simInput(cfg, "treatWater", { label: "Treat the water for pests or bad pH" }),
+      simInput(cfg, "repair", { label: "Repair broken equipment" }),
+      simInput(cfg, "breeding", { label: "Let fish breed", help: "Off stops all breeding in this tank (the game can't do that; it's for testing)." })),
+    el("h3", {}, "Fish"),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "How many"), el("th", {}, "Start as"), el("th", {}, "Needs"), el("th"))),
+      el("tbody", {}, fishRows))),
+    el("button", { class: "small", style: "margin-top:6px", onclick: () => { cfg.fish.push({ species: sp[0] ? sp[0].id : "", count: 1, stage: 2 }); saveSimSetup(); render(); } }, "+ Add fish"));
+}
+
+function renderSim() {
+  const setup = simSetupData();
+  const cards = [];
+  cards.push(el("div", { class: "card" },
+    el("h2", {}, "Balance simulator"),
+    el("p", { class: "hint" }, "Plays out days of tank keeping with the numbers in this console (unsaved edits included), without the game. Each day: your routine while the shop is closed, then the opening and closing time steps. It runs the whole thing many times with different luck and averages the results. Perks, research, customers and milestones are left out; selling uses appraised values."),
+    el("div", { class: "grid" },
+      simInput(setup, "days", { label: "Days to simulate", min: 1 }),
+      simInput(setup, "runs", { label: "Runs to average", min: 1, help: "More runs smooth out luck (up to 500)." }),
+      simInput(setup, "money", { label: "Starting money ($)" }),
+      simInput(setup, "level", { label: "Fishkeeping level", min: 1, rerender: true, help: "More wipes per day and stronger wipes at higher levels." }),
+      simInput(setup, "seed", { label: "Luck seed", help: "The same seed gives the same results; change it to see other luck." }),
+      simInput(setup, "payUpfront", { label: "Pay for the starting fish, tanks and equipment", help: "Fish cost their fry price. The first For sale tank is free, like in the game." }),
+      simInput(setup, "allowance", { label: "Grandma bails you out", help: `After the grand opening Grandma sends $${data.store.grandmaGift} whenever you go to sleep with under $${data.store.brokeBelow}. Untick to see when you'd really go broke.` })),
+    el("div", { class: "row", style: "margin-top:12px;margin-bottom:0" },
+      el("button", { class: "primary", onclick: () => {
+        if (simRunning) return;
+        simRunning = true; render();
+        setTimeout(async () => {
+          const button = document.getElementById("sim-run");
+          try { simResult = await runSimulation(simSetupData(), (done, all) => { if (button) button.textContent = `Running… ${done}/${all}`; }); }
+          catch (e) { toast("The simulation hit an error: " + e.message); console.error(e); }
+          simRunning = false; render();
+          const res = document.getElementById("sim-results");
+          if (res) res.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 20);
+      }, id: "sim-run" }, simRunning ? "Running…" : "Run"),
+      el("button", { onclick: () => { setup.tanks.push(simDefaultTank()); saveSimSetup(); render(); } }, "+ Add tank"),
+      el("button", { onclick: () => { if (confirm("Reset the simulator setup?")) { simSetup = simDefaults(); saveSimSetup(); simResult = null; render(); } } }, "Reset setup"))));
+  setup.tanks.forEach((cfg, i) => cards.push(simTankCard(cfg, i, setup)));
+  if (simResult) cards.push(...renderSimResults(simResult));
+  return cards;
+}
+
+const fmt1 = (v) => (Math.abs(v - Math.round(v)) < 0.05 ? `${Math.round(v)}` : v.toFixed(1));
+const money$ = (v) => `${v < 0 ? "-" : ""}$${Math.round(Math.abs(v)).toLocaleString()}`;
+
+function tile(label, value, sub) {
+  return el("div", { class: "tile" }, el("div", { class: "tile-label" }, label), el("div", { class: "tile-value" }, value), sub ? el("div", { class: "tile-sub" }, sub) : null);
+}
+
+function renderSimResults(r) {
+  const s = r.setup;
+  const spend = Object.values(r.cost).reduce((a, b) => a + b, 0);
+  const tiles = el("div", { class: "tiles" },
+    tile("Fish alive at the end", fmt1(r.endAlive.mean), `started with ${r.start}; ${r.endAlive.lo} to ${r.endAlive.hi} across runs`),
+    tile("Born", fmt1(r.born), r.sold ? `${fmt1(r.sold)} sold` : null),
+    tile("Died", fmt1(r.died), r.eaten ? `plus ${fmt1(r.eaten)} eaten by tank mates` : null),
+    tile("Fell ill", fmt1(r.fellIll), `${fmt1(r.cured)} cured with medicine, ${fmt1(r.recovered)} got better alone`),
+    tile("Medicine", money$(r.cost.medicine), `${fmt1(r.doses)} doses${r.overdoses ? `, ${fmt1(r.overdoses)} overdoses` : ""}`),
+    tile("Money at the end", money$(r.endMoney), `from ${money$(s.money)}`),
+    tile("Went broke", r.brokeShare ? `${Math.round(r.brokeShare * 100)}% of runs` : "Never",
+      r.brokeShare ? `first couldn't pay around day ${fmt1(r.brokeDay)}${s.allowance ? `; bailed out ${fmt1(r.bailouts)} days` : ""}` : (s.allowance && r.bailouts ? `bailed out ${fmt1(r.bailouts)} days` : null)));
+
+  const causeRows = Object.entries(r.causes).sort((a, b) => b[1] - a[1]).map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, fmt1(v))));
+  const money = [
+    ["Starting fish", r.cost.fish], ["Tanks and upgrades", r.cost.tanks], ["Equipment", r.cost.equipment], ["Food", r.cost.food],
+    ["Medicine", r.cost.medicine], ["Water conditioner", r.cost.conditioner], ["Repairs", r.cost.repairs],
+  ].filter(([, v]) => v > 0);
+  const moneyRows = [
+    ...money.map(([k, v]) => el("tr", {}, el("td", {}, k), el("td", {}, `-${money$(v)}`))),
+    r.income.sales ? el("tr", {}, el("td", {}, "Fish sold"), el("td", {}, `+${money$(r.income.sales)}`)) : null,
+    r.income.allowance ? el("tr", {}, el("td", {}, "From Grandma"), el("td", {}, `+${money$(r.income.allowance)}`)) : null,
+    el("tr", {}, el("th", {}, "Spent in all"), el("th", {}, money$(spend))),
+  ];
+  const nameOf = (id) => (data.species.find((x) => x.id === id) || { displayName: id }).displayName;
+  const speciesRows = r.perSpecies.map((p) => el("tr", {},
+    el("td", {}, nameOf(p.id)), el("td", {}, fmt1(p.start)), el("td", {}, fmt1(p.born)), el("td", {}, fmt1(p.died)),
+    el("td", {}, fmt1(p.eaten)), el("td", {}, fmt1(p.sold)), el("td", {}, el("b", {}, fmt1(p.end)))));
+  const notes = [];
+  if (r.missedFeedings) notes.push(`${fmt1(r.missedFeedings)} feedings were skipped for lack of money.`);
+  if (r.breakdowns) notes.push(`Equipment broke down ${fmt1(r.breakdowns)} times.`);
+
+  const days = r.alive.mean.length;
+  const charts = el("div", { class: "charts" },
+    lineChart("Fish alive", r.alive, (v) => fmt1(v), days),
+    lineChart("Money", r.money, money$, days),
+    lineChart("Sick fish", r.sick, (v) => fmt1(v), days));
+  const tankCharts = s.tanks.length > 1 ? el("div", { class: "charts" }, s.tanks.map((t, i) => lineChart(`Tank ${i + 1} (${SIM_ROLES[t.role]}): fish alive`, r.tankAlive[i], (v) => fmt1(v), days))) : null;
+  const waterCharts = el("div", { class: "charts" }, s.tanks.map((t, i) => lineChart(`Tank ${i + 1} water quality`, r.tankWater[i], (v) => `${Math.round(v * 100)}%`, days, 1)));
+
+  return [
+    el("div", { class: "card", id: "sim-results" },
+      el("h2", {}, `Results: ${s.days} days, averaged over ${r.runs} runs`),
+      tiles,
+      el("p", { class: "hint", style: "margin-top:10px" }, "Lines are the average across runs; the shaded band is the best and worst run. Hover a chart for the numbers."),
+      charts, tankCharts, waterCharts,
+      notes.length ? el("p", { class: "hint" }, notes.join(" ")) : null),
+    el("div", { class: "split2" },
+      el("div", { class: "card" }, el("h2", {}, "Fish by species (average per run)"), el("div", { class: "scroll" }, el("table", {},
+        el("thead", {}, el("tr", {}, ["Species", "Started", "Born", "Died", "Eaten", "Sold", "Alive at end"].map((h) => el("th", {}, h)))),
+        el("tbody", {}, speciesRows)))),
+      el("div", { class: "card" }, el("h2", {}, "Money (average per run)"), el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "What"), el("th", {}, "Amount"))), el("tbody", {}, moneyRows)))),
+    el("div", { class: "split2" },
+      el("div", { class: "card" }, el("h2", {}, "Causes of death (average per run)"),
+        causeRows.length ? el("table", {}, el("thead", {}, el("tr", {}, el("th", {}, "Cause"), el("th", {}, "Fish"))), el("tbody", {}, causeRows)) : el("p", { class: "hint" }, "No fish died.")),
+      el("div", { class: "card" }, el("h2", {}, "Diary of the first run"),
+        el("div", { class: "diary" }, r.diary.length ? r.diary.map((line) => el("div", {}, line)) : "Nothing happened worth noting."))),
+  ];
+}
+
+/** A single-series line over the days: the average, with a band from the worst to the best run. */
+function lineChart(title, series, format, days, fixedMax) {
+  const W = 560, H = 190, L = 48, R = 12, T = 12, Bm = 26;
+  const rawMax = fixedMax ?? Math.max(1, ...series.hi);
+  const rawMin = Math.min(0, ...series.lo);
+  // Round gridlines: steps of 1, 2, 2.5 or 5 times a power of ten.
+  const rough = (rawMax - rawMin) / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = fixedMax != null ? rough : [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= rough);
+  const maxV = fixedMax ?? Math.ceil(rawMax / step - 1e-9) * step;
+  const minV = Math.floor(rawMin / step + 1e-9) * step;
+  const x = (d) => L + (W - L - R) * (days > 1 ? d / (days - 1) : 0);
+  const y = (v) => T + (H - T - Bm) * (1 - (v - minV) / (maxV - minV || 1));
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("class", "chart");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `${title} over ${days - 1} days`);
+  const add = (tag, attrs, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    svg.append(n);
+    return n;
+  };
+  for (let v = minV; v <= maxV + step * 0.01; v += step) {
+    add("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "grid" });
+    add("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", class: "axis" }, format(v));
+  }
+  const ticks = Math.min(6, days - 1);
+  for (let i = 0; i <= ticks; i++) {
+    const d = Math.round((days - 1) * i / Math.max(1, ticks));
+    add("text", { x: x(d), y: H - 8, "text-anchor": "middle", class: "axis" }, `${d}`);
+  }
+  const band = series.hi.map((v, d) => `${x(d)},${y(v)}`).concat(series.lo.map((v, d) => `${x(d)},${y(v)}`).reverse()).join(" ");
+  add("polygon", { points: band, class: "band" });
+  add("polyline", { points: series.mean.map((v, d) => `${x(d)},${y(v)}`).join(" "), class: "line" });
+  const hair = add("line", { x1: 0, x2: 0, y1: T, y2: H - Bm, class: "hair", visibility: "hidden" });
+  const dot = add("circle", { r: 4, class: "dot", visibility: "hidden" });
+  const tip = el("div", { class: "tip" });
+  const wrap = el("div", { class: "chart-wrap" }, el("div", { class: "chart-title" }, title), svg, tip);
+  const hide = () => { hair.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.style.display = "none"; };
+  svg.addEventListener("pointermove", (e) => {
+    const box = svg.getBoundingClientRect();
+    const px = (e.clientX - box.left) / box.width * W;
+    const d = Math.max(0, Math.min(days - 1, Math.round((px - L) / (W - L - R) * (days - 1))));
+    hair.setAttribute("x1", x(d)); hair.setAttribute("x2", x(d)); hair.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(d)); dot.setAttribute("cy", y(series.mean[d])); dot.setAttribute("visibility", "visible");
+    tip.replaceChildren(el("b", {}, format(series.mean[d])), ` on day ${d}`, el("br"), el("span", {}, `runs ranged ${format(series.lo[d])} to ${format(series.hi[d])}`));
+    tip.style.display = "block";
+    const left = (x(d) / W) * box.width;
+    tip.style.left = `${Math.min(box.width - 170, Math.max(0, left + 10))}px`;
+  });
+  svg.addEventListener("pointerleave", hide);
+  return wrap;
+}
+
+// ---------------------------------------------------------------- search
+
+const TOP_NAMES = Object.fromEntries(TABS.map(([k, n]) => [k, n]));
+Object.assign(TOP_NAMES, { crossBreeding: "Cross-breeding", supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships", swimming: "Swimming" });
+
+const itemName = (item, i) => (item && (item.displayName || item.name || item.id || (item.body && `${item.body} with ${item.fins} fins`) || (item.fact !== undefined && ENUMS.fact[item.fact]))) || `#${i + 1}`;
+
+/** Every editable setting whose name, help, section or owner matches the search. */
+function searchResults(text) {
+  const words = text.toLowerCase().split(/\s+/).filter((w) => w);
+  const groups = new Map();
+  const visit = (obj, crumbs) => {
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+      if (key === "pairs") continue;
+      if (Array.isArray(value) && value.length && typeof value[0] === "object") {
+        value.forEach((item, i) => visit(item, [...crumbs, nice(key), itemName(item, i)]));
+        continue;
+      }
+      if (value && typeof value === "object" && !Array.isArray(value) && !("r" in value && "g" in value)) {
+        visit(value, [...crumbs, TOP_NAMES[key] || nice(key)]);
+        continue;
+      }
+      const hay = [key, nice(key), help(key), ...crumbs].join(" ").toLowerCase();
+      if (!words.every((w) => hay.includes(w))) continue;
+      const where = crumbs.join(" › ");
+      if (!groups.has(where)) groups.set(where, { obj, keys: [] });
+      groups.get(where).keys.push(key);
+    }
+  };
+  for (const key of Object.keys(data)) {
+    if (key === "relationships" || key === "dataVersion") continue;
+    const value = data[key];
+    if (Array.isArray(value)) value.forEach((item, i) => item && typeof item === "object" && visit(item, [TOP_NAMES[key] || nice(key), itemName(item, i)]));
+    else if (value && typeof value === "object") visit(value, [TOP_NAMES[key] || nice(key)]);
+  }
+  return groups;
+}
+
+function renderSearch() {
+  const groups = searchResults(query);
+  let shown = 0;
+  const cards = [];
+  for (const [where, { obj, keys }] of groups) {
+    if (shown > 300) break;
+    shown += keys.length;
+    cards.push(el("div", { class: "card" }, el("p", { class: "crumbs" }, where), el("div", { class: "grid" }, keys.map((k) => field(obj, k)))));
+  }
+  const total = [...groups.values()].reduce((n, g) => n + g.keys.length, 0);
+  return [el("p", { class: "hint" }, total ? `${total} setting${total === 1 ? "" : "s"} match "${query}". Edits here are the same as on the tabs.` : `Nothing matches "${query}".`), ...cards];
+}
+
+function renderRaw() {
+  const area = el("textarea", { class: "raw" });
+  area.value = JSON.stringify(data, null, 2);
+  return [el("div", { class: "card" },
+    el("p", { class: "hint" }, "The whole balance file. Edit and press Apply, then Save."),
+    area,
+    el("div", { class: "row", style: "margin-top:10px" }, el("button", { onclick: () => {
+      try { data = JSON.parse(area.value); markDirty(); toast("Applied. Press Save to keep it."); }
+      catch (e) { toast("That isn't valid JSON: " + e.message); }
+    } }, "Apply")))];
+}
+
+// ---------------------------------------------------------------- egg hatching
+
+let eggTier = 0;
+const eggCheck = { level: 1, day: 30 };
+
+/** The game's rule for filling an empty hatch table from a tier's rarity settings (see EggTierBalance.FillHatchTables). */
+function fillHatch(tier) {
+  const falloff = Math.max(0.001, tier.normalRarityFalloff);
+  // A box with its own fish ("Only in box" = its id) hatches only those; other boxes leave them out.
+  const own = data.species.some((s) => s.onlyInBox === tier.id);
+  const pool = data.species.filter((s) => (s.onlyInBox || "") === (own ? tier.id : ""));
+  const normals = pool.filter((s) => s.rarity >= tier.normalMin && s.rarity <= tier.normalMax);
+  const rares = pool.filter((s) => !(s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) && s.rarity === tier.rarePool);
+  const total = normals.reduce((n, s) => n + Math.pow(falloff, s.rarity - tier.normalMin), 0);
+  tier.hatch = [];
+  for (const s of data.species) {
+    let w = 0;
+    if (normals.includes(s) && total > 0) w = (1 - tier.rareChance) * Math.pow(falloff, s.rarity - tier.normalMin) / total;
+    else if (rares.includes(s)) w = tier.rareChance / rares.length;
+    if (w > 0) tier.hatch.push({ species: s.id, weight: Math.round(w * 1000) / 10, fromLevel: s.unlockLevel, fromDay: 0 });
+  }
+}
+
+/** Chance each species hatches from one egg (the first in a box) at the check level and day. */
+function hatchOdds(tier, eggsOnly) {
+  const rows = (tier.hatch || []).filter((h) => {
+    const s = speciesById(h.species);
+    return s && h.weight > 0 && h.fromLevel <= eggCheck.level && h.fromDay <= eggCheck.day && (!eggsOnly || s.reproduction === 0);
+  });
+  const total = rows.reduce((n, h) => n + h.weight, 0);
+  const odds = {};
+  for (const h of rows) odds[h.species] = total > 0 ? h.weight / total : 0;
+  return odds;
+}
+
+const pct = (p) => (p === undefined ? "–" : p < 0.001 ? "<0.1%" : `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`);
+
+function renderEggs() {
+  const tiers = data.supplier.eggTiers;
+  eggTier = Math.min(eggTier, tiers.length - 1);
+  tiers.forEach((t) => { if (!t.hatch || !t.hatch.length) fillHatch(t); });
+  const tier = tiers[eggTier];
+
+  const check = el("div", { class: "row" },
+    el("label", { class: "field", title: "Fishkeeping level the odds below are worked out for." }, el("span", {}, "Check odds at Fishkeeping level"),
+      el("input", { type: "number", value: eggCheck.level, oninput: (e) => { eggCheck.level = parseInt(e.target.value, 10) || 1; refresh(); } })),
+    el("label", { class: "field", title: "Game day the odds below are worked out for." }, el("span", {}, "on day"),
+      el("input", { type: "number", value: eggCheck.day, oninput: (e) => { eggCheck.day = parseInt(e.target.value, 10) || 1; refresh(); } })));
+
+  // Overview: every species against every tier, as the chance one egg (or fry) is that fish.
+  const overviewBody = el("tbody");
+  const drawOverview = () => {
+    const eggOdds = tiers.map((t) => hatchOdds(t, true));
+    const fryOdds = tiers.map((t) => hatchOdds(t, false));
+    overviewBody.replaceChildren(...data.species.map((s) => el("tr", {},
+      el("td", {}, s.displayName), el("td", {}, ENUMS.rarity[s.rarity]), el("td", {}, s.reproduction === 0 ? "Eggs" : "Fry only"),
+      tiers.map((t, i) => el("td", { class: "pct readout", title: `${t.name}: eggs ${pct(eggOdds[i][s.id])}, fry boxes ${pct(fryOdds[i][s.id])}` },
+        `${pct(eggOdds[i][s.id])} / ${pct(fryOdds[i][s.id])}`)))));
+  };
+  const overview = el("div", { class: "card" },
+    el("h2", {}, "Which box hatches what"),
+    el("p", { class: "hint" }, "The chance one egg / one fry from each box is that fish, at the level and day above (before any rare fish in the box: each rare one makes the next less likely by the tier's rare falloff). Livebearers only come in fry boxes. Boxes also only hold fish that fit the tank they're bought for."),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "Rarity"), el("th", {}, "Comes as"), tiers.map((t) => el("th", {}, t.name)))),
+      overviewBody)));
+
+  // Editor for one tier: every species, with its weight and when it can turn up.
+  const tierButtons = el("div", { class: "list", style: "flex-direction:row;flex-wrap:wrap;display:flex;gap:6px" }, tiers.map((t, i) =>
+    el("button", { class: i === eggTier ? "active" : "", onclick: () => { eggTier = i; render(); } }, t.name)));
+  const editBody = el("tbody");
+  const entry = (s) => tier.hatch.find((h) => h.species === s.id);
+  const readouts = [];
+  // Rows are built once, so typing keeps its place; only the percentages update.
+  editBody.replaceChildren(...data.species.map((s) => {
+    const h = entry(s) || { species: s.id, weight: 0, fromLevel: s.unlockLevel, fromDay: 0 };
+    const num = (key, step) => el("input", { type: "number", step, value: h[key], oninput: (e) => {
+      const n = parseFloat(e.target.value);
+      if (isNaN(n)) return;
+      h[key] = key === "weight" ? Math.max(0, n) : Math.round(n);
+      if (!entry(s)) tier.hatch.push(h);
+      markDirty();
+      refresh();
+    } });
+    const rare = s.rarity >= tier.rarePool;
+    const egg = el("td", { class: "pct readout" }), fry = el("td", { class: "pct readout" });
+    const row = el("tr", {},
+      el("td", {}, s.displayName), el("td", {}, ENUMS.rarity[s.rarity] + (rare ? " (rare)" : "")),
+      el("td", {}, num("weight", "0.1")), el("td", {}, num("fromLevel", "1")), el("td", {}, num("fromDay", "1")), egg, fry);
+    readouts.push({ s, h: () => entry(s), row, egg, fry });
+    return row;
+  }));
+  const refresh = () => {
+    drawOverview();
+    const eggOdds = hatchOdds(tier, true), fryOdds = hatchOdds(tier, false);
+    for (const r of readouts) {
+      const h = r.h();
+      r.row.classList.toggle("off", !h || h.weight <= 0);
+      r.egg.textContent = r.s.reproduction === 0 ? pct(eggOdds[r.s.id]) : "fry only";
+      r.fry.textContent = pct(fryOdds[r.s.id]);
+    }
+  };
+  refresh();
+  const editor = el("div", { class: "card" },
+    el("h2", {}, "Edit a box"),
+    tierButtons,
+    el("p", { class: "hint", style: "margin-top:8px" }, `${tier.name}: ${tier.eggs} per box, $${tier.price} as eggs, $${tier.fryPrice} as fry, from Fishkeeping level ${tier.unlockLevel}. Chance is relative: a fish with chance 20 is twice as likely as one with 10. 0 means never. Fish of ${ENUMS.rarity[tier.rarePool]} rarity or rarer count as rare in this box (rare falloff ${tier.rareFalloff}). The percentages are for the level and day above.`),
+    el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "Rarity"), el("th", { title: "Relative chance against the other fish this box can hatch right now." }, "Chance"),
+        el("th", { title: "Fishkeeping level from which it can hatch." }, "From level"), el("th", { title: "Game day from which it can hatch (0 = from the start)." }, "From day"),
+        el("th", {}, "Per egg"), el("th", {}, "Per fry"))),
+      editBody)),
+    el("div", { class: "row", style: "margin-top:8px" },
+      el("button", { class: "small", title: "Throw this box's table away and build it again from its pool and rare chance settings (Eggs, decor & tanks tab).", onclick: () => {
+        if (!confirm(`Rebuild the ${tier.name} table from its rarity settings?`)) return;
+        fillHatch(tier); markDirty(); render();
+      } }, "Rebuild from rarity settings")));
+  return [el("p", { class: "hint" }, "Which fish come in each egg and fry box, how likely each one is, and from when (Fishkeeping level and game day). Edits apply to the game when you Save."), el("div", { class: "card" }, check), overview, editor];
+}
+
+// ---------------------------------------------------------------- sorting
+
+// Every table (except the relationship and cross-breeding grids) sorts by a click on a column
+// heading; click again to flip it. The order is remembered per tab and table while the page is
+// open, and kept when a table is redrawn. Rows that start with a heading cell (group titles,
+// totals) stay where they are and the rows between them sort on their own.
+const sortState = {};
+let tableObserver = null;
+
+function cellValue(td) {
+  if (!td) return "";
+  const control = td.querySelector("select, input");
+  if (control) {
+    if (control.tagName === "SELECT") return (control.options[control.selectedIndex] || { text: "" }).text.toLowerCase();
+    if (control.type === "checkbox") return control.checked ? 1 : 0;
+    if (control.type === "number") { const n = parseFloat(control.value); return isNaN(n) ? -Infinity : n; }
+    return control.value.toLowerCase();
+  }
+  const text = td.textContent.trim();
+  const cleaned = text.replace(/[$,%+\s]|days?|sales|traffic/g, "").replace(/^−/, "-");
+  const n = parseFloat(cleaned);
+  return !isNaN(n) && /^-?[\d.]+$/.test(cleaned) ? n : text.toLowerCase();
+}
+
+function compareValues(a, b) {
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  if (typeof a === "number") return -1;
+  if (typeof b === "number") return 1;
+  return String(a).localeCompare(String(b), undefined, { numeric: true });
+}
+
+function applySort(table) {
+  const state = sortState[table._sortKey];
+  const heads = table._sortHeads || [];
+  heads.forEach((th, i) => th.classList.toggle("asc", !!state && state.col === i && state.dir > 0));
+  heads.forEach((th, i) => th.classList.toggle("desc", !!state && state.col === i && state.dir < 0));
+  const body = table.tBodies[0];
+  if (!state || !body) return;
+  const ordered = [];
+  let group = [];
+  const flush = () => {
+    group.sort((a, b) => compareValues(cellValue(a.cells[state.col]), cellValue(b.cells[state.col])) * state.dir);
+    ordered.push(...group);
+    group = [];
+  };
+  for (const row of [...body.rows]) {
+    if (row.cells[0] && row.cells[0].tagName === "TH") { flush(); ordered.push(row); }
+    else group.push(row);
+  }
+  flush();
+  if (ordered.every((row, i) => body.rows[i] === row)) return;
+  ordered.forEach((row) => body.appendChild(row));
+  // Our own moves would come back to the observer (it runs later), so drop them here.
+  if (tableObserver) tableObserver.takeRecords();
+}
+
+function makeSortable(root) {
+  root.querySelectorAll("table").forEach((table, index) => {
+    if (table._sortKey || table.classList.contains("matrix") || !table.tHead || !table.tBodies[0]) return;
+    const row = table.tHead.rows[table.tHead.rows.length - 1];
+    const heads = [...row.cells];
+    table._sortKey = `${tab}#${index}:${heads.map((th) => th.textContent).join("|")}`;
+    table._sortHeads = heads;
+    table.classList.add("sortable");
+    heads.forEach((th, col) => {
+      if (!th.textContent.trim()) return;
+      th.classList.add("sorthead");
+      th.addEventListener("click", () => {
+        const old = sortState[table._sortKey];
+        sortState[table._sortKey] = { col, dir: old && old.col === col ? -old.dir : 1 };
+        applySort(table);
+      });
+    });
+    applySort(table);
+  });
+}
+
+// Tables drawn later (simulator results) become sortable too, and a redrawn table body
+// (a row added or removed) keeps its order. Typing in a cell never moves rows.
+tableObserver = new MutationObserver((mutations) => {
+  makeSortable($("#view"));
+  const redrawn = new Set();
+  for (const m of mutations)
+    if (m.target.tagName === "TBODY" && m.target.parentNode && m.target.parentNode._sortKey) redrawn.add(m.target.parentNode);
+  redrawn.forEach(applySort);
+});
+tableObserver.observe($("#view"), { childList: true, subtree: true });
+
+// ---------------------------------------------------------------- swimming
+// Mirrors SwimSpine in the game: the body wave's envelope and where it starts (bendStart, plus a
+// fixed ramp to full strength), the path through a turn and the bend limits that keep the shape,
+// so the moving top view here is how the fish swims in the tank.
+const BEND_RAMP = 0.3;
+const SPINE_SAMPLES = 16;
+let previewTurn = 0; // degrees per second the top views turn at (0 = straight)
+const softClamp = (v, limit) => {
+  if (limit <= 0) return 0;
+  const knee = 0.6 * limit, a = Math.abs(v);
+  return a <= knee ? v : Math.sign(v) * (knee + (limit - knee) * Math.tanh((a - knee) / (limit - knee)));
+};
+/** The spine in body lengths, nose at (0, 0) and tail to the right, as [x, y, heading] per sample. */
+function swimSpine(bendStart, phase, turn) {
+  const n = SPINE_SAMPLES, lim = data.swimming || {};
+  const stiffness = Math.min(1, Math.max(0, (bendStart - 0.1) / 0.45));
+  const flexible = lim.maxBendFlexible ?? 70, stiffLimit = lim.maxBendStiff ?? 35;
+  const maxBend = flexible + (stiffLimit - flexible) * stiffness;
+  // Pottering speed (0.7 body lengths a second) with the game's path follow, along a circle for the turn.
+  const radius = turn ? 0.7 / (turn * Math.PI / 180) : 1e9, follow = 0.85;
+  const path = [], mid = [];
+  for (let i = 0; i < n; i++) {
+    const d = i / (n - 1), a = d / radius;
+    path.push([d + (radius * Math.sin(a) - d) * follow, radius * (1 - Math.cos(a)) * follow]);
+  }
+  for (let i = 0; i < n; i++) {
+    const s = i / (n - 1), a = path[Math.max(0, i - 1)], b = path[Math.min(n - 1, i + 1)];
+    const tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1;
+    const sway = swimEnvelope(s) * 0.8 * bendMask(s, bendStart) * Math.sin(Math.PI * 2 * s - phase);
+    mid.push([path[i][0] - (ty / l) * sway, path[i][1] + (tx / l) * sway]);
+  }
+  // Keep the shape: limit the bend per joint (less in the stiff front) and from nose to tail.
+  const perJoint = Math.max(0, lim.sharpestBend ?? 24) * 10 / (n - 1), front = Math.min(1, Math.max(0, lim.frontBend ?? 0.15));
+  let want = 0, last = 0, x = 0, y = 0;
+  const out = [];
+  for (let j = 0; j < n - 1; j++) {
+    const heading = Math.atan2(mid[j + 1][1] - mid[j][1], mid[j + 1][0] - mid[j][0]) * 180 / Math.PI;
+    const joint = perJoint * (front + (1 - front) * bendMask(j / (n - 1), bendStart));
+    want += softClamp(((heading - last + 540) % 360) - 180, joint);
+    last = heading;
+    const yaw = softClamp(want, Math.max(0, maxBend)) * Math.PI / 180;
+    out.push([x, y, yaw]);
+    x += Math.cos(yaw) / (n - 1); y += Math.sin(yaw) / (n - 1);
+  }
+  out.push([x, y, out[out.length - 1][2]]);
+  return out;
+}
+const swimEnvelope = (s) => 0.02 - 0.0825 * s + 0.1625 * s * s;
+const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
+const bendMask = (s, start) => { const end = Math.min(1, start + BEND_RAMP); return end <= start ? (s >= start ? 1 : 0) : smooth((s - start) / (end - start)); };
+let swimAnimation = 0;
+// A turning fish needs room to curl, so its picture gets taller (and is allowed to show taller).
+const swimCanvasHeight = (top, canvas) => {
+  canvas.style.maxHeight = previewTurn ? "230px" : "";
+  return Math.round(top.height * canvas.width / top.width + (previewTurn ? 0.62 : 0.26) * canvas.width);
+};
+
+function renderSwim() {
+  cancelAnimationFrame(swimAnimation);
+  const shown = data.species.filter((s) => !query || (s.displayName + " " + s.id).toLowerCase().includes(query.toLowerCase()));
+  const animated = [];
+  const cards = shown.map((s) => {
+    if (typeof s.bendStart !== "number") s.bendStart = 0.2;
+    const stiff = el("div", { class: "swim-stiff" });
+    const ramp = el("div", { class: "swim-ramp" });
+    const line = el("div", { class: "swim-line" });
+    const number = el("input", { type: "number", min: 0, max: 100, step: 1 });
+    const note = el("span", { class: "hint", style: "margin:0" });
+    const side = el("img", { src: `/fish/${s.id}_side.webp`, alt: s.displayName });
+    const stage = el("div", { class: "swim-stage", title: "Drag the line to where the body starts to wiggle" }, side, stiff, ramp, line);
+    side.onerror = () => stage.replaceChildren(el("p", { class: "hint", style: "padding:20px" }, "No picture for this fish (run Tools/Meshy/console_pictures.py)."), stiff, ramp, line);
+    const ruler = el("div", { class: "swim-ruler" }, [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((p) =>
+      [el("i", { style: `left:${p}%;height:${p % 50 === 0 ? 8 : 4}px` }), p % 25 === 0 ? el("span", { style: `left:${p}%` }, p === 0 ? "nose" : p === 100 ? "tail" : `${p}%`) : null]).flat());
+    const show = () => {
+      const p = s.bendStart * 100, end = Math.min(100, p + BEND_RAMP * 100);
+      stiff.style.width = `${p}%`;
+      ramp.style.left = `${p}%`; ramp.style.width = `${end - p}%`;
+      ramp.style.background = "linear-gradient(90deg, rgba(31,122,140,0) 0%, rgba(31,122,140,.14) 100%)";
+      line.style.left = `${p}%`;
+      if (document.activeElement !== number) number.value = Math.round(p);
+      note.textContent = p < 12 ? "wiggles from the head" : p < 30 ? "stiff head, wiggly body" : p < 45 ? "stiff front, tail end swings" : "stiff body, only the tail swings";
+    };
+    const set = (v) => { s.bendStart = Math.round(Math.min(0.95, Math.max(0, v)) * 100) / 100; show(); markDirty(); };
+    number.oninput = () => { const n = parseFloat(number.value); if (!isNaN(n)) set(n / 100); };
+    let dragging = false;
+    const fromPointer = (e) => { const r = stage.getBoundingClientRect(); set((e.clientX - r.left) / r.width); };
+    stage.addEventListener("pointerdown", (e) => { dragging = true; stage.setPointerCapture(e.pointerId); fromPointer(e); });
+    stage.addEventListener("pointermove", (e) => { if (dragging) fromPointer(e); });
+    stage.addEventListener("pointerup", () => { dragging = false; });
+    show();
+    // Moving top view: the picture cut into thin slices, each pushed sideways by the body wave.
+    const canvas = el("canvas", { class: "swim-top", width: 480, height: 150 });
+    const top = new Image();
+    top.onload = () => { canvas.height = swimCanvasHeight(top, canvas); animated.push({ s, canvas, top }); };
+    top.src = `/fish/${s.id}_top.webp`;
+    // Small / medium / large: how big each size looks, as a share of the species' length.
+    const sizeBox = (key, fallback, label) => {
+      if (typeof s[key] !== "number" || s[key] <= 0) s[key] = fallback;
+      const box = el("input", { type: "number", min: 0.1, max: 3, step: 0.05, value: s[key], style: "width:64px",
+        oninput: (e) => { const n = parseFloat(e.target.value); if (!isNaN(n) && n > 0) { s[key] = n; markDirty(); } } });
+      return el("label", { class: "row", style: "margin:0;gap:4px" }, label, box);
+    };
+    const sizes = el("div", { class: "row", style: "gap:14px;margin-top:6px", title: "How big small, medium and large fish of this kind look (medium is normally 1)" },
+      el("span", { class: "hint", style: "margin:0" }, "Size x"), sizeBox("sizeSmall", 0.85, "Small"), sizeBox("sizeMedium", 1, "Medium"), sizeBox("sizeLarge", 1.18, "Large"));
+    return el("div", { class: "card" },
+      el("div", { class: "swim-head" }, el("h2", {}, s.displayName), el("label", { class: "row", style: "margin:0;gap:6px" }, note, number, "%")),
+      el("div", { class: "swim-frame" }, stage, ruler), canvas, sizes);
+  });
+  const t0 = performance.now();
+  const frame = (now) => {
+    if (tab !== "swim") return;
+    const phase = ((now - t0) / 1000) * Math.PI * 2 * 1.6;
+    for (const a of animated) {
+      if (!a.canvas.isConnected) continue;
+      const ctx = a.canvas.getContext("2d"), W = a.canvas.width, H = a.canvas.height;
+      const iw = a.top.width, ih = a.top.height, strip = 3, scale = W / iw;
+      const spine = swimSpine(a.s.bendStart, phase, previewTurn);
+      // A turn curls the tail down the picture, so the nose sits higher up.
+      const noseY = previewTurn ? ih * scale / 2 + 0.06 * W : H / 2;
+      ctx.clearRect(0, 0, W, H);
+      for (let x = 0; x < iw; x += strip) {
+        const f = Math.min(SPINE_SAMPLES - 1.001, ((x + strip / 2) / iw) * (SPINE_SAMPLES - 1)), i = Math.floor(f), w = f - i;
+        const px = spine[i][0] + (spine[i + 1][0] - spine[i][0]) * w, py = spine[i][1] + (spine[i + 1][1] - spine[i][1]) * w;
+        const yaw = spine[i][2] + (spine[i + 1][2] - spine[i][2]) * w;
+        ctx.save();
+        ctx.translate(px * W, noseY + py * W);
+        ctx.rotate(yaw);
+        ctx.drawImage(a.top, x, 0, strip + 0.5, ih, -(strip / 2) * scale, -ih * scale / 2, (strip + 0.5) * scale, ih * scale);
+        ctx.restore();
+      }
+    }
+    swimAnimation = requestAnimationFrame(frame);
+  };
+  swimAnimation = requestAnimationFrame(frame);
+  // A game from before the limits existed doesn't send them yet: start from its defaults.
+  if (!data.swimming) data.swimming = { maxBendFlexible: 70, maxBendStiff: 35, sharpestBend: 24, frontBend: 0.15, maxPitchBend: 8, bankTwist: 0.1 };
+  const turnLabel = el("span", { class: "hint", style: "margin:0;min-width:110px" });
+  const showTurn = () => { turnLabel.textContent = previewTurn ? `turning ${previewTurn}°/s` : "swimming straight"; };
+  showTurn();
+  const turnSlider = el("input", { type: "range", min: 0, max: 360, step: 15, value: previewTurn, style: "width:220px",
+    oninput: (e) => {
+      previewTurn = parseInt(e.target.value, 10);
+      showTurn();
+      for (const a of animated) a.canvas.height = swimCanvasHeight(a.top, a.canvas);
+    } });
+  const limits = el("div", { class: "card" },
+    el("h2", {}, "How far bodies bend"),
+    el("p", { class: "hint" }, "Turning and wiggling together can ask a body to bend further than a fish's backbone goes. These limits keep its shape: the bend from nose to tail (stiff fish less), the tightest curve anywhere along it, how much the stiff front gives, bending up and down, and the twist when banking. Bends well inside the limits are left alone; bigger ones ease into them. Drag the slider to watch every fish below take a turn (pottering fish turn at up to 90°/s, dodging at 180°/s, darting at 360°/s)."),
+    objectForm(data.swimming),
+    el("label", { class: "row", style: "gap:10px;margin-top:8px" }, "Preview a turn", turnSlider, turnLabel));
+  return [
+    limits,
+    el("p", { class: "hint" }, "Where each fish's body starts to wiggle when it swims. Drag the line across the side view (or type a %): everything in front of it (striped) stays stiff, and the wiggle grows to full strength over the next 30% of the body. Slim fish like danios and tetras bend from just behind the head; deep-bodied fish like goldfish, angelfish and cichlids keep their body stiff and swing the back. The top view below each fish swims with the setting, the way it does in the tank. Saving applies it to the running game straight away."),
+    el("div", { class: "swim-grid" }, cards),
+  ];
+}
+
+// ---------------------------------------------------------------- aquariums
+
+// Store settings shown on the Aquariums tab rather than Store & supplier.
+const AQUARIUM_STORE_KEYS = ["tankSizes", "wallAquarium", "wallAquariumHeights", "wallDecorationSize", "wallDecorationMinSize", "wallDecorationMaxSize"];
+// Mirrors StoreLayout: 4 m walls, tanks on a 0.85 m stand, and the wall aquarium sitting lower once
+// it's tall (0.3 m under the roof, never below 0.3 m off the floor). A 1.75 m person for scale.
+const ROOM = { wall: 4, stand: 0.85, headroom: 0.3, lowestBase: 0.3, person: 1.75 };
+const wallBase = (h) => Math.min(ROOM.stand, Math.max(ROOM.lowestBase, ROOM.wall - ROOM.headroom - h));
+const TANK_FIELDS = [["width", "Length (m)"], ["height", "Height (m)"], ["depth", "Depth (m)"], ["capacity", "Small fish"], ["mediumCapacity", "Medium fish"],
+  ["decorationSlots", "Decoration spots"], ["upgradePrice", "Upgrade price ($)"], ["unlockLevel", "Level"], ["qualityNeeded", "Quality needed"]];
+// Oblique view: depth runs up and to the right at 30 degrees, drawn at half length.
+const OBLIQUE = { x: Math.cos(Math.PI / 6) * 0.5, y: Math.sin(Math.PI / 6) * 0.5 };
+
+/**
+ * Aquariums drawn to scale, side by side on one floor: the glass, the water, the stand, a person
+ * for scale and (roof) the store's 4 m roof. An item's "prev" size, and any "outlines", are drawn
+ * dashed over it, so an upgrade shows how much it grows.
+ */
+function tankSvg(items, { width = 460, height = 230, roof = false, names = false } = {}) {
+  // With names (several tanks side by side) each gets one caption under it instead of measurements along its edges.
+  const NS = "http://www.w3.org/2000/svg";
+  const project = (x, y, z) => [x + z * OBLIQUE.x, y + z * OBLIQUE.y];
+  const dims = (s) => [Math.max(0.05, +s.width || 0), Math.max(0.05, +s.height || 0), Math.max(0.05, +s.depth || 0)];
+  const baseOf = (s, wall) => (wall ? wallBase(+s.height || 0) : ROOM.stand);
+  // Lay the tanks out left to right in metres, after the person.
+  let cursor = 0.9;
+  const placed = items.map((item) => {
+    const [L, H, D] = dims(item.size);
+    const others = [item.prev, ...(item.outlines || [])].filter(Boolean).map(dims);
+    const at = { ...item, x: cursor, base: baseOf(item.size, item.wall), L, H, D, others };
+    const wide = Math.max(L + D * OBLIQUE.x, ...others.map(([l, , d]) => l + d * OBLIQUE.x));
+    cursor += wide + 0.6;
+    return at;
+  });
+  // Everything that has to fit: the floor, the person, every tank and outline, the roof.
+  let maxX = cursor - 0.4, maxY = ROOM.person + 0.1;
+  for (const t of placed) {
+    maxY = Math.max(maxY, t.base + t.H + t.D * OBLIQUE.y);
+    for (const s of [t.prev, ...(t.outlines || [])].filter(Boolean)) {
+      const [, h, d] = dims(s);
+      maxY = Math.max(maxY, baseOf(s, t.wall) + h + d * OBLIQUE.y);
+    }
+  }
+  if (roof) maxY = Math.max(maxY, ROOM.wall + 0.15);
+  const pad = 22, labelRoom = names ? 30 : 0;
+  const scale = Math.min((width - pad * 2) / maxX, (height - pad * 2 - labelRoom) / maxY);
+  const px = ([x, y]) => [pad + x * scale, height - pad - (names ? 14 : 0) - y * scale];
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("class", "tank");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", placed.map((t) => `${t.size.name || "Tank"}: ${t.L} by ${t.H} by ${t.D} m`).join("; "));
+  const add = (tag, attrs, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    svg.append(n);
+    return n;
+  };
+  const poly = (pts, cls) => add("polygon", { points: pts.map((p) => px(p).map((v) => v.toFixed(1)).join(",")).join(" "), class: cls });
+  const line = (a, b, cls) => { const [x1, y1] = px(a), [x2, y2] = px(b); return add("line", { x1, y1, x2, y2, class: cls }); };
+  const label = (p, s, cls, anchor, dx = 0, dy = 0) => { const [x, y] = px(p); return add("text", { x: x + dx, y: y + dy, class: cls, "text-anchor": anchor }, s); };
+
+  line([-0.2, 0], [maxX, 0], "floor");
+  if (roof) {
+    line([-0.2, ROOM.wall], [maxX, ROOM.wall], "roof");
+    label([-0.2, ROOM.wall], `${ROOM.wall} m roof`, "dim", "start", 0, -4);
+  }
+  // The person: head, body and legs.
+  const [hx, hy] = px([0.35, ROOM.person - 0.12]);
+  add("circle", { cx: hx, cy: hy, r: 0.12 * scale, class: "person" });
+  poly([[0.2, 0.85], [0.5, 0.85], [0.47, ROOM.person - 0.27], [0.23, ROOM.person - 0.27]], "person");
+  poly([[0.23, 0], [0.33, 0], [0.35, 0.85], [0.21, 0.85]], "person");
+  poly([[0.37, 0], [0.47, 0], [0.49, 0.85], [0.35, 0.85]], "person");
+
+  const box = (x, base, L, H, D, cls) => {
+    const c = (dx, dy, dz) => project(x + dx, base + dy, dz);
+    // The hidden back edges, faint, then the front, top and right side.
+    if (cls === "glass") {
+      line(c(0, 0, D), c(L, 0, D), "back"); line(c(0, 0, D), c(0, H, D), "back"); line(c(0, 0, 0), c(0, 0, D), "back");
+    }
+    poly([c(0, 0, 0), c(L, 0, 0), c(L, H, 0), c(0, H, 0)], cls);
+    poly([c(0, H, 0), c(L, H, 0), c(L, H, D), c(0, H, D)], cls);
+    poly([c(L, 0, 0), c(L, 0, D), c(L, H, D), c(L, H, 0)], cls);
+  };
+  const fmt = (v) => `${(+v).toFixed(2).replace(/\.?0+$/, "")} m`;
+  for (const t of placed) {
+    const c = (dx, dy, dz) => project(t.x + dx, t.base + dy, dz);
+    // The stand, under the front.
+    if (t.base > 0.01) poly([c(0.04, -t.base, 0), c(t.L - 0.04, -t.base, 0), c(t.L - 0.04, 0, 0), c(0.04, 0, 0)], "stand");
+    // Water to just under the rim.
+    const w = t.H * 0.94;
+    poly([c(0, 0, 0), c(t.L, 0, 0), c(t.L, w, 0), c(0, w, 0)], "water");
+    poly([c(0, w, 0), c(t.L, w, 0), c(t.L, w, t.D), c(0, w, t.D)], "water-top");
+    poly([c(t.L, 0, 0), c(t.L, 0, t.D), c(t.L, w, t.D), c(t.L, w, 0)], "water");
+    box(t.x, t.base, t.L, t.H, t.D, "glass");
+    for (const s of [t.prev, ...(t.outlines || [])].filter(Boolean)) {
+      const [l, h, d] = dims(s);
+      box(t.x, baseOf(s, t.wall), l, h, d, "prev");
+    }
+    if (names) {
+      label(c(t.L / 2, Math.max(t.H, ...t.others.map(([, h]) => h)), t.D), t.size.name || "", "label", "middle", 0, -6);
+      label([t.x + t.L / 2, 0], `${fmt(t.L).slice(0, -2)} × ${fmt(t.H).slice(0, -2)} × ${fmt(t.D)}`, "dim", "middle", 0, 14);
+      continue;
+    }
+    // Measurements: length under the front, height up the left, depth along the floor on the right.
+    label(c(t.L / 2, 0, 0), fmt(t.L), "dim", "middle", 0, 13);
+    label(c(0, t.H / 2, 0), fmt(t.H), "dim", "end", -5, 4);
+    label(c(t.L, 0, t.D / 2), fmt(t.D), "dim", "start", 6, 4);
+  }
+  return svg;
+}
+
+/** What a size's numbers come to: how much water, room per fish, and where it sits in the room. */
+function tankFacts(size, wall) {
+  const L = +size.width || 0, H = +size.height || 0, D = +size.depth || 0;
+  const litres = L * H * D * 1000;
+  const perFish = size.capacity > 0 ? litres / size.capacity : 0;
+  const base = wall ? wallBase(H) : ROOM.stand;
+  const top = base + H;
+  const parts = [
+    el("span", {}, "Water ", el("b", {}, `${(L * H * D).toFixed(2)} m³`), ` (${Math.round(litres).toLocaleString()} L), `),
+    el("span", {}, el("b", {}, `${Math.round(perFish)} L`), " per small fish, room for ", el("b", {}, `${size.mediumCapacity ?? 0}`), " medium fish. "),
+    el("span", {}, `Sits ${base.toFixed(2)} m off the floor, top at ${top.toFixed(2)} m.`),
+  ];
+  if (wall && top > ROOM.wall) parts.push(el("span", { class: "warn" }, ` Taller than the ${ROOM.wall} m walls: the back wall rises over it.`));
+  if (!wall && top > ROOM.wall - 0.2) parts.push(el("span", { class: "warn" }, " Too tall for the room."));
+  return el("p", { class: "tank-facts" }, parts);
+}
+
+/** A size's numbers as a small form. Locked keys show their value but follow another size. */
+function tankFields(size, redraw, locked = []) {
+  return el("div", { class: "grid" }, TANK_FIELDS.map(([k, label]) => {
+    if (typeof size[k] !== "number") size[k] = 0;
+    const control = input(size, k, redraw);
+    if (locked.includes(k)) {
+      control.disabled = true;
+      control.title = "Follows the wall aquarium: every height is as long and deep as it, since it's set into the wall.";
+    }
+    return el("label", { class: "field", title: help(k) || label }, el("span", {}, label, pinButton(size, k)), control);
+  }));
+}
+
+function renderAquariums() {
+  const store = data.store;
+  store.tankSizes = store.tankSizes || [];
+  store.wallAquariumHeights = store.wallAquariumHeights || [];
+  const wall = store.wallAquarium;
+  const redraws = [];
+  const redrawAll = () => redraws.forEach((f) => f());
+
+  // Wall heights are always as long and deep as the wall aquarium (the game makes them so too).
+  const lockedInputs = [];
+  const syncHeights = () => {
+    if (!wall) return;
+    for (const h of store.wallAquariumHeights) { h.width = wall.width; h.depth = wall.depth; }
+    for (const [obj, key, control] of lockedInputs) control.value = obj[key];
+  };
+  syncHeights();
+
+  const card = (title, size, { prev = null, isWall = false, locked = [], remove = null, note = null } = {}) => {
+    const picture = el("div");
+    const facts = el("div");
+    const heading = el("span", {}, size.name || title);
+    const draw = () => {
+      picture.replaceChildren(tankSvg([{ size, prev, wall: isWall }], { roof: isWall, height: isWall ? 250 : 210 }));
+      facts.replaceChildren(tankFacts(size, isWall));
+      heading.textContent = size.name || title;
+    };
+    redraws.push(draw);
+    draw();
+    const fields = tankFields(size, () => { if (size === wall) syncHeights(); redrawAll(); }, locked);
+    for (const k of locked) {
+      const control = fields.children[TANK_FIELDS.findIndex(([key]) => key === k)].querySelector("input");
+      if (control) lockedInputs.push([size, k, control]);
+    }
+    return el("div", { class: "card tank-card" },
+      el("h2", {}, heading, remove ? el("button", { class: "small", title: "Remove this size", onclick: remove }, "Remove") : null),
+      note ? el("p", { class: "hint" }, note) : null,
+      picture, facts,
+      el("div", { class: "grid" }, el("label", { class: "field" }, el("span", {}, "Name"), input(size, "name", redrawAll))),
+      fields);
+  };
+
+  // To scale, side by side: every tank size, then the wall aquarium with each height it can be raised to.
+  const overview = el("div");
+  redraws.push(() => {
+    const items = store.tankSizes.map((size) => ({ size }));
+    if (wall) items.push({ size: wall, wall: true, outlines: store.wallAquariumHeights });
+    overview.replaceChildren(tankSvg(items, { width: 1100, height: 300, roof: true, names: true }));
+  });
+
+  const sizeCards = store.tankSizes.map((size, i) => card(`Size ${i + 1}`, size, {
+    prev: i > 0 ? store.tankSizes[i - 1] : null,
+    note: i === 0 ? "Every tank starts this size." : `An upgrade from ${store.tankSizes[i - 1].name || "the size before"} (dashed).`,
+    remove: i > 0 ? () => { store.tankSizes.splice(i, 1); markDirty(); render(); } : null,
+  }));
+  const addSize = el("button", { class: "small", onclick: () => {
+    const last = store.tankSizes[store.tankSizes.length - 1];
+    const next = JSON.parse(JSON.stringify(last));
+    next.name = "New size";
+    next.width = round2(last.width * 1.25); next.height = round2(last.height * 1.1); next.depth = round2(last.depth * 1.1);
+    next.capacity = Math.round(last.capacity * 1.4); next.upgradePrice = Math.round((last.upgradePrice || 500) * 2);
+    store.tankSizes.push(next); markDirty(); render();
+  } }, "+ Add a bigger size");
+
+  const wallCards = [];
+  if (wall) {
+    wallCards.push(card("Wall aquarium", wall, { isWall: true, note: "Set into a wall, and never an upgrade from another size. Its length and depth go for every height below." }));
+    store.wallAquariumHeights.forEach((h, i) => wallCards.push(card(`Height ${i + 1}`, h, {
+      isWall: true, prev: i > 0 ? store.wallAquariumHeights[i - 1] : wall, locked: ["width", "depth"],
+      note: `Raised from ${(i > 0 ? store.wallAquariumHeights[i - 1] : wall).name || "the one before"} (dashed). Its level is Shopkeeping.`,
+      remove: () => { store.wallAquariumHeights.splice(i, 1); markDirty(); render(); },
+    })));
+  }
+  const addHeight = el("button", { class: "small", onclick: () => {
+    const list = store.wallAquariumHeights;
+    const last = list.length ? list[list.length - 1] : wall;
+    const next = JSON.parse(JSON.stringify(last));
+    next.name = "Taller wall aquarium";
+    next.height = round2(last.height + 0.45); next.capacity = Math.round(last.capacity * 1.15);
+    next.upgradePrice = Math.round((last.upgradePrice || 3000) * 1.4); next.unlockLevel = (last.unlockLevel || 10) + 6;
+    list.push(next); syncHeights(); markDirty(); render();
+  } }, "+ Add a taller height");
+
+  const decor = el("div", { class: "grid" }, ["wallDecorationSize", "wallDecorationMinSize", "wallDecorationMaxSize"].map((k) => {
+    if (typeof store[k] !== "number") store[k] = k === "wallDecorationMinSize" ? 0.4 : k === "wallDecorationMaxSize" ? 4 : 2.2;
+    return field(store, k);
+  }));
+
+  redrawAll();
+  return [
+    el("p", { class: "hint" }, "Every aquarium size and upgrade: length, height, depth and how many fish it holds. Small fish share the main limit (going over it is allowed, with overcrowding penalties, up to the hard limit on the Store tab); medium fish, the big kinds (each species' Body class), have their own, much smaller limit. The pictures redraw as you type, to scale with a 1.75 m person and the store's 4 m roof; dashed outlines are the size each one is upgraded from. Saving applies new limits straight away; new shapes show on tanks built or upgraded after that."),
+    el("div", { class: "card" }, el("h2", {}, "All sizes to scale"), overview),
+    el("h2", { style: "font-size:15px;margin:18px 0 8px" }, "Tank sizes"),
+    el("div", { class: "tank-grid" }, sizeCards),
+    addSize,
+    wall ? el("h2", { style: "font-size:15px;margin:22px 0 8px" }, "Wall aquarium and its heights") : null,
+    el("div", { class: "tank-grid" }, wallCards),
+    wall ? addHeight : null,
+    el("div", { class: "card", style: "margin-top:18px" }, el("h2", {}, "Decorations in the wall aquarium"),
+      el("p", { class: "hint" }, "Decorations keep their own size in every tank: upgrading or reshaping an aquarium never grows or shrinks them. Only the wall aquarium's decorations can be resized. This size goes for every piece; in the game the player can then make each piece smaller or bigger when moving decorations (- and +), within these limits."),
+      decor),
+  ];
+}
+
+function render() {
+  indexPaths();
+  $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
+    el("button", { class: key === tab ? "active" : "", onclick: () => { tab = key; query = ""; $("#search").value = ""; render(); } },
+      key === "pinned" && pins.length ? `${name} (${pins.length})` : name)));
+  let content;
+  if (query.trim()) {
+    $("#tabs").querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+    $("#view").replaceChildren(...renderSearch());
+    return;
+  }
+  switch (tab) {
+    case "species": content = renderSpecies(); break;
+    case "compat": content = renderCompat(); break;
+    case "cross": content = renderCross(); break;
+    case "diseases": content = renderDiseases(); break;
+    case "raw": content = renderRaw(); break;
+    case "pinned": content = renderPinned(); break;
+    case "sim": content = renderSim(); break;
+    case "eggs": content = renderEggs(); break;
+    case "swim": content = renderSwim(); break;
+    case "tanks": content = renderAquariums(); break;
+    default: content = renderSection(tab);
+  }
+  $("#view").replaceChildren(...content);
+  makeSortable($("#view"));
+}
+
+$("#save").onclick = save;
+$("#search").addEventListener("input", (e) => { query = e.target.value; render(); });
+$("#reload").onclick = () => { if (!dirty || confirm("Throw away unsaved changes?")) load("/api/balance"); };
+$("#defaults").onclick = () => { if (confirm("Load the game's built-in defaults? Nothing is saved until you press Save.")) load("/api/defaults"); };
+window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); save(); } });
+if (pins.length) tab = "pinned";
+load("/api/balance").catch(() => { $("#status").textContent = "Can't reach Unity. Open the project, then use Fish Breeder > Balance Console."; });
+setInterval(() => { if (!dirty) refreshStatus(""); }, 5000);
+</script>
+</body>
+</html>

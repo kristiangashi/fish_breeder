@@ -64,7 +64,7 @@ namespace FishBreeder.Health
     /// step's death roll, which gets likelier the lower its health.
     /// </summary>
     [RequireComponent(typeof(Fish))]
-    public class FishHealth : MonoBehaviour
+    public partial class FishHealth : MonoBehaviour
     {
         Fish owner;
 

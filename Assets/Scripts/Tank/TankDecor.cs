@@ -14,7 +14,7 @@ namespace FishBreeder
     /// the tank is upgraded. Pieces are always kept wholly inside the glass.
     /// Plants bend and sway (<see cref="PlantBender"/>); grassy ones let fish swim through.
     /// </summary>
-    public class TankDecor : MonoBehaviour
+    public partial class TankDecor : MonoBehaviour
     {
         const string Folder = "Decor/";
 

@@ -59,7 +59,7 @@ namespace FishBreeder.Core
     /// reward, gives its XP and gets a celebration. They're all tracked at once, and the next few
     /// unfinished ones are shown in the store.
     /// </summary>
-    public static class Milestones
+    public static partial class Milestones
     {
         static readonly Dictionary<MilestoneKind, int> progress = new Dictionary<MilestoneKind, int>();
         static readonly HashSet<string> done = new HashSet<string>();

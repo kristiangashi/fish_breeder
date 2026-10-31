@@ -28,7 +28,7 @@ namespace FishBreeder.Core
     /// Until then those messages stay vague. Bounties and research both give Research XP, and every
     /// kind of fish you keep earns a little at each time step.
     /// </summary>
-    public static class Research
+    public static partial class Research
     {
         /// <summary>Bounty progress for counted bounties, per project id, since the bounty was posted.</summary>
         static readonly Dictionary<string, int> counts = new Dictionary<string, int>();

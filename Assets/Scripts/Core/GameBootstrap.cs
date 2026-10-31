@@ -37,6 +37,8 @@ namespace FishBreeder.Core
             Journal.Reset();
             EggBoxes.Reset();
             Milestones.Reset();
+            // The one save, if there is one: everything but the store now, the store once it's built.
+            bool loaded = SaveGame.LoadState();
             Research.Refresh();
             Fx.Reset();
             ViewMode.Set(false);
@@ -60,8 +62,11 @@ namespace FishBreeder.Core
             gameObject.AddComponent<ResearchView>();
             gameObject.AddComponent<FxOverlay>();
             gameObject.AddComponent<UiLayoutEditor>();
+            if (loaded) SaveGame.LoadStore(store, shopDay);
+            gameObject.AddComponent<AutoSave>().Initialize(store, shopDay);
             int setup = Economy.DaysUntilOpening;
-            if (setup > 0)
+            if (loaded) GameLog.Add($"Welcome back! It's day {Economy.Day} and you have {Economy.Format(Economy.Money)}.");
+            else if (setup > 0)
             {
                 GameLog.Add($"Welcome to your shop! You have {Economy.Format(Economy.Money)} and {setup} days before the grand opening to raise some fish to sell.");
                 if (Balance.Data.store.grandmaGift > 0)

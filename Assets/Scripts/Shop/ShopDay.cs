@@ -49,7 +49,7 @@ namespace FishBreeder.Shop
     /// the shop closed: the day still passes, with nobody coming in. For the first few days (the setup
     /// days) that's the only choice. Developer controls speed the open shop up or skip it.
     /// </summary>
-    public class ShopDay : MonoBehaviour
+    public partial class ShopDay : MonoBehaviour
     {
         public struct MoneyPopup
         {

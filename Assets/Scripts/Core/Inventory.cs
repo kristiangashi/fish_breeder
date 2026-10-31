@@ -7,7 +7,7 @@ namespace FishBreeder.Core
     /// They're put in (and taken back out) from each aquarium's Tank tab, so three plants bought at
     /// once can go one in one tank and two in another. Taking something out of a tank puts it back here.
     /// </summary>
-    public static class Inventory
+    public static partial class Inventory
     {
         static readonly Dictionary<string, int> decorations = new Dictionary<string, int>();
         static readonly Dictionary<string, int> backgrounds = new Dictionary<string, int>();

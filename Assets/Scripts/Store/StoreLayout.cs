@@ -20,7 +20,7 @@ namespace FishBreeder.Store
     /// parking lot behind the breeding room, by its back door. Every spot has room for the biggest
     /// tank size, so tanks can be upgraded where they stand.
     /// </summary>
-    public class StoreLayout : MonoBehaviour
+    public partial class StoreLayout : MonoBehaviour
     {
         public const float SectionWidth = 14f;
         public const float SectionDepth = 10f;

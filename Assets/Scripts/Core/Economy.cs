@@ -8,7 +8,7 @@ namespace FishBreeder.Core
     /// The shop's money, stock, reputation and in-game day. Money is whole dollars.
     /// The day only moves on when the shop closes; nothing changes while it stays closed.
     /// </summary>
-    public static class Economy
+    public static partial class Economy
     {
         static readonly Dictionary<FoodType, int> food = new Dictionary<FoodType, int>();
         static readonly List<string> ledger = new List<string>();

@@ -8,7 +8,7 @@ namespace FishBreeder.Core
     /// that arrives known, or a mystery fry that grows enough to tell). The first sighting of a
     /// species is celebrated and opens the journal on it.
     /// </summary>
-    public static class Journal
+    public static partial class Journal
     {
         /// <summary>A heading in the journal and the fish categories under it.</summary>
         public class Group

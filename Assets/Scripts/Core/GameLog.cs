@@ -7,7 +7,7 @@ namespace FishBreeder.Core
     /// <summary>
     /// Player-facing event feed ("Bubbles caught Aqua Flu"). The HUD reads from it.
     /// </summary>
-    public static class GameLog
+    public static partial class GameLog
     {
         const int MaxEntries = 50;
         static readonly List<string> entries = new List<string>();

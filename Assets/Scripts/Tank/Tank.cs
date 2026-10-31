@@ -9,7 +9,7 @@ namespace FishBreeder
     /// Water changes only at time steps (shop opening and closing) and through the player's actions,
     /// so a tank left alone while the shop is closed stays exactly as it is.
     /// </summary>
-    public class Tank : MonoBehaviour
+    public partial class Tank : MonoBehaviour
     {
         [SerializeField] Vector3 innerSize = new Vector3(1.6f, 0.9f, 0.7f);
         [SerializeField] int sizeIndex;

@@ -14,7 +14,7 @@ namespace FishBreeder.Store
     /// (the tier's rare falloff), so each extra rare fish in a box is harder to get than the one
     /// before. The seller only packs fish that will live in the tank the box is for.
     /// </summary>
-    public static class EggBoxes
+    public static partial class EggBoxes
     {
         public static List<EggTierBalance> Tiers => Balance.Data.supplier.eggTiers;
 

@@ -21,7 +21,7 @@ namespace FishBreeder
     public enum FishSize { Small, Medium, Large }
 
     [RequireComponent(typeof(FishHealth), typeof(FishSwimmer), typeof(FishVisual))]
-    public class Fish : MonoBehaviour
+    public partial class Fish : MonoBehaviour
     {
         [SerializeField] string fishName;
         [SerializeField] int generation = 1;

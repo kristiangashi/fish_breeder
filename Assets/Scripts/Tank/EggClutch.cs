@@ -9,7 +9,7 @@ namespace FishBreeder
     /// A clutch of eggs resting on a tank's sand. Eggs hatch into fry after a few time steps
     /// (the shop opening or closing), never in real time. Filthy water kills some eggs on the way.
     /// </summary>
-    public class EggClutch : MonoBehaviour
+    public partial class EggClutch : MonoBehaviour
     {
         static readonly List<EggClutch> all = new List<EggClutch>();
 

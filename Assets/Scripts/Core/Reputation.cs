@@ -70,7 +70,7 @@ namespace FishBreeder.Core
     /// prices, sick or fighting fish). The reputation screen shows each one, what it costs, and
     /// the rooms more stars unlock. Reviews are written here too, in many voices.
     /// </summary>
-    public static class Reputation
+    public static partial class Reputation
     {
         public const int Count = 6;
 

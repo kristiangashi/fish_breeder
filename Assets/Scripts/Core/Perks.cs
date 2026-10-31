@@ -138,7 +138,7 @@ namespace FishBreeder.Core
     /// default) have been spent in the tiers above. The game asks <see cref="Value"/> (and the
     /// helpers) for each effect's total.
     /// </summary>
-    public static class Perks
+    public static partial class Perks
     {
         static readonly Dictionary<string, int> ranks = new Dictionary<string, int>();
 

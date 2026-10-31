@@ -41,7 +41,7 @@ namespace FishBreeder.Core
     /// Fishkeeping unlocks equipment, food, egg boxes, rarer fish and tank sizes; Shopkeeping
     /// unlocks decorations, display and for sale tanks and new parts of the store.
     /// </summary>
-    public static class Progression
+    public static partial class Progression
     {
         static readonly int[] xp = new int[3];
         static readonly int[] level = { 1, 1, 1 };

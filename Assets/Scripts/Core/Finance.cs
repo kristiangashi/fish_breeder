@@ -61,7 +61,7 @@ namespace FishBreeder.Core
     /// lands in the day's book by kind, and every sale by species and tank. The finances screen
     /// reads them.
     /// </summary>
-    public static class Finance
+    public static partial class Finance
     {
         public static readonly int KindCount = Enum.GetValues(typeof(MoneyKind)).Length;
 

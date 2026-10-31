@@ -35,6 +35,14 @@ namespace FishBreeder
             this.speciesId = speciesId;
         }
 
+        /// <summary>The other kinds' schools in the same tank (only ones big enough to school).</summary>
+        public IEnumerable<FishSchool> Others()
+        {
+            if (!schools.TryGetValue(tank, out var bySpecies)) yield break;
+            foreach (var other in bySpecies.Values)
+                if (other != this && other.Members.Count > 0 && other.Members.Count >= other.Members[0].Species.schoolSize && other.frame >= Time.frameCount - 1) yield return other;
+        }
+
         /// <summary>The school this fish swims in right now, or null when it doesn't school (or there aren't enough of its kind).</summary>
         public static FishSchool For(Fish fish)
         {

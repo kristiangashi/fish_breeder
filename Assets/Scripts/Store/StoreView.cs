@@ -562,6 +562,7 @@ namespace FishBreeder.Store
             statusBar = new Rect(10f, topBar.yMax + 4f, width - 20f, UiCheck.Height("Status bar", narrow ? 58f : 32f));
             DrawTopBar(narrow);
             DrawStatusBar(narrow);
+            DrawStepConfirm(width, height);
             float belowBars = statusBar.yMax + 8f;
             if (panel == Panel.None)
             {
@@ -667,21 +668,68 @@ namespace FishBreeder.Store
             var width = wide ? GUILayout.ExpandWidth(true) : GUILayout.Width(118f);
             if (shopDay.Phase == DayPhase.Evening)
             {
-                if (Ui.Button(new GUIContent("Go to sleep", "The night passes: fish grow, eggs hatch, babies are born, water gets dirtier."), UiTheme.Primary, width)) Sleep();
+                if (Ui.Button(new GUIContent("Go to sleep", "The night passes: fish grow, eggs hatch, babies are born, water gets dirtier."), UiTheme.Primary, width)) AskStep(PendingStep.Sleep);
                 return;
             }
             if (shopDay.Phase != DayPhase.Morning) return;
             if (!Economy.CanOpenShop)
             {
-                if (Ui.Button(new GUIContent("Let the day pass", "Time passes until evening, with the shop shut: fish grow, eggs hatch, water gets dirtier."), UiTheme.Primary, wide ? width : GUILayout.Width(130f))) StayClosed();
+                if (Ui.Button(new GUIContent("Let the day pass", "Time passes until evening, with the shop shut: fish grow, eggs hatch, water gets dirtier."), UiTheme.Primary, wide ? width : GUILayout.Width(130f))) AskStep(PendingStep.PassDay);
                 return;
             }
-            if (Ui.Button(new GUIContent("Stay closed", "Let the day pass without opening: no customers, no sales."), wide ? width : GUILayout.Width(100f))) StayClosed();
+            if (Ui.Button(new GUIContent("Stay closed", "Let the day pass without opening: no customers, no sales."), wide ? width : GUILayout.Width(100f))) AskStep(PendingStep.StayClosed);
             if (Ui.Button(new GUIContent("Open Shop", "Nothing changes in the tanks until you close: time passes while customers are in."), UiTheme.Primary, wide ? width : GUILayout.Width(110f)))
             {
                 panel = Panel.None;
                 shopDay.Open();
             }
+        }
+
+        enum PendingStep { None, Sleep, PassDay, StayClosed }
+        PendingStep pendingStep;
+        int pendingChores;
+
+        /// <summary>
+        /// Asks before time moves on: always for staying closed, and for sleeping or letting the day
+        /// pass only when chores are still waiting.
+        /// </summary>
+        void AskStep(PendingStep step)
+        {
+            int chores = new ToDoList().Build(store.Tanks);
+            if (step != PendingStep.StayClosed && chores == 0)
+            {
+                if (step == PendingStep.Sleep) Sleep();
+                else StayClosed();
+                return;
+            }
+            pendingStep = step;
+            pendingChores = chores;
+        }
+
+        void DrawStepConfirm(float width, float height)
+        {
+            if (pendingStep == PendingStep.None) return;
+            var rect = new Rect(width * 0.5f - 200f, height * 0.5f - 85f, 400f, 170f);
+            GUI.ModalWindow(73410, rect, DrawStepConfirmWindow, pendingStep == PendingStep.StayClosed ? "Stay closed today?" : "Chores not finished", UiStyles.Window);
+        }
+
+        void DrawStepConfirmWindow(int id)
+        {
+            string text = pendingStep == PendingStep.StayClosed ? "The shop stays shut all day: no customers, no sales and no reviews, but the fish still grow and the water still gets dirtier." : "";
+            if (pendingChores > 0)
+                text += (text.Length > 0 ? "\n\n" : "") + $"<color=#ffd27f>{(pendingChores == 1 ? "One chore is" : $"{pendingChores} chores are")} still waiting: hungry, sick or dead fish, dirty water or broken equipment.</color>";
+            GUILayout.Label(text, Rich());
+            GUILayout.FlexibleSpace();
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Go back", GUILayout.Height(30f))) pendingStep = PendingStep.None;
+            if (GUILayout.Button(pendingStep == PendingStep.StayClosed ? "Stay closed" : "Go anyway", UiTheme.Primary, GUILayout.Height(30f)))
+            {
+                var step = pendingStep;
+                pendingStep = PendingStep.None;
+                if (step == PendingStep.Sleep) Sleep();
+                else StayClosed();
+            }
+            GUILayout.EndHorizontal();
         }
 
         void StayClosed()
@@ -1528,6 +1576,7 @@ namespace FishBreeder.Store
             if (!unlocked) GUI.color = new Color(0.45f, 0.45f, 0.45f, 0.8f);
             GUI.DrawTexture(pictureRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
             if (picture != null) GUI.DrawTexture(pictureRect, picture, ScaleMode.ScaleToFit);
+            else GUI.Label(pictureRect, "<size=40><b>?</b></size>", MysteryMark());
             GUI.color = old;
             GUILayout.BeginVertical();
             Ui.Label($"<b>{title}</b>", Rich());
@@ -1590,16 +1639,19 @@ namespace FishBreeder.Store
                 if (EggBoxes.HasGoal(tier))
                     details += goalMet ? $"\n<color={UiTheme.AquaHex}>Unlocked: you raised {tier.raiseCount} fish for the fish seller.</color>"
                         : $"\n<color=#ffd27f>To unlock: {EggBoxes.GoalText(tier)}.</color>";
+                // A box that opens with a goal stays a mystery until then: no fish, only how to open it.
+                bool mystery = EggBoxes.HasGoal(tier) && !goalMet;
+                if (mystery) details = $"<color=#ffd27f>To unlock: {EggBoxes.GoalText(tier)}.</color>";
                 bool away = FishSeller.Away;
                 string label = away ? "Back in the morning" : !goalMet ? $"Raise {tier.raiseCount} fish first" : free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
                 bool canBuy = !away && goalMet && anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
-                var picture = fry ? ItemPreviews.FryBox(tier.color) : ItemPreviews.EggBox(tier.color, tier.speckled);
-                if (OfferRow(picture, fry ? EggBoxes.FryName(tier) : tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
+                var picture = mystery ? null : fry ? ItemPreviews.FryBox(tier.color) : ItemPreviews.EggBox(tier.color, tier.speckled);
+                if (OfferRow(picture, mystery ? "?" : fry ? EggBoxes.FryName(tier) : tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
                 {
                     if (fry) OrderFryBox(tier);
                     else OrderEggs(tier);
                 }
-                if (unlocked && normal.Count + rare.Count > 0) DrawPoolPictures(normal, rare, EggBoxes.FirstEggOdds(tier, level, eggLayersOnly, tankSize));
+                if (!mystery && unlocked && normal.Count + rare.Count > 0) DrawPoolPictures(normal, rare, EggBoxes.FirstEggOdds(tier, level, eggLayersOnly, tankSize));
             }
         }
 
@@ -1894,6 +1946,9 @@ namespace FishBreeder.Store
             }
             return banner;
         }
+
+        static GUIStyle mysteryMark;
+        static GUIStyle MysteryMark() => mysteryMark != null ? mysteryMark : mysteryMark = new GUIStyle(GUI.skin.label) { richText = true, alignment = TextAnchor.MiddleCenter };
 
         static GUIStyle Rich()
         {

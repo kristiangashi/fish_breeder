@@ -258,10 +258,11 @@ const META = {
   frontBend: ["Front bend share", "How much of that curve the stiff front of the body (in front of where the wiggle starts) can still take: 0 = rigid, 1 = as bendy as the back."],
   maxPitchBend: ["Most bend up/down (°)", "Most the body bends up or down from nose to tail when the fish climbs or dives. Fish bend sideways, not up and down, so keep it small."],
   bankTwist: ["Bank twist", "When a fish leans into a turn, how much less its tail leans than its head: 0 = it banks as one piece."],
+  otherSchoolDistance: ["Gap between schools (m)", "How far apart, in metres, schools of different kinds of fish keep their middles. Bigger keeps them further apart; 0 lets them mix freely."],
   onlyInBox: ["Only in box", "Id of the only egg/fry box this fish comes in (e.g. WildTetra). Empty = any box whose rarity settings include it. A box with its own fish hatches nothing else."],
   raiseSpecies: ["Raise species", "Species ids, comma separated (e.g. NeonTetra,TigerBarb): the box opens once you've raised 'Raise count' of these fish to adulthood. Empty = no goal."],
   raiseCount: ["Raise count", "How many of the raise species you must raise to adulthood before the fish seller sells this box (0 = no goal)."],
-  rareFalloff: ["Rare falloff", "The rare chance is multiplied by this for every rare egg already in the box, so 2 rares is much harder than 1."],
+  rareFalloff: ["Rare falloff", "How much harder each extra rare fish in one box is. 0.3 means: once a box has one rare egg, every later egg is only 30% as likely to be rare; with two rares, 9%. 1 = no falloff, 0 = never more than one rare."],
   speckled: ["Speckled", ""],
   blurb: ["Blurb", "Shown in the supplier."],
   // Decorations and tanks
@@ -2140,7 +2141,7 @@ function renderEggs() {
   const editor = el("div", { class: "card" },
     el("h2", {}, "Edit a box"),
     tierButtons,
-    el("p", { class: "hint", style: "margin-top:8px" }, `${tier.name}: ${tier.eggs} per box, $${tier.price} as eggs, $${tier.fryPrice} as fry, from Fishkeeping level ${tier.unlockLevel}. Chance is relative: a fish with chance 20 is twice as likely as one with 10. 0 means never. Fish of ${ENUMS.rarity[tier.rarePool]} rarity or rarer count as rare in this box (rare falloff ${tier.rareFalloff}). The percentages are for the level and day above.`),
+    el("p", { class: "hint", style: "margin-top:8px" }, `${tier.name}: ${tier.eggs} per box, $${tier.price} as eggs, $${tier.fryPrice} as fry, from Fishkeeping level ${tier.unlockLevel}. Chance is relative: a fish with chance 20 is twice as likely as one with 10. 0 means never. Fish of ${ENUMS.rarity[tier.rarePool]} rarity or rarer count as rare in this box. Each extra rare fish in the same box is harder to get: once one rare egg is in, the next egg is only ${Math.round(tier.rareFalloff * 100)}% as likely to be rare, after two only ${Math.round(tier.rareFalloff * tier.rareFalloff * 100)}%, and so on (that's the Rare falloff setting, ${tier.rareFalloff}). The percentages are for the level and day above.`),
     el("div", { class: "scroll" }, el("table", {},
       el("thead", {}, el("tr", {}, el("th", {}, "Species"), el("th", {}, "Rarity"), el("th", { title: "Relative chance against the other fish this box can hatch right now." }, "Chance"),
         el("th", { title: "Fishkeeping level from which it can hatch." }, "From level"), el("th", { title: "Game day from which it can hatch (0 = from the start)." }, "From day"),
@@ -2377,7 +2378,8 @@ function renderSwim() {
   };
   swimAnimation = requestAnimationFrame(frame);
   // A game from before the limits existed doesn't send them yet: start from its defaults.
-  if (!data.swimming) data.swimming = { maxBendFlexible: 70, maxBendStiff: 35, sharpestBend: 24, frontBend: 0.15, maxPitchBend: 8, bankTwist: 0.1 };
+  if (!data.swimming) data.swimming = { maxBendFlexible: 70, maxBendStiff: 35, sharpestBend: 24, frontBend: 0.15, maxPitchBend: 8, bankTwist: 0.1, otherSchoolDistance: 0.35 };
+  if (data.swimming.otherSchoolDistance == null) data.swimming.otherSchoolDistance = 0.35;
   const turnLabel = el("span", { class: "hint", style: "margin:0;min-width:110px" });
   const showTurn = () => { turnLabel.textContent = previewTurn ? `turning ${previewTurn}°/s` : "swimming straight"; };
   showTurn();

@@ -81,10 +81,12 @@ namespace FishBreeder.Core
                 {
                     richText = true,
                     fontStyle = FontStyle.Bold,
-                    fontSize = 14,
+                    fontSize = 12,
                     alignment = TextAnchor.MiddleCenter,
-                    padding = new RectOffset(8, 8, 2, 2),
-                    margin = new RectOffset(0, 6, 2, 2),
+                    wordWrap = false,
+                    clipping = TextClipping.Overflow,
+                    padding = new RectOffset(6, 6, 2, 2),
+                    margin = new RectOffset(0, 4, 2, 2),
                 };
                 style.normal.background = background;
                 style.normal.textColor = Color.white;

@@ -472,6 +472,7 @@ namespace FishBreeder.Core
         public int slot;
         public string role;
         public int number;
+        public string name;
         public int size;
         public float waterQuality, algae, temperature, ph, salinity, heaterSetting;
         public bool pests, fed;
@@ -789,6 +790,7 @@ namespace FishBreeder.Store
                 saved.slot = slots.IndexOf(tank.Slot);
                 saved.role = tank.Role.ToString();
                 saved.number = tank.Number;
+                saved.name = tank.CustomName;
                 d.tanks.Add(saved);
             }
         }
@@ -817,6 +819,7 @@ namespace FishBreeder.Store
                     var slot = slots[saved.slot];
                     var tank = PlaceTank(slot, role, null);
                     tank.SetRole(role, Mathf.Max(1, saved.number));
+                    if (!string.IsNullOrEmpty(saved.name)) tank.Rename(saved.name);
                     if (saved.size != tank.Tank.SizeIndex && SizeInfo(tank.Tank, saved.size) != null)
                     {
                         if (tank.Tank.IsWallAquarium)

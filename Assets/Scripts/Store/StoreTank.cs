@@ -28,7 +28,18 @@ namespace FishBreeder.Store
         public GameObject Stand { get; set; }
         public bool InBackRoom => Slot != null && Slot.backRoom;
 
-        public string Title => Role == TankRole.Quarantine ? "Quarantine tank" : $"{RoleName(Role)} tank {Number}";
+        [SerializeField] string customName;
+        /// <summary>The name the player gave it, or null for the usual "Breeder tank 1".</summary>
+        public string CustomName => string.IsNullOrEmpty(customName) ? null : customName;
+        public string Title => CustomName ?? (Role == TankRole.Quarantine ? "Quarantine tank" : $"{RoleName(Role)} tank {Number}");
+
+        /// <summary>Gives the tank the player's own name (blank goes back to the usual one).</summary>
+        public void Rename(string name)
+        {
+            customName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+            gameObject.name = Title;
+            tank.Title = Title;
+        }
 
         public static string RoleName(TankRole role) => role == TankRole.ForSale ? "For Sale" : role.ToString();
 

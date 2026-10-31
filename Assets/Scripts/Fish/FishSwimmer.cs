@@ -337,6 +337,15 @@ namespace FishBreeder
                 float d = away.magnitude;
                 if (d < personal && d > 1e-4f) steer += away / d * (1f - d / personal) * 1.8f;
             }
+            // Schools of other kinds keep their distance (console Swimming tab; 0 lets them mix).
+            float apart = Balance.Data.swimming.otherSchoolDistance;
+            if (apart > 0f)
+                foreach (var other in school.Others())
+                {
+                    var away = school.Center - other.Center;
+                    float d = away.magnitude;
+                    if (d < apart && d > 1e-4f) steer += away / d * (1f - d / apart) * 1.5f;
+                }
             // Each fish wanders a touch on its own, so the school never looks drilled.
             float t = Time.time * 0.4f + (GetInstanceID() % 1000) * 0.37f;
             steer += new Vector3(Mathf.Sin(t), Mathf.Sin(t * 1.3f) * 0.3f, Mathf.Cos(t * 0.8f)) * 0.25f;

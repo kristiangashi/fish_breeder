@@ -856,6 +856,8 @@ namespace FishBreeder.Core
         public float maxPitchBend = 8f;
         [Tooltip("How much less the tail rolls than the head when banking into a turn (0 = the fish banks as one piece).")]
         [Range(0f, 1f)] public float bankTwist = 0.1f;
+        [Tooltip("How far apart, in metres, schools of different kinds keep their middles (0 = they mix freely).")]
+        public float otherSchoolDistance = 0.35f;
     }
 
     /// <summary>

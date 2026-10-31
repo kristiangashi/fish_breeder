@@ -46,6 +46,16 @@ namespace FishBreeder
             public float tailBeatsPerSecond = 2.4f;
             [Tooltip("Only for models without a species: 0 = slender fish that bend along most of their body; 1 = deep-bodied fish whose front half stays stiff. Species set where their body bends with bendStart (console Swimming tab).")]
             [Range(0f, 1f)] public float bodyStiffness = 0.3f;
+
+            [Header("Mouth and fins")]
+            [Tooltip("Breathe with the mouth and move the fins on top of the body wave (see FishFinMotion). Only the big medium fish do; small fish stay as they are.")]
+            public bool animateMouthAndFins;
+            [Tooltip("Height of the mouth slit, in the model's part space (head along +Z, the whole fish 1 long and centred).")]
+            public float mouthHeight;
+            [Tooltip("How far forward the mouth corners sit, in the same space (the nose is at about 0.5).")]
+            public float mouthCorner = 0.46f;
+            [Tooltip("How far behind the mouth corners the jaw hinges, in the same space.")]
+            public float mouthHinge = 0.05f;
         }
 
         /// <summary>
@@ -160,6 +170,14 @@ namespace FishBreeder
                     if (id == "CrimsonJewelCichlid" || id == "SilverFlamefin")
                     {
                         AddSetFish(library, tetras.folder, tAlbedo, tNormal, tSmoothness, id, 1.2f, 1f, 0.8f, 6f);
+                        // Big enough to see them breathe and work their fins. Mouths measured on the Meshy models.
+                        var wallFish = library.entries[library.entries.Count - 1];
+                        if (wallFish.species != id) continue;
+                        wallFish.animateMouthAndFins = true;
+                        bool cichlid = id == "CrimsonJewelCichlid";
+                        wallFish.mouthHeight = cichlid ? -0.037f : -0.088f;
+                        wallFish.mouthCorner = cichlid ? 0.468f : 0.464f;
+                        wallFish.mouthHinge = cichlid ? 0.08f : 0.055f;
                         continue;
                     }
                     bool big = id == "BucktoothTetra" || id == "CongoTetra";

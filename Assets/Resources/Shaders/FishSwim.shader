@@ -24,6 +24,8 @@ Shader "FishBreeder/FishSwim"
         [HideInInspector] _SwimSide ("Side Axis, w = body length", Vector) = (1,0,0,1)
         [HideInInspector] _SwimUp ("Up Axis, w = spine row (-1 = rest pose)", Vector) = (0,1,0,-1)
         [HideInInspector] _RestCenter ("Rest Centre", Vector) = (0,0,0,0)
+        [HideInInspector] _FinMotion ("Mouth open, pectoral phase, pectoral swing, fin phase", Vector) = (0,0,0,0)
+        [HideInInspector] _FinMotion2 ("Dorsal/ventral swing, tail flex", Vector) = (0,0,0,0)
     }
     SubShader
     {
@@ -59,6 +61,8 @@ Shader "FishBreeder/FishSwim"
             UNITY_DEFINE_INSTANCED_PROP(float4, _SwimSide)
             UNITY_DEFINE_INSTANCED_PROP(float4, _SwimUp)
             UNITY_DEFINE_INSTANCED_PROP(float4, _RestCenter)
+            UNITY_DEFINE_INSTANCED_PROP(float4, _FinMotion)
+            UNITY_DEFINE_INSTANCED_PROP(float4, _FinMotion2)
         UNITY_INSTANCING_BUFFER_END(Props)
 
         struct Input
@@ -72,9 +76,28 @@ Shader "FishBreeder/FishSwim"
             return tex2Dlod(_SpineTex, float4((texel + 0.5) * _SpineTexSize.x, (row + 0.5) * _SpineTexSize.y, 0, 0));
         }
 
+        // Mouth and fins of the big fish (FishFinMotion): uv3.xyz is how far a vertex moves at full
+        // swing, uv3.w its motion (1 mouth, 2 pectorals, 3 dorsal/ventral, 4 tail) plus 0.9 * its lag.
+        // Fish without the channel, or whose motion is all zero, are left as they are.
+        void FinMotion(inout appdata_full v)
+        {
+            float4 m = v.texcoord3;
+            if (m.w < 0.5) return;
+            float4 a = UNITY_ACCESS_INSTANCED_PROP(Props, _FinMotion);
+            float4 b = UNITY_ACCESS_INSTANCED_PROP(Props, _FinMotion2);
+            float channel = floor(m.w);
+            float lag = frac(m.w) / 0.9 * 6.2831853;
+            float k = channel < 1.5 ? a.x
+                : channel < 2.5 ? a.z * (0.5 + 0.5 * sin(a.y - lag))
+                : channel < 3.5 ? b.x * sin(a.w - lag)
+                : b.y * sin(a.w - lag);
+            v.vertex.xyz += m.xyz * k;
+        }
+
         void vert(inout appdata_full v)
         {
             UNITY_SETUP_INSTANCE_ID(v);
+            FinMotion(v);
             float4 axis4 = UNITY_ACCESS_INSTANCED_PROP(Props, _SwimAxis);
             float4 side4 = UNITY_ACCESS_INSTANCED_PROP(Props, _SwimSide);
             float4 up4 = UNITY_ACCESS_INSTANCED_PROP(Props, _SwimUp);

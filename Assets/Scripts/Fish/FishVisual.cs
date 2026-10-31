@@ -40,6 +40,10 @@ namespace FishBreeder
         float modelLength;
         float swimPhase;
         float stroke = 0.5f;
+        // Mouth and fins of the big fish (see FishFinMotion): what the shader plays this frame.
+        bool movesFins;
+        Vector4 finMotion, finMotion2;
+        float breathPhase, pectoralPhase;
 
         // The parts the fish is built from, for the illness overlays.
         List<FishParts.Piece> partPieces;
@@ -61,6 +65,8 @@ namespace FishBreeder
         static readonly int GeneColorId = Shader.PropertyToID("_GeneColor");
         static readonly int TintId = Shader.PropertyToID("_Tint");
         static readonly int TintStrengthId = Shader.PropertyToID("_TintStrength");
+        static readonly int FinMotionId = Shader.PropertyToID("_FinMotion");
+        static readonly int FinMotion2Id = Shader.PropertyToID("_FinMotion2");
 
         /// <summary>A model space with its own spine row.</summary>
         class SwimUnit
@@ -77,6 +83,8 @@ namespace FishBreeder
             public Vector4 axis, side, up, center;
             /// <summary>Illness spots and sores: their own colour, untouched by the gene colour or tint.</summary>
             public bool overlay;
+            /// <summary>The full model of a big fish, whose mouth and fins move (the far copy and small fish don't).</summary>
+            public bool finMotion;
         }
 
         static MaterialPropertyBlock block;
@@ -208,7 +216,13 @@ namespace FishBreeder
             var materials = new Material[look.entries.Count];
             for (int i = 0; i < materials.Length; i++) materials[i] = SharedMaterial(look.entries[i], textured);
             var unit = AddUnit(space);
-            AddSwimRenderer(MeshPart("Body", look.near, materials, space, cullBounds), unit, space, bounds, false);
+            var near = AddSwimRenderer(MeshPart("Body", look.near, materials, space, cullBounds), unit, space, bounds, false);
+            if (look.movesFins)
+            {
+                movesFins = near.finMotion = true;
+                breathPhase = Random.value * Mathf.PI * 2f;
+                pectoralPhase = Random.value * Mathf.PI * 2f;
+            }
             if (look.far != null)
             {
                 farRenderer = MeshPart("Body (far)", look.far, materials, space, cullBounds);
@@ -226,6 +240,8 @@ namespace FishBreeder
         {
             public Mesh near, far;
             public Bounds bounds;
+            /// <summary>The near mesh carries mouth and fin movement (a big fish's look).</summary>
+            public bool movesFins;
             public readonly List<FishModelLibrary.Entry> entries = new List<FishModelLibrary.Entry>();
         }
 
@@ -267,6 +283,7 @@ namespace FishBreeder
             if (vertexCount > 65000) look.near.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             look.near.CombineMeshes(all, false, false);
             look.near.RecalculateBounds();
+            look.movesFins = FishFinMotion.Write(look.near, pieces, look.entries);
             foreach (var group in groups) Destroy(group);
             look.far = MeshDecimator.Simplify(look.near, FarCells);
             looks[pieces] = look;
@@ -328,7 +345,7 @@ namespace FishBreeder
         }
 
         /// <summary>Works out where the body lies in the renderer's mesh space (rest pose bounds <paramref name="b"/>) and hands it its spine.</summary>
-        void AddSwimRenderer(Renderer renderer, SwimUnit unit, Transform space, Bounds b, bool overlay)
+        SwimRenderer AddSwimRenderer(Renderer renderer, SwimUnit unit, Transform space, Bounds b, bool overlay)
         {
             var axis = space.InverseTransformDirection(modelRoot.forward).normalized;
             var side = space.InverseTransformDirection(modelRoot.right).normalized;
@@ -356,6 +373,7 @@ namespace FishBreeder
             };
             swimRenderers.Add(swim);
             ApplyBlock(swim);
+            return swim;
         }
 
         void ApplyBlock(SwimRenderer swim)
@@ -369,6 +387,11 @@ namespace FishBreeder
             block.SetVector(RestCenterId, swim.center);
             block.SetColor(GeneColorId, swim.overlay ? Color.white : geneColor);
             block.SetColor(TintId, swim.overlay ? Color.white : tintNow);
+            if (swim.finMotion)
+            {
+                block.SetVector(FinMotionId, finMotion);
+                block.SetVector(FinMotion2Id, finMotion2);
+            }
             swim.renderer.SetPropertyBlock(block);
         }
 
@@ -398,6 +421,8 @@ namespace FishBreeder
             swimUnits.Clear();
             swimRenderers.Clear();
             farRenderer = null;
+            movesFins = false;
+            finMotion = finMotion2 = Vector4.zero;
         }
 
         void OnDestroy() => ReleaseSwim();
@@ -706,6 +731,30 @@ namespace FishBreeder
             Perf.FishSpine.End();
         }
 
+        /// <summary>
+        /// Big fish breathe and work their fins: the mouth gulps, slowly when resting and faster and wider
+        /// when working hard; the pectorals scull steadily while hovering or turning and fold back when
+        /// cruising; the dorsal, ventral and tail fins ripple with the body's beat, more with a harder stroke.
+        /// </summary>
+        void AnimateMouthAndFins(float effort, float thrust, float turning, float moving, float deltaTime)
+        {
+            float exertion = Mathf.Clamp01(0.5f * effort + 0.6f * thrust);
+            breathPhase = Mathf.Repeat(breathPhase + deltaTime * Mathf.PI * 2f * Mathf.Lerp(0.6f, 1.4f, exertion), Mathf.PI * 2f);
+            float gulp = 0.5f - 0.5f * Mathf.Cos(breathPhase);
+            float mouth = gulp * gulp * Mathf.Lerp(0.5f, 1f, exertion);
+
+            float hover = 1f - moving;
+            float scull = Mathf.Max(hover, turning);
+            pectoralPhase = Mathf.Repeat(pectoralPhase + deltaTime * Mathf.PI * 2f * Mathf.Lerp(0.9f, 1.7f, scull), Mathf.PI * 2f);
+            float pectorals = Mathf.Clamp01(0.3f + 0.6f * hover + 0.5f * turning) * Mathf.Lerp(1f, 0.35f, Mathf.Clamp01(effort - 0.8f));
+
+            float fins = 0.35f + 0.65f * Mathf.Clamp01(stroke);
+            finMotion = new Vector4(mouth, pectoralPhase, pectorals, swimPhase);
+            finMotion2 = new Vector4(fins, Mathf.Clamp01(stroke), 0f, 0f);
+            foreach (var swim in swimRenderers)
+                if (swim.finMotion) ApplyBlock(swim);
+        }
+
         void AnimateModel(float bodyLengthsPerSecond, float thrust, float bankDegrees, float turnDegreesPerSecond, float deltaTime)
         {
             if (modelRoot == null || deltaTime <= 0f) return;
@@ -745,6 +794,7 @@ namespace FishBreeder
                         bankDegrees, follow, curl, stiffen, unit.space);
                     SpineAtlas.Write(unit.row, spine);
                 }
+                if (movesFins) AnimateMouthAndFins(effort, thrust, turning, moving, deltaTime);
                 return;
             }
 

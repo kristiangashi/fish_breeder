@@ -328,6 +328,8 @@ namespace FishBreeder.Core
         public int price = 20;
         [Tooltip("Shopkeeping level needed to buy it.")]
         public int unlockLevel = 1;
+        [Tooltip("Only goes up in wall aquariums (back or sides): a wide photo made for the long glass.")]
+        public bool wallAquariumOnly;
     }
 
     /// <summary>
@@ -460,7 +462,7 @@ namespace FishBreeder.Core
                 normalMin = SpeciesRarity.Exotic, normalMax = SpeciesRarity.Legendary, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Ancient, rareChance = 0.4f, rareFalloff = 0.3f,
                 color = new Color(0.45f, 0.75f, 0.55f), speckled = true },
         };
-        public List<BackgroundBalance> backgrounds = new List<BackgroundBalance>
+        public List<BackgroundBalance> backgrounds = WithWallAquariumBackgrounds(new List<BackgroundBalance>
         {
             new BackgroundBalance { id = "SandyShallows", name = "Sandy shallows", blurb = "Pale sand, dark rocks and a little seaweed in bright, shallow water.", price = 15, unlockLevel = 1 },
             new BackgroundBalance { id = "OpenOcean", name = "Open ocean", blurb = "Deep blue water with sunbeams from far above.", price = 15, unlockLevel = 1 },
@@ -468,6 +470,20 @@ namespace FishBreeder.Core
             new BackgroundBalance { id = "DriftwoodForest", name = "Driftwood forest", blurb = "Tangled roots and fallen leaves in tea-coloured blackwater, like a tetra's home river.", price = 20, unlockLevel = 2 },
             new BackgroundBalance { id = "CoralReef", name = "Coral reef", blurb = "A sunlit reef bursting with colourful corals.", price = 25, unlockLevel = 3 },
             new BackgroundBalance { id = "Shipwreck", name = "Shipwreck", blurb = "An old wooden wreck on the sea floor, overgrown with coral.", price = 30, unlockLevel = 4 },
+        });
+
+        static List<BackgroundBalance> WithWallAquariumBackgrounds(List<BackgroundBalance> list)
+        {
+            list.AddRange(WallAquariumBackgrounds());
+            return list;
+        }
+
+        /// <summary>Photos for the wall aquariums only (added in balance version 14).</summary>
+        public static List<BackgroundBalance> WallAquariumBackgrounds() => new List<BackgroundBalance>
+        {
+            new BackgroundBalance { id = "ReefArch", name = "Reef arch", blurb = "A great rock arch over white sand, kelp and a shoal of fish under sunbeams.", price = 60, unlockLevel = 1, wallAquariumOnly = true },
+            new BackgroundBalance { id = "BassLilyPads", name = "Bass pond", blurb = "Bass cruising between reeds and a sunken log under a ceiling of lily pads.", price = 60, unlockLevel = 1, wallAquariumOnly = true },
+            new BackgroundBalance { id = "LilyPadReeds", name = "Lily pad shallows", blurb = "Green light through lily pads over a mossy lake bed lined with reeds.", price = 60, unlockLevel = 1, wallAquariumOnly = true },
         };
         public List<DecorationBalance> decorations = new List<DecorationBalance>
         {
@@ -886,7 +902,7 @@ namespace FishBreeder.Core
         /// 12: medium fish (the big kinds) get their own, much smaller limit in every tank size.
         /// 13: decorations keep their own size in every tank (no longer grown with its height), and bigger wall pieces.
         /// </summary>
-        public const int CurrentDataVersion = 13;
+        public const int CurrentDataVersion = 14;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1212,6 +1228,13 @@ namespace FishBreeder.Core
                 float wallHeight = (data.store.wallAquarium ?? fresh.wallAquarium).height;
                 data.store.wallDecorationSize *= wallHeight / 0.9f;
                 data.store.wallDecorationMaxSize = Mathf.Max(data.store.wallDecorationMaxSize, fresh.wallDecorationMaxSize);
+            }
+            if (fromVersion < 14 && data.supplier != null)
+            {
+                // New photos for the wall aquariums, added to the saved list unless it has them.
+                data.supplier.backgrounds ??= new List<BackgroundBalance>();
+                foreach (var b in SupplierBalance.WallAquariumBackgrounds())
+                    if (!data.supplier.backgrounds.Exists(x => x != null && x.id == b.id)) data.supplier.backgrounds.Add(b);
             }
             data.dataVersion = CurrentDataVersion;
         }

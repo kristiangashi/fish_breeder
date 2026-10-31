@@ -1237,7 +1237,7 @@ namespace FishBreeder.Core
             foreach (var pair in new List<KeyValuePair<string, int>>(Inventory.AllBackgrounds))
             {
                 var item = TankBackgrounds.Find(pair.Key);
-                if (item == null) continue;
+                if (item == null || item.wallAquariumOnly && !tank.IsWallAquarium) continue;
                 any = true;
                 if (!PickerRow(TankBackgrounds.Texture(pair.Key), 40f, $"{item.name}  <size=11>x{pair.Value}</size>", background != null ? "Swap" : "Put up")
                     || !Inventory.TakeBackground(pair.Key)) continue;

@@ -1706,7 +1706,7 @@ namespace FishBreeder.Store
                     if (tank.Tank.SideBackgroundId == item.id) up++;
                 }
                 int price = Perks.Decoration(item.price);
-                string details = item.blurb + $"\nYou have <b>{have}</b> in stock" + (up > 0 ? $", {up} up in aquariums." : ".");
+                string details = item.blurb + (item.wallAquariumOnly ? " <b>Wall aquariums only.</b>" : "") + $"\nYou have <b>{have}</b> in stock" + (up > 0 ? $", {up} up in aquariums." : ".");
                 if (OfferRow(TankBackgrounds.Texture(item.id), item.name, details, XpTrack.Shopkeeping, item.unlockLevel, $"Buy  {Economy.Format(price)}", Economy.CanAfford(price))
                     && Economy.TrySpend(price, $"the {item.name.ToLower()} background", MoneyKind.Decorations))
                 {

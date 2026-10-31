@@ -697,6 +697,8 @@ namespace FishBreeder.Core
             GUILayout.BeginHorizontal();
             if (Ui.Button("Grow all up"))
                 foreach (var fish in new List<Fish>(tank.Residents)) fish.DevGrowUp();
+            if (Ui.Button("Grow as big as the tank allows"))
+                foreach (var fish in new List<Fish>(tank.Residents)) fish.DevGrowWithRoom();
             if (Ui.Button("Remove all fish"))
             {
                 foreach (var fish in new List<Fish>(tank.Residents)) fish.RemoveFromTank();
@@ -1702,6 +1704,8 @@ namespace FishBreeder.Core
                 if (!string.IsNullOrEmpty(species.family)) Ui.Label($"<size=11><i>{species.scientificName}</i>, {species.family}</size>", Rich());
             }
             string growing = fish.Stage == LifeStage.Adult ? "" : $", grown up in about {Mathf.Max(0.5f, (1f - fish.Growth) * species.daysToAdult):0.#} days";
+            string roomGrowth = fish.RoomGrowthNote;
+            if (roomGrowth.Length > 0) growing += ", " + roomGrowth;
             Ui.Label($"<size=11>{fish.AgeDays:0.#} days old{growing}, generation {fish.Generation}</size>", Rich());
             if (!string.IsNullOrEmpty(fish.ParentNames)) Ui.Label($"<size=11>Parents: {fish.ParentNames}</size>", Rich());
             if (fish.IsPregnant)

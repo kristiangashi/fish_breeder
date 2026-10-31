@@ -30,6 +30,8 @@ namespace FishBreeder
         [SerializeField, Range(0f, 1f)] float hunger;
         [SerializeField, Range(0f, 1f)] float growth = 1f;
         [SerializeField] float ageDays;
+        [Tooltip("How far a grown fish has grown on past its shop size towards its species' full-grown length (0..1), in tanks roomy enough.")]
+        [SerializeField, Range(0f, 1f)] float bigGrowth;
         [SerializeField] int price;
         [Tooltip("Hidden: the fish's true value relative to its appraised price.")]
         [SerializeField] float valueFactor = 1f;
@@ -76,7 +78,13 @@ namespace FishBreeder
                 return s != null && s.sizeMedium > 0f ? s.sizeMedium : 1f;
             }
         }
-        float GrowthScale => Mathf.Lerp(0.5f, 1f, growth);
+        float GrowthScale => Mathf.Lerp(0.5f, 1f, growth) * RoomGrowthScale;
+
+        /// <summary>How far it has grown on past its shop size (0..1 of the way to full-grown).</summary>
+        public float BigGrowth => bigGrowth;
+        /// <summary>How many times longer than its shop size it has grown in roomy tanks (1 = not at all).</summary>
+        public float RoomGrowthScale => Mathf.Lerp(1f, Species.FullGrownRatio, bigGrowth);
+        public bool IsFullGrown => Species.GrowsWithRoom && bigGrowth >= 1f;
         public bool IsDead { get; private set; }
         public string CauseOfDeath { get; private set; }
         public bool IsStarving => hunger >= GameConfig.Active.starvingThreshold;
@@ -157,6 +165,7 @@ namespace FishBreeder
                 if (wasFry && Stage != LifeStage.Fry) GrowOutOfFry(wasHidden);
                 if (growth >= 1f) GrewUp();
             }
+            else if (growth >= 1f && !IsStarving) GrowWithRoom(daysPerStep, species);
             if (BreedCooldown > 0) BreedCooldown--;
             if (stepsSinceFavourite < 99) stepsSinceFavourite++;
         }
@@ -182,6 +191,45 @@ namespace FishBreeder
             if (Tank != null) Fx.Bubbles(transform.position, 5, Tank.SurfaceY, 0.03f);
         }
 
+        /// <summary>
+        /// A grown fish of a kind that gets bigger with room (oscars, goldfish...) keeps growing
+        /// towards its real full-grown length, as far as its tank's size allows. It never shrinks
+        /// in a smaller tank; it just stops until it has room again.
+        /// </summary>
+        void GrowWithRoom(float days, Species species)
+        {
+            if (!species.GrowsWithRoom || Tank == null) return;
+            float room = Tank.GrowthRoom;
+            if (bigGrowth >= room) return;
+            float before = bigGrowth;
+            float time = Mathf.Max(0.5f, species.daysToAdult * Balance.Data.growth.fullSizeTimeMultiplier);
+            bigGrowth = Mathf.Min(room, bigGrowth + days / time * Perks.More(PerkEffect.FasterGrowth));
+            ApplyGrowthScale();
+            if (bigGrowth >= 1f && before < 1f)
+            {
+                GameLog.Add($"{fishName} the {SpeciesLabel} is full grown: {VisualLength * 100f:0} cm!");
+                Fx.Text(transform.position + Vector3.up * 0.08f, "Full grown!", UiTheme.Sun, 18f, 2f);
+            }
+        }
+
+        /// <summary>For the fish panel: how its growing on in roomy tanks is going ("" for kinds that don't).</summary>
+        public string RoomGrowthNote
+        {
+            get
+            {
+                var species = Species;
+                if (Stage != LifeStage.Adult || !species.GrowsWithRoom || IdentityHidden) return "";
+                float now = VisualLength * 100f;
+                float full = Phenotype.lengthMeters * species.FullGrownRatio * SizeScale * 100f;
+                if (bigGrowth >= 1f) return $"full grown at {now:0} cm";
+                float room = Tank != null ? Tank.GrowthRoom : 0f;
+                float cap = Phenotype.lengthMeters * Mathf.Lerp(1f, species.FullGrownRatio, room) * SizeScale * 100f;
+                if (bigGrowth < room - 0.001f)
+                    return room >= 1f ? $"{now:0} cm and still growing, up to {full:0} cm" : $"{now:0} cm and growing to {cap:0} cm here (up to {full:0} cm in a bigger tank)";
+                return $"{now:0} cm: it would grow to {full:0} cm in a bigger tank";
+            }
+        }
+
         /// <summary>Developer: picks the fish's sex (for making breeding pairs).</summary>
         public void DevSetSex(Sex value) => sex = value;
 
@@ -197,6 +245,16 @@ namespace FishBreeder
             ApplyGrowthScale();
             if (wasFry) GrowOutOfFry(wasHidden);
             GrewUp();
+        }
+
+        /// <summary>Developer shortcut: grows the fish up and on to as big as its tank lets it.</summary>
+        public void DevGrowWithRoom()
+        {
+            if (IsDead) return;
+            DevGrowUp();
+            if (!Species.GrowsWithRoom || Tank == null) return;
+            bigGrowth = Mathf.Max(bigGrowth, Tank.GrowthRoom);
+            ApplyGrowthScale();
         }
 
         void ApplyGrowthScale()
@@ -246,6 +304,7 @@ namespace FishBreeder
                 looks += size == FishSize.Small ? -0.06f : size == FishSize.Large ? 0.06f : 0f;
                 looks += Stage == LifeStage.Fry ? -0.3f : Stage == LifeStage.Juvenile ? -0.1f : 0f;
                 looks += charm * 0.08f;
+                looks += (RoomGrowthScale - 1f) * Balance.Data.growth.looksPerExtraLength;
                 looks *= Mathf.Lerp(0.55f, 1f, Health.Current) * (Health.IsSick ? 0.7f : 1f);
                 return Mathf.Clamp(looks, 0.02f, 1f);
             }
@@ -254,7 +313,7 @@ namespace FishBreeder
         /// <summary>Attractiveness as a 0-100 rating.</summary>
         public int AttractivenessRating => Mathf.RoundToInt(Attractiveness * 100f);
 
-        /// <summary>Market value of a typical fish like this one: species, looks, age and health. Shown to the player.</summary>
+        /// <summary>Market value of a typical fish like this one: species, looks, age, how big it has grown and health. Shown to the player.</summary>
         public int AppraisedValue
         {
             get
@@ -273,7 +332,8 @@ namespace FishBreeder
                 float damage = Mathf.Clamp01(1f - Health.MedicineDamage * Balance.Data.medicine.damageValue);
                 int baseValue = CrossBreeding.BaseValue(p.species, p.finSpecies, p.tailSpecies);
                 float pedigree = generation > 1 ? Perks.More(PerkEffect.PedigreeValue) : 1f;
-                return Mathf.Max(1, Mathf.RoundToInt(baseValue * looks * stage * health * damage * pedigree));
+                float grown = 1f + (RoomGrowthScale - 1f) * Balance.Data.growth.valuePerExtraLength;
+                return Mathf.Max(1, Mathf.RoundToInt(baseValue * looks * stage * health * damage * pedigree * grown));
             }
         }
 

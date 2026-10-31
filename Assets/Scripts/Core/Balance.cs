@@ -674,6 +674,39 @@ namespace FishBreeder.Core
     }
 
     /// <summary>
+    /// Fish like oscars and goldfish keep growing past their shop size when they have room, up to
+    /// their real full-grown length (<see cref="Species.fullGrownLength"/>). How far depends on the
+    /// tank's water volume: none in the standard tank, the whole way from <see cref="fullSizeVolume"/>
+    /// (the wall aquariums), part of the way in between, counted on a log scale. A bigger fish is
+    /// worth more and catches the eye more. Fish never shrink back in a smaller tank, they just stop.
+    /// </summary>
+    [Serializable]
+    public class GrowthBalance
+    {
+        [Tooltip("Water volume (m³) where fish can reach their full-grown length. The wall aquarium is about 31 m³; a Large tank lets them grow about 20% of the way and a Grand about 40%.")]
+        public float fullSizeVolume = 30f;
+        [Tooltip("Days from adult to full-grown, as a multiple of the species' days to adult.")]
+        public float fullSizeTimeMultiplier = 3f;
+        [Tooltip("Extra value for growing longer: a fish 75% longer than its shop size is worth 1 + 0.75 x this times as much.")]
+        public float valuePerExtraLength = 1.5f;
+        [Tooltip("Extra eye appeal (0-1 scale) for growing longer, per 100% longer.")]
+        public float looksPerExtraLength = 0.1f;
+
+        /// <summary>How far (0..1) fish in a tank this size can grow towards their full-grown length.</summary>
+        public float RoomFor(TankSizeBalance size)
+        {
+            var sizes = Balance.Data.store.tankSizes;
+            float standard = sizes != null && sizes.Count > 0 ? Volume(sizes[0]) : Volume(new TankSizeBalance());
+            float volume = Volume(size);
+            if (volume <= standard) return 0f;
+            if (fullSizeVolume <= standard) return 1f;
+            return Mathf.Clamp01(Mathf.Log(volume / standard) / Mathf.Log(fullSizeVolume / standard));
+        }
+
+        static float Volume(TankSizeBalance size) => size == null ? 0f : Mathf.Max(0f, size.width) * Mathf.Max(0f, size.height) * Mathf.Max(0f, size.depth);
+    }
+
+    /// <summary>
     /// Experience and levels. Two tracks, Fishkeeping (fish care) and Shopkeeping (running the
     /// shop), each up to <see cref="maxLevel"/>. Harder things give more XP.
     /// </summary>
@@ -870,6 +903,7 @@ namespace FishBreeder.Core
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
         public SwimBalance swimming = new SwimBalance();
+        public GrowthBalance growth = new GrowthBalance();
         public ResearchBalance research = new ResearchBalance();
         public ReputationBalance reputation = new ReputationBalance();
         public FinanceBalance finances = new FinanceBalance();
@@ -901,8 +935,10 @@ namespace FishBreeder.Core
         /// 11: the wall aquarium 30% deeper at the same volume, and its height upgrades.
         /// 12: medium fish (the big kinds) get their own, much smaller limit in every tank size.
         /// 13: decorations keep their own size in every tank (no longer grown with its height), and bigger wall pieces.
+        /// 14: photo backgrounds for the wall aquariums.
+        /// 15: full-grown lengths: oscars, goldfish and the other big growers keep growing in roomy tanks.
         /// </summary>
-        public const int CurrentDataVersion = 14;
+        public const int CurrentDataVersion = 15;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -938,6 +974,7 @@ namespace FishBreeder.Core
                 Upgrade(parsed, ReadDataVersion(json));
                 if (parsed.crossBreeding == null) parsed.crossBreeding = new CrossBreedingBalance();
                 if (parsed.swimming == null) parsed.swimming = new SwimBalance();
+                if (parsed.growth == null) parsed.growth = new GrowthBalance();
                 CrossBreeding.FillCombos(parsed.crossBreeding, parsed.species);
                 if (parsed.perkSettings == null) parsed.perkSettings = new PerkSettingsBalance();
                 if (parsed.perks == null) parsed.perks = new List<PerkBalance>();
@@ -1235,6 +1272,12 @@ namespace FishBreeder.Core
                 data.supplier.backgrounds ??= new List<BackgroundBalance>();
                 foreach (var b in SupplierBalance.WallAquariumBackgrounds())
                     if (!data.supplier.backgrounds.Exists(x => x != null && x.id == b.id)) data.supplier.backgrounds.Add(b);
+            }
+            if (fromVersion < 15 && data.species != null)
+            {
+                // Real full-grown lengths for the fish that keep growing with room.
+                foreach (var s in data.species)
+                    if (s != null && s.fullGrownLength <= 0f) s.fullGrownLength = Species.DefaultFullGrownLength(s.id);
             }
             data.dataVersion = CurrentDataVersion;
         }

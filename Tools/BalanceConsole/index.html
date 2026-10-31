@@ -204,6 +204,11 @@ const META = {
   baseValue: ["Value of a healthy adult ($)", "Fry are worth 30%, juveniles 60%. Rare looks multiply it (x1.5 to x4)."],
   fryPrice: ["Fry price ($)", "Species: price in the editor's dev fry list. Egg tiers: price of the same tier sold as a box of fry (any fish; egg boxes only hold egg-layers)."],
   minLength: ["Adult length min (m)", ""], maxLength: ["Adult length max (m)", ""],
+  fullGrownLength: ["Full-grown length (m)", "How long the real fish gets when it has room, like an oscar in a big aquarium. Adults keep growing past the max adult length towards it in roomy tanks (see Growing in big tanks on the Health tab). 0 = it doesn't."],
+  fullSizeVolume: ["Room for full size (m³)", "Water volume where fish reach their full-grown length. The standard tank lets them grow none of the way; tanks in between part of the way (log scale). The wall aquarium is about 31 m³."],
+  fullSizeTimeMultiplier: ["Time to full size (x days to adult)", "Days from adult to full-grown, as a multiple of the species' days to adult."],
+  valuePerExtraLength: ["Value per extra length", "A fish 75% longer than its shop size is worth 1 + 0.75 x this times as much."],
+  looksPerExtraLength: ["Looks per extra length", "Extra eye appeal (on the 0-1 scale) per 100% longer."],
   speed: ["Swim speed", "Relative to a goldfish, in body lengths per second."],
   depthMin: ["Depth band low (0 sand)", ""], depthMax: ["Depth band high (1 surface)", ""],
   style: ["Swimming style", "Bottom = hops and sifts along the sand."],
@@ -427,7 +432,7 @@ const SPECIES_GROUPS = [
   ["Habits", ["likedDecorations", "roams"]],
   ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
-  ["Body and swimming", ["bodyClass", "minLength", "maxLength", "sizeSmall", "sizeMedium", "sizeLarge", "speed", "depthMin", "depthMax", "style", "bendStart"]],
+  ["Body and swimming", ["bodyClass", "minLength", "maxLength", "fullGrownLength", "sizeSmall", "sizeMedium", "sizeLarge", "speed", "depthMin", "depthMax", "style", "bendStart"]],
 ];
 
 let data = null;
@@ -874,6 +879,10 @@ function renderSection(key) {
     cards.push(el("div", { class: "card" }, objectForm(data.health)));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Tank mates"), objectForm(data.tankMates)));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Medicine"), objectForm(data.medicine)));
+    if (!data.growth) data.growth = { fullSizeVolume: 30, fullSizeTimeMultiplier: 3, valuePerExtraLength: 1.5, looksPerExtraLength: 0.1 };
+    cards.push(el("div", { class: "card" }, el("h2", {}, "Growing in big tanks"),
+      el("p", { class: "hint" }, "Oscars, goldfish and the other fish with a full-grown length (Fish tab) keep growing as adults in roomy tanks, and are worth more for it. They never shrink in a smaller tank, they just stop."),
+      objectForm(data.growth)));
   } else if (key === "store") {
     cards.push(el("div", { class: "card" }, el("h2", {}, "Store"), objectForm(data.store, [...AQUARIUM_STORE_KEYS])));
     cards.push(el("div", { class: "card" }, el("h2", {}, "Supplier"), objectForm(data.supplier, ["eggTiers", "decorations", "filters", "heaters", "bubblers", "faults", ...REPAIR_SUPPLIER])));
@@ -1965,7 +1974,7 @@ function lineChart(title, series, format, days, fixedMax) {
 // ---------------------------------------------------------------- search
 
 const TOP_NAMES = Object.fromEntries(TABS.map(([k, n]) => [k, n]));
-Object.assign(TOP_NAMES, { crossBreeding: "Cross-breeding", supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships", swimming: "Swimming" });
+Object.assign(TOP_NAMES, { crossBreeding: "Cross-breeding", supplier: "Supplier", notifications: "Closing notifications", tankMates: "Tank mates", medicine: "Medicine", relationships: "Relationships", swimming: "Swimming", growth: "Growing in big tanks" });
 
 const itemName = (item, i) => (item && (item.displayName || item.name || item.id || (item.body && `${item.body} with ${item.fins} fins`) || (item.fact !== undefined && ENUMS.fact[item.fact]))) || `#${i + 1}`;
 

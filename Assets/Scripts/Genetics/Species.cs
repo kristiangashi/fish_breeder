@@ -78,6 +78,12 @@ namespace FishBreeder.Genetics
         public float sizeSmall = 0.85f, sizeMedium = 1f, sizeLarge = 1.18f;
         /// <summary>Small fish count against a tank's fish limit; medium fish against its separate medium limit.</summary>
         public BodyClass bodyClass;
+        /// <summary>
+        /// Length in metres the real fish reaches when it has room, like an oscar in a big aquarium.
+        /// Adults keep growing past <see cref="maxLength"/> towards it in roomy tanks (see
+        /// <see cref="Core.GrowthBalance"/>). 0, or no more than <see cref="maxLength"/>, = it doesn't.
+        /// </summary>
+        public float fullGrownLength;
 
         /// <summary>How much of the body (fraction of its length) the wiggle takes to reach full strength after <see cref="bendStart"/>.</summary>
         public const float BendRamp = 0.3f;
@@ -114,6 +120,10 @@ namespace FishBreeder.Genetics
         public bool eatsAlgae;
 
         public bool IsMedium => bodyClass == BodyClass.Medium;
+
+        /// <summary>How many times its longest shop size it can grow to with room (1 = it stays as it is).</summary>
+        public float FullGrownRatio => maxLength > 0f && fullGrownLength > maxLength ? fullGrownLength / maxLength : 1f;
+        public bool GrowsWithRoom => FullGrownRatio > 1.001f;
 
         public bool IsSaltwater => category == FishCategory.SaltwaterCold || category == FishCategory.SaltwaterTropical;
 
@@ -266,6 +276,22 @@ namespace FishBreeder.Genetics
             { "CrimsonJewelCichlid", 0.5f }, { "SilverFlamefin", 0.35f },
         };
 
+        /// <summary>
+        /// Real adult lengths of the fish that keep growing when they have room, from care sheets and
+        /// FishBase: comets reach about 30 cm and fantails 20 cm in big tanks or ponds, oscars 35 cm,
+        /// green terrors 30 cm, red hook silver dollars about 25 cm, Siamese algae eaters 16 cm,
+        /// electric blue acaras 17 cm and red-tailed black sharks 15 cm. The other fish are already
+        /// at (or drawn above) their real adult size, the big wall-aquarium kinds included.
+        /// </summary>
+        static readonly Dictionary<string, float> FullGrownLengths = new Dictionary<string, float>
+        {
+            { "CometGoldfish", 0.3f }, { "FancyGoldfish", 0.2f }, { "Oscar", 0.35f }, { "GreenTerror", 0.3f },
+            { "SilverDollar", 0.25f }, { "SiameseAlgaeEater", 0.16f }, { "BlueAcara", 0.17f }, { "RedTailShark", 0.15f },
+        };
+
+        /// <summary>The default <see cref="fullGrownLength"/> for a species id (0 = doesn't grow with room).</summary>
+        public static float DefaultFullGrownLength(string id) => id != null && FullGrownLengths.TryGetValue(id, out var l) ? l : 0f;
+
         /// <summary>The default <see cref="bendStart"/> for a species id.</summary>
         public static float DefaultBendStart(string id) => id != null && BendStarts.TryGetValue(id, out var b) ? b : 0.2f;
 
@@ -334,6 +360,7 @@ namespace FishBreeder.Genetics
             foreach (var s in list)
             {
                 s.bendStart = DefaultBendStart(s.id);
+                s.fullGrownLength = DefaultFullGrownLength(s.id);
                 SetHabits(s);
             }
             return list;

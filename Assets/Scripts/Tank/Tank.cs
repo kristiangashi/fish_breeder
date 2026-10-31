@@ -188,6 +188,9 @@ namespace FishBreeder
         /// but every fish over it hurts the health of all of them, dirties the water faster and spreads illness.
         /// </summary>
         public int Capacity => CapacityOf(SizeInfo);
+
+        /// <summary>How far (0..1) fish here can grow towards their real full-grown length (see <see cref="GrowthBalance"/>).</summary>
+        public float GrowthRoom => Balance.Data.growth.RoomFor(SizeInfo);
         /// <summary>How many fish a tank of this size holds, with the Roomy tanks perk.</summary>
         public static int CapacityOf(TankSizeBalance size) => Mathf.Max(1, Mathf.RoundToInt(size.capacity * Perks.More(PerkEffect.RoomierTanks)));
         /// <summary>Decoration spots: the size's own, plus any from the Aquascaper perk.</summary>

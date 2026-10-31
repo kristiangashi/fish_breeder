@@ -99,7 +99,7 @@ namespace FishBreeder
                     Destination = point;
                     if ((point - Center).magnitude > b.size.x * 0.3f) break;
                 }
-                phaseEnds = Time.time + GameRandom.Range(8f, 14f);
+                phaseEnds = Time.time + LegTime(bodyLength, 8f, 14f);
             }
             else
             {
@@ -130,10 +130,21 @@ namespace FishBreeder
                 if (point == null) continue;
                 atPiece = piece;
                 Destination = point.Value;
-                phaseEnds = Time.time + GameRandom.Range(5f, 9f);
+                phaseEnds = Time.time + LegTime(bodyLength, 5f, 9f);
                 return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Seconds to allow for the leg to <see cref="Destination"/>: at least a few seconds, and long
+        /// enough for small fish (under a body length a second) to actually get there across a big
+        /// tank, instead of turning back halfway every time, which kept them all in the middle.
+        /// </summary>
+        float LegTime(float bodyLength, float min, float max)
+        {
+            float needed = (Destination - Center).magnitude / Mathf.Max(0.01f, bodyLength * 0.7f);
+            return Mathf.Clamp(needed * 1.3f, GameRandom.Range(min, max), 40f);
         }
     }
 }

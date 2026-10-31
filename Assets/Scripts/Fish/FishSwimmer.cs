@@ -182,6 +182,7 @@ namespace FishBreeder
             else if ((school = FishSchool.For(Owner)) != null)
             {
                 desiredSpeed = Schooling(school, bodyLength);
+                pitchLimit = TravelPitch;
             }
             else
             {
@@ -190,6 +191,7 @@ namespace FishBreeder
                 bool arrived = activity != Activity.Hover && distance < bodyLength * 0.6f;
                 if (arrived || activityTimeLeft <= 0f || IsBottomActivity(activity)) NextActivity(bodyLength);
                 desiredSpeed = activitySpeed;
+                if (activity != Activity.Hover) pitchLimit = TravelPitch;
 
                 // Ease in to a stop rather than overshooting the spot.
                 if (activity != Activity.Hover)
@@ -324,8 +326,7 @@ namespace FishBreeder
             float strayed = Mathf.Clamp01((toCenter.magnitude - radius) / radius);
 
             var toGoal = school.Destination - position;
-            var steer = (toGoal.sqrMagnitude > 1e-6f ? toGoal.normalized : transform.forward) * (school.Milling ? 0.25f : 0.9f);
-            steer += school.Heading * (school.Milling ? 0.25f : 0.6f);
+            var steer = school.Heading * (school.Milling ? 0.25f : 0.6f);
             if (toCenter.sqrMagnitude > 1e-6f) steer += toCenter.normalized * (0.15f + 1.6f * strayed);
 
             float personal = bodyLength * 1.1f;
@@ -339,10 +340,16 @@ namespace FishBreeder
             // Each fish wanders a touch on its own, so the school never looks drilled.
             float t = Time.time * 0.4f + (GetInstanceID() % 1000) * 0.37f;
             steer += new Vector3(Mathf.Sin(t), Mathf.Sin(t * 1.3f) * 0.3f, Mathf.Cos(t * 0.8f)) * 0.25f;
+            // Keep the milling and spacing fairly level, but not the way to the goal: halving that
+            // too meant a school barely climbed or sank and stayed around mid-height.
             steer.y *= 0.5f;
+            steer += (toGoal.sqrMagnitude > 1e-6f ? toGoal.normalized : transform.forward) * (school.Milling ? 0.25f : 0.9f);
             if (steer.sqrMagnitude < 1e-6f) steer = transform.forward;
             target = position + steer.normalized * bodyLength * 3f;
-            float pace = school.Milling ? 0.3f : potterSpeed * 1.15f;
+            // Off somewhere far, a school picks up the pace (up to twice as fast): at a potter, small
+            // fish took most of a minute to cross a wall aquarium and so spent their time mid-tank.
+            float far = Mathf.Clamp01((toGoal.magnitude - bodyLength * 3f) / (bodyLength * 15f));
+            float pace = school.Milling ? 0.3f : potterSpeed * 1.15f * (1f + far);
             return pace * (1f + 0.8f * strayed);
         }
 
@@ -506,6 +513,19 @@ namespace FishBreeder
             return Tank.OverlapsObstacle(point, margin * 0.5f) ? (Vector3?)null : point;
         }
 
+        /// <summary>
+        /// Steepest climb or dive on a trip. At the old 20 degrees a fish needed nearly three metres
+        /// across to go one metre down, so in a tall tank it gave up long before it got low.
+        /// </summary>
+        const float TravelPitch = 35f;
+
+        /// <summary>Makes sure a trip lasts long enough to reach its target at the pace it swims.</summary>
+        void AllowTimeToArrive(float bodyLength)
+        {
+            float pace = Mathf.Max(0.05f, activitySpeed * Owner.Phenotype.species.speed) * bodyLength;
+            activityTimeLeft = Mathf.Min(40f, Mathf.Max(activityTimeLeft, (target - transform.position).magnitude / pace * 1.4f));
+        }
+
         void StartActivity(Activity next, float bodyLength)
         {
             activity = next;
@@ -557,18 +577,21 @@ namespace FishBreeder
                     // Homebodies potter about their favourite spot; roamers potter further afield.
                     var home = GameRandom.Chance(0.75f) ? NearLikedPiece(bodyLength, margin, 0.5f, 2.5f) : null;
                     target = home ?? NearbyPoint(position, bodyLength, species.roams ? 3f : 1.5f, species.roams ? 8f : 4.5f, margin);
+                    AllowTimeToArrive(bodyLength);
                     break;
 
                 case Activity.Inspect:
                     activitySpeed = potterSpeed * 0.8f;
                     activityTimeLeft = 10f;
                     target = (GameRandom.Chance(0.85f) ? NearLikedPiece(bodyLength, margin, 0.3f, 1.2f) : null) ?? InspectPoint(position, bodyLength, margin);
+                    AllowTimeToArrive(bodyLength);
                     break;
 
                 default:
                     activitySpeed = cruiseSpeed;
                     activityTimeLeft = 12f;
                     target = InDepthBand(tank.RandomFreePoint(margin), bodyLength);
+                    AllowTimeToArrive(bodyLength);
                     break;
             }
         }

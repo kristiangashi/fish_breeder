@@ -25,7 +25,7 @@ namespace FishBreeder.Core
         // Finances (added later, so saved files keep their numbers)
         Bookkeeping,
         // Breeding (added later)
-        StockBook,
+        StockBook, RareEggs,
     }
 
     /// <summary>One perk in a skill tree. Each rank bought adds <see cref="perRank"/> to its effect.</summary>
@@ -76,6 +76,7 @@ namespace FishBreeder.Core
             Make("stock_book", PerkTree.Breeding, 1, "Stock book", "The Breeding tab lists every fish in the tank by kind, sex and age, and you can pick fish from the list", 1, 1f, PerkEffect.StockBook, false),
             Make("quick_recovery", PerkTree.Breeding, 1, "Quick recovery", "Parents rest {0} fewer time step between broods", 1, 1f, PerkEffect.ShorterRest, false),
             Make("big_families", PerkTree.Breeding, 2, "Big families", "Litters and clutches are {0} bigger", 5, 0.08f, PerkEffect.BiggerLitters),
+            Make("lucky_finds", PerkTree.Breeding, 2, "Lucky finds", "Rare fish are {0} more likely in egg boxes from the supplier", 5, 0.1f, PerkEffect.RareEggs),
             Make("hardy_eggs", PerkTree.Breeding, 2, "Hardy eggs", "Eggs are {0} less likely to die in dirty water", 3, 0.25f, PerkEffect.HardyEggs),
             Make("due_early", PerkTree.Breeding, 3, "Due early", "Pregnancies and eggs take {0} fewer time steps", 2, 1f, PerkEffect.QuickerBirths, false),
             Make("wild_genes", PerkTree.Breeding, 3, "Wild genes", "Mutations are {0} more likely, for surprise looks", 5, 0.15f, PerkEffect.MoreMutations),

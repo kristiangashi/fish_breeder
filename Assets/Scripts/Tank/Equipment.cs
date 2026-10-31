@@ -55,6 +55,27 @@ namespace FishBreeder
                 return Mathf.Clamp01(Mathf.Min(info.maxBreakChance, info.breakChance + info.breakChancePerStep * wear) * Perks.Less(PerkEffect.SturdierEquipment));
             }
         }
+
+        /// <summary>How much of <see cref="BreakChance"/> comes from age and wear, on top of a new one's.</summary>
+        public float AgeBreakChance
+        {
+            get
+            {
+                var info = Info;
+                if (info == null) return 0f;
+                return Mathf.Max(0f, BreakChance - Mathf.Clamp01(info.breakChance * Perks.Less(PerkEffect.SturdierEquipment)));
+            }
+        }
+
+        /// <summary>Its age in days (two time steps a day), for the equipment list.</summary>
+        public string AgeText
+        {
+            get
+            {
+                float days = ageSteps * 0.5f;
+                return days == 1f ? "1 day old" : $"{days:0.#} days old";
+            }
+        }
     }
 
     public static class Equipment

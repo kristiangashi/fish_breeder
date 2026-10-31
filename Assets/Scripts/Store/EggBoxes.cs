@@ -120,7 +120,9 @@ namespace FishBreeder.Store
                 if (row == null || row.weight <= 0f || row.fromLevel > fishkeepingLevel || row.fromDay > day) continue;
                 var species = Species.Find(row.species);
                 if (species == null || species.minTankSize > tankSize || (eggLayersOnly && species.reproduction != Reproduction.EggLayer)) continue;
-                list.Add(new Entry { species = species, weight = row.weight, rare = IsRare(tier, species) });
+                bool rare = IsRare(tier, species);
+                // The Lucky finds perk multiplies each rare fish's chance (5 becomes 5.5 at +10%).
+                list.Add(new Entry { species = species, weight = rare ? row.weight * Perks.More(PerkEffect.RareEggs) : row.weight, rare = rare });
             }
             return list;
         }

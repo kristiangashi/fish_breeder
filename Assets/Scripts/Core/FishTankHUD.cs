@@ -924,14 +924,14 @@ namespace FishBreeder.Core
             int k = (int)kind;
             var item = tank.GetEquipment(kind);
             string title = kind == EquipmentKind.Filter ? "Filter" : kind == EquipmentKind.Heater ? "Heater" : "Bubbler";
-            string now = item == null ? $"<color={UiTheme.CoralHex}>No {title.ToLower()}</color>" : item.Name + (item.broken ? " <color=#ff8080>(broken)</color>" : "");
+            string now = item == null ? $"<color={UiTheme.CoralHex}>No {title.ToLower()}</color>" : item.Name + $" <size=11>({item.AgeText}, +{item.AgeBreakChance * 100f:0.#}% break chance from age)</size>" + (item.broken ? " <color=#ff8080>(broken)</color>" : "");
             bool wasEnabled = GUI.enabled;
             GUI.enabled = true;
             if (Ui.Button($"{(modelsShown[k] ? "▾" : "▸")} <b>{title}:</b> {now}", EquipmentHeader())) showModels[k] = !showModels[k];
             GUI.enabled = wasEnabled;
             if (item == null) Ui.Label($"<size=11><color=#ffb0a0>{MissingWarning(kind)}</color></size>", Rich());
             else if (item.broken) Ui.Label($"<size=11><color=#ff8080>{item.fault}. Repair it on the Care tab ({Economy.Format(item.RepairPrice)}).</color></size>", Rich());
-            else Ui.Label($"<size=11>{EffectText(kind, item.Info)}. {item.BreakChance * 100f:0}% chance of breaking per time step.</size>", Rich());
+            else Ui.Label($"<size=11>{EffectText(kind, item.Info)}. {item.BreakChance * 100f:0.#}% chance of breaking per time step, {item.AgeBreakChance * 100f:0.#}% of it from age.</size>", Rich());
             if (modelsShown[k])
             {
                 var tiers = Equipment.Tiers(kind);

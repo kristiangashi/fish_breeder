@@ -1482,9 +1482,10 @@
     margin: 0 2px 0 0;
 }
 
-/* Two buttons sharing a row. */
+/* Buttons sharing a row: a gap between them, and the last one still reaches the right edge. */
 .fb-pair {
     flex-shrink: 0;
+    margin-right: -4px;
 }
 
 .fb-pair > .unity-button {

@@ -398,7 +398,7 @@ namespace FishBreeder
         {
             corpses.Remove(fish);
             if (!residents.Contains(fish)) residents.Add(fish);
-            if (PricesNewFish && fish.Price <= 0) fish.Price = fish.AppraisedValue;
+            if (PricesNewFish && fish.Price <= 0) fish.Price = fish.AppraisedPrice;
         }
 
         public void Remove(Fish fish)

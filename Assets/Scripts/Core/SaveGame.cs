@@ -536,6 +536,7 @@ namespace FishBreeder.Core
         public string unbornFather;
         // Health
         public float health = 1f, severity, injury, medicineLoad, medicineStress;
+        public float comfortBefore = -1f;
         public string disease, injuryCause;
         public int medicineDamage;
     }
@@ -1062,7 +1063,7 @@ namespace FishBreeder
                 unbornGeneration = unbornGeneration, stepsToBirth = StepsToBirth, unbornFather = UnbornFather,
                 health = Health.Current, disease = Health.Disease != null ? Health.Disease.id : null, severity = Health.Severity,
                 injury = Health.Injury, injuryCause = Health.InjuryCause, medicineLoad = Health.MedicineLoad,
-                medicineStress = Health.MedicineStress, medicineDamage = Health.MedicineDamage,
+                medicineStress = Health.MedicineStress, medicineDamage = Health.MedicineDamage, comfortBefore = Health.ComfortBefore,
             };
             s.unborn.AddRange(unborn);
             return s;
@@ -1144,3 +1145,4 @@ namespace FishBreeder.Health
         }
     }
 }
+            comfortBefore = s.comfortBefore;

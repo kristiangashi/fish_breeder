@@ -313,7 +313,7 @@ namespace FishBreeder
         /// <summary>Attractiveness as a 0-100 rating.</summary>
         public int AttractivenessRating => Mathf.RoundToInt(Attractiveness * 100f);
 
-        /// <summary>Market value of a typical fish like this one: species, looks, age, how big it has grown and health. Shown to the player.</summary>
+        /// <summary>Market value of this fish: species, looks, age, how big it has grown and health. The player only sees <see cref="AppraisedPrice"/>.</summary>
         public int AppraisedValue
         {
             get
@@ -327,13 +327,35 @@ namespace FishBreeder
                     case "Rare": looks = 2.5f; break;
                     case "Exotic": looks = 4f; break;
                 }
-                float stage = Stage == LifeStage.Adult ? 1f : Stage == LifeStage.Juvenile ? 0.6f : 0.3f;
+                float stage = StageValue(Stage);
                 float health = Mathf.Lerp(0.4f, 1f, Health.Current);
                 float damage = Mathf.Clamp01(1f - Health.MedicineDamage * Balance.Data.medicine.damageValue);
                 int baseValue = CrossBreeding.BaseValue(p.species, p.finSpecies, p.tailSpecies);
                 float pedigree = generation > 1 ? Perks.More(PerkEffect.PedigreeValue) : 1f;
                 float grown = 1f + (RoomGrowthScale - 1f) * Balance.Data.growth.valuePerExtraLength;
                 return Mathf.Max(1, Mathf.RoundToInt(baseValue * looks * stage * health * damage * pedigree * grown));
+            }
+        }
+
+        /// <summary>Share of the grown-up price a fish is worth at each age.</summary>
+        public static float StageValue(LifeStage stage) => stage == LifeStage.Adult ? 1f : stage == LifeStage.Juvenile ? 0.6f : 0.3f;
+
+        /// <summary>
+        /// The appraised price of a kind of fish (a species, or one cross of body, fins and tail) at
+        /// an age. Every fish of that kind and age is appraised the same, whatever its own looks or
+        /// health; those only show in what customers really pay.
+        /// </summary>
+        public static int Appraise(Species body, Species fins, Species tail, LifeStage stage) =>
+            Mathf.Max(1, Mathf.RoundToInt(CrossBreeding.BaseValue(body, fins, tail) * StageValue(stage)));
+
+        /// <summary>The appraised price shown to the player: the one for its kind at its age (see <see cref="Appraise"/>).</summary>
+        public int AppraisedPrice
+        {
+            get
+            {
+                if (IdentityHidden) return Mathf.Max(1, Balance.Data.supplier.unknownFryValue);
+                var p = Phenotype;
+                return Appraise(p.species, p.finSpecies, p.tailSpecies, Stage);
             }
         }
 

@@ -375,14 +375,14 @@ namespace FishBreeder.Core
         }
 
         /// <summary>
-        /// What this kind of fish is worth, and every one you own with its appraised value. Fish in
-        /// a For Sale tank can be priced from here, one by one or all at once.
+        /// The appraisal for this kind of fish, given once (and once more for each cross of it you
+        /// own), then every one you own. Fish in a For Sale tank can be priced from here, one by one
+        /// or all at once.
         /// </summary>
         void DrawPrices(Species species)
         {
             Ui.Label("PRICES", UiTheme.Heading);
-            int adult = CrossBreeding.BaseValue(species, species, species);
-            Ui.Label($"<size=12>A healthy one with plain looks is appraised at <b>{Economy.Format(adult)}</b> grown up, about {Economy.Format(Mathf.Max(1, Mathf.RoundToInt(adult * 0.6f)))} as a juvenile and {Economy.Format(Mathf.Max(1, Mathf.RoundToInt(adult * 0.3f)))} as fry. Uncommon to exotic looks are worth 1.5x to 4x; poor health brings it down.</size>", Rich());
+            Ui.Label($"<size=12>Appraised at {AppraisalText(species, species, species)}. Customers judge each fish for themselves: good looks and good health sell for more.</size>", Rich());
 
             var owned = new List<KeyValuePair<Fish, StoreTank>>();
             foreach (var storeTank in FindObjectsByType<StoreTank>(FindObjectsSortMode.None))
@@ -390,7 +390,12 @@ namespace FishBreeder.Core
                     foreach (var fish in storeTank.Tank.Residents)
                         if (!fish.IsDead && !fish.IdentityHidden && fish.Species == species) owned.Add(new KeyValuePair<Fish, StoreTank>(fish, storeTank));
             if (owned.Count == 0) return;
-            owned.Sort((a, b) => b.Key.AppraisedValue.CompareTo(a.Key.AppraisedValue));
+            // Pure ones first, then each cross together, oldest first within each.
+            owned.Sort((a, b) =>
+            {
+                int kind = string.CompareOrdinal(KindKey(a.Key), KindKey(b.Key));
+                return kind != 0 ? kind : b.Key.AgeDays.CompareTo(a.Key.AgeDays);
+            });
 
             bool locked = ShopOpen;
             int forSale = 0;
@@ -407,32 +412,52 @@ namespace FishBreeder.Core
                 if (Ui.Button("Apply", GUILayout.Width(64f)))
                     foreach (var pair in owned)
                         if (pair.Value.Role == TankRole.ForSale && pair.Key.Stage != LifeStage.Fry)
-                            pair.Key.Price = Mathf.Max(1, Mathf.RoundToInt(pair.Key.AppraisedValue * markup / 100f));
+                            pair.Key.Price = Mathf.Max(1, Mathf.RoundToInt(pair.Key.AppraisedPrice * markup / 100f));
                 GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
             }
             if (locked) Ui.Label("<size=11><i>Prices are set while the shop is closed.</i></size>", Rich());
 
+            string lastKind = KindKey(owned[0].Key);
             foreach (var pair in owned)
             {
                 var fish = pair.Key;
+                // A cross of this fish gets its own appraisal, once, above the ones you own.
+                string kindKey = KindKey(fish);
+                if (kindKey != lastKind)
+                {
+                    lastKind = kindKey;
+                    var look = fish.Phenotype;
+                    GUILayout.Space(4f);
+                    Ui.Label($"<b>{fish.SpeciesLabel}</b> <size=11>(fins: {look.finSpecies.displayName}, tail: {look.tailSpecies.displayName})</size>\n<size=12>Appraised at {AppraisalText(look.species, look.finSpecies, look.tailSpecies)}.</size>", Rich());
+                }
                 bool sellable = pair.Value.Role == TankRole.ForSale && fish.Stage != LifeStage.Fry;
                 GUILayout.BeginHorizontal(UiTheme.Card);
                 Ui.Label($"<b>{fish.FishName}</b>\n<size=11>{pair.Value.Title} · {fish.Stage.ToString().ToLower()}{(fish.Health.IsSick ? " · <color=#ff8080>sick</color>" : "")}</size>", Rich(), GUILayout.Width(170f));
-                Ui.Label($"<size=11>appraised</size>\n<b>{Economy.Format(fish.AppraisedValue)}</b>", Rich(), GUILayout.Width(74f));
                 if (sellable)
                 {
-                    string color = fish.Price <= 0 ? UiTheme.CoralHex : fish.Price > fish.AppraisedValue * 1.3f ? UiTheme.SunHex : "#ffffff";
+                    string color = fish.Price <= 0 ? UiTheme.CoralHex : fish.Price > fish.AppraisedPrice * 1.3f ? UiTheme.SunHex : "#ffffff";
                     Ui.Label($"<size=11>price</size>\n<b><color={color}>{(fish.Price > 0 ? Economy.Format(fish.Price) : "none")}</color></b>", Rich(), GUILayout.Width(64f));
                     if (Ui.Button("-5", GUILayout.Width(34f))) fish.Price = Mathf.Max(1, fish.Price - 5);
                     if (Ui.Button("+5", GUILayout.Width(34f))) fish.Price += 5;
-                    if (Ui.Button("Appraised", GUILayout.Width(84f))) fish.Price = fish.AppraisedValue;
+                    if (Ui.Button("Appraised", GUILayout.Width(84f))) fish.Price = fish.AppraisedPrice;
                 }
                 else Ui.Label(fish.Stage == LifeStage.Fry ? "<size=11><i>Too young to sell.</i></size>" : "<size=11><i>Not in a For Sale tank.</i></size>", Rich());
                 GUILayout.EndHorizontal();
             }
             GUI.enabled = true;
         }
+
+        /// <summary>Sorts the pure fish first ("" key), then each cross by its fins and tail.</summary>
+        static string KindKey(Fish fish)
+        {
+            var look = fish.Phenotype;
+            return look.IsHybrid ? $"{look.finSpecies.id}/{look.tailSpecies.id}" : "";
+        }
+
+        /// <summary>"$40 grown up, $24 as a juvenile and $12 as fry".</summary>
+        static string AppraisalText(Species body, Species fins, Species tail) =>
+            $"<b>{Economy.Format(Fish.Appraise(body, fins, tail, LifeStage.Adult))}</b> grown up, {Economy.Format(Fish.Appraise(body, fins, tail, LifeStage.Juvenile))} as a juvenile and {Economy.Format(Fish.Appraise(body, fins, tail, LifeStage.Fry))} as fry";
 
         static void Unknown(Species species, ResearchFact fact) => Ui.Label("<color=#8fb3bd>???</color>", Rich());
 

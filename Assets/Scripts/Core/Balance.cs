@@ -60,7 +60,7 @@ namespace FishBreeder.Core
 
         public static List<ResearchProjectBalance> CreateDefaults() => new List<ResearchProjectBalance>
         {
-            Make("health_checkup", "Health check-ups", "The fish window shows how much each thing adds to or takes from a fish's health.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 40, 30, 1),
+            Make("health_checkup", "Health check-ups", "The arrows by a fish's health and comfort open up to show why they're rising or falling, and by how much.", ResearchUnlock.HealthDetails, MilestoneKind.FeedFish, 40, 30, 1),
             Make("temperature", "Temperature preferences", "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.", ResearchUnlock.Temperature, MilestoneKind.KeepFish, 12, 30, 1),
             Make("tank_mates", "Tank mate behaviour", "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.", ResearchUnlock.TankMates, MilestoneKind.DiscoverSpecies, 5, 45, 1),
             Make("water_testing", "Water testing kit", "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.", ResearchUnlock.WaterTesting, MilestoneKind.CleanTank, 30, 45, 2, "", 25, 50),

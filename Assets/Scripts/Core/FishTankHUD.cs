@@ -1651,10 +1651,18 @@ namespace FishBreeder.Core
 
         // ------------------------------------------------------------ fish window
 
+        /// <summary>Whether the selected fish's health and comfort breakdowns are open (needs the health check-up research).</summary>
+        bool healthOpen, comfortOpen;
+
+        /// <summary>
+        /// The fish window: who it is (sex, age and size), its health and comfort with which way
+        /// each is going, its price, and a link to its kind's page in the journal, where everything
+        /// about the species lives. With the health check-up research the arrows open up to show why.
+        /// </summary>
         void DrawFishWindow(Fish fish, float scale, float width, float height)
         {
             const float w = 320f;
-            float h = Mathf.Clamp(height - 110f, 300f, 560f);
+            float h = Mathf.Clamp(height - 110f, 300f, healthOpen || comfortOpen ? 560f : 420f);
             var screen = cam.WorldToScreenPoint(fish.transform.position);
             var anchor = new Vector2(screen.x / scale, height - screen.y / scale);
             float x = anchor.x + 90f;
@@ -1689,25 +1697,21 @@ namespace FishBreeder.Core
                 return;
             }
 
-            // Everything about the fish scrolls; the header and the move buttons stay put.
+            // The five things about the fish scroll if the breakdowns are open; the move buttons stay put.
             fishScroll = UiCheck.BeginScroll("Fish window: details", fishScroll);
             DrawFishHealth(fish);
-            DrawFishNeeds(fish);
-            DrawFishBreeding(fish);
-
-            Section("Value");
-            Ui.Label($"Appraised value: <b>~{Economy.Format(fish.AppraisedValue)}</b>", Rich());
-            if (!fish.IdentityHidden)
-                Ui.Label($"Attractiveness: <b>{fish.AttractivenessRating}</b>/100  <color={UiTheme.SunHex}>{AttractivenessStars(fish)}</color>\n<size=11>Eye-catching fish bring people in, get looked at more and sell more easily.</size>", Rich());
-            if (storeTank.Role == TankRole.ForSale) DrawPrice(fish);
-            DrawAquariumFish(fish);
-            if (fish.Health.IsSick)
+            DrawFishComfort(fish);
+            DrawFishPrice(fish);
+            GUILayout.Space(6f);
+            if (fish.IdentityHidden)
             {
-                Ui.Label($"<size=11>Treat the tank with medicine on the Care tab. It goes to every fish in the water.</size>", Rich());
-                DrawEuthanize(fish);
+                GUI.enabled = false;
+                Ui.Button(new GUIContent("Journal entry", "Too small to tell what it is yet: it shows its colours when it grows into a juvenile"));
+                GUI.enabled = true;
             }
+            else if (Ui.Button($"Journal entry: {fish.Species.displayName}")) JournalView.Open(fish.Species.id);
 #if UNITY_EDITOR
-            if (!ReadOnly && !fish.IsDead && Ui.Button("Next illness (dev)")) fish.Health.DevNextIllness();
+            if (!ReadOnly && Ui.Button("Next illness (dev)")) fish.Health.DevNextIllness();
 #endif
             UiCheck.EndScroll();
 
@@ -1716,127 +1720,107 @@ namespace FishBreeder.Core
             UiCheck.End();
         }
 
-        /// <summary>Name, then sex and age as bold coloured badges so they stand out, then the species.</summary>
+        /// <summary>Its name, then sex, age (stage and days) and size as bold coloured badges.</summary>
         void DrawFishHeader(Fish fish)
         {
-            var species = fish.Species;
-            Ui.Label($"<size=17><b>{fish.FishName}</b></size>", Rich());
+            Ui.Label($"<size=17><b>{fish.FishName}</b></size>  <size=11>{(fish.IdentityHidden ? "mystery fry" : fish.SpeciesLabel)}</size>", Rich());
             GUILayout.BeginHorizontal();
             if (fish.Stage == LifeStage.Fry) UiGauges.Badge("Sex: ?", new Color(0.4f, 0.42f, 0.46f));
             else if (fish.Sex == Sex.Male) UiGauges.Badge("♂ Male", new Color(0.2f, 0.45f, 0.85f));
             else UiGauges.Badge("♀ Female", new Color(0.85f, 0.3f, 0.6f));
+            string age = $" · {fish.AgeDays:0.#} DAYS";
             switch (fish.Stage)
             {
-                case LifeStage.Adult: UiGauges.Badge("ADULT", new Color(0.2f, 0.6f, 0.3f)); break;
-                case LifeStage.Juvenile: UiGauges.Badge("JUVENILE", new Color(0.75f, 0.55f, 0.15f)); break;
-                default: UiGauges.Badge("FRY", new Color(0.45f, 0.47f, 0.5f)); break;
+                case LifeStage.Adult: UiGauges.Badge("ADULT" + age, new Color(0.2f, 0.6f, 0.3f)); break;
+                case LifeStage.Juvenile: UiGauges.Badge("JUVENILE" + age, new Color(0.75f, 0.55f, 0.15f)); break;
+                default: UiGauges.Badge("FRY" + age, new Color(0.45f, 0.47f, 0.5f)); break;
             }
             if (fish.Stage != LifeStage.Fry) UiGauges.Badge(fish.Size.ToString().ToUpper(), new Color(0.3f, 0.45f, 0.55f));
-            if (fish.Health.IsSick && !fish.IsDead) UiGauges.Badge("+ SICK", Color.Lerp(SickRed, new Color(1f, 0.45f, 0.4f), Mathf.PingPong(Time.unscaledTime * 1.5f, 1f)));
             GUILayout.FlexibleSpace();
             GUILayout.EndHorizontal();
-            if (fish.Health.IsSick && !fish.IsDead)
-            {
-                var disease = fish.Health.Disease;
-                GUILayout.BeginVertical(SickBox());
-                bool known = Research.Has(ResearchUnlock.Pathology);
-                Ui.Label($"<b>{disease.displayName}</b>" + (known ? $"  <size=11>({fish.Health.Severity * 100f:0}% bad)</size>" : ""), Rich());
-                if (!string.IsNullOrEmpty(disease.description)) Ui.Label($"<size=11>{disease.description}</size>", Rich());
-                if (known) Ui.Label($"<size=11>Cure: {CureText(disease)}.</size>", Rich());
-                GUILayout.EndVertical();
-            }
-            if (fish.IdentityHidden) Ui.Label("<b>Mystery fry</b>: too small to tell what it is yet. It shows its colours when it grows into a juvenile.", Rich());
-            else
-            {
-                var look = fish.Phenotype;
-                if (look.IsHybrid)
-                {
-                    Ui.Label($"<b>{fish.SpeciesLabel}</b>  <size=11>(cross-bred, {look.RarityLabel} looks)</size>", Rich());
-                    Ui.Label($"<size=11>Body: {species.displayName} ({species.rarity}), fins: {look.finSpecies.displayName}, tail: {look.tailSpecies.displayName}. It lives like a {species.displayName}.</size>", Rich());
-                }
-                else Ui.Label($"<b>{species.displayName}</b>  <size=11>({species.rarity} species, {look.RarityLabel} looks)</size>", Rich());
-                if (!string.IsNullOrEmpty(species.family)) Ui.Label($"<size=11><i>{species.scientificName}</i>, {species.family}</size>", Rich());
-            }
-            string growing = fish.Stage == LifeStage.Adult ? "" : $", grown up in about {Mathf.Max(0.5f, (1f - fish.Growth) * species.daysToAdult):0.#} days";
-            string roomGrowth = fish.RoomGrowthNote;
-            if (roomGrowth.Length > 0) growing += ", " + roomGrowth;
-            Ui.Label($"<size=11>{fish.AgeDays:0.#} days old{growing}, generation {fish.Generation}</size>", Rich());
-            if (!string.IsNullOrEmpty(fish.ParentNames)) Ui.Label($"<size=11>Parents: {fish.ParentNames}</size>", Rich());
             if (fish.IsPregnant)
-                Ui.Label($"<color=#ffb3d9><b>Pregnant</b> by {fish.UnbornFather}: about {fish.UnbornCount} fry due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", Rich());
+                Ui.Label($"<size=11><color=#ffb3d9><b>Pregnant</b>: about {fish.UnbornCount} fry due in {BreedingSystem.Steps(fish.StepsToBirth)}</color></size>", Rich());
         }
 
         /// <summary>
-        /// Health now, where it is heading at the next time step, and every factor as its own line
-        /// with the details underneath, one per line.
+        /// The health bar with an arrow for where it's heading at the next time step. Once the health
+        /// check-up research is done the arrow opens up every factor behind it.
         /// </summary>
         void DrawFishHealth(Fish fish)
         {
-            var species = fish.Species;
             var report = fish.Health.Report();
             float now = fish.Health.Current;
-            Section("Health");
-            Bar("<b>Health</b>", now, true);
             float change = report.total - now;
-            if (Mathf.Abs(change) >= 0.01f)
+            float next = Mathf.MoveTowards(now, report.total, Balance.Data.health.healthChangePerStep);
+            int trend = Mathf.Abs(change) < 0.01f ? 0 : change > 0f ? 1 : -1;
+            string why = trend == 0 ? "Steady: health only changes at time steps (closing up and overnight)"
+                : $"{(trend > 0 ? "Rising" : "Falling")} to {next * 100f:0}% at the next time step" + (Mathf.Abs(next - report.total) > 0.01f ? $" (heading for {report.total * 100f:0}%)" : "");
+            TrendBar("<b>Health</b>", now, trend, why, ref healthOpen);
+            if (fish.Health.IsSick)
             {
-                float next = Mathf.MoveTowards(now, report.total, Balance.Data.health.healthChangePerStep);
-                Ui.Label($"<size=11><color={(change > 0f ? "#9fe39f" : "#ff9a8a")}>{(change > 0f ? "Rising" : "Falling")} to {next * 100f:0}% at the next time step</color>" +
-                                (Mathf.Abs(next - report.total) > 0.01f ? $" (heading for {report.total * 100f:0}%)" : "") + "</size>", Rich());
+                var disease = fish.Health.Disease;
+                bool known = Research.Has(ResearchUnlock.Pathology);
+                GUILayout.BeginVertical(SickBox());
+                Ui.Label($"<b>Sick: {disease.displayName}</b>" + (known ? $"  <size=11>({fish.Health.Severity * 100f:0}% bad), cure: {CureText(disease)}</size>" : "  <size=11>treat the tank on the Care tab</size>"), Rich());
+                GUILayout.EndVertical();
+                DrawEuthanize(fish);
             }
-            else Ui.Label("<size=11>Steady: health only changes at time steps (closing up and overnight).</size>", Rich());
+            if (!healthOpen || !Research.Has(ResearchUnlock.HealthDetails)) return;
 
+            var species = fish.Species;
+            Ui.Label($"<size=11><color={(trend > 0 ? "#9fe39f" : trend < 0 ? "#ff9a8a" : "#d8dde4")}>{why}.</color></size>", Rich());
             Penalty("Hunger", report.hunger, $"{fish.Hunger * 100f:0}% hungry");
             Penalty("Illness", report.illness, fish.Health.IsSick ? $"{fish.Health.Disease.displayName} ({fish.Health.Severity * 100f:0}%)" : "healthy");
             Penalty("Water", report.environment, report.environmentMismatch < 0.01f ? "suits it" : "not right for it");
             foreach (var note in FishHealth.EnvironmentNotes(species, tank)) SubLine(note, 0f, true);
             Penalty("Comfort", report.comfort, $"{report.comfortLevel * 100f:0}% comfortable");
-            foreach (var note in fish.Health.ComfortNotes()) SubLine(note.text, note.delta, false);
             if (report.overcrowding > 0f) Penalty("Crowding", report.overcrowding, $"{tank.OverLimit} fish over the tank's limit");
             if (report.injury > 0f) Penalty("Wounds", report.injury, string.IsNullOrEmpty(fish.Health.InjuryCause) ? "healing" : fish.Health.InjuryCause);
             if (report.medicineDamage > 0f) Penalty("Medicine", report.medicineDamage, $"overdosed {fish.Health.MedicineDamage}x" + (fish.Health.Infertile ? ", can't breed" : ""));
-            if (report.companionship > 0f) Ui.Label("<color=#9fe39f>Good company</color>" + (Research.Has(ResearchUnlock.HealthDetails) ? $"<color=#9fe39f>  +{report.companionship * 100f:0}</color>" : ""), Rich());
+            if (report.companionship > 0f) Ui.Label($"<color=#9fe39f>Good company  +{report.companionship * 100f:0}</color>", Rich());
             if (report.oldAge > 0f) Penalty("Old age", report.oldAge, Research.Knows(species, ResearchFact.Lifespan) ? $"past {species.lifespanDays:0} days" : "getting old");
             if (report.deadTankmates > 0f) Penalty("Dead fish", report.deadTankmates, $"{tank.Corpses.Count} in the tank");
         }
 
-        /// <summary>What the species needs, as far as research has found out: gauges for temperature and pH, then the rest.</summary>
-        void DrawFishNeeds(Fish fish)
+        /// <summary>The comfort bar with an arrow for how it has changed since the last time step; with the research it opens up what's behind it.</summary>
+        void DrawFishComfort(Fish fish)
         {
-            if (fish.IdentityHidden) return;
-            var species = fish.Species;
-            Section("What it needs");
-            bool tempKnown = Research.Knows(species, ResearchFact.Temperature);
-            Ui.Label("Temperature" + (tempKnown ? $": likes {species.tempMin:0}-{species.tempMax:0} C" : ""), Rich());
-            UiGauges.Temperature(tank.Temperature, tempKnown ? new Vector2(species.tempMin, species.tempMax) : (Vector2?)null);
-            if (Research.CanReadPh)
-            {
-                bool phKnown = Research.Knows(species, ResearchFact.Ph);
-                Ui.Label("pH" + (phKnown ? $": likes {species.phMin:0.0}-{species.phMax:0.0}" : ""), Rich());
-                UiGauges.Ph(tank.Ph, phKnown ? new Vector2(species.phMin, species.phMax) : (Vector2?)null);
-            }
-            SubLine(species.IsSaltwater ? "Salt water" : species.salinityMax > 5f ? "Fresh or slightly salty water" : "Fresh water", 0f, false);
-            if (Research.Knows(species, ResearchFact.School))
-                SubLine(species.schoolSize > 0 ? $"Wants {species.schoolSize}+ of its own kind" : "Happy without others of its kind", 0f, false);
-            if (Research.Knows(species, ResearchFact.Plants))
-                SubLine(species.likesPlants ? "Loves plants" : "Doesn't care for plants", 0f, false);
-            var known = new List<string>();
-            foreach (var food in species.favoriteFoods)
-                if (Research.KnowsFavourite(species, food)) known.Add(FoodPellet.Name(food));
-            if (known.Count > 0) SubLine($"Favourite food: {string.Join(", ", known)}" + (known.Count < species.favoriteFoods.Count ? " (maybe more)" : ""), 0f, false);
-            if (Ui.Button($"Journal: {species.displayName}")) JournalView.Open(species.id);
+            float now = fish.Health.Report().comfortLevel, before = fish.Health.ComfortBefore;
+            int trend = before < 0f || Mathf.Abs(now - before) < 0.01f ? 0 : now > before ? 1 : -1;
+            string why = trend == 0 ? "No change since the last time step" : $"{(trend > 0 ? "Up" : "Down")} from {before * 100f:0}% at the last time step";
+            TrendBar("<b>Comfort</b>", now, trend, why, ref comfortOpen);
+            if (!comfortOpen || !Research.Has(ResearchUnlock.HealthDetails)) return;
+            Ui.Label($"<size=11>{why}.</size>", Rich());
+            foreach (var note in fish.Health.ComfortNotes()) SubLine(note.text, note.delta, false);
         }
 
-        void DrawFishBreeding(Fish fish)
+        /// <summary>
+        /// The price the player set (editable in a For Sale tank). Seller's finds and exhibit fish
+        /// get the fish market and release buttons instead.
+        /// </summary>
+        void DrawFishPrice(Fish fish)
         {
-            if (fish.IsPregnant || fish.IdentityHidden) return;
-            var species = fish.Species;
-            Section("Breeding");
-            string notReady = BreedingSystem.WhyNotReady(fish, tank);
-            string how = Research.Knows(species, ResearchFact.Breeding) ? (species.reproduction == Reproduction.Livebearer ? " (livebearer)" : " (egg-layer)") : "";
-            Ui.Label(notReady == null
-                ? $"<color=#9fe39f>Ready to breed</color>{how}: needs a {(fish.Sex == Sex.Male ? "female" : "male")} {species.displayName} in the tank."
-                : Research.Has(ResearchUnlock.Breeding) ? $"Not ready{how}: {notReady.Replace(fish.FishName + " ", "")}" : "Not ready to breed.", Rich());
+            GUILayout.Space(6f);
+            if (tank.IsHolding || tank.IsExhibit) DrawAquariumFish(fish);
+            else if (storeTank.Role == TankRole.ForSale) DrawPrice(fish);
+            else Ui.Label(fish.Price > 0 ? $"Price: <b>{Economy.Format(fish.Price)}</b>  <size=11>(not for sale in this tank)</size>" : "Price: <size=11><i>not for sale; set one in a For Sale tank</i></size>", Rich());
+        }
+
+        /// <summary>
+        /// A bar with a small up or down arrow after it. With the health check-up research the arrow
+        /// is a button that opens the breakdown underneath; before that it only explains itself on hover.
+        /// </summary>
+        void TrendBar(string label, float value, int trend, string tooltip, ref bool open)
+        {
+            GUILayout.BeginHorizontal();
+            Bar(label, value, true);
+            string arrow = trend > 0 ? "<color=#9fe39f>▲</color>" : trend < 0 ? "<color=#ff9a8a>▼</color>" : "<color=#9aa3ad>–</color>";
+            if (Research.Has(ResearchUnlock.HealthDetails))
+            {
+                if (Ui.Button(new GUIContent($"{arrow}<size=10>{(open ? " ▴" : " ▾")}</size>", tooltip + (open ? "" : ". Click to see why")), RichButton(), GUILayout.Width(40f))) open = !open;
+            }
+            else Ui.Label(new GUIContent(arrow, tooltip + ". Research health check-ups to see why"), Rich(), GUILayout.Width(40f));
+            GUILayout.EndHorizontal();
         }
 
         Fish releaseAsk;

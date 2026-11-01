@@ -75,7 +75,7 @@ namespace FishBreeder.Store
             tank.PricesNewFish = role == TankRole.ForSale;
             if (tank.PricesNewFish)
                 foreach (var fish in tank.Residents)
-                    if (fish.Price <= 0) fish.Price = fish.AppraisedValue;
+                    if (fish.Price <= 0) fish.Price = fish.AppraisedPrice;
         }
 
         /// <summary>Builds a tank with its feeding and breeding systems at <paramref name="position"/> (the sand level), turned <paramref name="yaw"/> degrees (its front faces -Z at 0).</summary>

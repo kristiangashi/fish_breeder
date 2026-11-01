@@ -77,11 +77,18 @@ namespace FishBreeder.Health
         /// <summary>The fish's health right now (0..1). Changes only at time steps.</summary>
         public float Current => current;
 
+        float comfortBefore = -1f;
+
+        /// <summary>How comfortable it was at the last time step (-1 before its first), so the fish window can show which way comfort is going.</summary>
+        public float ComfortBefore => comfortBefore;
+
         /// <summary>Time step: health moves towards what the fish's conditions call for.</summary>
         public void Settle()
         {
             if (Owner.IsDead) return;
-            current = Mathf.MoveTowards(current, Report().total, Balance.Data.health.healthChangePerStep);
+            var report = Report();
+            comfortBefore = report.comfortLevel;
+            current = Mathf.MoveTowards(current, report.total, Balance.Data.health.healthChangePerStep);
         }
 
         public DiseaseDefinition Disease { get; private set; }

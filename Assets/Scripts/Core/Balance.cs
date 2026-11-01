@@ -114,9 +114,10 @@ namespace FishBreeder.Core
         public static List<SectionBalance> CreateDefaults() => new List<SectionBalance>
         {
             new SectionBalance { name = "Main floor", price = 0 },
-            // The East wing is the last room this shop can grow into (twice as deep, with four wall
-            // aquariums); later growth will be more shops. Rooms past it in an old file are ignored.
-            new SectionBalance { name = "East wing", price = 2500, starsNeeded = 1.5f },
+            // The second room is the last this shop grows into: the public aquarium (twice as deep,
+            // with its own entrance and two big exhibits; its name comes from aquarium.roomName).
+            // Later growth will be more shops. Rooms past it in an old file are ignored.
+            new SectionBalance { name = "Public aquarium", price = 2500, starsNeeded = 1.5f },
         };
     }
 
@@ -383,7 +384,7 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, mediumCapacity = 4, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, mediumCapacity = 5, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
-        [Tooltip("The wall aquarium (the East wing has four, the big breeding room one): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
+        [Tooltip("The wall aquarium (the public aquarium's two exhibits, and the big breeding room's wall breeding tank): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
         public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
@@ -391,7 +392,7 @@ namespace FishBreeder.Core
         public float wallDecorationSize = 2.2f;
         [Tooltip("Smallest and biggest the player can make one decoration in the wall aquarium (Move decorations), as a share of its normal size. A piece never grows taller than the water.")]
         public float wallDecorationMinSize = 0.4f, wallDecorationMaxSize = 4f;
-        [Tooltip("What the wall aquarium costs (a display or for sale tank).")]
+        [Tooltip("What a wall aquarium cost as a shop tank (old saves are refunded this; the public aquarium's exhibits cost aquarium.exhibitPrice).")]
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
         public int wallAquariumLevel = 8;
@@ -918,6 +919,7 @@ namespace FishBreeder.Core
         public GrowthBalance growth = new GrowthBalance();
         public ResearchBalance research = new ResearchBalance();
         public ReputationBalance reputation = new ReputationBalance();
+        public AquariumBalance aquarium = new AquariumBalance();
         public FinanceBalance finances = new FinanceBalance();
         public QualityBalance quality = new QualityBalance();
         public List<MilestoneBalance> milestones = MilestoneBalance.CreateDefaults();
@@ -998,6 +1000,8 @@ namespace FishBreeder.Core
                 if (parsed.reputation == null) parsed.reputation = new ReputationBalance();
                 if (parsed.reputation.complaints == null || parsed.reputation.complaints.Count == 0) parsed.reputation.complaints = ComplaintBalance.CreateDefaults();
                 if (parsed.finances == null) parsed.finances = new FinanceBalance();
+                if (parsed.aquarium == null) parsed.aquarium = new AquariumBalance();
+                if (parsed.aquarium.boothUpgrades == null || parsed.aquarium.boothUpgrades.Count == 0) parsed.aquarium.boothUpgrades = BoothUpgradeBalance.CreateDefaults();
                 if (parsed.supplier != null && (parsed.supplier.faults == null || parsed.supplier.faults.Count == 0)) parsed.supplier.faults = EquipmentFaultBalance.CreateDefaults();
                 if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
                 if (parsed.supplier != null && !json.Contains("\"passable\"")) FillPassable(parsed.supplier.decorations);

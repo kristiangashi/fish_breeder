@@ -164,6 +164,11 @@ namespace FishBreeder.Store
                 FinancesView.Close();
                 escape = false;
             }
+            if (escape && AquariumView.IsOpen)
+            {
+                AquariumView.Close();
+                escape = false;
+            }
             // A right click zooms out one level too: from a fish or a close-up to the tank, from a
             // wheel zoom to the normal view, from the tank or a person to the store.
             bool zoomOut = Input.GetMouseButtonDown(1) && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
@@ -175,7 +180,11 @@ namespace FishBreeder.Store
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && GUIUtility.keyboardControl == 0) following++;
             var person = focused == null ? FollowedPerson() : null;
-            HideOverTank(focused != null && (hud.TopView || hud.Arranging == FishTankHUD.ArrangeMode.Decorations) ? focused : null);
+            // In a public aquarium exhibit everything round the tank goes black (which covers the top view too).
+            bool exhibit = focused != null && focused.Role == TankRole.Exhibit;
+            HideAroundExhibit(exhibit ? focused : null);
+            HideOverTank(!exhibit && focused != null && (hud.TopView || hud.Arranging == FishTankHUD.ArrangeMode.Decorations) ? focused : null);
+            if (exhibit) cam.backgroundColor = Color.black;
             if (focused != null)
             {
                 // The scroll wheel zooms in and out (arranging uses it to turn pieces; over a menu it scrolls the menu).
@@ -237,7 +246,9 @@ namespace FishBreeder.Store
             else if (!hud.ResetWheelZoom()) ExitTank();
         }
 
-        static bool AnyWindowOpen => JournalView.IsOpen || PerksView.IsOpen || ResearchView.IsOpen || ReputationView.IsOpen || FinancesView.IsOpen;
+        static bool AnyWindowOpen => JournalView.IsOpen || PerksView.IsOpen || ResearchView.IsOpen || ReputationView.IsOpen || FinancesView.IsOpen || AquariumView.IsOpen;
+
+        bool AquariumBuilt => store.AquariumSection != null && store.AquariumSection.unlocked;
 
         /// <summary>The person the people camera follows, or null (stepping past the last one turns it off).</summary>
         Transform FollowedPerson()
@@ -427,6 +438,50 @@ namespace FishBreeder.Store
             }
         }
 
+        /// <summary>The store, other tanks' fish and people, hidden while looking into an exhibit (see <see cref="HideAroundExhibit"/>).</summary>
+        readonly List<Renderer> hiddenAround = new List<Renderer>();
+        StoreTank darkFor;
+        float darkRescan;
+
+        /// <summary>
+        /// Looking into one of the public aquarium's exhibits, it's like a real aquarium: only the
+        /// lit tank in the dark. Everything of the store but the tank itself, fish in other tanks
+        /// and people are hidden, and the camera clears to black, until the view leaves (null
+        /// shows them again). Rescanned now and then for fish and people that turn up.
+        /// </summary>
+        void HideAroundExhibit(StoreTank tank)
+        {
+            darkRescan -= Time.unscaledDeltaTime;
+            if (darkFor == tank && (tank == null || darkRescan > 0f)) return;
+            darkRescan = 0.5f;
+            if (darkFor != tank)
+            {
+                foreach (var r in hiddenAround) if (r != null) r.enabled = true;
+                hiddenAround.Clear();
+                darkFor = tank;
+                if (tank == null)
+                {
+                    ApplyStoreLook();
+                    return;
+                }
+            }
+            foreach (var r in store.GetComponentsInChildren<Renderer>()) HideForExhibit(r, tank);
+            foreach (var other in store.Tanks)
+            {
+                if (other == tank) continue;
+                foreach (var fish in other.Tank.Residents) if (fish != null) foreach (var r in fish.GetComponentsInChildren<Renderer>()) HideForExhibit(r, tank);
+                foreach (var fish in other.Tank.Corpses) if (fish != null) foreach (var r in fish.GetComponentsInChildren<Renderer>()) HideForExhibit(r, tank);
+            }
+            foreach (var person in Customer.All) if (person != null) foreach (var r in person.GetComponentsInChildren<Renderer>()) HideForExhibit(r, tank);
+        }
+
+        void HideForExhibit(Renderer r, StoreTank tank)
+        {
+            if (!r.enabled || r.transform.IsChildOf(tank.transform)) return;
+            r.enabled = false;
+            hiddenAround.Add(r);
+        }
+
         void EnterTank(StoreTank tank)
         {
             panel = Panel.None;
@@ -586,7 +641,7 @@ namespace FishBreeder.Store
                 case Panel.Supplier: panelRect = Centered(width, height, 760f, Mathf.Min(700f, height - 100f)); DrawSupplier(); break;
                 case Panel.Unlock: panelRect = Centered(width, height, 380f, 170f); DrawUnlock(); break;
                 case Panel.BuyTank: panelRect = Centered(width, height, 460f, pendingSlot != null && pendingSlot.wall && !pendingSlot.WallBreeder ? 330f : 250f); DrawBuyTank(); break;
-                case Panel.DayReport: panelRect = Centered(width, height, 520f, 440f); DrawDayReport(); break;
+                case Panel.DayReport: panelRect = Centered(width, height, 520f, shopDay.LastReport != null && shopDay.LastReport.aquarium != null ? 600f : 440f); DrawDayReport(); break;
                 case Panel.Owner: panelRect = Centered(width, height, 480f, 400f); DrawOwnerPick(); break;
             }
 
@@ -624,7 +679,9 @@ namespace FishBreeder.Store
             if (shopDay.IsOpen)
             {
                 var today = shopDay.Today;
-                Ui.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}   Visitors {today.visitors}   Sold {today.fishSold}   +{Economy.Format(today.earnings)}", Rich());
+                var aquarium = PublicAquarium.Today;
+                string tickets = aquarium != null ? $"   Aquarium {aquarium.tickets} tickets +{Economy.Format(aquarium.earnings)}" : "";
+                Ui.Label($"<color={UiTheme.LeafHex}><b>OPEN</b></color> {Clock(shopDay.TimeLeft)}   Visitors {today.visitors}   Sold {today.fishSold}   +{Economy.Format(today.earnings)}{tickets}", Rich());
                 GUILayout.FlexibleSpace();
                 if (narrow)
                 {
@@ -649,6 +706,7 @@ namespace FishBreeder.Store
                     GUILayout.FlexibleSpace();
                 }
                 if (Ui.Button("Supplier (B)", GUILayout.Width(96f))) ToggleSupplier();
+                if (AquariumBuilt && Ui.Button(new GUIContent($"Aquarium <color={UiTheme.SunHex}>{PublicAquarium.Stars:0.0}★</color>", "The public aquarium: ticket price, estimate, booth upgrades, rating (U)"), Button(), GUILayout.Width(110f))) AquariumView.Toggle();
                 if (Ui.Button("Journal (J)", GUILayout.Width(92f))) JournalView.Toggle();
                 if (Ui.Button(ResearchView.ButtonLabel(), PerkButtonStyle(), GUILayout.Width(118f))) ResearchView.Toggle();
                 if (Ui.Button(PerksButtonLabel(), PerkButtonStyle(), GUILayout.Width(Perks.TotalAvailable > 0 ? 104f : 84f))) PerksView.Toggle();
@@ -1225,6 +1283,13 @@ namespace FishBreeder.Store
                 WorldLabel(t.InnerBounds.center + Vector3.up * 0.65f, $"<b>{tank.Title}</b>\n{contents}{warning}", scale, height);
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>", scale, height);
+            if (AquariumBuilt)
+            {
+                var why = PublicAquarium.WhyClosed(store);
+                string state = shopDay.IsOpen && PublicAquarium.Today != null ? $"open, {PublicAquarium.Today.tickets} tickets sold" : why != null ? $"<color=#ffd27f>{why}</color>" : "opens with the shop";
+                if (ClickableLabel(store.BoothLabelPoint, $"<b>Ticket booth</b>  {Economy.Format(PublicAquarium.TicketPrice)}\n<color={UiTheme.SunHex}>{ReputationView.Stars(PublicAquarium.Stars)}</color>  <size=11>{state}</size>", scale, height)) AquariumView.Open();
+                if (panZ >= 4f) WorldLabel(store.ExpansionPoint, "<b>Future expansion</b>\n<size=11>kept free for later</size>", scale, height);
+            }
             // The seller is behind the breeding room's back wall: only labelled once the view is out there.
             if (panZ >= 4f) WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
             // The van is out of sight behind the breeding room: a sign over the back door slides the view there.
@@ -1237,7 +1302,7 @@ namespace FishBreeder.Store
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
-                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
+                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.Exhibit ? $"+ {PublicAquarium.ClimateName(slot.exhibit)} aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Exhibit))}" : slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
                     {
                         pendingSlot = slot;
                         panel = Panel.BuyTank;
@@ -1304,7 +1369,8 @@ namespace FishBreeder.Store
 
         void DrawCustomerBubbles(float scale, float height)
         {
-            foreach (var customer in shopDay.Customers)
+            // Shoppers and aquarium visitors alike.
+            foreach (var customer in Customer.All)
             {
                 if (customer == null || customer.Mood == Mood.None) continue;
                 if (!ToGui(customer.HeadPoint, scale, height, out var gui)) continue;
@@ -1435,6 +1501,7 @@ namespace FishBreeder.Store
                 if (report.visitors == 0) Ui.Label("<i>Nobody came in today. More tanks, especially display tanks, bring in more people.</i>", Rich());
                 foreach (var review in report.reviews) Ui.Label($"<i>\"{review}\"</i>", Rich());
                 Ui.Label("<size=11>See what's helping and hurting your reputation: click the stars or press Y.</size>", Rich());
+                DrawAquariumReport(report.aquarium);
             }
             GUILayout.Space(6f);
             Ui.Label(report.morning ? "OVERNIGHT IN THE TANKS" : "TODAY IN THE TANKS", UiTheme.Heading);
@@ -1448,6 +1515,19 @@ namespace FishBreeder.Store
                 StartToDo();
             }
             UiCheck.End();
+        }
+
+        /// <summary>The public aquarium's part of the day report: tickets, people turned away, the rating and its reviews.</summary>
+        void DrawAquariumReport(AquariumReport aquarium)
+        {
+            if (aquarium == null) return;
+            GUILayout.Space(6f);
+            Ui.Label(PublicAquarium.RoomName.ToUpper(), UiTheme.Heading);
+            Ui.Label($"Visitors: {aquarium.visitors}     Tickets: {aquarium.tickets}     Earned: <b><color={UiTheme.LeafHex}>{Economy.Format(aquarium.earnings)}</color></b>     Turned away at the price: {aquarium.turnedAway}", Rich());
+            float stars = Mathf.Round(Mathf.Lerp(1f, 5f, aquarium.AverageScore) * 2f) / 2f;
+            Ui.Label($"Visits: <size=18><color={UiTheme.SunHex}>{Stars(stars)}</color></size> ({aquarium.happy} happy, {aquarium.unhappy} disappointed)   Rating {(aquarium.ratingChange >= 0f ? "+" : "")}{aquarium.ratingChange * 5f:0.00} stars (now {PublicAquarium.Stars:0.0})", Rich());
+            foreach (var review in aquarium.reviews) Ui.Label($"<i>\"{review}\"</i>", Rich());
+            Ui.Label("<size=11>Ticket price, estimate and booth upgrades: click the ticket booth or press U.</size>", Rich());
         }
 
         /// <summary>The supplier menu (food, decorations, backgrounds): the Supplier button or B, shop closed only.</summary>
@@ -1856,8 +1936,10 @@ namespace FishBreeder.Store
         {
             var section = pendingSection;
             UiCheck.Begin("Unlock section", panelRect, UiStyles.Window);
-            Ui.Label($"Unlock the {section.name}?", UiTheme.Title);
-            Ui.Label("Opens up room for more display or for sale tanks. Bigger rooms open as your reputation grows (see Reputation, Y).", Rich());
+            Ui.Label(section.IsAquarium ? $"Build the {section.name.ToLower()}?" : $"Unlock the {section.name}?", UiTheme.Title);
+            Ui.Label(section.IsAquarium
+                ? "A public aquarium next door, with its own entrance and ticket booth: people pay to see its two big exhibits (temperate and tropical). Good exhibits bring good ratings and more visitors. It opens once your shop's reputation is high enough (see Reputation, Y)."
+                : "Opens up room for more display or for sale tanks. Bigger rooms open as your reputation grows (see Reputation, Y).", Rich());
             var why = store.WhyLocked(section);
             if (shopDay.IsOpen) Ui.Label("<i>Building work has to wait until the shop is closed.</i>", Rich());
             else if (why != null) Ui.Label($"<i>{why}</i>", Rich());
@@ -1872,17 +1954,19 @@ namespace FishBreeder.Store
             UiCheck.End();
         }
 
-        static readonly TankRole[] BuyableRoles = { TankRole.ForSale, TankRole.Display, TankRole.Breeder, TankRole.Quarantine };
+        static readonly TankRole[] BuyableRoles = { TankRole.ForSale, TankRole.Display, TankRole.Breeder, TankRole.Quarantine, TankRole.Exhibit };
 
         void DrawBuyTank()
         {
             UiCheck.Begin("Buy a tank", panelRect, UiStyles.Window);
             var wall = Balance.Data.store.wallAquarium;
-            Ui.Label(pendingSlot.WallBreeder ? "The wall breeding tank" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
-            Ui.Label(pendingSlot.WallBreeder
+            Ui.Label(pendingSlot.Exhibit ? $"The {PublicAquarium.ClimateName(pendingSlot.exhibit).ToLower()} aquarium" : pendingSlot.WallBreeder ? "The wall breeding tank" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
+            Ui.Label(pendingSlot.Exhibit
+                ? $"<i>One of the {PublicAquarium.RoomName.ToLower()}'s two exhibits: a tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it, for {(pendingSlot.exhibit == ExhibitClimate.Temperate ? "cold-water fish only (goldfish and their kin)" : "warm-water fish only")}. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations, and it can be raised taller later. Visitors pay to see it; nothing in it is sold.</i>"
+                : pendingSlot.WallBreeder
                 ? $"<i>A wall aquarium for breeding, along the big breeding room's back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It has room for the biggest fish to pair up and breed, and it can be raised taller later.</i>"
                 : pendingSlot.wall
-                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later. Make it a display tank to wow customers, or fill it with fish for sale. The East wing takes four.</i>"
+                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later.</i>"
                 : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
                 : "<i>Customers browse these. Breeder and quarantine tanks go in the breeding room.</i>", Rich());
@@ -1891,9 +1975,9 @@ namespace FishBreeder.Store
                 if (!pendingSlot.Allows(role)) continue;
                 StoreLayout.TankLevel(pendingSlot, role, out var track, out var level);
                 GUI.enabled = !shopDay.IsOpen && store.CanBuyTank(pendingSlot, role, out _);
-                string kind = pendingSlot.WallBreeder ? "Wall breeding tank" : pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
+                string kind = pendingSlot.Exhibit ? $"{PublicAquarium.ClimateName(pendingSlot.exhibit)} aquarium" : pendingSlot.WallBreeder ? "Wall breeding tank" : pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
                 string text = Progression.IsUnlocked(track, level)
-                    ? $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} {StoreTank.RoleName(role).ToLower()} owned)"
+                    ? pendingSlot.Exhibit ? $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}" : $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} {StoreTank.RoleName(role).ToLower()} owned)"
                     : $"{kind}: needs {Progression.LockText(track, level)}";
                 if (Ui.Button(text, GUILayout.Height(30f)) && store.TryBuyTank(pendingSlot, role) != null) panel = Panel.None;
             }
@@ -1929,6 +2013,7 @@ namespace FishBreeder.Store
                 case StoreClickable.Kind.Tank: EnterTank(clickable.tank); break;
                 case StoreClickable.Kind.Register: panel = Panel.Register; break;
                 case StoreClickable.Kind.FishSeller: OpenSupplier(true); break;
+                case StoreClickable.Kind.TicketBooth: AquariumView.Open(); break;
                 case StoreClickable.Kind.EmptySlot: pendingSlot = clickable.slot; panel = Panel.BuyTank; break;
                 case StoreClickable.Kind.LockedSection: pendingSection = clickable.section; panel = Panel.Unlock; break;
             }

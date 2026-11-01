@@ -37,6 +37,8 @@ namespace FishBreeder.Shop
         public bool stayedClosed;
         /// <summary>The morning report, after the night.</summary>
         public bool morning;
+        /// <summary>The public aquarium's day, or null if it wasn't open.</summary>
+        public AquariumReport aquarium;
     }
 
     /// <summary>
@@ -77,6 +79,10 @@ namespace FishBreeder.Shop
         public float SpeedMultiplier { get; private set; } = 1f;
 
         public void Initialize(StoreLayout store) => layout = store;
+
+        AquariumDay aquarium;
+        /// <summary>The public aquarium, which opens and closes with the shop (on the same object).</summary>
+        public AquariumDay Aquarium => aquarium != null ? aquarium : aquarium = GetComponent<AquariumDay>();
 
         /// <summary>The parts foot traffic is made of, for the reputation screen.</summary>
         public struct Traffic
@@ -148,6 +154,7 @@ namespace FishBreeder.Shop
             spawnTimer = 2f;
             today = new DayReport { day = Economy.Day };
             layout.BuildNavMesh();
+            if (Aquarium != null) Aquarium.Open();
             Milestones.Add(MilestoneKind.OpenShop);
             Fx.Stamp("OPEN!", UiTheme.Leaf);
         }
@@ -180,6 +187,7 @@ namespace FishBreeder.Shop
             SetSpeed(1f);
 
             FinishReport(today);
+            if (Aquarium != null) today.aquarium = Aquarium.Close();
             GameLog.Add($"Closed for the day: {today.visitors} visitors, {today.fishSold} fish sold, {Economy.Format(today.earnings)} earned.");
             GameLog.Add("During the day in the tanks:");
             today.tanks = TimeStep.Run(layout.Tanks);
@@ -203,6 +211,7 @@ namespace FishBreeder.Shop
             GameLog.Add("You turn the lights off for the night. Overnight in the tanks:");
             string night = TimeStep.Run(layout.Tanks);
             Research.OnNight();
+            PublicAquarium.NewDay();
             Economy.NextDay();
             Progression.NewDailyGoals();
             Phase = DayPhase.Morning;
@@ -213,6 +222,7 @@ namespace FishBreeder.Shop
         public void SkipRestOfDay()
         {
             if (!IsOpen) return;
+            if (Aquarium != null) Aquarium.Skip(TimeLeft);
             int remaining = Mathf.RoundToInt(TimeLeft / SpawnInterval);
             var shop = Balance.Data.shop;
             for (int i = 0; i < remaining; i++)

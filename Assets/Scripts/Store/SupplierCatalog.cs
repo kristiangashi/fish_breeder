@@ -24,6 +24,7 @@ namespace FishBreeder.Store
                 case TankRole.Breeder: return store.breederTankPrice;
                 case TankRole.ForSale: return store.forSaleTankPrice;
                 case TankRole.Display: return store.displayTankPrice;
+                case TankRole.Exhibit: return Balance.Data.aquarium.exhibitPrice;
                 default: return store.quarantineTankPrice;
             }
         }
@@ -37,6 +38,7 @@ namespace FishBreeder.Store
                 case TankRole.Breeder: track = XpTrack.Fishkeeping; level = store.breederTankLevel; break;
                 case TankRole.Quarantine: track = XpTrack.Fishkeeping; level = store.quarantineTankLevel; break;
                 case TankRole.Display: track = XpTrack.Shopkeeping; level = store.displayTankLevel; break;
+                case TankRole.Exhibit: track = XpTrack.Shopkeeping; level = Balance.Data.aquarium.exhibitLevel; break;
                 default: track = XpTrack.Shopkeeping; level = store.forSaleTankLevel; break;
             }
         }
@@ -52,6 +54,8 @@ namespace FishBreeder.Store
                 case TankRole.Breeder: return store.maxBreederTanks;
                 case TankRole.ForSale: return store.maxForSaleTanks + Perks.Count(PerkEffect.MoreShopTanks);
                 case TankRole.Display: return store.maxDisplayTanks + Perks.Count(PerkEffect.MoreShopTanks);
+                // One for each of the public aquarium's two walls.
+                case TankRole.Exhibit: return 2;
                 default: return store.maxQuarantineTanks;
             }
         }

@@ -185,7 +185,7 @@ namespace FishBreeder.Store
         void DrawRooms()
         {
             Heading("EXPANSION ROOMS");
-            Ui.Label("<size=11>Each new room adds space for three or six more tanks. They open in order, as your stars climb.</size>", Rich());
+            Ui.Label($"<size=11>The {PublicAquarium.RoomName.ToLower()} opens next door as your stars climb: its own entrance, two big exhibits, and visitors who pay to see them (its own rating is in the aquarium window, U).</size>", Rich());
             var next = store.NextLockedSection;
             foreach (var section in store.Sections)
             {

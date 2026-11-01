@@ -121,6 +121,7 @@ namespace FishBreeder.Core
                 Finance.Save(data);
                 Research.Save(data);
                 Reputation.Save(data);
+                PublicAquarium.Save(data);
                 Journal.Save(data);
                 EggBoxes.Save(data);
                 Milestones.Save(data);
@@ -171,6 +172,7 @@ namespace FishBreeder.Core
             Finance.Load(data);
             Research.Load(data);
             Reputation.Load(data);
+            PublicAquarium.Load(data);
             Journal.Load(data);
             EggBoxes.Load(data);
             Milestones.Load(data);
@@ -383,6 +385,9 @@ namespace FishBreeder.Core
         public List<ReviewSave> reviews = new List<ReviewSave>();
         public List<KeyInt> latestWishes = new List<KeyInt>();
 
+        // The public aquarium
+        public AquariumSave aquarium;
+
         // Journal, egg boxes, milestones, log
         public List<string> discovered = new List<string>();
         public List<string> unseen = new List<string>();
@@ -391,7 +396,8 @@ namespace FishBreeder.Core
         public List<string> milestonesDone = new List<string>();
         public List<string> log = new List<string>();
 
-        // Store
+        // Store (layout 1: the public aquarium's two exhibit spots replaced the East wing's four wall aquariums)
+        public int layoutVersion;
         public List<int> sectionsUnlocked = new List<int>();
         public List<TankSave> tanks = new List<TankSave>();
 
@@ -435,6 +441,8 @@ namespace FishBreeder.Core
         public List<KeyInt> wishes;
         public string tanks;
         public bool stayedClosed, morning;
+        public bool hasAquarium;
+        public AquariumReport aquarium;
 
         public static DayReportSave From(DayReport r)
         {
@@ -447,6 +455,7 @@ namespace FishBreeder.Core
                 reviews = new List<string>(r.reviews), complaints = (int[])r.complaints.Clone(),
                 wishes = SaveGame.Pairs(r.wishes, k => k), tanks = r.tanks,
                 stayedClosed = r.stayedClosed, morning = r.morning,
+                hasAquarium = r.aquarium != null, aquarium = r.aquarium,
             };
         }
 
@@ -462,6 +471,7 @@ namespace FishBreeder.Core
             if (reviews != null) r.reviews.AddRange(reviews);
             if (complaints != null) Array.Copy(complaints, r.complaints, Mathf.Min(complaints.Length, r.complaints.Length));
             SaveGame.Fill(r.wishes, wishes);
+            if (hasAquarium && aquarium != null && aquarium.issues != null && aquarium.issues.Length == PublicAquarium.IssueCount) r.aquarium = aquarium;
             return r;
         }
     }
@@ -779,8 +789,14 @@ namespace FishBreeder.Store
 
     public partial class StoreLayout
     {
+        /// <summary>1: the public aquarium's two exhibit spots replaced the East wing's four wall aquariums.</summary>
+        const int LayoutVersion = 1;
+        /// <summary>Where the East wing's wall aquarium spots were in a layout 0 save: west, back, then the east wall's north and south.</summary>
+        const int OldWestWall = 11, OldBackWall = 12, OldEastNorth = 13, OldEastSouth = 14;
+
         internal void Save(SaveData d)
         {
+            d.layoutVersion = LayoutVersion;
             d.sectionsUnlocked = new List<int>();
             foreach (var section in sections) if (section.unlocked) d.sectionsUnlocked.Add(section.index);
             d.tanks = new List<TankSave>();
@@ -811,12 +827,27 @@ namespace FishBreeder.Store
             tanks.Clear();
             publicTanks.Clear();
 
+            var moved = d.layoutVersion < 1 ? OldWallAquariums(d.tanks) : null;
             if (d.tanks != null)
                 foreach (var saved in d.tanks)
                 {
+                    if (moved != null && saved.slot >= OldWestWall && saved.slot <= OldEastSouth)
+                    {
+                        if (!moved.TryGetValue(saved.slot, out int to))
+                        {
+                            // Only two exhibits fit: the rest go back, paid for, fish and all.
+                            int refund = Balance.Data.store.wallAquariumPrice;
+                            Economy.Earn(refund, "a wall aquarium the public aquarium has no room for", MoneyKind.Refunds);
+                            GameLog.Add($"The East wing is the {PublicAquarium.RoomName.ToLower()} now, with room for two exhibits. One of your wall aquariums didn't fit: it was refunded ({Economy.Format(refund)}) and its fish went back to the fish seller.");
+                            continue;
+                        }
+                        saved.slot = to;
+                        saved.role = TankRole.Exhibit.ToString();
+                    }
                     if (saved.slot < 0 || saved.slot >= slots.Count || slots[saved.slot].tank != null) continue;
                     if (!SaveGame.TryEnum(saved.role, out TankRole role)) continue;
                     var slot = slots[saved.slot];
+                    if (!slot.Allows(role)) continue;
                     var tank = PlaceTank(slot, role, null);
                     tank.SetRole(role, Mathf.Max(1, saved.number));
                     if (!string.IsNullOrEmpty(saved.name)) tank.Rename(saved.name);
@@ -834,6 +865,34 @@ namespace FishBreeder.Store
                 }
             BuildShell();
             RefreshEmptySlots();
+        }
+
+        /// <summary>
+        /// A save from before the public aquarium: its East wing wall aquariums move onto the two
+        /// exhibit spots (the back wall's to the north, the east wall's first one to the east, the
+        /// west wall's to whichever is free). Old spot to new; any left out don't fit.
+        /// </summary>
+        Dictionary<int, int> OldWallAquariums(List<TankSave> saved)
+        {
+            var result = new Dictionary<int, int>();
+            if (saved == null) return result;
+            int north = slots.FindIndex(s => s.exhibit == ExhibitClimate.Temperate), east = slots.FindIndex(s => s.exhibit == ExhibitClimate.Tropical);
+            var taken = new HashSet<int>();
+            void Move(int from, params int[] options)
+            {
+                if (!saved.Exists(t => t.slot == from)) return;
+                foreach (var to in options)
+                    if (to >= 0 && taken.Add(to))
+                    {
+                        result[from] = to;
+                        return;
+                    }
+            }
+            Move(OldBackWall, north, east);
+            Move(OldEastNorth, east, north);
+            Move(OldEastSouth, east, north);
+            Move(OldWestWall, north, east);
+            return result;
         }
     }
 }
@@ -862,8 +921,13 @@ namespace FishBreeder.Shop
                 spawnTimer = 2f;
                 today = d.today != null ? d.today.ToReport() : new DayReport { day = Economy.Day };
                 layout.BuildNavMesh();
+                if (Aquarium != null) Aquarium.Resume();
             }
-            else Phase = phase;
+            else
+            {
+                Phase = phase;
+                PublicAquarium.Today = null;
+            }
         }
     }
 }

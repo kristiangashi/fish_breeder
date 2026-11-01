@@ -14,8 +14,9 @@ namespace FishBreeder.Shop
     /// One of the crew lineup's customer models, acting out what they think of each tank (pointing
     /// at a fish and going "wow", leaning in, shaking their head at a dead fish, holding their nose
     /// at dirty water, hands on hips at the prices). Falls back to a primitive body without models.
+    /// The public aquarium's visitors are customers too (see CustomerVisit.cs).
     /// </summary>
-    public class Customer : MonoBehaviour
+    public partial class Customer : MonoBehaviour
     {
         /// <summary>People are drawn a bit smaller than life so the tanks and the store read bigger.</summary>
         public const float PersonScale = 0.9f;
@@ -48,10 +49,18 @@ namespace FishBreeder.Shop
 
         public static Customer Spawn(ShopDay day, StoreLayout layout)
         {
+            var customer = Create(day, layout, layout.DoorOutside);
+            customer.StartCoroutine(customer.Run());
+            return customer;
+        }
+
+        /// <summary>Someone out on the pavement at <paramref name="outside"/>, with a body and (if the walkable area is baked) a nav agent.</summary>
+        static Customer Create(ShopDay day, StoreLayout layout, Vector3 outside)
+        {
             // Built inactive so the agent gets the right agent type before it looks for the walkable area.
             var go = new GameObject("Customer");
             go.SetActive(false);
-            go.transform.position = layout.DoorOutside;
+            go.transform.position = outside;
             go.transform.rotation = Quaternion.LookRotation(Vector3.forward);
             var customer = go.AddComponent<Customer>();
             customer.day = day;
@@ -75,10 +84,9 @@ namespace FishBreeder.Shop
             go.SetActive(true);
             if (agent != null)
             {
-                if (agent.Warp(layout.DoorOutside)) customer.agent = agent;
+                if (agent.Warp(outside)) customer.agent = agent;
                 else Destroy(agent);
             }
-            customer.StartCoroutine(customer.Run());
             return customer;
         }
 
@@ -175,9 +183,9 @@ namespace FishBreeder.Shop
         IEnumerator Leave()
         {
             IsLeaving = true;
-            yield return WalkTo(layout.DoorInside);
-            // A wave goodbye to the shopkeeper now and then.
-            if (rig != null && Shopkeeper.Instance != null && GameRandom.Value < 0.4f)
+            yield return WalkTo(IsVisitor ? layout.AquariumDoorInside : layout.DoorInside);
+            // A wave goodbye to the shopkeeper now and then (aquarium visitors never pass the counter).
+            if (!IsVisitor && rig != null && Shopkeeper.Instance != null && GameRandom.Value < 0.4f)
             {
                 faceTarget = Quaternion.LookRotation(Flat(Shopkeeper.Instance.transform.position - transform.position));
                 yield return new WaitForSeconds(0.3f);
@@ -185,15 +193,17 @@ namespace FishBreeder.Shop
                 yield return new WaitForSeconds(1.6f);
                 faceTarget = null;
             }
-            yield return WalkTo(layout.DoorOutside);
-            day.Remove(this);
+            yield return WalkTo(IsVisitor ? layout.AquariumDoorOutside : layout.DoorOutside);
+            if (IsVisitor) aquarium.Remove(this);
+            else day.Remove(this);
             Destroy(gameObject);
         }
 
-        /// <summary>The shop is closing: any fish they picked is paid for right away, then they're gone.</summary>
+        /// <summary>The shop is closing: any fish they picked is paid for right away (a visitor gives their verdict on what they saw), then they're gone.</summary>
         public void FinishNow()
         {
-            CompletePurchase();
+            if (IsVisitor) FinishVisit();
+            else CompletePurchase();
             Destroy(gameObject);
         }
 

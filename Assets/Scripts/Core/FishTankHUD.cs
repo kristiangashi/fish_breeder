@@ -1373,6 +1373,7 @@ namespace FishBreeder.Core
                 case TankRole.ForSale: return "Customers buy the fish in for sale tanks.";
                 case TankRole.Display: return "Display tanks aren't for sale: they're there to wow customers.";
                 case TankRole.Breeder: return "Pairs breed best in breeder tanks.";
+                case TankRole.Exhibit: return "An exhibit in the public aquarium: visitors pay to see it, and nothing in it is sold. The better it looks, the more people come and the more a ticket is worth.";
                 default: return "Sick fish get better apart in quarantine.";
             }
         }
@@ -1861,10 +1862,11 @@ namespace FishBreeder.Core
                 bool wasEnabled = GUI.enabled;
                 var t = other.Tank;
                 bool tooSmall = fish.MinTankSize > t.SizeIndex;
+                bool wrongClimate = !t.Suits(fish.Species);
                 bool medium = fish.Species.IsMedium;
                 GUI.enabled = wasEnabled && t.HasRoomFor(fish.Species) && !tooSmall;
                 int have = medium ? t.MediumCount : t.SmallCount, limit = medium ? t.MediumCapacity : t.Capacity;
-                string count = tooSmall ? "<color=#ff9a8a>too small</color>" : have >= limit ? $"<color=#ff9a8a>{have}/{limit}</color>" : $"{have}/{limit}";
+                string count = wrongClimate ? $"<color=#ff9a8a>{PublicAquarium.ClimateName(t.Climate).ToLower()} only</color>" : tooSmall ? "<color=#ff9a8a>too small</color>" : have >= limit ? $"<color=#ff9a8a>{have}/{limit}</color>" : $"{have}/{limit}";
                 if (Ui.Button($"{other.Title} ({count})", RichButton(), GUILayout.Width(146f)))
                 {
                     var next = NextLivingFish(fish);

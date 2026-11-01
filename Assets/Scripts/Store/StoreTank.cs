@@ -5,7 +5,8 @@ using UnityEngine;
 
 namespace FishBreeder.Store
 {
-    public enum TankRole { Breeder, ForSale, Display, Quarantine }
+    /// <summary>Saved by name, so new kinds can go anywhere. Exhibits are the public aquarium's two big tanks.</summary>
+    public enum TankRole { Breeder, ForSale, Display, Quarantine, Exhibit }
 
     /// <summary>A tank placed in the store: what it's for, and the systems that act on it.</summary>
     public class StoreTank : MonoBehaviour
@@ -31,7 +32,20 @@ namespace FishBreeder.Store
         [SerializeField] string customName;
         /// <summary>The name the player gave it, or null for the usual "Breeder tank 1".</summary>
         public string CustomName => string.IsNullOrEmpty(customName) ? null : customName;
-        public string Title => CustomName ?? (Role == TankRole.Quarantine ? "Quarantine tank" : $"{RoleName(Role)} tank {Number}");
+        public string Title => CustomName ?? (Role == TankRole.Quarantine ? "Quarantine tank" : Role == TankRole.Exhibit ? $"{PublicAquarium.ClimateName(Climate)} aquarium".TrimStart() : $"{RoleName(Role)} tank {Number}");
+
+        [SerializeField] ExhibitClimate climate;
+        /// <summary>For an exhibit, which fish it takes (temperate or tropical).</summary>
+        public ExhibitClimate Climate => climate;
+
+        /// <summary>Makes it the public aquarium's temperate or tropical exhibit (None for any other tank).</summary>
+        public void SetClimate(ExhibitClimate value)
+        {
+            climate = value;
+            tank.Climate = value;
+            gameObject.name = Title;
+            tank.Title = Title;
+        }
 
         /// <summary>Gives the tank the player's own name (blank goes back to the usual one).</summary>
         public void Rename(string name)

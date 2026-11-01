@@ -61,7 +61,7 @@ namespace FishBreeder.Core
                 foreach (var slot in store.Slots)
                 {
                     if (slot.tank != null || !slot.IsOpen) continue;
-                    var role = slot.backRoom ? TankRole.Breeder : TankRole.Display;
+                    var role = slot.Exhibit ? TankRole.Exhibit : slot.backRoom ? TankRole.Breeder : TankRole.Display;
                     if (!store.CanBuyTank(slot, role, out _)) role = slot.backRoom ? TankRole.Quarantine : TankRole.ForSale;
                     if (store.CanBuyTank(slot, role, out _)) store.TryBuyTank(slot, role);
                 }

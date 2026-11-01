@@ -260,7 +260,13 @@ namespace FishBreeder
         /// <summary>Room left for small fish before the tank is overcrowded.</summary>
         public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - SmallCount);
         /// <summary>Whether one more of this kind fits: medium fish against their own limit, small fish against the hard limit.</summary>
-        public bool HasRoomFor(Genetics.Species species) => species != null && species.IsMedium ? MediumFreeSpace > 0 : !IsFull;
+        public bool HasRoomFor(Genetics.Species species) => Suits(species) && (species != null && species.IsMedium ? MediumFreeSpace > 0 : !IsFull);
+
+        /// <summary>A public aquarium exhibit's climate: only fish suited to it go in (None takes any fish).</summary>
+        public Store.ExhibitClimate Climate { get; set; }
+
+        /// <summary>Whether this kind of fish suits the tank's climate (always, outside the public aquarium).</summary>
+        public bool Suits(Genetics.Species species) => Store.PublicAquarium.Suits(Climate, species);
         /// <summary>How many more of this kind fit (medium: their own limit; small: the hard limit).</summary>
         public int FreeSpaceFor(Genetics.Species species) => species != null && species.IsMedium ? MediumFreeSpace : FreeSpace;
 

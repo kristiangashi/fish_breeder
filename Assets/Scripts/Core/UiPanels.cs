@@ -69,8 +69,7 @@ namespace FishBreeder.Core
             root.pickingMode = PickingMode.Ignore;
             var gameFont = Font;
             if (gameFont != null) root.style.unityFontDefinition = FontDefinition.FromSDFFont(gameFont);
-            root.RegisterCallback<PointerMoveEvent>(TrackTooltip, TrickleDown.TrickleDown);
-            root.RegisterCallback<PointerLeaveEvent>(_ => HoverTooltip = "");
+            root.RegisterCallback<PointerDownEvent>(PinTooltip, TrickleDown.TrickleDown);
             documents.Add(document);
             return document;
         }
@@ -94,10 +93,13 @@ namespace FishBreeder.Core
             return new Vector2(screen.x / Mathf.Max(1, Screen.width) * size.x, (1f - screen.y / Mathf.Max(1, Screen.height)) * size.y);
         }
 
-        /// <summary>The tooltip of the element under the pointer (or of the nearest parent that has one), or "".</summary>
-        public static string HoverTooltip { get; private set; } = "";
+        /// <summary>
+        /// The tooltip of the last thing clicked (or of the nearest parent that has one), or "".
+        /// Lines that explain things show it, so details open with a click, never by hovering.
+        /// </summary>
+        public static string ClickedTooltip { get; private set; } = "";
 
-        static void TrackTooltip(PointerMoveEvent e)
+        static void PinTooltip(PointerDownEvent e)
         {
             string tip = "";
             for (var element = e.target as VisualElement; element != null; element = element.hierarchy.parent)
@@ -106,7 +108,7 @@ namespace FishBreeder.Core
                     tip = element.tooltip;
                     break;
                 }
-            HoverTooltip = tip;
+            ClickedTooltip = tip;
         }
 
         /// <summary>

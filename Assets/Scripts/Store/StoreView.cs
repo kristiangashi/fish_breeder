@@ -164,6 +164,11 @@ namespace FishBreeder.Store
                 AquariumView.Close();
                 escape = false;
             }
+            if (escape && GameLogView.IsOpen)
+            {
+                GameLogView.Close();
+                escape = false;
+            }
             // A right click zooms out one level too: from a fish or a close-up to the tank, from a
             // wheel zoom to the normal view, from the tank or a person to the store.
             bool zoomOut = Input.GetMouseButtonDown(1) && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
@@ -242,7 +247,7 @@ namespace FishBreeder.Store
             else if (!hud.ResetWheelZoom()) ExitTank();
         }
 
-        static bool AnyWindowOpen => JournalView.IsOpen || PerksView.IsOpen || ResearchView.IsOpen || ReputationView.IsOpen || FinancesView.IsOpen || AquariumView.IsOpen;
+        static bool AnyWindowOpen => JournalView.IsOpen || PerksView.IsOpen || ResearchView.IsOpen || ReputationView.IsOpen || FinancesView.IsOpen || AquariumView.IsOpen || GameLogView.IsOpen;
 
         bool AquariumBuilt => store.AquariumSection != null && store.AquariumSection.unlocked;
 
@@ -603,6 +608,7 @@ namespace FishBreeder.Store
             clockView = hudRoot.Q("clock");
             bannersView = hudRoot.Q("banners");
             logView = hudRoot.Q("log");
+            GameLogView.MakeClickable(logView);
             watchView = hudRoot.Q("watch");
             // A click outside a window closes it, except the day report and the shopkeeper pick, which need their buttons.
             window = new UiWindow(transform, "store-window", "", 20, true, () =>
@@ -1028,7 +1034,8 @@ namespace FishBreeder.Store
         /// Keyboard versions of the dev controls: 1/2/3 set 1x/5x/20x and K skips the rest of the day
         /// (with the shop shut, K lets the day pass or goes to sleep).
         /// In the editor and development builds F8 runs the UI check; in the editor F9 puts the next
-        /// equipment model in the tank you're looking at. F10 turns dev mode on and off (editor and
+        /// equipment model in the tank you're looking at, and F6 saves every screen showing as a
+        /// preview for UI Builder (see UiSnapshot). F10 turns dev mode on and off (editor and
         /// development builds).
         /// </summary>
         void HandleDevKeys()
@@ -1037,6 +1044,7 @@ namespace FishBreeder.Store
             if ((Application.isEditor || Debug.isDebugBuild) && Input.GetKeyDown(KeyCode.F8) && !UiToolkitCheck.Sweeping) RunUiCheck();
 #if UNITY_EDITOR
             if (Input.GetKeyDown(KeyCode.F9)) CycleEquipment();
+            if (Input.GetKeyDown(KeyCode.F6)) UiSnapshot.SaveAll();
 #endif
             if (!shopDay.IsOpen)
             {

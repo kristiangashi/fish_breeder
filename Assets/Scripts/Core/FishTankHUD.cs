@@ -245,6 +245,7 @@ namespace FishBreeder.Core
             fishView = hudRoot.Q("fish-window");
             tankBarView = hudRoot.Q("tank-bar");
             logView = hudRoot.Q("log");
+            GameLogView.MakeClickable(logView);
             levelPopupView = hudRoot.Q<Label>("level-popup");
             UiPanels.Show(hudRoot, false);
         }
@@ -349,8 +350,8 @@ namespace FishBreeder.Core
         /// medicine, repairs, the heater's setting, then the tank's water and fish), Tank (size,
         /// water type, decorations, background and tank type), Upgrades (filter, heater and bubbler)
         /// and Breeding (eggs, pregnancies and who's ready). A dot on a tab means something there
-        /// needs doing. The aquarium's level sits in a circle by the title on every tab: hover over
-        /// it, or click the "?" beside it, for what makes it up.
+        /// needs doing. The aquarium's level sits in a circle by the title on every tab: click it, or
+        /// the "?" beside it, for what makes it up.
         /// </summary>
         bool renaming;
         string renameText = "";
@@ -427,7 +428,9 @@ namespace FishBreeder.Core
         {
             int level = TankQuality.Level(tank);
             var color = FishWantingHigherLevel() > 0 ? UiTheme.Coral : level >= TankQuality.MaxLevel ? UiTheme.Sun : UiTheme.Aqua;
-            levelBadge = ui.Badge($"<b>{level}</b>", color, "fb-badge fb-level-badge");
+            if (ui.Button($"<b>{level}</b>", "fb-button fb-level-badge")) showLevelInfo = !showLevelInfo;
+            levelBadge = ui.Last;
+            levelBadge.style.backgroundColor = color;
         }
 
         /// <summary>How many fish here need a higher aquarium level than this one has.</summary>
@@ -441,14 +444,11 @@ namespace FishBreeder.Core
 
         /// <summary>
         /// The level details in a little box popping out beside the "?", over everything and
-        /// outside the panel: while the mouse is on the circle or the "?", or pinned by clicking "?".
+        /// outside the panel, opened and closed by clicking the circle or the "?".
         /// </summary>
         void DrawLevelPopup(bool menus)
         {
-            var mouse = MouseOnPanel;
-            bool hover = menus && Arranging == ArrangeMode.None && levelBadge != null && levelHelp != null
-                && (levelBadge.worldBound.Contains(mouse) || levelHelp.worldBound.Contains(mouse));
-            bool show = menus && (showLevelInfo || hover) && Arranging == ArrangeMode.None && levelHelp != null && levelHelp.panel != null;
+            bool show = menus && showLevelInfo && Arranging == ArrangeMode.None && levelHelp != null && levelHelp.panel != null;
             UiPanels.Show(levelPopupView, show);
             if (!show) return;
             levelPopupView.text = LevelInfoText();
@@ -1685,23 +1685,20 @@ namespace FishBreeder.Core
         }
 
         /// <summary>
-        /// A bar with a small up or down arrow after it. With the health check-up research the arrow
-        /// is a button that opens the breakdown underneath; before that it only explains itself under the pointer.
+        /// A bar with a small up or down arrow after it. Clicking the arrow opens what it means
+        /// underneath: with the health check-up research every factor behind it, before that just
+        /// which way it's going.
         /// </summary>
         void TrendBar(string label, float value, int trend, string tooltip, ref bool open)
         {
             ui.BeginRow("fb-row fb-trend");
             Bar(label, value, true);
             string arrow = trend > 0 ? "<color=#9fe39f>▲</color>" : trend < 0 ? "<color=#ff9a8a>▼</color>" : "<color=#9aa3ad>–</color>";
-            if (Research.Has(ResearchUnlock.HealthDetails))
-            {
-                if (ui.Button($"{arrow}<size=10>{(open ? " ▴" : " ▾")}</size>", "fb-button fb-button--tiny fb-trend__arrow", true, tooltip + (open ? "" : ". Click to see why"))) open = !open;
-            }
-            else ui.Label(arrow, "fb-text fb-trend__arrow").tooltip = tooltip + ". Research health check-ups to see why";
+            if (ui.Button($"{arrow}<size=10>{(open ? " ▴" : " ▾")}</size>", "fb-button fb-button--tiny fb-trend__arrow")) open = !open;
             ui.Pop();
-            // What the arrow means, under the bar while the pointer is on it.
-            if (ui.Tooltip == tooltip + ". Research health check-ups to see why" || ui.Tooltip == tooltip + ". Click to see why" || ui.Tooltip == tooltip)
-                ui.Label(ui.Tooltip, "fb-tooltip-line");
+            // Opened before the research: which way it is going, and that the research tells why.
+            if (open && !Research.Has(ResearchUnlock.HealthDetails))
+                ui.Label($"{tooltip}. Research health check-ups to see why.", "fb-small");
         }
 
         Fish releaseAsk;

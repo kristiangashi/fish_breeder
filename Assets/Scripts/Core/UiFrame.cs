@@ -33,8 +33,8 @@ namespace FishBreeder.Core
         /// <summary>The element the last call made or reused.</summary>
         public VisualElement Last { get; private set; }
 
-        /// <summary>The tooltip of whatever the pointer is over, or "".</summary>
-        public string Tooltip => UiPanels.HoverTooltip;
+        /// <summary>The tooltip of the last thing clicked, or "" (see <see cref="UiPanels.ClickedTooltip"/>).</summary>
+        public string Tooltip => UiPanels.ClickedTooltip;
 
         public void Begin(VisualElement container)
         {

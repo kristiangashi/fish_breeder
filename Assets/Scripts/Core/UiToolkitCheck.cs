@@ -75,7 +75,8 @@ namespace FishBreeder.Core
                 }
                 else if (r.xMin < panel.xMin - Give || r.yMin < panel.yMin - Give || r.xMax > panel.xMax + Give || r.yMax > panel.yMax + Give)
                     what = $"runs off the screen ({r.width:0}x{r.height:0} at {r.x:0},{r.y:0})";
-                if (what == null && parent != null && style.position == Position.Relative && !IsScrollInside(parent))
+                // The log keeps its newest lines and lets the oldest slide out of sight above.
+                if (what == null && parent != null && style.position == Position.Relative && !IsScrollInside(parent) && !parent.ClassListContains("fb-log"))
                 {
                     var p = parent.worldBound;
                     if (r.xMin < p.xMin - Give || r.xMax > p.xMax + Give || r.yMin < p.yMin - Give || r.yMax > p.yMax + Give)

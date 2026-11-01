@@ -35,3 +35,7 @@ MeshyRaw/
 
 # UI check pictures (F8 in the menus)
 /UiCheck/
+
+# UI Builder previews saved with F6 while playing
+/Assets/UI Previews/
+/Assets/UI Previews.meta

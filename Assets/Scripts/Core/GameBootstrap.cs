@@ -88,6 +88,7 @@ namespace FishBreeder.Core
             gameObject.AddComponent<PerksView>();
             gameObject.AddComponent<ResearchView>();
             gameObject.AddComponent<FxOverlay>();
+            gameObject.AddComponent<GameLogView>();
             if (loaded) SaveGame.LoadStore(store, shopDay);
             gameObject.AddComponent<AutoSave>().Initialize(store, shopDay);
             gameObject.AddComponent<PauseMenu>();

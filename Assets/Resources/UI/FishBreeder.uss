@@ -1866,3 +1866,42 @@
     color: rgb(255, 255, 255);
     text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
 }
+
+/* ------------------------------------------------------------ click-only details, the message history */
+
+/* A line that explains the last thing clicked keeps two lines of room, so nothing under it moves. */
+.fb-tooltip-line {
+    height: 30px;
+    min-height: 30px;
+    overflow: hidden;
+}
+
+/* The aquarium level circle by the tank title: click it for what makes it up. */
+.unity-button.fb-level-badge {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    border-radius: 11px;
+    border-width: 0;
+    padding: 0;
+    margin: 0 0 0 4px;
+    color: rgb(10, 31, 46);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+/* The log in the corner opens the message history when clicked. */
+.fb-log--clickable:hover {
+    border-color: var(--sun);
+}
+
+#log-window {
+    width: 600px;
+    height: 600px;
+    max-height: 100%;
+}
+
+.fb-log-entry {
+    margin: 0 0 4px 0;
+}

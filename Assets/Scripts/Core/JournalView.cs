@@ -4,6 +4,7 @@ using FishBreeder.Genetics;
 using FishBreeder.Shop;
 using FishBreeder.Store;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace FishBreeder.Core
 {
@@ -13,16 +14,17 @@ namespace FishBreeder.Core
     /// name, the rest are dark silhouettes with a question mark. Clicking a discovered fish opens
     /// its profile: what it is, and everything research has taught you about it (facts unlock as
     /// the species earns research points; the rest show as ??? with how far off they are). J or R
-    /// opens and closes it; Esc closes it (handled by the store view, which owns Esc).
-    /// Placeholder IMGUI like the other screens.
+    /// opens and closes it; Esc closes it (handled by the store view, which owns Esc). Drawn in the
+    /// #journal-window (Window.uxml, styled in FishBreeder.uss).
     /// </summary>
     public class JournalView : MonoBehaviour
     {
         static bool open;
         static string page;
 
-        Vector2 indexScroll, pageScroll;
-        Rect window;
+        UiWindow window;
+        UiFrame ui;
+        ScrollView pageScroll;
 
         public static bool IsOpen => open;
 
@@ -46,61 +48,35 @@ namespace FishBreeder.Core
         {
             open = false;
             page = null;
+            window = new UiWindow(transform, "journal-window", "Fish journal", 10, true, Close);
+            window.CloseButton.text = "Close (J / Esc)";
+            ui = window.Frame;
         }
+
+        void OnDestroy() => window?.Destroy();
+
+        void OnDisable() => window?.Show(false);
 
         void Update()
         {
-            if (ViewMode.Watching || GUIUtility.keyboardControl != 0) return;
-            if (Input.GetKeyDown(KeyCode.J)) Toggle();
-        }
-
-        void OnGUI()
-        {
-            if (!open || ViewMode.Watching) return;
-            UiTheme.Apply();
-            GUI.depth = -10;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            float width = Screen.width / scale;
-            float height = Screen.height / scale;
-            float w = Mathf.Min(900f, width - 40f);
-            float h = Mathf.Min(640f, height - 60f);
-            window = new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
-
-            // Dim the store behind, like a book opened on the counter.
-            GUI.DrawTexture(new Rect(0f, 0f, width, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, 0.45f), 0f, 0f);
-
-            UiCheck.Begin("Journal", window, UiStyles.Window);
+            if (!ViewMode.Watching && !UiPanels.Typing && Input.GetKeyDown(KeyCode.J)) Toggle();
+            bool show = open && !ViewMode.Watching;
+            window.Show(show);
+            if (!show) return;
             var profile = page != null ? FindSpecies(page) : null;
             if (profile != null && !Journal.IsDiscovered(profile)) profile = null;
-            DrawHeader(profile);
-            if (profile == null) DrawIndex(w);
-            else DrawProfile(profile);
-            UiCheck.End();
-
-            // The journal is modal: clicks outside it close it instead of reaching the store behind.
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && !UiLayout.Editing)
+            window.Fill(() => DrawHeader(profile), () =>
             {
-                if (!window.Contains(e.mousePosition)) Close();
-                e.Use();
-            }
-            else if (e.type == EventType.ScrollWheel && window.Contains(e.mousePosition)) e.Use();
+                if (profile == null) DrawIndex();
+                else DrawProfile(profile);
+            });
         }
 
         void DrawHeader(Species profile)
         {
-            GUILayout.BeginHorizontal();
-            if (profile != null && Ui.Button("< All fish", GUILayout.Width(90f))) page = null;
-            Ui.Label("Fish journal", UiTheme.Title);
-            GUILayout.Space(10f);
-            GUILayout.BeginVertical();
-            GUILayout.Space(6f);
-            Ui.Label($"<b>{Journal.Count}</b> of {Species.All.Count} discovered   ·   Research level {Progression.Level(XpTrack.Research)}, speed <b>x{Research.Speed:0.0#}</b>", Rich());
-            GUILayout.EndVertical();
-            GUILayout.FlexibleSpace();
-            if (Ui.Button("Close (J / Esc)", GUILayout.Width(120f))) Close();
-            GUILayout.EndHorizontal();
+            ui.Label($"<b>{Journal.Count}</b> of {Species.All.Count} discovered   ·   Research level {Progression.Level(XpTrack.Research)}, speed <b>x{Research.Speed:0.0#}</b>", "fb-text fb-header-text");
+            ui.Flex();
+            if (profile != null && ui.Button("< All fish")) page = null;
         }
 
         static Species FindSpecies(string id)
@@ -112,81 +88,51 @@ namespace FishBreeder.Core
 
         // ------------------------------------------------------------ index
 
-        void DrawIndex(float windowWidth)
+        void DrawIndex()
         {
-            Ui.Label("<size=12>Every kind of fish you can find. New ones join the journal the first time you can tell what they are.</size>", Rich());
-            indexScroll = UiCheck.BeginScroll("Journal: index", indexScroll);
-            const float cardW = 128f, cardH = 132f;
-            int perRow = Mathf.Max(2, Mathf.FloorToInt((windowWidth - 50f) / (cardW + 8f)));
+            ui.Label("Every kind of fish you can find. New ones join the journal the first time you can tell what they are.", "fb-text fb-text--small");
+            ui.BeginScroll("fb-scroll fb-window__body");
             foreach (var group in Journal.Groups)
             {
                 var list = Journal.SpeciesIn(group);
                 if (list.Count == 0) continue;
                 int found = 0;
                 foreach (var species in list) if (Journal.IsDiscovered(species)) found++;
-                GUILayout.Space(6f);
-                GUILayout.BeginHorizontal();
-                Ui.Label($"{group.title.ToUpper()}", UiTheme.Heading, GUILayout.ExpandWidth(false));
-                Ui.Label($"<size=11>{found}/{list.Count}  ·  {group.blurb}</size>", Rich());
-                GUILayout.EndHorizontal();
-                for (int i = 0; i < list.Count; i += perRow)
-                {
-                    GUILayout.BeginHorizontal();
-                    for (int j = i; j < Mathf.Min(list.Count, i + perRow); j++) DrawCard(list[j], cardW, cardH);
-                    GUILayout.FlexibleSpace();
-                    GUILayout.EndHorizontal();
-                }
+                ui.BeginRow("fb-row fb-journal-group");
+                ui.Label(group.title.ToUpper(), "fb-heading fb-header-text");
+                ui.Label($"{found}/{list.Count}  ·  {group.blurb}", "fb-small fb-grow");
+                ui.Pop();
+                ui.BeginRow("fb-row fb-wrap fb-journal-grid");
+                foreach (var species in list) DrawCard(species);
+                ui.Pop();
             }
-            UiCheck.EndScroll();
+            ui.Pop();
         }
 
-        void DrawCard(Species species, float w, float h)
+        void DrawCard(Species species)
         {
             bool known = Journal.IsDiscovered(species);
-            var rect = Ui.Slot("Card", w, h, GUILayout.Width(w), GUILayout.Height(h));
-            rect.width -= 8f;
-            bool hover = rect.Contains(Event.current.mousePosition);
-            GUI.Box(rect, GUIContent.none, known && hover ? UiTheme.CardSelected : UiTheme.Card);
-
-            var pictureRect = new Rect(rect.x + 6f, rect.y + 6f, rect.width - 12f, rect.height - 46f);
-            GUI.DrawTexture(pictureRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f,
-                known ? new Color(0.06f, 0.45f, 0.55f, 0.7f) : new Color(0.01f, 0.08f, 0.12f, 0.8f), 0f, 8f);
-            var photo = ItemPreviews.Fish(species);
-            var old = GUI.color;
-            if (photo != null)
-            {
-                float bob = known && hover ? Mathf.Sin(Time.unscaledTime * 4f) * 2f : 0f;
-                GUI.color = known ? Color.white : new Color(0.02f, 0.05f, 0.08f, 0.95f);
-                GUI.DrawTexture(new Rect(pictureRect.x + 4f, pictureRect.y + 4f + bob, pictureRect.width - 8f, pictureRect.height - 8f), photo, ScaleMode.ScaleToFit);
-            }
-            GUI.color = old;
-            if (!known) GUI.Label(pictureRect, $"<size=40><b><color={UiTheme.AquaHex}>?</color></b></size>", Centered());
-
-            var nameRect = new Rect(rect.x + 4f, pictureRect.yMax + 2f, rect.width - 8f, 20f);
-            // Long names step down a size or two so they fit the card.
-            var name = new GUIContent(known ? $"<b>{species.displayName}</b>" : "<b>???</b>");
-            for (int size = 12; size >= 9 && Centered().CalcSize(name).x > nameRect.width; size--)
-                name = new GUIContent($"<size={size}><b>{species.displayName}</b></size>");
-            UiCheck.Label("Journal: card name", nameRect, name, Centered());
-            var subRect = new Rect(rect.x + 4f, nameRect.yMax - 2f, rect.width - 8f, 16f);
-            GUI.Label(subRect, known ? $"<size=10><color={RarityHex(species.rarity)}>{species.rarity}</color></size>"
-                : $"<size=10><color=#8fb3bd>{(species.eastWingOnly ? "Found diving" : string.IsNullOrEmpty(species.onlyInBox) ? $"Fishkeeping {species.unlockLevel}+" : BoxName(species.onlyInBox))}</color></size>", Centered());
-
-            if (known && Journal.IsNew(species))
-            {
-                var tagRect = new Rect(rect.xMax - 42f, rect.y + 4f, 38f, 16f);
-                var tagOld = GUI.backgroundColor;
-                GUI.backgroundColor = UiTheme.Coral;
-                GUI.Label(tagRect, "NEW", UiTheme.Tag);
-                GUI.backgroundColor = tagOld;
-            }
-
-            if (known && GUI.Button(rect, GUIContent.none, GUIStyle.none) && !UiLayout.Editing)
+            if (ui.BeginButton(known ? "fb-journal-card" : "fb-journal-card fb-journal-card--unknown", known))
             {
                 page = species.id;
-                pageScroll = Vector2.zero;
+                if (pageScroll != null) pageScroll.scrollOffset = Vector2.zero;
                 Journal.MarkSeen(species);
             }
+            ui.Begin("picture", "fb-journal-card__picture");
+            var photo = ItemPreviews.Fish(species);
+            var image = ui.Image(photo, 100f, 80f, "fb-image fb-journal-card__photo");
+            image.tintColor = known ? Color.white : new Color(0.02f, 0.05f, 0.08f, 0.95f);
+            UiPanels.Show(image, photo != null);
+            if (!known) ui.Label($"<b>?</b>", "fb-journal-card__question");
+            if (known && Journal.IsNew(species)) ui.Badge("NEW", UiTheme.Coral, "fb-badge fb-journal-card__new");
+            ui.Pop();
+            // Long names step down a size or two so they fit the card.
+            string name = known ? species.displayName : "???";
+            int size = name.Length > 22 ? 9 : name.Length > 19 ? 10 : name.Length > 16 ? 11 : 12;
+            ui.Label($"<size={size}><b>{name}</b></size>", "fb-journal-card__name");
+            ui.Label(known ? $"<color={RarityHex(species.rarity)}>{species.rarity}</color>"
+                : $"<color=#8fb3bd>{(species.eastWingOnly ? "Found diving" : string.IsNullOrEmpty(species.onlyInBox) ? $"Fishkeeping {species.unlockLevel}+" : BoxName(species.onlyInBox))}</color>", "fb-journal-card__sub");
+            ui.Pop();
         }
 
         /// <summary>The name of the egg box a fish only comes in, e.g. "Wild tetra eggs".</summary>
@@ -213,48 +159,43 @@ namespace FishBreeder.Core
 
         void DrawProfile(Species species)
         {
-            GUILayout.Space(4f);
-            GUILayout.BeginHorizontal();
+            ui.BeginRow("fb-row fb-journal-profile");
 
             // Left: the fish itself.
-            GUILayout.BeginVertical(GUILayout.Width(250f));
-            var pictureRect = Ui.Slot("Picture", 250f, 170f, GUILayout.Width(250f), GUILayout.Height(170f));
-            GUI.DrawTexture(pictureRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.06f, 0.45f, 0.55f, 0.75f), 0f, 14f);
+            ui.BeginColumn("fb-column fb-journal-profile__left");
+            ui.Begin("picture", "fb-journal-profile__picture");
             var photo = ItemPreviews.Fish(species);
-            if (photo != null)
-            {
-                float bob = Mathf.Sin(Time.unscaledTime * 2f) * 4f;
-                GUI.DrawTexture(new Rect(pictureRect.x + 8f, pictureRect.y + 8f + bob, pictureRect.width - 16f, pictureRect.height - 16f), photo, ScaleMode.ScaleToFit);
-            }
-            Ui.Label($"<size=20><b><color={UiTheme.SunHex}>{species.displayName}</color></b></size>", Rich());
-            if (!string.IsNullOrEmpty(species.scientificName)) Ui.Label($"<i>{species.scientificName}</i>", Rich());
-            if (!string.IsNullOrEmpty(species.family)) Ui.Label($"<size=12>{species.family}</size>", Rich());
-            Ui.Label($"<color={RarityHex(species.rarity)}><b>{species.rarity}</b></color> species  ·  {Where(species)}", Rich());
+            var image = ui.Image(photo, 234f, 154f, "fb-image fb-journal-profile__photo");
+            image.style.translate = new Translate(0f, Mathf.Sin(Time.unscaledTime * 2f) * 4f);
+            UiPanels.Show(image, photo != null);
+            ui.Pop();
+            ui.Label($"<size=20><b><color={UiTheme.SunHex}>{species.displayName}</color></b></size>");
+            if (!string.IsNullOrEmpty(species.scientificName)) ui.Label($"<i>{species.scientificName}</i>");
+            if (!string.IsNullOrEmpty(species.family)) ui.Label(species.family, "fb-text fb-text--small");
+            ui.Label($"<color={RarityHex(species.rarity)}><b>{species.rarity}</b></color> species  ·  {Where(species)}");
             int kept = 0;
             foreach (var tank in FindObjectsByType<Tank>(FindObjectsSortMode.None))
                 foreach (var fish in tank.Residents)
                     if (!fish.IdentityHidden && fish.Species == species) kept++;
-            Ui.Label(kept > 0 ? $"You have <b>{kept}</b> in your tanks." : "<i>None in your tanks right now.</i>", Rich());
-            GUILayout.FlexibleSpace();
-            GUILayout.BeginHorizontal();
+            ui.Label(kept > 0 ? $"You have <b>{kept}</b> in your tanks." : "<i>None in your tanks right now.</i>");
+            ui.Flex();
+            ui.BeginRow();
             var neighbours = DiscoveredOrder();
             int index = neighbours.IndexOf(species);
-            GUI.enabled = neighbours.Count > 1;
-            if (Ui.Button("< Prev")) GoTo(neighbours[(index - 1 + neighbours.Count) % neighbours.Count]);
-            if (Ui.Button("Next >")) GoTo(neighbours[(index + 1) % neighbours.Count]);
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
+            bool more = neighbours.Count > 1;
+            if (ui.Button("< Prev", "fb-button fb-button--gap", more)) GoTo(neighbours[(index - 1 + neighbours.Count) % neighbours.Count]);
+            if (ui.Button("Next >", "fb-button", more)) GoTo(neighbours[(index + 1) % neighbours.Count]);
+            ui.Pop();
+            ui.Pop();
 
-            GUILayout.Space(12f);
             DrawFacts(species);
-            GUILayout.EndHorizontal();
+            ui.Pop();
         }
 
         void GoTo(Species species)
         {
             page = species.id;
-            pageScroll = Vector2.zero;
+            if (pageScroll != null) pageScroll.scrollOffset = Vector2.zero;
             Journal.MarkSeen(species);
         }
 
@@ -281,32 +222,31 @@ namespace FishBreeder.Core
         /// <summary>Research notes: what's been learned so far, and how far off the rest is.</summary>
         void DrawFacts(Species species)
         {
-            GUILayout.BeginVertical(GUILayout.ExpandWidth(true));
-            pageScroll = UiCheck.BeginScroll("Journal: research notes", pageScroll);
+            pageScroll = ui.BeginScroll("fb-scroll fb-journal-profile__facts");
             DrawPrices(species);
-            GUILayout.Space(8f);
-            Ui.Label("RESEARCH NOTES", UiTheme.Heading);
-            Ui.Label("<size=11>Research projects (R) teach you more about every fish you've discovered.</size>", Rich());
+            ui.Label("RESEARCH NOTES", "fb-heading");
+            ui.Label("Research projects (R) teach you more about every fish you've discovered.", "fb-small");
 
             Section("Temperature");
             if (Research.Knows(species, ResearchFact.Temperature))
             {
-                Ui.Label($"Likes {species.tempMin:0}-{species.tempMax:0} C.", Rich());
-                RangeGauge(true, species.tempMin, species.tempMax);
+                ui.Label($"Likes {species.tempMin:0}-{species.tempMax:0} C.");
+                // No water to point at on a journal page, so the arrow marks the middle of the liked range.
+                ui.Temperature((species.tempMin + species.tempMax) * 0.5f, new Vector2(species.tempMin, species.tempMax));
             }
-            else Unknown(species, ResearchFact.Temperature);
+            else Unknown();
 
             Section("pH");
-            if (!Research.CanReadPh) Unknown(species, ResearchFact.Ph);
+            if (!Research.CanReadPh) Unknown();
             else
             {
-                Ui.Label("<size=11>pH measures how acidic (below 7) or alkaline (above 7) the water is. Dirty water drifts acidic; water conditioner sets it back to neutral.</size>", Rich());
+                ui.Label("pH measures how acidic (below 7) or alkaline (above 7) the water is. Dirty water drifts acidic; water conditioner sets it back to neutral.", "fb-small");
                 if (Research.Knows(species, ResearchFact.Ph))
                 {
-                    Ui.Label($"Likes pH {species.phMin:0.0}-{species.phMax:0.0}.", Rich());
-                    RangeGauge(false, species.phMin, species.phMax);
+                    ui.Label($"Likes pH {species.phMin:0.0}-{species.phMax:0.0}.");
+                    ui.Ph((species.phMin + species.phMax) * 0.5f, new Vector2(species.phMin, species.phMax));
                 }
-                else Unknown(species, ResearchFact.Ph);
+                else Unknown();
             }
 
             Section("Water");
@@ -314,11 +254,11 @@ namespace FishBreeder.Core
 
             Section("Plants");
             if (Research.Knows(species, ResearchFact.Plants)) Line(species.likesPlants ? "Loves plants in the tank." : "Doesn't care about plants.");
-            else Unknown(species, ResearchFact.Plants);
+            else Unknown();
 
             Section("Company");
             if (Research.Knows(species, ResearchFact.School)) Line(species.schoolSize > 0 ? $"Feels safe with {species.schoolSize} or more of its own kind." : "Happy on its own.");
-            else Unknown(species, ResearchFact.School);
+            else Unknown();
 
             Section("Breeding");
             if (Research.Knows(species, ResearchFact.Breeding))
@@ -328,11 +268,11 @@ namespace FishBreeder.Core
                     : $"Egg-layer: {species.litterMin}-{species.litterMax} eggs that hatch in about {species.eggHatchSteps * 0.5f:0.#} days.");
                 Line($"Grows up in about {species.daysToAdult:0.#} days.");
             }
-            else Unknown(species, ResearchFact.Breeding);
+            else Unknown();
 
             Section("Lifespan");
             if (Research.Knows(species, ResearchFact.Lifespan)) Line($"Starts to slow down with age after about {species.lifespanDays:0} days.");
-            else Unknown(species, ResearchFact.Lifespan);
+            else Unknown();
 
             Section("Favourite foods");
             int foundFoods = 0;
@@ -342,8 +282,8 @@ namespace FishBreeder.Core
                     Line($"Loves {FoodPellet.Name(food)}.");
                     foundFoods++;
                 }
-            if (foundFoods == 0) Unknown(species, ResearchFact.Temperature);
-            else if (foundFoods < species.favoriteFoods.Count) Ui.Label("<size=11><i>There may be more.</i></size>", Rich());
+            if (foundFoods == 0) Unknown();
+            else if (foundFoods < species.favoriteFoods.Count) ui.Label("<i>There may be more.</i>", "fb-small");
 
             Section("Tank mates");
             int foundMates = 0;
@@ -353,10 +293,8 @@ namespace FishBreeder.Core
                 Line(Research.DescribeRelationship(species, other));
                 foundMates++;
             }
-            if (foundMates == 0) Unknown(species, ResearchFact.Temperature);
-
-            UiCheck.EndScroll();
-            GUILayout.EndVertical();
+            if (foundMates == 0) Unknown();
+            ui.Pop();
         }
 
         // ------------------------------------------------------------ prices
@@ -381,8 +319,8 @@ namespace FishBreeder.Core
         /// </summary>
         void DrawPrices(Species species)
         {
-            Ui.Label("PRICES", UiTheme.Heading);
-            Ui.Label($"<size=12>Appraised at {AppraisalText(species, species, species)}. Customers judge each fish for themselves: good looks and good health sell for more.</size>", Rich());
+            ui.Label("PRICES", "fb-heading");
+            ui.Label($"Appraised at {AppraisalText(species, species, species)}. Customers judge each fish for themselves: good looks and good health sell for more.", "fb-text fb-text--small");
 
             var owned = new List<KeyValuePair<Fish, StoreTank>>();
             foreach (var storeTank in FindObjectsByType<StoreTank>(FindObjectsSortMode.None))
@@ -397,26 +335,24 @@ namespace FishBreeder.Core
                 return kind != 0 ? kind : b.Key.AgeDays.CompareTo(a.Key.AgeDays);
             });
 
-            bool locked = ShopOpen;
+            bool can = !ShopOpen;
             int forSale = 0;
             foreach (var pair in owned) if (pair.Value.Role == TankRole.ForSale && pair.Key.Stage != LifeStage.Fry) forSale++;
-            GUI.enabled = !locked;
             if (forSale > 0)
             {
-                GUILayout.BeginHorizontal();
-                Ui.Label($"<size=12>Price all {forSale} for sale at</size>", Rich(), GUILayout.ExpandWidth(false));
-                if (Ui.Button("-", GUILayout.Width(26f))) markup = Mathf.Max(10, markup - 10);
-                Ui.Label($"<b>{markup}%</b>", Rich(), GUILayout.Width(44f));
-                if (Ui.Button("+", GUILayout.Width(26f))) markup = Mathf.Min(300, markup + 10);
-                Ui.Label("<size=12>of appraised</size>", Rich(), GUILayout.ExpandWidth(false));
-                if (Ui.Button("Apply", GUILayout.Width(64f)))
+                ui.BeginRow("fb-row fb-wrap");
+                ui.Label($"Price all {forSale} for sale at", "fb-text fb-text--small fb-header-text");
+                if (ui.Button("-", "fb-button fb-step", can)) markup = Mathf.Max(10, markup - 10);
+                ui.Label($"<b>{markup}%</b>", "fb-text fb-step-value fb-step-value--narrow");
+                if (ui.Button("+", "fb-button fb-step", can)) markup = Mathf.Min(300, markup + 10);
+                ui.Label("of appraised", "fb-text fb-text--small fb-header-text");
+                if (ui.Button("Apply", "fb-button fb-button--small", can))
                     foreach (var pair in owned)
                         if (pair.Value.Role == TankRole.ForSale && pair.Key.Stage != LifeStage.Fry)
                             pair.Key.Price = Mathf.Max(1, Mathf.RoundToInt(pair.Key.AppraisedPrice * markup / 100f));
-                GUILayout.FlexibleSpace();
-                GUILayout.EndHorizontal();
+                ui.Pop();
             }
-            if (locked) Ui.Label("<size=11><i>Prices are set while the shop is closed.</i></size>", Rich());
+            if (!can) ui.Label("<i>Prices are set while the shop is closed.</i>", "fb-small");
 
             string lastKind = KindKey(owned[0].Key);
             foreach (var pair in owned)
@@ -428,24 +364,22 @@ namespace FishBreeder.Core
                 {
                     lastKind = kindKey;
                     var look = fish.Phenotype;
-                    GUILayout.Space(4f);
-                    Ui.Label($"<b>{fish.SpeciesLabel}</b> <size=11>(fins: {look.finSpecies.displayName}, tail: {look.tailSpecies.displayName})</size>\n<size=12>Appraised at {AppraisalText(look.species, look.finSpecies, look.tailSpecies)}.</size>", Rich());
+                    ui.Label($"<b>{fish.SpeciesLabel}</b> <size=11>(fins: {look.finSpecies.displayName}, tail: {look.tailSpecies.displayName})</size>\n<size=12>Appraised at {AppraisalText(look.species, look.finSpecies, look.tailSpecies)}.</size>", "fb-text fb-cross");
                 }
                 bool sellable = pair.Value.Role == TankRole.ForSale && fish.Stage != LifeStage.Fry;
-                GUILayout.BeginHorizontal(UiTheme.Card);
-                Ui.Label($"<b>{fish.FishName}</b>\n<size=11>{pair.Value.Title} · {fish.Stage.ToString().ToLower()}{(fish.Health.IsSick ? " · <color=#ff8080>sick</color>" : "")}</size>", Rich(), GUILayout.Width(170f));
+                ui.BeginCard(false, "fb-card");
+                ui.Label($"<b>{fish.FishName}</b>\n<size=11>{pair.Value.Title} · {fish.Stage.ToString().ToLower()}{(fish.Health.IsSick ? " · <color=#ff8080>sick</color>" : "")}</size>", "fb-text fb-grow");
                 if (sellable)
                 {
                     string color = fish.Price <= 0 ? UiTheme.CoralHex : fish.Price > fish.AppraisedPrice * 1.3f ? UiTheme.SunHex : "#ffffff";
-                    Ui.Label($"<size=11>price</size>\n<b><color={color}>{(fish.Price > 0 ? Economy.Format(fish.Price) : "none")}</color></b>", Rich(), GUILayout.Width(64f));
-                    if (Ui.Button("-5", GUILayout.Width(34f))) fish.Price = Mathf.Max(1, fish.Price - 5);
-                    if (Ui.Button("+5", GUILayout.Width(34f))) fish.Price += 5;
-                    if (Ui.Button("Appraised", GUILayout.Width(84f))) fish.Price = fish.AppraisedPrice;
+                    ui.Label($"<size=11>price</size>\n<b><color={color}>{(fish.Price > 0 ? Economy.Format(fish.Price) : "none")}</color></b>", "fb-text fb-step-value fb-step-value--narrow");
+                    if (ui.Button("-5", "fb-button fb-step", can)) fish.Price = Mathf.Max(1, fish.Price - 5);
+                    if (ui.Button("+5", "fb-button fb-step", can)) fish.Price += 5;
+                    if (ui.Button("Appraised", "fb-button fb-button--small", can)) fish.Price = fish.AppraisedPrice;
                 }
-                else Ui.Label(fish.Stage == LifeStage.Fry ? "<size=11><i>Too young to sell.</i></size>" : "<size=11><i>Not in a For Sale tank.</i></size>", Rich());
-                GUILayout.EndHorizontal();
+                else ui.Label(fish.Stage == LifeStage.Fry ? "<i>Too young to sell.</i>" : "<i>Not in a For Sale tank.</i>", "fb-small fb-value");
+                ui.Pop();
             }
-            GUI.enabled = true;
         }
 
         /// <summary>Sorts the pure fish first ("" key), then each cross by its fins and tail.</summary>
@@ -459,41 +393,10 @@ namespace FishBreeder.Core
         static string AppraisalText(Species body, Species fins, Species tail) =>
             $"<b>{Economy.Format(Fish.Appraise(body, fins, tail, LifeStage.Adult))}</b> grown up, {Economy.Format(Fish.Appraise(body, fins, tail, LifeStage.Juvenile))} as a juvenile and {Economy.Format(Fish.Appraise(body, fins, tail, LifeStage.Fry))} as fry";
 
-        static void Unknown(Species species, ResearchFact fact) => Ui.Label("<color=#8fb3bd>???</color>", Rich());
+        void Unknown() => ui.Label("<color=#8fb3bd>???</color>");
 
-        static void RangeGauge(bool temperature, float min, float max)
-        {
-            // No water to point at on a journal page, so the arrow marks the middle of the liked range.
-            float mid = (min + max) * 0.5f;
-            if (temperature) UiGauges.Temperature(mid, new Vector2(min, max));
-            else UiGauges.Ph(mid, new Vector2(min, max));
-        }
+        void Section(string title) => ui.Label(title.ToUpper(), "fb-heading");
 
-        static void ProgressBar(float fill)
-        {
-            var rect = Ui.Slot("Bar", 200f, 8f, GUILayout.ExpandWidth(true));
-            GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 4f);
-            GUI.DrawTexture(new Rect(rect.x, rect.y, Mathf.Max(8f, rect.width * fill), rect.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, UiTheme.Aqua, 0f, 4f);
-        }
-
-        static void Section(string title)
-        {
-            GUILayout.Space(4f);
-            Ui.Label(title.ToUpper(), UiTheme.Heading);
-        }
-
-        static void Line(string text)
-        {
-            GUILayout.BeginHorizontal();
-            GUILayout.Space(10f);
-            Ui.Label($"• {text}", Rich());
-            GUILayout.EndHorizontal();
-        }
-
-        static GUIStyle rich, centered;
-
-        static GUIStyle Rich() => rich != null ? rich : rich = new GUIStyle(UiTheme.Skin.label) { richText = true, wordWrap = true };
-
-        static GUIStyle Centered() => centered != null ? centered : centered = new GUIStyle(UiTheme.Skin.label) { richText = true, alignment = TextAnchor.MiddleCenter, wordWrap = false, clipping = TextClipping.Clip };
+        void Line(string text) => ui.Label($"• {text}", "fb-text fb-bullet");
     }
 }

@@ -847,3 +847,174 @@
 .fb-card--column > .unity-button.fb-button {
     margin: 4px 0 0 0;
 }
+
+/* ------------------------------------------------------------ research */
+
+#research-window {
+    width: 980px;
+    height: 700px;
+    max-height: 100%;
+}
+
+.unity-button.fb-button--wide {
+    min-width: 96px;
+    flex-shrink: 0;
+}
+
+.fb-button-stack {
+    width: 96px;
+    flex-shrink: 0;
+}
+
+.fb-budget-label {
+    width: 170px;
+    flex-shrink: 1;
+}
+
+.fb-step-value--narrow {
+    min-width: 48px;
+}
+
+/* ------------------------------------------------------------ journal */
+
+#journal-window {
+    width: 900px;
+    height: 640px;
+    max-height: 100%;
+}
+
+.fb-journal-group {
+    margin-top: 8px;
+    align-items: center;
+}
+
+.fb-journal-grid {
+    align-items: flex-start;
+}
+
+/* One fish in the index: its picture (or a dark silhouette), name and rarity. */
+.unity-button.fb-journal-card {
+    width: 120px;
+    height: 150px;
+    margin: 0 8px 8px 0;
+    padding: 6px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    background-color: rgba(15, 77, 97, 0.95);
+    border-width: 1px;
+    border-color: rgb(64, 153, 158);
+    border-radius: 8px;
+    white-space: normal;
+}
+
+.unity-button.fb-journal-card:hover {
+    background-color: rgba(31, 128, 140, 0.97);
+    border-color: var(--sun);
+}
+
+.unity-button.fb-journal-card--unknown:hover {
+    background-color: rgba(15, 77, 97, 0.95);
+    border-color: rgb(64, 153, 158);
+}
+
+.unity-button.fb-journal-card:disabled {
+    opacity: 1;
+}
+
+.fb-journal-card__picture {
+    height: 84px;
+    border-radius: 8px;
+    background-color: rgba(15, 115, 140, 0.7);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.fb-journal-card--unknown .fb-journal-card__picture {
+    background-color: rgba(3, 20, 31, 0.8);
+}
+
+.fb-journal-card__photo {
+    transition-property: translate;
+    transition-duration: 0.15s;
+}
+
+.fb-journal-card:hover .fb-journal-card__photo {
+    translate: 0 -3px;
+}
+
+.fb-journal-card__question {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    font-size: 40px;
+    color: var(--aqua);
+    -unity-text-align: middle-center;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-badge.fb-journal-card__new {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 10px;
+    margin: 0;
+}
+
+.fb-journal-card__name {
+    -unity-text-align: middle-center;
+    white-space: normal;
+    padding: 0;
+    margin: 4px 0 0 0;
+    color: var(--sand);
+}
+
+.fb-journal-card__sub {
+    font-size: 10px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-journal-profile {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    align-items: stretch;
+    margin-top: 4px;
+}
+
+.fb-journal-profile__left {
+    width: 250px;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.fb-journal-profile__picture {
+    height: 170px;
+    border-radius: 14px;
+    background-color: rgba(15, 115, 140, 0.75);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-bottom: 4px;
+}
+
+.fb-journal-profile__facts {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.fb-bullet {
+    margin-left: 10px;
+}
+
+.fb-cross {
+    margin-top: 6px;
+}

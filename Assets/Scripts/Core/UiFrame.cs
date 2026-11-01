@@ -139,9 +139,9 @@ namespace FishBreeder.Core
             return clicked;
         }
 
-        public Button ButtonElement(string text, string classes = "fb-button", bool enabled = true, string tooltip = null)
+        public Button ButtonElement(string text, string classes = "fb-button", bool enabled = true, string tooltip = null, string kind = "button")
         {
-            var button = Next("button", classes, () =>
+            var button = Next(kind, classes, () =>
             {
                 var b = new Button();
                 b.clicked += () => TagOf(b).clicked = true;
@@ -151,6 +151,20 @@ namespace FishBreeder.Core
             if (button.enabledSelf != enabled) button.SetEnabled(enabled);
             button.tooltip = tooltip ?? "";
             return button;
+        }
+
+        /// <summary>
+        /// A button that holds other elements (a card you click). Fill it, then <see cref="Pop"/>.
+        /// Like <see cref="Button"/>, true on the frame after a click.
+        /// </summary>
+        public bool BeginButton(string classes, bool enabled = true, string tooltip = null)
+        {
+            var button = ButtonElement("", classes, enabled, tooltip, "buttonbox");
+            Push(button);
+            var tag = TagOf(button);
+            bool clicked = tag.clicked && enabled;
+            tag.clicked = false;
+            return clicked;
         }
 
         /// <summary>A row of tab buttons; returns the picked one. The picked tab gets "fb-tab--on".</summary>
@@ -293,7 +307,7 @@ namespace FishBreeder.Core
         /// <summary>A button showing a picture (and optional text under it).</summary>
         public bool ImageButton(Texture texture, float size, string text = null, string classes = "fb-button fb-image-button", bool enabled = true, string tooltip = null)
         {
-            var button = ButtonElement("", classes, enabled, tooltip);
+            var button = ButtonElement("", classes, enabled, tooltip, "imagebutton");
             if (button.childCount == 0 || !(button[0] is Image))
             {
                 button.Clear();

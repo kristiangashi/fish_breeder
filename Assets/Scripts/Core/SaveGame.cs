@@ -1170,7 +1170,7 @@ namespace FishBreeder.Health
             MedicineLoad = Mathf.Max(0f, s.medicineLoad);
             MedicineStress = Mathf.Clamp01(s.medicineStress);
             MedicineDamage = Mathf.Max(0, s.medicineDamage);
+            comfortBefore = s.comfortBefore;
         }
     }
 }
-            comfortBefore = s.comfortBefore;

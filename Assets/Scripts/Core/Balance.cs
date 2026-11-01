@@ -305,8 +305,10 @@ namespace FishBreeder.Core
         public string id;
         public string name;
         public int price = 25;
-        [Tooltip("Shopkeeping level needed to buy it.")]
+        [Tooltip("Shopkeeping level needed to buy it (Fishkeeping level if fishkeepingUnlock is on).")]
         public int unlockLevel = 1;
+        [Tooltip("Its unlock level is a Fishkeeping level, not Shopkeeping (the rarer plants).")]
+        public bool fishkeepingUnlock;
         [Tooltip("Counts as a plant: some fish love plants.")]
         public bool plant;
         [Tooltip("A grassy plant: fish swim straight through it and the leaves bend out of their way.")]
@@ -315,6 +317,9 @@ namespace FishBreeder.Core
         public float height = 0.3f;
         [Tooltip("Goes along the back of the tank (tall pieces) rather than the front.")]
         public bool back;
+
+        /// <summary>The XP track whose level unlocks it.</summary>
+        public XpTrack UnlockTrack => fishkeepingUnlock ? XpTrack.Fishkeeping : XpTrack.Shopkeeping;
     }
 
     /// <summary>A picture for the back glass of a tank. The id is the texture's name in Resources/Backgrounds.</summary>
@@ -496,6 +501,11 @@ namespace FishBreeder.Core
             new DecorationBalance { id = "Clam", name = "Clam shell", price = 45, unlockLevel = 5, height = 0.06f },
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
             new DecorationBalance { id = "Diver", name = "Deep-sea diver", price = 120, unlockLevel = 9, height = 0.32f },
+            // Rarer plants for skilled fishkeepers (see AddMissingDecorations).
+            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.32f },
+            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true },
+            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f },
+            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true },
         };
         [Tooltip("Fishkeeping level needed for care products.")]
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
@@ -991,6 +1001,7 @@ namespace FishBreeder.Core
                 if (parsed.supplier != null && (parsed.supplier.faults == null || parsed.supplier.faults.Count == 0)) parsed.supplier.faults = EquipmentFaultBalance.CreateDefaults();
                 if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
                 if (parsed.supplier != null && !json.Contains("\"passable\"")) FillPassable(parsed.supplier.decorations);
+                if (parsed.supplier != null) AddMissingDecorations(parsed.supplier.decorations);
                 return parsed;
             }
             catch (Exception e)
@@ -1028,6 +1039,15 @@ namespace FishBreeder.Core
             foreach (var p in projects) if (p != null && !string.IsNullOrEmpty(p.id)) known.Add(p.id);
             foreach (var p in ResearchProjectBalance.CreateDefaults())
                 if (!known.Contains(p.id)) projects.Add(p);
+        }
+
+        /// <summary>The level 25 plants join a file saved before them, with their defaults, like species.</summary>
+        static void AddMissingDecorations(List<DecorationBalance> decorations)
+        {
+            if (decorations == null) return;
+            var added = new HashSet<string> { "Crypt", "JungleVal", "AmazonSword", "Aponogeton" };
+            foreach (var d in new SupplierBalance().decorations)
+                if (added.Contains(d.id) && !decorations.Exists(x => x != null && x.id == d.id)) decorations.Add(d);
         }
 
         /// <summary>A file saved before plants could be swum through: the grassy ones get their default.</summary>

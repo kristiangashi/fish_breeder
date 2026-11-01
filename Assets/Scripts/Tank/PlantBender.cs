@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FishBreeder.Core;
 using UnityEngine;
 
@@ -26,6 +27,7 @@ namespace FishBreeder
         static readonly int BaseId = Shader.PropertyToID("_BendBase");
         static readonly int TiltId = Shader.PropertyToID("_BendTilt");
         static Material material;
+        static readonly Dictionary<Material, Material> ownMaterials = new Dictionary<Material, Material>();
         static MaterialPropertyBlock block;
 
         Tank tank;
@@ -53,12 +55,28 @@ namespace FishBreeder
             }
         }
 
+        /// <summary>The bending version of a decoration material (pieces with their own texture get their own).</summary>
+        public static Material MaterialFor(Material decor)
+        {
+            if (decor == null || decor == TankDecor.Material) return Material;
+            if (ownMaterials.TryGetValue(decor, out var found)) return found;
+            var shader = Resources.Load<Shader>("Shaders/PlantBend");
+            if (shader == null || !shader.isSupported) return ownMaterials[decor] = decor;
+            found = new Material(Material) { name = "Plant " + decor.name };
+            found.mainTexture = decor.mainTexture;
+            foreach (var map in new[] { "_BumpMap", "_MetallicGlossMap" })
+                if (found.HasProperty(map)) found.SetTexture(map, decor.HasProperty(map) ? decor.GetTexture(map) : null);
+            return ownMaterials[decor] = found;
+        }
+
         /// <summary>Sets up a freshly built plant: its renderers (near and far copies) and where its base is.</summary>
         public void Init(Tank owner, Bounds worldBounds)
         {
             tank = owner;
             renderers = GetComponentsInChildren<Renderer>(true);
-            var plant = Material;
+            Material decor = null;
+            foreach (var r in renderers) if (decor == null) decor = r.sharedMaterial;
+            var plant = MaterialFor(decor);
             foreach (var r in renderers) r.sharedMaterial = plant;
             baseLocal = transform.InverseTransformPoint(new Vector3(worldBounds.center.x, worldBounds.min.y, worldBounds.center.z));
             // Kept in the piece's own units, so it follows when the player resizes the piece.

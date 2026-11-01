@@ -7,7 +7,8 @@ namespace FishBreeder
     /// <summary>
     /// The decorations in one tank, bought from the supplier. Pieces are the Meshy decoration set
     /// in Resources/Decor: one FBX per piece, each with a low-poly "_Collider" mesh fish swim
-    /// around, sharing one texture atlas. Each tank has a number of spots (more in bigger tanks):
+    /// around, sharing one texture atlas (a piece with its own "<id>_Albedo" texture, like the
+    /// level 25 plants, gets a material of its own). Each tank has a number of spots (more in bigger tanks):
     /// tall pieces go along the back, small ones up front, with open water left between them.
     /// That's where every piece goes unless the player moves it (Setup tab, top view): a moved
     /// piece keeps its own place and turn, as a share of the tank's size, so it stays put when
@@ -48,6 +49,7 @@ namespace FishBreeder
         Transform root;
         Vector3 tankSize;
         static Material material;
+        static readonly Dictionary<string, Material> pieceMaterials = new Dictionary<string, Material>();
 
         /// <summary>
         /// The tank is a wall aquarium: its pieces come out at the balance's wall decoration size,
@@ -427,6 +429,7 @@ namespace FishBreeder
         public static void Dress(GameObject piece, out List<Renderer> renderers, bool colliders = true)
         {
             renderers = new List<Renderer>();
+            var pieceMaterial = MaterialFor(piece.name.Replace("(Clone)", "").Trim());
             foreach (var filter in piece.GetComponentsInChildren<MeshFilter>())
             {
                 if (filter.sharedMesh == null) continue;
@@ -447,7 +450,7 @@ namespace FishBreeder
                     continue;
                 }
                 if (renderer == null) continue;
-                renderer.sharedMaterial = Material;
+                renderer.sharedMaterial = pieceMaterial;
                 renderers.Add(renderer);
             }
         }
@@ -468,13 +471,22 @@ namespace FishBreeder
             }
         }
 
-        static Material CreateMaterial()
+        /// <summary>The material for one piece: the shared atlas, or the piece's own texture if it has one.</summary>
+        public static Material MaterialFor(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return Material;
+            if (!pieceMaterials.TryGetValue(id, out var found))
+                pieceMaterials[id] = found = Resources.Load<Texture2D>(Folder + id + "_Albedo") != null ? CreateMaterial(id) : Material;
+            return found;
+        }
+
+        static Material CreateMaterial(string atlas = "Decor")
         {
             // Instanced: the same piece in every tank is drawn in one go.
-            var created = new Material(MaterialFactory.Lit) { name = "Decor", enableInstancing = true };
-            var albedo = Resources.Load<Texture2D>(Folder + "Decor_Albedo");
-            var normal = Resources.Load<Texture2D>(Folder + "Decor_Normal");
-            var metallicSmoothness = Resources.Load<Texture2D>(Folder + "Decor_MetallicSmoothness");
+            var created = new Material(MaterialFactory.Lit) { name = atlas, enableInstancing = true };
+            var albedo = Resources.Load<Texture2D>(Folder + atlas + "_Albedo");
+            var normal = Resources.Load<Texture2D>(Folder + atlas + "_Normal");
+            var metallicSmoothness = Resources.Load<Texture2D>(Folder + atlas + "_MetallicSmoothness");
             if (albedo != null) created.mainTexture = albedo;
             if (normal != null && created.HasProperty("_BumpMap"))
             {

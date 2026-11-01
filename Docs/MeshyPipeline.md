@@ -96,6 +96,13 @@ The current set lives in `Assets/Resources/Decor/` and came from one Meshy "kit"
 4. `TankDecor` places each piece by name, scales it to a height in metres, gives the `_Collider` mesh a
    MeshCollider and marks the piece as a `TankObstacle`. Edit its `Layout` table to rearrange the tank.
 
+The level 25 plants (`Crypt`, `JungleVal`, `AmazonSword`, `Aponogeton`, unlocked by Fishkeeping) came from one
+Tripo sheet of four plants, cut by `Tools/Meshy/split_plants.py` (about 45k-58k triangles each down to 3k-3.6k,
+with a convex-hull `_Collider`). That sheet's texture was patchy with grey, so each plant has its own texture
+instead: new UVs going around the stem and up the height, painted as vertical streaks in shades of the
+plant's green with brown roots. A piece with its own `<id>_Albedo` (and `_MetallicSmoothness`) texture gets
+its own material; the rest share the atlas.
+
 ## Checklist per fish model
 
 - [ ] Generated with white body and target poly count

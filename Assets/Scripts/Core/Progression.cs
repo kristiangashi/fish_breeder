@@ -177,6 +177,7 @@ namespace FishBreeder.Core
                 foreach (var tier in supplier.eggTiers) if (tier.unlockLevel == lvl) list.Add(tier.name);
                 foreach (var size in store.tankSizes) if (size.unlockLevel == lvl && size.upgradePrice > 0) list.Add($"{size.name} tanks");
                 foreach (var food in supplier.food) if (food.unlockLevel == lvl) list.Add(food.name);
+                foreach (var decoration in supplier.decorations) if (decoration.fishkeepingUnlock && decoration.unlockLevel == lvl) list.Add(decoration.name);
                 foreach (var tiers in new[] { supplier.filters, supplier.heaters, supplier.bubblers })
                     foreach (var model in tiers) if (model.unlockLevel == lvl) list.Add(model.name.ToLower() + "s");
                 if (supplier.waterConditionerLevel == lvl) list.Add("water conditioner");
@@ -197,7 +198,7 @@ namespace FishBreeder.Core
             }
             else
             {
-                foreach (var decoration in supplier.decorations) if (decoration.unlockLevel == lvl) list.Add(decoration.name);
+                foreach (var decoration in supplier.decorations) if (!decoration.fishkeepingUnlock && decoration.unlockLevel == lvl) list.Add(decoration.name);
                 foreach (var section in store.sections) if (section.unlockLevel == lvl && section.price > 0) list.Add($"the {section.name}");
                 if (store.forSaleTankLevel == lvl) list.Add("more for sale tanks");
                 if (store.displayTankLevel == lvl) list.Add("more display tanks");

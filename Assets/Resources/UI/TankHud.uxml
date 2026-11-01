@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="tank-hud" picking-mode="Ignore" class="fb-screen">
+        <ui:VisualElement name="markers" picking-mode="Ignore" class="fb-screen fb-no-check" />
+        <ui:VisualElement name="tank-panel" class="fb-panel fb-tank-panel" />
+        <ui:VisualElement name="picker" class="fb-panel fb-picker" />
+        <ui:VisualElement name="fish-window" class="fb-panel fb-fish-window" />
+        <ui:VisualElement name="tank-bar" class="fb-tank-bar" />
+        <ui:VisualElement name="log" picking-mode="Ignore" class="fb-strip fb-log fb-log--tank" />
+        <ui:Label name="level-popup" class="fb-panel fb-level-popup" />
+    </ui:VisualElement>
+</ui:UXML>

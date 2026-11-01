@@ -1414,3 +1414,292 @@
 .fb-pool__tip {
     margin-left: 80px;
 }
+
+/* ------------------------------------------------------------ tank screen (TankHud.uxml) */
+
+/* The tank menu down the left: title, tabs, the tab's contents (scrolling) and the buttons under them. */
+.fb-tank-panel {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 300px;
+    height: 730px;
+    max-height: 97%;
+    padding: 8px 10px;
+}
+
+.fb-tank-title {
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.fb-tank-title__name {
+    flex-shrink: 1;
+    white-space: normal;
+}
+
+.unity-button.fb-button--tiny {
+    min-height: 22px;
+    min-width: 22px;
+    font-size: 11px;
+    padding: 0 5px;
+    margin: 1px 0 1px 3px;
+}
+
+.fb-badge.fb-level-badge {
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    padding: 0;
+    margin: 0 0 0 4px;
+    color: rgb(10, 31, 46);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+}
+
+/* The level details, popping out beside the "?". */
+.fb-level-popup {
+    position: absolute;
+    width: 250px;
+    font-size: 12px;
+    white-space: normal;
+    padding: 6px 8px;
+    color: var(--sand);
+}
+
+.fb-tank-tabs {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    margin: 4px 0;
+}
+
+.unity-button.fb-tank-tab {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    font-size: 11px;
+    padding: 2px 2px 3px 2px;
+    margin: 0 2px 0 0;
+}
+
+/* Two buttons sharing a row. */
+.fb-pair {
+    flex-shrink: 0;
+}
+
+.fb-pair > .unity-button {
+    margin-right: 4px;
+}
+
+.fb-warning-box {
+    background-color: rgba(115, 77, 13, 0.35);
+    border-color: var(--sun);
+}
+
+.unity-button.fb-stock-row {
+    -unity-text-align: middle-left;
+    white-space: normal;
+    min-height: 24px;
+    padding: 2px 6px 3px 6px;
+    margin: 1px 0;
+}
+
+.unity-button.fb-fold {
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+    -unity-text-align: middle-left;
+    -unity-font-style: normal;
+    white-space: normal;
+    margin-top: 6px;
+    padding-left: 0;
+}
+
+.unity-button.fb-equipment-header {
+    -unity-text-align: middle-left;
+    -unity-font-style: normal;
+    white-space: normal;
+    padding: 5px 8px 6px 8px;
+}
+
+.fb-dev-label {
+    width: 56px;
+    flex-shrink: 0;
+}
+
+/* A label, a bar and the percentage on one line (water quality, health, comfort). */
+.fb-stat {
+    flex-grow: 1;
+    align-items: center;
+}
+
+.fb-stat__label {
+    width: 95px;
+    flex-shrink: 0;
+}
+
+.fb-bar.fb-stat__bar {
+    flex-grow: 1;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.fb-stat__value {
+    width: 40px;
+    flex-shrink: 0;
+    -unity-text-align: middle-right;
+    white-space: nowrap;
+}
+
+.fb-trend {
+    align-items: center;
+}
+
+.fb-trend__arrow {
+    width: 40px;
+    flex-shrink: 0;
+    -unity-text-align: middle-center;
+}
+
+.fb-picture {
+    background-color: rgba(51, 61, 77, 0.9);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-right: 6px;
+    overflow: hidden;
+}
+
+.fb-model {
+    align-items: flex-start;
+}
+
+/* The picker beside the tank menu (decorations, backgrounds). */
+.fb-picker {
+    position: absolute;
+    left: 318px;
+    top: 10px;
+    width: 270px;
+    max-height: 730px;
+}
+
+.fb-picker-row {
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.fb-picker-row__name {
+    white-space: normal;
+}
+
+.unity-button.fb-picker-row__button {
+    width: 68px;
+    flex-shrink: 0;
+    white-space: normal;
+}
+
+/* The fish window, beside the picked fish (placed by code). */
+.fb-fish-window {
+    position: absolute;
+    width: 320px;
+}
+
+.fb-sick-box {
+    background-color: rgba(115, 20, 26, 0.9);
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin: 4px 0;
+}
+
+.fb-penalty__label {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.fb-subline {
+    margin-left: 14px;
+}
+
+.fb-price-row {
+    align-items: center;
+}
+
+.fb-price-field {
+    width: 60px;
+    flex-shrink: 0;
+}
+
+.fb-move-buttons {
+    flex-shrink: 0;
+}
+
+.unity-button.fb-move-button {
+    width: 146px;
+    white-space: normal;
+    margin: 2px 4px 2px 0;
+}
+
+/* The previous-tank, top-view and next-tank buttons along the bottom. */
+.fb-tank-bar {
+    position: absolute;
+    height: 40px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.unity-button.fb-tank-bar__side {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.fb-log--tank {
+    max-height: 140px;
+}
+
+/* Marks over the water. */
+.unity-button.fb-step-arrow {
+    position: absolute;
+    width: 34px;
+    height: 32px;
+    min-height: 0;
+    font-size: 18px;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-sick-mark {
+    position: absolute;
+    background-color: rgb(217, 46, 51);
+    border-radius: 50%;
+    color: rgb(255, 255, 255);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-sick-name {
+    position: absolute;
+    translate: -50% 0;
+    font-size: 11px;
+    color: rgb(255, 191, 191);
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+    padding: 0;
+    margin: 0;
+}
+
+.fb-selected-name {
+    position: absolute;
+    translate: -50% 0;
+    -unity-font-style: bold;
+    color: var(--sun);
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+    padding: 0;
+    margin: 0;
+}
+
+.fb-held-mark {
+    position: absolute;
+    border-width: 2px;
+    border-color: var(--sun);
+}

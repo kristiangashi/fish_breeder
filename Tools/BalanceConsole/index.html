@@ -273,8 +273,10 @@ const META = {
   back: ["Goes at the back", "Tall pieces fill the back row first."],
   maxSizeStepsOff: ["Fewer size steps", "Wall aquarium only: how many Bigger (+) presses come off the largest size the player can make this piece. 0 = the store's limit for every decoration."],
   fishkeepingUnlock: ["Unlocked by Fishkeeping", "On: its unlock level is a Fishkeeping level (the rarer plants). Off: a Shopkeeping level, like most decorations."],
-  capacity: ["Small fish capacity", "Most small fish it holds. A soft limit: fish can go over it (up to the hard limit) with overcrowding penalties."],
-  mediumCapacity: ["Medium fish capacity", "Most medium fish (the big kinds, see each species' Body class) it holds. Its own limit, apart from the small fish, and a hard one."],
+  capacity: ["Tiny fish capacity", "Most tiny fish (tank fish, Fish sizes tab) it holds. A soft limit: fish can go over it (up to the hard limit on the Store tab) with overcrowding penalties."],
+  smallCapacity: ["Small fish capacity", "Most small fish (the hybrids, Fish sizes tab) it holds. Its own limit, and a hard one."],
+  mediumCapacity: ["Medium fish capacity", "Most medium fish (Fish sizes tab) it holds. Its own limit, and a hard one."],
+  largeCapacity: ["Large fish capacity", "Most large fish (Fish sizes tab) it holds, if they aren't aquarium only. Its own limit, and a hard one."],
   upgradePrice: ["Upgrade price ($)", "0 = the size tanks start at."],
   decorationSlots: ["Decoration spots", ""],
   sizeGroup: ["Size group", "Tiny: tank fish, ordinary tanks only. Small: hybrids that grow big in big tanks, in ordinary tanks or the public aquarium. Medium and Large: public aquarium fish; in ordinary tanks they count against the much smaller medium limit (Aquariums tab). Each group has its own limit in the exhibits (Fish sizes tab)."],
@@ -2432,7 +2434,7 @@ const AQUARIUM_STORE_KEYS = ["tankSizes", "wallAquarium", "wallAquariumHeights",
 // it's tall (0.3 m under the roof, never below 0.3 m off the floor). A 1.75 m person for scale.
 const ROOM = { wall: 4, stand: 0.85, headroom: 0.3, lowestBase: 0.3, person: 1.75 };
 const wallBase = (h) => Math.min(ROOM.stand, Math.max(ROOM.lowestBase, ROOM.wall - ROOM.headroom - h));
-const TANK_FIELDS = [["width", "Length (m)"], ["height", "Height (m)"], ["depth", "Depth (m)"], ["capacity", "Small fish"], ["mediumCapacity", "Medium fish"],
+const TANK_FIELDS = [["width", "Length (m)"], ["height", "Height (m)"], ["depth", "Depth (m)"], ["capacity", "Tiny fish"], ["smallCapacity", "Small fish"], ["mediumCapacity", "Medium fish"], ["largeCapacity", "Large fish"],
   ["decorationSlots", "Decoration spots"], ["upgradePrice", "Upgrade price ($)"], ["unlockLevel", "Level"], ["qualityNeeded", "Quality needed"]];
 // Oblique view: depth runs up and to the right at 30 degrees, drawn at half length.
 const OBLIQUE = { x: Math.cos(Math.PI / 6) * 0.5, y: Math.sin(Math.PI / 6) * 0.5 };
@@ -2546,7 +2548,8 @@ function tankFacts(size, wall) {
   const top = base + H;
   const parts = [
     el("span", {}, "Water ", el("b", {}, `${(L * H * D).toFixed(2)} m³`), ` (${Math.round(litres).toLocaleString()} L), `),
-    el("span", {}, el("b", {}, `${Math.round(perFish)} L`), " per small fish, room for ", el("b", {}, `${size.mediumCapacity ?? 0}`), " medium fish. "),
+    el("span", {}, el("b", {}, `${Math.round(perFish)} L`), " per tiny fish; room for ", el("b", {}, `${size.smallCapacity ?? 0}`), " small, ",
+      el("b", {}, `${size.mediumCapacity ?? 0}`), " medium and ", el("b", {}, `${size.largeCapacity ?? 0}`), " large fish. "),
     el("span", {}, `Sits ${base.toFixed(2)} m off the floor, top at ${top.toFixed(2)} m.`),
   ];
   if (wall && top > ROOM.wall) parts.push(el("span", { class: "warn" }, ` Taller than the ${ROOM.wall} m walls: the back wall rises over it.`));
@@ -2656,7 +2659,7 @@ function renderAquariums() {
 
   redrawAll();
   return [
-    el("p", { class: "hint" }, "Every aquarium size and upgrade: length, height, depth and how many fish it holds. Small fish share the main limit (going over it is allowed, with overcrowding penalties, up to the hard limit on the Store tab); medium and large fish (each species' Size group, Fish sizes tab) have their own, much smaller limit. The pictures redraw as you type, to scale with a 1.75 m person and the store's 4 m roof; dashed outlines are the size each one is upgraded from. Saving applies new limits straight away; new shapes show on tanks built or upgraded after that."),
+    el("p", { class: "hint" }, "Every aquarium size and upgrade: length, height, depth and how many fish of each size group it holds (each species' group is on the Fish sizes tab). Tiny fish have the main limit (going over it is allowed, with overcrowding penalties, up to the hard limit on the Store tab); small, medium and large fish each have their own, hard limit. The pictures redraw as you type, to scale with a 1.75 m person and the store's 4 m roof; dashed outlines are the size each one is upgraded from. Saving applies new limits straight away; new shapes show on tanks built or upgraded after that."),
     el("div", { class: "card" }, el("h2", {}, "All sizes to scale"), overview),
     el("h2", { style: "font-size:15px;margin:18px 0 8px" }, "Tank sizes"),
     el("div", { class: "tank-grid" }, sizeCards),
@@ -2673,10 +2676,10 @@ function renderAquariums() {
 // ---------------------------------------------------------------- fish sizes
 
 const SIZE_GROUPS = [
-  ["Tank fish", "Tiny", "Stay little. Ordinary tanks only, on the tank's main fish limit; they can't go in the public aquarium."],
-  ["Hybrids", "Small", "Sold in the shop and grow big in big tanks (Full grown). They live in ordinary tanks (main limit) or the public aquarium until full grown, then only the aquarium."],
-  ["Public aquarium fish", "Medium", "In ordinary tanks they count against the tank's own, much smaller medium limit. Tick Aquarium only to keep a kind out of ordinary tanks and egg boxes altogether."],
-  ["Public aquarium large fish", "Large", "The biggest fish, with the exhibits' smallest limit. In ordinary tanks (if not aquarium only) they count against the medium limit."],
+  ["Tank fish", "Tiny", "Stay little. Ordinary tanks only, on the tank's tiny limit (a soft one: overcrowding is allowed with penalties); they can't go in the public aquarium."],
+  ["Hybrids", "Small", "Sold in the shop and grow big in big tanks (Full grown). They live in ordinary tanks (the small limit) or the public aquarium until full grown, then only the aquarium."],
+  ["Public aquarium fish", "Medium", "In ordinary tanks they count against the tank's medium limit. Tick Aquarium only to keep a kind out of ordinary tanks and egg boxes altogether."],
+  ["Public aquarium large fish", "Large", "The biggest fish, with the exhibits' smallest limit. In ordinary tanks (if not aquarium only) they count against the tank's large limit."],
 ];
 
 /** Mirrors PublicAquarium.WhereItLives and Tank.WhyNotFor: where a kind may live, in a few words. */
@@ -2702,7 +2705,7 @@ function renderSizes() {
   aquarium.largePerExhibit = aquarium.largePerExhibit || [1, 3, 5];
   const limitKeys = [null, "smallPerExhibit", "mediumPerExhibit", "largePerExhibit"];
   const limitText = (g) => (g === 0 ? "none, they can't go in" : aquarium[limitKeys[g]].join(" / "));
-  const tankLimit = (s) => (s.eastWingOnly ? "can't go in" : (s.sizeGroup || 0) >= 2 ? "medium limit" : "main limit");
+  const tankLimit = (s) => (s.eastWingOnly ? "can't go in" : ["tiny limit (soft)", "small limit", "medium limit", "large limit"][s.sizeGroup || 0]);
 
   const groupCard = (g) => {
     const [title, size, blurb] = SIZE_GROUPS[g];
@@ -2743,7 +2746,7 @@ function renderSizes() {
     Object.keys(breeding).map((k) => { if (typeof aquarium[k] !== "number") aquarium[k] = breeding[k]; return field(aquarium, k); }));
 
   return [
-    el("p", { class: "hint" }, "Every fish under its size group. Change a fish's group with its drop-down (it moves to that list), and tick Aquarium only for the fish that live only in the public aquarium. The group decides where a fish can live and which limit it counts against: ordinary tanks have a main limit (Tiny and Small fish) and a medium limit (Medium and Large fish), and each exhibit has a limit per group. Edits apply when you Save."),
+    el("p", { class: "hint" }, "Every fish under its size group. Change a fish's group with its drop-down (it moves to that list), and tick Aquarium only for the fish that live only in the public aquarium. The group decides where a fish can live and which limit it counts against: every tank size has a limit per group (Aquariums tab), and so does each exhibit (below). Edits apply when you Save."),
     ...[0, 1, 2, 3].map(groupCard),
     el("div", { class: "card" }, el("h2", {}, "Exhibit limits"),
       el("p", { class: "hint" }, "Fish of each group an exhibit holds as bought, then after each height upgrade (the last number carries on), and how often they breed there as a share of an ordinary tank's chance. Tiny fish never go in."),

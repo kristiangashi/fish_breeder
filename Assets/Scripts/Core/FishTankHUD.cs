@@ -797,7 +797,7 @@ namespace FishBreeder.Core
                     if (ui.Button($"+ {item.name}{(item.plant ? " (plant)" : "")}", "fb-button fb-button--small", !decor.IsFull)) decor.Add(item.id);
             }
 
-            if (ui.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>{tank.SmallCount} / {tank.Capacity}, medium {tank.MediumCount} / {tank.MediumCapacity}</size>", "fb-button fb-fold")) devShowFish = !devShowFish;
+            if (ui.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>tiny {tank.TinyCount} / {tank.Capacity}, small {tank.GroupCount(SizeGroup.Small)} / {tank.GroupCapacity(SizeGroup.Small)}, medium {tank.GroupCount(SizeGroup.Medium)} / {tank.GroupCapacity(SizeGroup.Medium)}, large {tank.GroupCount(SizeGroup.Large)} / {tank.GroupCapacity(SizeGroup.Large)}</size>", "fb-button fb-fold")) devShowFish = !devShowFish;
             if (!devShowFish) return;
             foreach (var species in Species.All)
             {
@@ -828,7 +828,7 @@ namespace FishBreeder.Core
         /// </summary>
         void DrawFishCount(string sizeName)
         {
-            int count = tank.SmallCount;
+            int count = tank.TinyCount;
             string dead = tank.Corpses.Count > 0 ? $"   <color=#ff8080>Dead: {tank.Corpses.Count}</color>" : "";
             if (tank.IsExhibit)
             {
@@ -850,13 +850,15 @@ namespace FishBreeder.Core
                 ui.Label($"For the fish the seller finds diving. Raise them here, then put them in the {PublicAquarium.RoomName.ToLower()}, sell them on the fish market or let them go.", "fb-small");
                 return;
             }
-            // Medium fish have their own limit; it shows where they can live or already do.
-            int medium = tank.MediumCount;
-            if (medium > 0 || tank.IsWallAquarium)
+            // Small, medium and large fish have their own limits; each shows where they can live or already do.
+            string groups = "";
+            foreach (var group in new[] { SizeGroup.Small, SizeGroup.Medium, SizeGroup.Large })
             {
-                string mediumColor = medium >= tank.MediumCapacity ? "#ffd27f" : "#ffffff";
-                dead = $"   <color={mediumColor}>Medium: {medium} / {tank.MediumCapacity}</color>" + dead;
+                int have = tank.GroupCount(group), limit = tank.GroupCapacity(group);
+                if (have == 0 && (limit == 0 || !tank.IsWallAquarium)) continue;
+                groups += $"   <color={(have >= limit ? "#ffd27f" : "#ffffff")}>{group}: {have} / {limit}</color>";
             }
+            dead = groups + dead;
             if (tank.IsOvercrowded)
             {
                 ui.Label($"{sizeName}. <color=#ff8080><b>Fish: {count} / {tank.Capacity}</b></color>{dead}");
@@ -1511,7 +1513,7 @@ namespace FishBreeder.Core
             ui.Label(tank.IsExhibit
                 ? $"{info.name}: raised to {info.height:0.0#} m tall, room for {PublicAquarium.ExhibitLimitAt(step, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimitAt(step, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimitAt(step, AquariumSize.Large)} large fish, {info.decorationSlots} decorations."
                 : wall
-                ? $"{info.name}: raised to {info.height:0.0#} m tall, {Tank.CapacityOf(info)} fish and {Tank.MediumCapacityOf(info)} medium fish, {info.decorationSlots} decorations."
+                ? $"{info.name}: raised to {info.height:0.0#} m tall, {Tank.LimitsText(info)}, {info.decorationSlots} decorations."
                 : tank.IsHolding ? $"{info.name} tank: room for {ScubaDives.Data.holdingFishPerSize[Mathf.Min(next, ScubaDives.Data.holdingFishPerSize.Count - 1)]} of the seller's finds."
                 : $"{info.name} tank: {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.", "fb-small");
             var reason = StoreLayout.WhyCantUpgrade(storeTank, next);

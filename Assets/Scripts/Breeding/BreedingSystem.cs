@@ -31,13 +31,16 @@ namespace FishBreeder.Breeding
             else if (a.Sex == b.Sex) reason = $"Both are {a.Sex.ToString().ToLower()}s. You need a male and a female.";
             else reason = WhyNotReady(a, tank) ?? WhyNotReady(b, tank);
             if (reason == null && RoomForYoung(tank, a, b) <= 0)
-                reason = tank.IsExhibit ? "The exhibit has no room for more of their size." : (a.Sex == Sex.Female ? a : b).Species.IsMedium ? $"There's no room for more medium fish here ({tank.MediumCount} of {tank.MediumCapacity})." : "The tank is full.";
+                reason = tank.IsExhibit ? "The exhibit has no room for more of their size." : Young((a.Sex == Sex.Female ? a : b).Species.sizeGroup, tank);
             return reason == null;
         }
 
+        static string Young(SizeGroup group, Tank tank) => group == SizeGroup.Tiny ? "The tank is full."
+            : $"There's no room for more {group.ToString().ToLower()} fish here ({tank.GroupCount(group)} of {tank.GroupCapacity(group)}).";
+
         /// <summary>
         /// How many young the pair's tank has room for. The mother's species is what they'll be, so
-        /// medium mothers count against the medium limit (and the eggs of medium fish already waiting).
+        /// they count against her size group's limit (and the eggs of that group already waiting).
         /// </summary>
         static int RoomForYoung(Tank tank, Fish a, Fish b)
         {

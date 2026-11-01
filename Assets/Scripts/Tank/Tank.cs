@@ -207,27 +207,41 @@ namespace FishBreeder
         /// <summary>No more small fish than this fit at all.</summary>
         public int HardCapacity => Mathf.Max(Capacity, Mathf.Min(MaxFish, Mathf.FloorToInt(Capacity * Balance.Data.store.tankHardLimitMultiplier)));
         /// <summary>
-        /// Medium fish (the big kinds) have their own limit, apart from the small fish, and it's a
-        /// hard one: there's simply no room for another.
+        /// Each size group has its own limit (see <see cref="Genetics.SizeGroup"/>). Tiny fish have the
+        /// tank's main, soft limit (<see cref="Capacity"/>); small (hybrid), medium and large fish each
+        /// have their own, and it's a hard one: there's simply no room for another.
         /// </summary>
-        public int MediumCapacity => MediumCapacityOf(SizeInfo);
-        public static int MediumCapacityOf(TankSizeBalance size) => Mathf.Max(0, size.mediumCapacity);
-        /// <summary>Living medium fish here.</summary>
-        public int MediumCount
+        public int GroupCapacity(Genetics.SizeGroup group) => group == Genetics.SizeGroup.Tiny ? Capacity : GroupCapacityOf(SizeInfo, group);
+        public static int GroupCapacityOf(TankSizeBalance size, Genetics.SizeGroup group)
         {
-            get
+            switch (group)
             {
-                int n = 0;
-                foreach (var fish in residents) if (fish != null && fish.Species != null && fish.Species.IsMedium) n++;
-                return n;
+                case Genetics.SizeGroup.Small: return Mathf.Max(0, size.smallCapacity);
+                case Genetics.SizeGroup.Medium: return Mathf.Max(0, size.mediumCapacity);
+                case Genetics.SizeGroup.Large: return Mathf.Max(0, size.largeCapacity);
+                default: return CapacityOf(size);
             }
         }
-        /// <summary>Living small fish here: what <see cref="Capacity"/> and crowding count.</summary>
-        public int SmallCount => residents.Count - MediumCount;
-        public int MediumFreeSpace => Mathf.Max(0, MediumCapacity - MediumCount);
-        /// <summary>Small fish over the limit (0 when within it).</summary>
-        public int OverLimit => Mathf.Max(0, SmallCount - Capacity);
-        public bool IsOvercrowded => SmallCount > Capacity;
+        /// <summary>"24 tiny, 6 small, 4 medium and no large fish": a tank size's four limits.</summary>
+        public static string LimitsText(TankSizeBalance size)
+        {
+            string n(Genetics.SizeGroup g) { int c = GroupCapacityOf(size, g); return c > 0 ? c.ToString() : "no"; }
+            return $"{n(Genetics.SizeGroup.Tiny)} tiny, {n(Genetics.SizeGroup.Small)} small, {n(Genetics.SizeGroup.Medium)} medium and {n(Genetics.SizeGroup.Large)} large fish";
+        }
+        /// <summary>Fish of this size group here.</summary>
+        public int GroupCount(Genetics.SizeGroup group)
+        {
+            int n = 0;
+            foreach (var fish in residents) if (fish != null && fish.Species != null && fish.Species.sizeGroup == group) n++;
+            return n;
+        }
+        /// <summary>Room left for this size group (tiny fish: before the hard limit).</summary>
+        public int GroupFreeSpace(Genetics.SizeGroup group) => group == Genetics.SizeGroup.Tiny ? FreeSpace : Mathf.Max(0, GroupCapacity(group) - GroupCount(group));
+        /// <summary>Tiny fish here: what <see cref="Capacity"/> and crowding count.</summary>
+        public int TinyCount => GroupCount(Genetics.SizeGroup.Tiny);
+        /// <summary>Tiny fish over the limit (0 when within it).</summary>
+        public int OverLimit => Mathf.Max(0, TinyCount - Capacity);
+        public bool IsOvercrowded => TinyCount > Capacity;
         public Vector3 InnerSize => innerSize;
         /// <summary>Aquarium quality from its equipment and decorations; it opens up bigger sizes (see <see cref="TankQuality"/>).</summary>
         public int Quality => TankQuality.Score(this);
@@ -262,12 +276,12 @@ namespace FishBreeder
         public Vector3 Front => -transform.forward;
         /// <summary>Height of the water's surface, where bubbles pop and ripples spread.</summary>
         public float SurfaceY => InnerBounds.max.y - 0.04f;
-        /// <summary>Not even one more small fish fits (the hard limit, well past the soft one).</summary>
-        public bool IsFull => SmallCount >= HardCapacity;
-        /// <summary>Room left for small fish before the hard limit.</summary>
-        public int FreeSpace => Mathf.Max(0, HardCapacity - SmallCount);
-        /// <summary>Room left for small fish before the tank is overcrowded.</summary>
-        public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - SmallCount);
+        /// <summary>Not even one more tiny fish fits (the hard limit, well past the soft one).</summary>
+        public bool IsFull => TinyCount >= HardCapacity;
+        /// <summary>Room left for tiny fish before the hard limit.</summary>
+        public int FreeSpace => Mathf.Max(0, HardCapacity - TinyCount);
+        /// <summary>Room left for tiny fish before the tank is overcrowded.</summary>
+        public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - TinyCount);
         /// <summary>
         /// Whether one more of this kind fits: in an exhibit, against its size class's limit; in a
         /// holding tank, only the seller's finds; elsewhere medium fish against their own limit and
@@ -287,15 +301,15 @@ namespace FishBreeder
             if (IsExhibit) return Store.PublicAquarium.ExhibitRoomFor(this, species);
             if (IsHolding) return species.eastWingOnly ? Mathf.Max(0, Capacity - residents.Count) : 0;
             if (species.eastWingOnly || !Suits(species)) return 0;
-            return species.IsMedium ? MediumFreeSpace : FreeSpace;
+            return GroupFreeSpace(species.sizeGroup);
         }
 
-        /// <summary>Which of the tank's limits a fish of this kind counts against: an exhibit's size classes, a holding tank's one limit, or medium against small.</summary>
+        /// <summary>Which of the tank's limits a fish of this kind counts against: an exhibit's size classes, a holding tank's one limit, or its size group's.</summary>
         public int LimitGroup(Genetics.Species species)
         {
             if (IsExhibit) return (int)Store.PublicAquarium.SizeClass(species);
             if (IsHolding || species == null) return 0;
-            return species.IsMedium ? 1 : 0;
+            return (int)species.sizeGroup;
         }
 
         /// <summary>
@@ -340,15 +354,11 @@ namespace FishBreeder
                 have = residents.Count;
                 limit = Capacity;
             }
-            else if (species != null && species.IsMedium)
-            {
-                have = MediumCount;
-                limit = MediumCapacity;
-            }
             else
             {
-                have = SmallCount;
-                limit = Capacity;
+                var group = species != null ? species.sizeGroup : Genetics.SizeGroup.Tiny;
+                have = GroupCount(group);
+                limit = GroupCapacity(group);
             }
         }
 

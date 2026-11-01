@@ -375,7 +375,7 @@ namespace FishBreeder
             if (why != null)
             {
                 if (why == "too small") GameLog.Add($"{FishName} won't go in {destination.Title}: {TankQuality.WantsText(MinTankSize).ToLower()}.");
-                else if (Species.IsMedium && !destination.IsExhibit && !destination.IsHolding && why == "full") GameLog.Add($"{FishName} won't fit in {destination.Title}: it already has {destination.MediumCount} of {destination.MediumCapacity} medium fish.");
+                else if (Species.sizeGroup != SizeGroup.Tiny && !destination.IsExhibit && !destination.IsHolding && why == "full") GameLog.Add($"{FishName} won't fit in {destination.Title}: it already has {destination.GroupCount(Species.sizeGroup)} of {destination.GroupCapacity(Species.sizeGroup)} {Species.sizeGroup.ToString().ToLower()} fish.");
                 else GameLog.Add($"{FishName} won't go in {destination.Title}: {why}.");
                 return false;
             }

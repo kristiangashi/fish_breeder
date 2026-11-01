@@ -92,14 +92,14 @@ namespace FishBreeder
             return eggs;
         }
 
-        /// <summary>Eggs waiting in this tank that will hatch into medium fish (or into small ones).</summary>
-        public static int EggsIn(Tank tank, bool medium)
+        /// <summary>Eggs waiting in this tank that will hatch into fish of this size group.</summary>
+        public static int EggsOf(Tank tank, SizeGroup group)
         {
             int eggs = 0;
             foreach (var clutch in all)
                 if (clutch.Tank == tank)
                     foreach (var genome in clutch.genomes)
-                        if (Species.Get(genome.species).IsMedium == medium) eggs++;
+                        if (Species.Get(genome.species).sizeGroup == group) eggs++;
             return eggs;
         }
 

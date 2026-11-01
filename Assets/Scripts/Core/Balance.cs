@@ -128,10 +128,14 @@ namespace FishBreeder.Core
         public string name;
         [Tooltip("Inside of the glass, in metres.")]
         public float width = 1.6f, height = 0.9f, depth = 0.7f;
-        [Tooltip("Most small fish it holds.")]
+        [Tooltip("Most tiny fish (tank fish) it holds. A soft limit: more fit, up to the hard limit, but they're overcrowded.")]
         public int capacity = 24;
-        [Tooltip("Most medium fish (the big kinds) it holds. A separate limit from the small fish, and a hard one.")]
+        [Tooltip("Most small fish (the hybrids) it holds. A separate limit from the tiny fish, and a hard one.")]
+        public int smallCapacity = 6;
+        [Tooltip("Most medium fish it holds. A separate, hard limit.")]
         public int mediumCapacity = 4;
+        [Tooltip("Most large fish it holds. A separate, hard limit.")]
+        public int largeCapacity;
         [Tooltip("Cost to upgrade a tank to this size (the first size is what every tank starts as).")]
         public int upgradePrice;
         [Tooltip("Fishkeeping level needed.")]
@@ -382,12 +386,12 @@ namespace FishBreeder.Core
         public List<SectionBalance> sections = SectionBalance.CreateDefaults();
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, mediumCapacity = 4, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
-            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, mediumCapacity = 4, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
-            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, mediumCapacity = 5, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
+            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, smallCapacity = 6, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
+            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, smallCapacity = 9, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
+            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, smallCapacity = 12, mediumCapacity = 5, largeCapacity = 1, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
         [Tooltip("The wall aquarium (the public aquarium's two exhibits): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, smallCapacity = 16, mediumCapacity = 5, largeCapacity = 2, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
         [Tooltip("How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). Raising the aquarium never changes it.")]
@@ -411,10 +415,10 @@ namespace FishBreeder.Core
 
         public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, mediumCapacity = 5, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
-            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, mediumCapacity = 5, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
-            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, mediumCapacity = 6, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
-            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, mediumCapacity = 6, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
+            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, smallCapacity = 18, mediumCapacity = 5, largeCapacity = 2, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
+            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, smallCapacity = 20, mediumCapacity = 5, largeCapacity = 3, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
+            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, smallCapacity = 22, mediumCapacity = 6, largeCapacity = 3, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
+            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, smallCapacity = 24, mediumCapacity = 6, largeCapacity = 4, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
         };
 
         /// <summary>
@@ -960,8 +964,9 @@ namespace FishBreeder.Core
         /// 16: six medium fish (pumpkinseed, Arctic grayling, Texas cichlid, frontosa, Jack Dempsey, peacock bass): their relationships, cross pairs and egg boxes.
         /// 17: the public aquarium's new rules: fish that only live there (eastWingOnly), most of a kind per tank (maxOfKind), and no ordinary tank over 80 small fish (the wall tanks were 200 to 390).
         /// 18: size groups set per species (Tiny tank fish, Small hybrids, Medium and Large public aquarium fish) instead of worked out from length and body class.
+        /// 19: every tank size has four fish limits, one per size group (tiny, small, medium, large).
         /// </summary>
-        public const int CurrentDataVersion = 18;
+        public const int CurrentDataVersion = 19;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1400,7 +1405,29 @@ namespace FishBreeder.Core
                     s.sizeGroup = group;
                 }
             }
+            if (fromVersion < 19 && data.store != null)
+            {
+                // A limit of their own for small (hybrid) and large fish in every tank size, as a fresh
+                // file has them; tiny and medium keep the numbers saved.
+                var fresh = new StoreBalance();
+                CopyGroupCapacity(data.store.tankSizes, fresh.tankSizes);
+                if (data.store.wallAquarium != null) { data.store.wallAquarium.smallCapacity = fresh.wallAquarium.smallCapacity; data.store.wallAquarium.largeCapacity = fresh.wallAquarium.largeCapacity; }
+                CopyGroupCapacity(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
+            }
             data.dataVersion = CurrentDataVersion;
+        }
+
+        /// <summary>The small and large fish limits from the defaults, size by size (the last default carries on).</summary>
+        static void CopyGroupCapacity(List<TankSizeBalance> saved, List<TankSizeBalance> defaults)
+        {
+            if (saved == null || defaults == null || defaults.Count == 0) return;
+            for (int i = 0; i < saved.Count; i++)
+            {
+                if (saved[i] == null) continue;
+                var d = defaults[Mathf.Min(i, defaults.Count - 1)];
+                saved[i].smallCapacity = d.smallCapacity;
+                saved[i].largeCapacity = d.largeCapacity;
+            }
         }
 
         /// <summary>A file saved before the aquarium's size classes, market and dives: empty lists get their defaults.</summary>

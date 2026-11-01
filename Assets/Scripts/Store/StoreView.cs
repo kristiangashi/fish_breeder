@@ -1178,7 +1178,9 @@ namespace FishBreeder.Store
             {
                 var t = tank.Tank;
                 int eggs = EggClutch.EggsIn(t);
-                string count = $"{t.SmallCount}/{t.Capacity} fish" + (t.MediumCount > 0 ? $", {t.MediumCount}/{t.MediumCapacity} medium" : "");
+                string count = $"{t.TinyCount}/{t.Capacity} fish";
+                foreach (var g in new[] { SizeGroup.Small, SizeGroup.Medium, SizeGroup.Large })
+                    if (t.GroupCount(g) > 0) count += $", {t.GroupCount(g)}/{t.GroupCapacity(g)} {g.ToString().ToLower()}";
                 string contents = (t.IsOvercrowded ? $"<color=#ff8080>{count}</color>" : count) + (eggs > 0 ? $", {eggs} eggs" : "");
                 int sick = 0;
                 foreach (var fish in t.Residents) if (!fish.IsDead && fish.Health.IsSick) sick++;
@@ -1555,7 +1557,7 @@ namespace FishBreeder.Store
         }
 
         // Orders only fill a tank up to its limit; moving or breeding fish can push it over.
-        static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpaceBeforeLimit - EggClutch.EggsIn(tank.Tank, false));
+        static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpaceBeforeLimit - EggClutch.EggsOf(tank.Tank, SizeGroup.Tiny));
 
         /// <summary>
         /// The seller's dives: book one (he's gone until the next time step and comes back with an
@@ -1752,7 +1754,7 @@ namespace FishBreeder.Store
         {
             if (!Economy.TrySpend(Perks.Supplier(tier.price), tier.name.ToLower(), MoneyKind.FishAndEggs)) return;
             var target = orderTarget.Tank;
-            var eggs = EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), true, target.SizeIndex, target.MediumFreeSpace - EggClutch.EggsIn(target, true));
+            var eggs = EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), true, target.SizeIndex, g => target.GroupFreeSpace(g) - EggClutch.EggsOf(target, g));
             EggClutch.Lay(orderTarget.Tank, tier, eggs);
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {tier.name.ToLower()} delivered to {orderTarget.Title}. They hatch at the next time step.");
@@ -1762,7 +1764,7 @@ namespace FishBreeder.Store
         {
             if (!Economy.TrySpend(Perks.Supplier(tier.fryPrice), EggBoxes.FryName(tier).ToLower(), MoneyKind.FishAndEggs)) return;
             var tank = orderTarget.Tank;
-            foreach (var genome in EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), false, tank.SizeIndex, tank.MediumFreeSpace - EggClutch.EggsIn(tank, true)))
+            foreach (var genome in EggBoxes.Roll(tier, Progression.UnlockLevel(XpTrack.Fishkeeping), false, tank.SizeIndex, g => tank.GroupFreeSpace(g) - EggClutch.EggsOf(tank, g)))
                 FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f));
             if (FishSeller.Instance != null) FishSeller.Instance.Sold();
             GameLog.Add($"{tier.eggs} {EggBoxes.FryName(tier).ToLower()} delivered to {orderTarget.Title}. You'll see what they are when they grow.");
@@ -1861,7 +1863,7 @@ namespace FishBreeder.Store
                 string livebearer = species.reproduction == Reproduction.Livebearer ? ", livebearer" : "";
                 string details = $"{species.rarity}, {Category(species.category)}{livebearer}, {species.tempMin:0}-{species.tempMax:0} C, Fishkeeping {species.unlockLevel}";
                 if (OfferRow(ItemPreviews.Fish(species), species.displayName, details, XpTrack.Fishkeeping, 0, $"1 fry  {Economy.Format(species.fryPrice)}",
-                        (species.IsMedium ? (orderTarget != null ? orderTarget.Tank.MediumFreeSpace : 0) : free) >= 1 && Economy.CanAfford(species.fryPrice), 48f))
+                        (species.sizeGroup == SizeGroup.Tiny ? free : orderTarget != null ? orderTarget.Tank.GroupFreeSpace(species.sizeGroup) : 0) >= 1 && Economy.CanAfford(species.fryPrice), 48f))
                     OrderFry(species);
             }
         }
@@ -1930,7 +1932,7 @@ namespace FishBreeder.Store
             w.Label(pendingSlot.Exhibit
                 ? $"<i>One of the {PublicAquarium.RoomName.ToLower()}'s two exhibits: a tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it, for {(pendingSlot.exhibit == ExhibitClimate.Temperate ? "cold-water fish only (goldfish and their kin)" : "warm-water fish only")}. Only fish that grow big live here: it holds {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Large)} large fish and {wall.decorationSlots} decorations, more once it's raised taller. Visitors pay to see it, and love variety; nothing in it is sold.</i>"
                 : pendingSlot.wall
-                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later.</i>"
+                ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.LimitsText(wall)}, and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later.</i>"
                 : pendingSlot.holding
                 ? $"<i>A small tank for the fish the seller finds diving, which only live in the {PublicAquarium.RoomName.ToLower()}. It keeps {ScubaDives.Data.holdingFishPerSize[0]} of them (more when it's upgraded) until they go to the aquarium, the fish market or back to the wild. He only dives while a holding tank has room.</i>"
                 : pendingSlot.backRoom

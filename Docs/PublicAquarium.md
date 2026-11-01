@@ -137,8 +137,11 @@ Kristian's second round of rules. Numbers are in the balance file under `aquariu
   egg boxes: the seller finds it on his dives. Today that's the two Large fish. Tiny fish already in
   an old save's exhibit stay until moved. Before this the size was worked out from the longest a
   fish grows (0.28 m and 0.8 m), which made oscars and comets medium and Jack Dempseys small.
-- **Ordinary tanks** never hold more than **80 small fish** (`store.maxFishPerTank`, soft and hard
-  limit alike). The wall tank sizes are 60/65/70/75/80, down from 200-390.
+- **Ordinary tanks** have four limits per size, one per size group (balance v19, console Aquariums
+  tab): tiny (`capacity`, the soft limit you can overcrowd), small (`smallCapacity`), medium
+  (`mediumCapacity`) and large (`largeCapacity`), the last three hard. Standard 24/6/4/0, Large
+  36/9/4/0, Grand 50/12/5/1, wall 60/16/5/2 rising to 80/24/6/4 with height. No tank holds more
+  than **80 tiny fish** (`store.maxFishPerTank`, soft and hard limit alike).
 - **Variety matters.** Appeal is now fullness 20, variety 35 (8 kinds for full marks, the first
   kinds counting most), looks 20, quality 15, clean water 5; an exhibit where one kind is over 40%
   of the fish loses up to 20 as "samey", and each kind across the whole aquarium past five adds 2

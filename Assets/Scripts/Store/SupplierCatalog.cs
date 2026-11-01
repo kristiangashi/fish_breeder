@@ -25,6 +25,7 @@ namespace FishBreeder.Store
                 case TankRole.ForSale: return store.forSaleTankPrice;
                 case TankRole.Display: return store.displayTankPrice;
                 case TankRole.Exhibit: return Balance.Data.aquarium.exhibitPrice;
+                case TankRole.Holding: return ScubaDives.Data.holdingTankPrice;
                 default: return store.quarantineTankPrice;
             }
         }
@@ -39,6 +40,7 @@ namespace FishBreeder.Store
                 case TankRole.Quarantine: track = XpTrack.Fishkeeping; level = store.quarantineTankLevel; break;
                 case TankRole.Display: track = XpTrack.Shopkeeping; level = store.displayTankLevel; break;
                 case TankRole.Exhibit: track = XpTrack.Shopkeeping; level = Balance.Data.aquarium.exhibitLevel; break;
+                case TankRole.Holding: track = XpTrack.Fishkeeping; level = ScubaDives.Data.unlockLevel; break;
                 default: track = XpTrack.Shopkeeping; level = store.forSaleTankLevel; break;
             }
         }
@@ -56,6 +58,8 @@ namespace FishBreeder.Store
                 case TankRole.Display: return store.maxDisplayTanks + Perks.Count(PerkEffect.MoreShopTanks);
                 // One for each of the public aquarium's two walls.
                 case TankRole.Exhibit: return 2;
+                // One for each spot in the big breeding room.
+                case TankRole.Holding: return 3;
                 default: return store.maxQuarantineTanks;
             }
         }

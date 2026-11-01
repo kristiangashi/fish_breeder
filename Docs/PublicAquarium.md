@@ -112,6 +112,49 @@ already counts, and two count more. With no living fish in either exhibit the aq
 - **Shop side**: the shop floor and its foot traffic are unchanged; aquarium tanks don't count as
   shop tanks.
 
+## Who lives here, the dives and the market (2026-11-01)
+
+Kristian's second round of rules. Numbers are in the balance file under `aquarium` (and
+`aquarium.scuba` for the dives).
+
+- **No little fish.** Only two kinds of fish go in the exhibits: those that keep growing in big
+  tanks (oscars, goldfish, the medium cichlids...), which are *hybrids* that can live in ordinary
+  tanks or the exhibits, and those that only live here (`Species.eastWingOnly`: the Crimson Jewel
+  and Silver Flamefin, which no longer come in egg boxes). A hybrid that reaches its full-grown size
+  can't go back into an ordinary tank. Little fish already in an old save's exhibit stay until moved.
+- **Sizes.** Each candidate is small, medium or large by the longest it grows (`mediumFishFrom`
+  0.28 m, `largeFishFrom` 0.8 m): small are fantails, acaras, Siamese algae eaters, red-tailed
+  sharks, silver dollars, pumpkinseeds and Jack Dempseys; medium are comets, oscars, green terrors,
+  Texas cichlids, frontosas, Arctic grayling and peacock bass; large are the two wall fish. An
+  exhibit holds **20/30/40 small, 5/10/15 medium and 1/3/5 large** fish: as bought, after one
+  height upgrade, and after two or more (`smallPerExhibit` and so on).
+- **Ordinary tanks** never hold more than **80 small fish** (`store.maxFishPerTank`, soft and hard
+  limit alike). The wall tank sizes (the wall breeding tank) are 60/65/70/75/80, down from 200-390.
+- **Variety matters.** Appeal is now fullness 20, variety 35 (8 kinds for full marks, the first
+  kinds counting most), looks 20, quality 15, clean water 5; an exhibit where one kind is over 40%
+  of the fish loses up to 20 as "samey", and each kind across the whole aquarium past five adds 2
+  appeal (up to 16). Visitors grumble about samey or near-empty exhibits under three kinds.
+- **Breeding** in the exhibits happens by chance at 35% (small), 15% (medium) and 5% (large) of an
+  ordinary tank's chance.
+- **Kinds and limits.** In the aquarium window the player sets the most of each kind wanted. After
+  each time step, a kind over its limit sends grown fish, picked at random, to the **fish market**,
+  which pays 75% of the appraised value at once (income line "Fish market"). Fish in exhibits and
+  holding tanks can also be sold on the market or released from the fish's window.
+- **The seller's dives** (Fish seller window, Dives tab; Fishkeeping `scuba.unlockLevel` 10): the
+  player pays a fee ($250) and he's gone until the next time step (his van is empty meanwhile), then
+  brings back one egg or fry he saved. He won't go while every holding tank is full (and gives the
+  fee back if they filled up while he was out). "Keep diving" books the next dive after each one.
+  Finds are weighted by real-world rarity (Silver Flamefin common, flowerhorn-type Crimson Jewel
+  legendary); four gear upgrades (wetsuit, dive computer, scooter, rebreather) make rare finds
+  likelier.
+- **Holding tanks** (TankRole.Holding): three spots in a row across the big breeding room (the west
+  wing), $900 each. They only take the seller's finds: 1/2/3 of them at standard/large/grand size.
+  Nothing breeds there. From there a find goes to an exhibit, the market or back to the wild.
+- **Fights.** Some kinds won't share a tank with too many of their own (`Species.maxOfKind`: red-tailed
+  black shark 1, peacock bass, oscar, green terror, Texas cichlid and Crimson Jewel 2, Jack Dempsey 3).
+  Past that the losers take `tankMates.rivalInjury` (0.13) a time step until one dies: about eight
+  days for a healthy fish. Bites and nips on medium and large fish do 35% of the usual wounds.
+
 ## Left for later
 
 - The northwest expansion (turtles?), deliberately unbuilt.

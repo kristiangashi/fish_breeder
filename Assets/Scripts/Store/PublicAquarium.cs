@@ -73,6 +73,41 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float sightShare = 0.6f;
         public int xpPerTicket = 1, xpHappyVisitor = 1;
         public int reviewsKept = 12;
+
+        [Header("Who lives in the exhibits")]
+        [Tooltip("Only fish that keep growing in big tanks, or that live only here, go in the exhibits. Those whose biggest length (m) is at least this are medium fish; below it, small.")]
+        public float mediumFishFrom = 0.28f;
+        [Tooltip("Fish whose biggest length (m) is at least this are large fish.")]
+        public float largeFishFrom = 0.8f;
+        [Tooltip("Small fish an exhibit holds as bought, then after each height upgrade (the last number carries on).")]
+        public List<int> smallPerExhibit = new List<int> { 20, 30, 40 };
+        [Tooltip("Medium fish an exhibit holds as bought, then after each height upgrade.")]
+        public List<int> mediumPerExhibit = new List<int> { 5, 10, 15 };
+        [Tooltip("Large fish an exhibit holds as bought, then after each height upgrade.")]
+        public List<int> largePerExhibit = new List<int> { 1, 3, 5 };
+        [Tooltip("Chance a pair breeds in an exhibit, as a share of the chance in an ordinary tank: small, medium and large fish.")]
+        public float smallBreeding = 0.35f, mediumBreeding = 0.15f, largeBreeding = 0.05f;
+
+        [Header("Appeal")]
+        [Tooltip("Points for how full an exhibit is (half its room for full marks), how many kinds, how eye-catching, aquarium quality and clean water.")]
+        public float fullnessPoints = 20f, varietyPoints = 35f, looksPoints = 20f, qualityPoints = 15f, cleanPoints = 5f;
+        [Tooltip("Kinds of fish an exhibit needs for full variety points.")]
+        public int fullVarietyKinds = 8;
+        [Tooltip("An exhibit where one kind is more than this share of the fish looks samey and loses points, up to Samey penalty when it's all one kind.")]
+        [Range(0f, 1f)] public float sameyShare = 0.4f;
+        public float sameyPenalty = 20f;
+        [Tooltip("Visitors see both exhibits: each kind of fish in the whole aquarium past Kinds before bonus adds Kind bonus to its appeal, up to Max kind bonus.")]
+        public int kindsBeforeBonus = 5;
+        public float kindBonus = 2f, maxKindBonus = 16f;
+
+        [Header("Fish market")]
+        [Tooltip("What the fish market pays, as a share of a fish's appraised value.")]
+        [Range(0f, 2f)] public float marketShare = 0.75f;
+        [Tooltip("Shopkeeping XP for each fish sold on the market.")]
+        public int xpMarketSale = 3;
+
+        [Header("The seller's dives")]
+        public ScubaBalance scuba = new ScubaBalance();
     }
 }
 
@@ -80,6 +115,12 @@ namespace FishBreeder.Store
 {
     /// <summary>Which fish an exhibit in the public aquarium takes.</summary>
     public enum ExhibitClimate { None, Temperate, Tropical }
+
+    /// <summary>
+    /// How big a kind of fish is in the public aquarium, from the longest it ever grows: each size
+    /// has its own limit in an exhibit. None is a little fish that stays little and can't go in.
+    /// </summary>
+    public enum AquariumSize { None, Small, Medium, Large }
 
     /// <summary>What can spoil a visit to the aquarium, for its reviews.</summary>
     public enum AquariumIssue { DeadFish, DirtyWater, SickFish, Fighting, FewFish, TooPricey }
@@ -130,7 +171,7 @@ namespace FishBreeder.Store
         {
             public float total;
             public float fullness, variety, looks, quality, clean;
-            public float dead, dirty, sick, fighting;
+            public float dead, dirty, sick, fighting, samey;
             public int fish, kinds;
         }
 
@@ -158,8 +199,10 @@ namespace FishBreeder.Store
             BoothLevel = 0;
             reviews.Clear();
             appealCache.Clear();
+            speciesLimits.Clear();
             Today = null;
             RollEstimate();
+            ScubaDives.Reset();
         }
 
         /// <summary>A new morning: the estimator is off by a different amount today.</summary>
@@ -202,6 +245,194 @@ namespace FishBreeder.Store
 
         public static string ClimateName(ExhibitClimate climate) => climate == ExhibitClimate.Temperate ? "Temperate" : climate == ExhibitClimate.Tropical ? "Tropical" : "";
 
+        // ------------------------------------------------------------ who lives here
+
+        /// <summary>
+        /// A kind of fish's size in the aquarium, from the longest it ever grows (its full-grown
+        /// length if it keeps growing in big tanks). Little fish that never grow big are None: they
+        /// can't go in at all.
+        /// </summary>
+        public static AquariumSize SizeClass(Species species)
+        {
+            if (species == null || !species.CanLiveInEastWing) return AquariumSize.None;
+            float length = species.LargestLength;
+            if (length >= Data.largeFishFrom) return AquariumSize.Large;
+            return length >= Data.mediumFishFrom ? AquariumSize.Medium : AquariumSize.Small;
+        }
+
+        public static string SizeName(AquariumSize size) => size == AquariumSize.None ? "Little" : size.ToString();
+
+        /// <summary>How many times an exhibit has been raised (0 as bought).</summary>
+        public static int ExhibitStep(Tank tank) => tank != null && tank.IsWallAquarium ? tank.SizeIndex - Tank.WallSize : 0;
+
+        static List<int> LimitList(AquariumSize size)
+        {
+            var d = Data;
+            return size == AquariumSize.Small ? d.smallPerExhibit : size == AquariumSize.Medium ? d.mediumPerExhibit : size == AquariumSize.Large ? d.largePerExhibit : null;
+        }
+
+        /// <summary>How many fish of this size an exhibit holds at its height.</summary>
+        public static int ExhibitLimit(Tank tank, AquariumSize size) => ExhibitLimitAt(ExhibitStep(tank), size);
+
+        /// <summary>How many fish of this size an exhibit holds after this many height upgrades.</summary>
+        public static int ExhibitLimitAt(int step, AquariumSize size)
+        {
+            var list = LimitList(size);
+            if (list == null || list.Count == 0) return 0;
+            return Mathf.Max(0, list[Mathf.Clamp(step, 0, list.Count - 1)]);
+        }
+
+        /// <summary>All the fish an exhibit holds, every size together.</summary>
+        public static int ExhibitCapacity(Tank tank) => Mathf.Max(1, ExhibitLimit(tank, AquariumSize.Small) + ExhibitLimit(tank, AquariumSize.Medium) + ExhibitLimit(tank, AquariumSize.Large));
+
+        /// <summary>Living fish of this size in a tank (eggs not counted).</summary>
+        public static int CountOfSize(Tank tank, AquariumSize size)
+        {
+            int n = 0;
+            foreach (var fish in tank.Residents)
+                if (fish != null && !fish.IsDead && SizeClass(fish.Species) == size) n++;
+            return n;
+        }
+
+        /// <summary>How many more of this kind an exhibit has room for (0 for little fish, or the wrong climate).</summary>
+        public static int ExhibitRoomFor(Tank tank, Species species)
+        {
+            var size = SizeClass(species);
+            if (size == AquariumSize.None || !tank.Suits(species)) return 0;
+            return Mathf.Max(0, ExhibitLimit(tank, size) - CountOfSize(tank, size));
+        }
+
+        /// <summary>Breeding is rarer in the exhibits, and rarer still the bigger the fish.</summary>
+        public static float BreedingFactor(Species species)
+        {
+            switch (SizeClass(species))
+            {
+                case AquariumSize.Small: return Mathf.Max(0f, Data.smallBreeding);
+                case AquariumSize.Medium: return Mathf.Max(0f, Data.mediumBreeding);
+                case AquariumSize.Large: return Mathf.Max(0f, Data.largeBreeding);
+                default: return 0f;
+            }
+        }
+
+        /// <summary>A holding tank keeps one, two or three of the seller's finds, by its size.</summary>
+        public static int HoldingCapacity(Tank tank)
+        {
+            var list = ScubaDives.Data.holdingFishPerSize;
+            if (list == null || list.Count == 0) return 1;
+            return Mathf.Max(1, list[Mathf.Clamp(tank != null ? tank.SizeIndex : 0, 0, list.Count - 1)]);
+        }
+
+        /// <summary>"20/30/40": an exhibit's limit for this size as bought and after each upgrade.</summary>
+        public static string LimitsText(AquariumSize size)
+        {
+            var list = LimitList(size);
+            return list == null || list.Count == 0 ? "0" : string.Join("/", list);
+        }
+
+        /// <summary>For the fish panel: where this kind may live, in a sentence.</summary>
+        public static string WhereItLives(Fish fish)
+        {
+            var species = fish.Species;
+            var size = SizeClass(species);
+            string room = RoomName.ToLower();
+            if (size == AquariumSize.None) return $"A little fish: it can't go in the {room}.";
+            string limits = $"{SizeName(size).ToLower()} fish in the {room} ({LimitsText(size)} per exhibit)";
+            if (species.eastWingOnly) return $"Lives only in the {room}, or a holding tank until it goes there. A {limits}.";
+            if (fish.IsFullGrown) return $"Full grown: too big for any tank but the {room} now. A {limits}.";
+            return $"Grows big: it can live in ordinary tanks or the {room} until it's full grown, then only the {room}. A {limits}.";
+        }
+
+        // ------------------------------------------------------------ the fish market
+
+        static readonly Dictionary<string, int> speciesLimits = new Dictionary<string, int>();
+
+        /// <summary>Most of this kind the player wants in the aquarium (both exhibits together); 0 = no limit.</summary>
+        public static int SpeciesLimit(string id) => id != null && speciesLimits.TryGetValue(id, out var n) ? n : 0;
+
+        public static void SetSpeciesLimit(string id, int limit)
+        {
+            if (string.IsNullOrEmpty(id)) return;
+            if (limit <= 0) speciesLimits.Remove(id);
+            else speciesLimits[id] = limit;
+        }
+
+        /// <summary>Living fish of this kind in the exhibits.</summary>
+        public static int CountInAquarium(StoreLayout store, string id)
+        {
+            int n = 0;
+            foreach (var exhibit in Exhibits(store))
+                foreach (var fish in exhibit.Tank.Residents)
+                    if (fish != null && !fish.IsDead && fish.Species.id == id) n++;
+            return n;
+        }
+
+        /// <summary>What the fish market pays for this fish today.</summary>
+        public static int MarketPrice(Fish fish) => fish == null ? 0 : Mathf.Max(1, Mathf.RoundToInt(fish.AppraisedValue * Mathf.Max(0f, Data.marketShare)));
+
+        /// <summary>Sells a fish on the fish market: paid at once, and it's gone.</summary>
+        public static int SellOnMarket(Fish fish, bool automatic = false)
+        {
+            if (fish == null || fish.IsDead) return 0;
+            int price = MarketPrice(fish);
+            Economy.Earn(price, $"{fish.FishName} the {fish.SpeciesLabel} on the fish market", MoneyKind.Market);
+            Progression.Award(XpTrack.Shopkeeping, Data.xpMarketSale);
+            GameLog.Add(automatic
+                ? $"{fish.FishName} the {fish.SpeciesLabel} went to the fish market for {Economy.Format(price)}: the aquarium is at its limit of {SpeciesLimit(fish.Species.id)}."
+                : $"Sold {fish.FishName} the {fish.SpeciesLabel} on the fish market for {Economy.Format(price)}.");
+            fish.RemoveFromTank();
+            ForgetAppeal();
+            return price;
+        }
+
+        /// <summary>Lets a fish go back to the wild: no money, a little Fishkeeping XP for doing right by it.</summary>
+        public static void Release(Fish fish)
+        {
+            if (fish == null || fish.IsDead) return;
+            Progression.Award(XpTrack.Fishkeeping, ScubaDives.Data.xpRelease);
+            GameLog.Add($"You let {fish.FishName} the {fish.SpeciesLabel} go back to the wild. Swim free!");
+            fish.RemoveFromTank();
+            ForgetAppeal();
+        }
+
+        /// <summary>
+        /// After a time step: a kind with a limit set that has more fish than that in the aquarium
+        /// (babies grown up, usually) sends grown ones, picked at random, to the fish market until
+        /// it's back to the limit. Returns how many went.
+        /// </summary>
+        public static int TrimToLimits(IReadOnlyList<StoreTank> tanks)
+        {
+            if (speciesLimits.Count == 0 || tanks == null) return 0;
+            var living = new Dictionary<string, int>();
+            var adults = new Dictionary<string, List<Fish>>();
+            foreach (var storeTank in tanks)
+            {
+                if (storeTank.Role != TankRole.Exhibit) continue;
+                foreach (var fish in storeTank.Tank.Residents)
+                {
+                    if (fish == null || fish.IsDead) continue;
+                    string id = fish.Species.id;
+                    living[id] = living.TryGetValue(id, out var n) ? n + 1 : 1;
+                    if (fish.Stage != LifeStage.Adult) continue;
+                    if (!adults.TryGetValue(id, out var list)) adults[id] = list = new List<Fish>();
+                    list.Add(fish);
+                }
+            }
+            int sold = 0;
+            foreach (var pair in living)
+            {
+                int limit = SpeciesLimit(pair.Key), extra = pair.Value - limit;
+                if (limit <= 0 || extra <= 0 || !adults.TryGetValue(pair.Key, out var grown)) continue;
+                for (; extra > 0 && grown.Count > 0; extra--)
+                {
+                    int pick = GameRandom.Range(0, grown.Count);
+                    SellOnMarket(grown[pick], true);
+                    grown.RemoveAt(pick);
+                    sold++;
+                }
+            }
+            return sold;
+        }
+
         // ------------------------------------------------------------ appeal
 
         /// <summary>The exhibits that are in (one or both), north first.</summary>
@@ -235,6 +466,7 @@ namespace FishBreeder.Store
         {
             var a = new Appeal();
             var kinds = new HashSet<string>();
+            var kindCounts = new Dictionary<string, int>();
             float looks = 0f;
             int sick = 0, living = 0;
             foreach (var fish in tank.Residents)
@@ -246,25 +478,46 @@ namespace FishBreeder.Store
                 a.fish++;
                 looks += fish.Attractiveness;
                 kinds.Add(fish.Species.id);
+                kindCounts[fish.Species.id] = kindCounts.TryGetValue(fish.Species.id, out var count) ? count + 1 : 1;
             }
             a.kinds = kinds.Count;
             if (living == 0) return a;
-            a.fullness = 30f * Mathf.Clamp01(a.fish / Mathf.Max(1f, tank.Capacity * 0.5f));
-            a.variety = 20f * Mathf.Clamp01(a.kinds / 6f);
-            a.looks = a.fish > 0 ? 25f * Mathf.Clamp01(looks / a.fish) : 0f;
-            a.quality = 20f * Mathf.Clamp01(tank.Quality / 80f);
+            var d = Data;
+            a.fullness = d.fullnessPoints * Mathf.Clamp01(a.fish / Mathf.Max(1f, tank.Capacity * 0.5f));
+            // Variety counts for a lot: people don't come to see one or two kinds of fish. The first
+            // few kinds count most, so going from one to three is worth more than seven to nine.
+            a.variety = d.varietyPoints * Mathf.Sqrt(Mathf.Clamp01(a.kinds / (float)Mathf.Max(1, d.fullVarietyKinds)));
+            int most = 0;
+            foreach (var n in kindCounts.Values) most = Mathf.Max(most, n);
+            float share = a.fish > 0 ? most / (float)a.fish : 0f;
+            if (a.fish >= 3 && share > d.sameyShare) a.samey = -d.sameyPenalty * Mathf.Clamp01((share - d.sameyShare) / Mathf.Max(0.01f, 1f - d.sameyShare));
+            a.looks = a.fish > 0 ? d.looksPoints * Mathf.Clamp01(looks / a.fish) : 0f;
+            a.quality = d.qualityPoints * Mathf.Clamp01(tank.Quality / 80f);
             var shop = Balance.Data.shop;
             bool dirty = tank.WaterHealth < shop.grossWaterQuality || tank.Algae > shop.grossAlgae;
-            a.clean = !dirty && tank.WaterHealth > 0.7f && tank.Algae < 0.3f ? 5f : 0f;
+            a.clean = !dirty && tank.WaterHealth > 0.7f && tank.Algae < 0.3f ? d.cleanPoints : 0f;
             a.dead = -Mathf.Min(40f, 8f * tank.Corpses.Count);
             a.dirty = dirty ? -25f : 0f;
             a.sick = -30f * sick / Mathf.Max(1f, living);
             a.fighting = TankMates.IsFighting(tank) ? -15f : 0f;
-            a.total = Mathf.Clamp(a.fullness + a.variety + a.looks + a.quality + a.clean + a.dead + a.dirty + a.sick + a.fighting, 0f, 100f);
+            a.total = Mathf.Clamp(a.fullness + a.variety + a.looks + a.quality + a.clean + a.samey + a.dead + a.dirty + a.sick + a.fighting, 0f, 100f);
             return a;
         }
 
-        /// <summary>The whole aquarium's appeal, 0..100: the better exhibit counts 65%, the other 35%.</summary>
+        /// <summary>Different kinds of grown and growing fish across both exhibits (fry don't count).</summary>
+        public static int AquariumKinds(StoreLayout store)
+        {
+            var kinds = new HashSet<string>();
+            foreach (var exhibit in Exhibits(store))
+                foreach (var fish in exhibit.Tank.Residents)
+                    if (fish != null && !fish.IsDead && fish.Stage != LifeStage.Fry) kinds.Add(fish.Species.id);
+            return kinds.Count;
+        }
+
+        /// <summary>Extra appeal for a varied aquarium as a whole: each kind past the first few, up to a limit.</summary>
+        public static float KindBonus(StoreLayout store) => Mathf.Min(Data.maxKindBonus, Mathf.Max(0, AquariumKinds(store) - Data.kindsBeforeBonus) * Data.kindBonus);
+
+        /// <summary>The whole aquarium's appeal, 0..100: the better exhibit counts 65%, the other 35%, plus a bonus for many kinds in all.</summary>
         public static float AquariumAppeal(StoreLayout store)
         {
             float best = 0f, other = 0f;
@@ -278,7 +531,8 @@ namespace FishBreeder.Store
                 }
                 else if (score > other) other = score;
             }
-            return best * 0.65f + other * 0.35f;
+            if (best <= 0f && other <= 0f) return 0f;
+            return Mathf.Min(100f, best * 0.65f + other * 0.35f + KindBonus(store));
         }
 
         /// <summary>The room is bought and at least one exhibit has a living fish to see.</summary>
@@ -479,10 +733,11 @@ namespace FishBreeder.Store
             if (appeal.dirty < 0f && GameRandom.Chance(0.85f)) return Spoil(look, Shop.Mood.Grossed, AquariumIssue.DirtyWater);
             if (appeal.sick < 0f && GameRandom.Chance(Mathf.Min(shop.maxSickChance, -appeal.sick / 30f * 1.5f))) return Spoil(look, Shop.Mood.Grossed, AquariumIssue.SickFish);
             if (appeal.fighting < 0f && GameRandom.Chance(shop.fightingUpsetChance)) return Spoil(look, Shop.Mood.Sad, AquariumIssue.Fighting);
-            if (appeal.fish < 4 || appeal.kinds < 2)
+            // An empty-looking or samey exhibit: people came to see lots of different fish.
+            if (appeal.fish < 4 || appeal.kinds < 3 || appeal.samey < -0.25f * Data.sameyPenalty)
             {
                 look.issue = AquariumIssue.FewFish;
-                look.spoiled = GameRandom.Chance(0.5f);
+                look.spoiled = GameRandom.Chance(appeal.kinds <= 1 ? 0.75f : 0.5f);
             }
             if (look.score >= Data.happyScore && GameRandom.Chance(0.75f)) look.mood = Shop.Mood.Happy;
             return look;
@@ -644,6 +899,9 @@ namespace FishBreeder.Store
             "A lot of water and not much else.",
             "Pretty decorations, but where are the fish?",
             "Only one kind of fish in there. Bit samey.",
+            "Hundreds of the same fish. Seen one, seen them all.",
+            "I wanted to see lots of different fish, not two kinds over and over.",
+            "Needs more variety. The aquarium across town has dozens of species.",
         };
 
         // ------------------------------------------------------------ saving
@@ -653,9 +911,11 @@ namespace FishBreeder.Store
             d.aquarium = new AquariumSave
             {
                 rating = Rating, ticketPrice = TicketPrice, boothLevel = BoothLevel, estimateRoll = EstimateRoll,
-                today = Today, reviews = new List<ReviewSave>(),
+                today = Today, reviews = new List<ReviewSave>(), speciesLimits = new List<KeyInt>(),
             };
             foreach (var r in reviews) d.aquarium.reviews.Add(new ReviewSave { day = r.day, stars = r.stars, text = r.text });
+            foreach (var pair in speciesLimits) d.aquarium.speciesLimits.Add(new KeyInt { key = pair.Key, value = pair.Value });
+            d.aquarium.scuba = ScubaDives.Save();
         }
 
         internal static void Load(SaveData d)
@@ -674,6 +934,9 @@ namespace FishBreeder.Store
             EstimateRoll = Mathf.Clamp(s.estimateRoll, -1f, 1f);
             Today = s.today != null && s.today.issues != null && s.today.issues.Length == IssueCount ? s.today : null;
             if (s.reviews != null) foreach (var r in s.reviews) reviews.Add(new Review { day = r.day, stars = r.stars, text = r.text });
+            speciesLimits.Clear();
+            if (s.speciesLimits != null) foreach (var pair in s.speciesLimits) SetSpeciesLimit(pair.key, pair.value);
+            ScubaDives.Load(s.scuba);
         }
     }
 
@@ -685,5 +948,8 @@ namespace FishBreeder.Store
         public float estimateRoll;
         public AquariumReport today;
         public List<ReviewSave> reviews = new List<ReviewSave>();
+        /// <summary>The most of each kind the player wants in the aquarium.</summary>
+        public List<KeyInt> speciesLimits = new List<KeyInt>();
+        public ScubaSave scuba;
     }
 }

@@ -31,7 +31,7 @@ namespace FishBreeder.Breeding
             else if (a.Sex == b.Sex) reason = $"Both are {a.Sex.ToString().ToLower()}s. You need a male and a female.";
             else reason = WhyNotReady(a, tank) ?? WhyNotReady(b, tank);
             if (reason == null && RoomForYoung(tank, a, b) <= 0)
-                reason = (a.Sex == Sex.Female ? a : b).Species.IsMedium ? $"There's no room for more medium fish here ({tank.MediumCount} of {tank.MediumCapacity})." : "The tank is full.";
+                reason = tank.IsExhibit ? "The exhibit has no room for more of their size." : (a.Sex == Sex.Female ? a : b).Species.IsMedium ? $"There's no room for more medium fish here ({tank.MediumCount} of {tank.MediumCapacity})." : "The tank is full.";
             return reason == null;
         }
 
@@ -42,7 +42,7 @@ namespace FishBreeder.Breeding
         static int RoomForYoung(Tank tank, Fish a, Fish b)
         {
             var species = (a.Sex == Sex.Female ? a : b).Species;
-            return tank.FreeSpaceFor(species) - EggClutch.EggsIn(tank, species.IsMedium);
+            return tank.FreeSpaceFor(species) - EggClutch.EggsLike(tank, species);
         }
 
         /// <summary>Why this fish can't breed right now, or null if it can.</summary>
@@ -145,9 +145,11 @@ namespace FishBreeder.Breeding
                 Shuffle(group.females);
                 Shuffle(group.males);
                 int pairs = Mathf.Min(group.females.Count, group.males.Count);
+                // In the public aquarium's exhibits fish breed far less, and the bigger they are the rarer it is.
+                float pairChance = tank.IsExhibit ? chance * Store.PublicAquarium.BreedingFactor(group.females.Count > 0 ? group.females[0].Species : null) : chance;
                 for (int i = 0; i < pairs; i++)
                 {
-                    if (!GameRandom.Chance(chance)) continue;
+                    if (!GameRandom.Chance(pairChance)) continue;
                     if (Conceive(tank, group.females[i], group.males[i]) > 0) started++;
                 }
                 for (int i = pairs; i < group.females.Count; i++) singleFemales.Add(group.females[i]);
@@ -165,7 +167,8 @@ namespace FishBreeder.Breeding
                     var male = singleMales[i];
                     if (!CrossBreeding.Compatible(female.Species, male.Species)) continue;
                     singleMales.RemoveAt(i);
-                    if (GameRandom.Chance(crossChance) && Conceive(tank, female, male) > 0) started++;
+                    float factor = tank.IsExhibit ? Store.PublicAquarium.BreedingFactor(female.Species) : 1f;
+                    if (GameRandom.Chance(crossChance * factor) && Conceive(tank, female, male) > 0) started++;
                     break;
                 }
             }

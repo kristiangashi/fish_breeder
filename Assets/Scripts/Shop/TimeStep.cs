@@ -45,6 +45,8 @@ namespace FishBreeder.Shop
             int conceived = 0;
             foreach (var storeTank in tanks)
             {
+                // The seller's finds sit alone in their holding tanks: nothing breeds there.
+                if (storeTank.Role == TankRole.Holding) continue;
                 float chance = (storeTank.Role == TankRole.Breeder ? balance.pregnancyChanceBreederTank : balance.pregnancyChanceOtherTank) * Perks.More(PerkEffect.BreedingChance);
                 conceived += BreedingSystem.ChanceBreeding(storeTank.Tank, chance);
             }
@@ -81,6 +83,11 @@ namespace FishBreeder.Shop
             foreach (var storeTank in tanks) allTanks.Add(storeTank.Tank);
             Research.OnTimeStep(allTanks);
 
+            // Grown fish over the aquarium's limit for their kind go to the fish market.
+            int marketed = PublicAquarium.TrimToLimits(tanks);
+            // The fish seller comes back from a dive with a find for a holding tank.
+            ScubaDives.OnTimeStep(tanks);
+
             var parts = new List<string>();
             if (hatched > 0) parts.Add($"{hatched} eggs hatched");
             if (bornLive > 0) parts.Add($"{bornLive} fry born");
@@ -89,6 +96,7 @@ namespace FishBreeder.Shop
             if (died > 0) parts.Add($"{died} died");
             if (eaten > 0) parts.Add(eaten == 1 ? "a fish was eaten by a tank mate" : $"{eaten} fish were eaten by tank mates");
             if (wounded > 0) parts.Add(wounded == 1 ? "a fish was bitten or nipped" : $"{wounded} fish were bitten or nipped");
+            if (marketed > 0) parts.Add(marketed == 1 ? "a fish from the aquarium went to the fish market" : $"{marketed} fish from the aquarium went to the fish market");
             string summary = parts.Count > 0 ? string.Join(", ", parts) + "." : "A quiet time in the tanks.";
             GameLog.Add(summary);
             return summary;

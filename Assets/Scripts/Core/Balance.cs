@@ -387,7 +387,7 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, mediumCapacity = 5, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
         [Tooltip("The wall aquarium (the public aquarium's two exhibits, and the big breeding room's wall breeding tank): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 200, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
         [Tooltip("How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). Raising the aquarium never changes it.")]
@@ -408,13 +408,15 @@ namespace FishBreeder.Core
         public List<string> starterDecorations = new List<string>();
         [Tooltip("A tank's fish count is a soft limit: you can go over it (with serious problems for the fish) up to this many times the limit.")]
         public float tankHardLimitMultiplier = 1.5f;
+        [Tooltip("No ordinary tank (the wall breeding tank included) holds more small fish than this, soft limit or hard, whatever its size or perks.")]
+        public int maxFishPerTank = 80;
 
         public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 245, mediumCapacity = 5, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
-            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 290, mediumCapacity = 5, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
-            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 340, mediumCapacity = 6, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
-            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 390, mediumCapacity = 6, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
+            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, mediumCapacity = 5, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
+            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, mediumCapacity = 5, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
+            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, mediumCapacity = 6, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
+            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, mediumCapacity = 6, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
         };
 
         /// <summary>
@@ -846,6 +848,10 @@ namespace FishBreeder.Core
         public float injuryHealPerStep = 0.1f;
         [Tooltip("Health a fish loses at full wounds.")]
         public float injuryWeight = 0.8f;
+        [Tooltip("Too many of a kind that won't share (its Max of kind): each time step the losers of the fight over territory take this much wounding. Against the healing that's about a week to a death.")]
+        public float rivalInjury = 0.13f;
+        [Tooltip("Wounds on medium and large fish (the public aquarium's sizes) are this share of a small fish's: big fish take a long time to kill each other.")]
+        [Range(0f, 1f)] public float bigFishInjury = 0.35f;
     }
 
     /// <summary>
@@ -954,8 +960,9 @@ namespace FishBreeder.Core
         /// 14: photo backgrounds for the wall aquariums.
         /// 15: full-grown lengths: oscars, goldfish and the other big growers keep growing in roomy tanks.
         /// 16: six medium fish (pumpkinseed, Arctic grayling, Texas cichlid, frontosa, Jack Dempsey, peacock bass): their relationships, cross pairs and egg boxes.
+        /// 17: the public aquarium's new rules: fish that only live there (eastWingOnly), most of a kind per tank (maxOfKind), and no ordinary tank over 80 small fish (the wall tanks were 200 to 390).
         /// </summary>
-        public const int CurrentDataVersion = 16;
+        public const int CurrentDataVersion = 17;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1005,6 +1012,7 @@ namespace FishBreeder.Core
                 if (parsed.finances == null) parsed.finances = new FinanceBalance();
                 if (parsed.aquarium == null) parsed.aquarium = new AquariumBalance();
                 if (parsed.aquarium.boothUpgrades == null || parsed.aquarium.boothUpgrades.Count == 0) parsed.aquarium.boothUpgrades = BoothUpgradeBalance.CreateDefaults();
+                FillAquariumRules(parsed.aquarium);
                 if (parsed.supplier != null && (parsed.supplier.faults == null || parsed.supplier.faults.Count == 0)) parsed.supplier.faults = EquipmentFaultBalance.CreateDefaults();
                 if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
                 if (parsed.supplier != null && !json.Contains("\"passable\"")) FillPassable(parsed.supplier.decorations);
@@ -1358,7 +1366,45 @@ namespace FishBreeder.Core
                     }
                 }
             }
+            if (fromVersion < 17)
+            {
+                // The public aquarium's rules: the big wall fish only live there now, some fish won't
+                // share a tank with too many of their kind, and the wall tanks hold at most 80 small
+                // fish (a saved number that's already lower stays).
+                if (data.species != null)
+                    foreach (var s in data.species)
+                    {
+                        if (s == null) continue;
+                        s.eastWingOnly = Species.DefaultEastWingOnly(s.id);
+                        s.maxOfKind = Species.DefaultMaxOfKind(s.id);
+                    }
+                if (data.store != null)
+                {
+                    var fresh = new StoreBalance();
+                    if (data.store.maxFishPerTank <= 0) data.store.maxFishPerTank = fresh.maxFishPerTank;
+                    if (data.store.wallAquarium != null) data.store.wallAquarium.capacity = Mathf.Min(data.store.wallAquarium.capacity, fresh.wallAquarium.capacity);
+                    if (data.store.wallAquariumHeights != null)
+                        for (int i = 0; i < data.store.wallAquariumHeights.Count; i++)
+                            if (data.store.wallAquariumHeights[i] != null)
+                                data.store.wallAquariumHeights[i].capacity = Mathf.Min(data.store.wallAquariumHeights[i].capacity, fresh.wallAquariumHeights[Mathf.Min(i, fresh.wallAquariumHeights.Count - 1)].capacity);
+                }
+            }
             data.dataVersion = CurrentDataVersion;
+        }
+
+        /// <summary>A file saved before the aquarium's size classes, market and dives: empty lists get their defaults.</summary>
+        static void FillAquariumRules(AquariumBalance aquarium)
+        {
+            var fresh = new AquariumBalance();
+            if (aquarium.smallPerExhibit == null || aquarium.smallPerExhibit.Count == 0) aquarium.smallPerExhibit = fresh.smallPerExhibit;
+            if (aquarium.mediumPerExhibit == null || aquarium.mediumPerExhibit.Count == 0) aquarium.mediumPerExhibit = fresh.mediumPerExhibit;
+            if (aquarium.largePerExhibit == null || aquarium.largePerExhibit.Count == 0) aquarium.largePerExhibit = fresh.largePerExhibit;
+            if (aquarium.scuba == null) aquarium.scuba = fresh.scuba;
+            var scuba = aquarium.scuba;
+            if (scuba.gear == null || scuba.gear.Count == 0) scuba.gear = ScubaGearBalance.CreateDefaults();
+            if (scuba.finds == null || scuba.finds.Count == 0) scuba.finds = ScubaFindBalance.CreateDefaults();
+            if (scuba.rarityWeights == null || scuba.rarityWeights.Count == 0) scuba.rarityWeights = fresh.scuba.rarityWeights;
+            if (scuba.holdingFishPerSize == null || scuba.holdingFishPerSize.Count == 0) scuba.holdingFishPerSize = fresh.scuba.holdingFishPerSize;
         }
 
         static readonly HashSet<string> BigFish = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin" };

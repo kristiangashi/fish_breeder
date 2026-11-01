@@ -56,6 +56,7 @@ namespace FishBreeder.Health
         /// </summary>
         public static bool IsFighting(Tank tank)
         {
+            if (OverMaxOfKind(tank).Count > 0) return true;
             var rules = Balance.Data.tankMates;
             bool crowded = tank.SmallCount > tank.Capacity * rules.crowdedAbove;
             foreach (var a in tank.Residents)
@@ -71,9 +72,63 @@ namespace FishBreeder.Health
             return false;
         }
 
+        /// <summary>
+        /// Kinds with more grown fish here than will share a tank (<see cref="Species.maxOfKind"/>,
+        /// like peacock bass past a pair): they fight over territory until one dies.
+        /// </summary>
+        public static List<Species> OverMaxOfKind(Tank tank)
+        {
+            var over = new List<Species>();
+            if (tank == null) return over;
+            var counts = new Dictionary<Species, int>();
+            foreach (var fish in tank.Residents)
+            {
+                if (fish == null || fish.IsDead || fish.Stage != LifeStage.Adult || fish.Species == null || fish.Species.maxOfKind <= 0) continue;
+                counts[fish.Species] = counts.TryGetValue(fish.Species, out var n) ? n + 1 : 1;
+            }
+            foreach (var pair in counts) if (pair.Value > pair.Key.maxOfKind) over.Add(pair.Key);
+            return over;
+        }
+
+        /// <summary>
+        /// Wounds scaled to the victim: medium and large fish (the public aquarium's sizes) take a
+        /// fraction, so big fish wear each other down over a week or more instead of a day.
+        /// </summary>
+        public static float WoundFor(Fish victim, float amount)
+        {
+            var size = Store.PublicAquarium.SizeClass(victim.Species);
+            bool big = size == Store.AquariumSize.Medium || size == Store.AquariumSize.Large || victim.Species.IsMedium;
+            return big ? amount * Mathf.Clamp01(Balance.Data.tankMates.bigFishInjury) : amount;
+        }
+
+        /// <summary>
+        /// Too many of a kind that won't share: the fish already losing (the most wounded) keep
+        /// losing, one for each fish too many, so the fight ends with a death rather than every
+        /// fish worn down.
+        /// </summary>
+        static void TerritoryFights(Tank tank, ref int wounded)
+        {
+            var rules = Balance.Data.tankMates;
+            foreach (var species in OverMaxOfKind(tank))
+            {
+                var kind = new List<Fish>();
+                foreach (var fish in tank.Residents)
+                    if (fish != null && !fish.IsDead && fish.Stage == LifeStage.Adult && fish.Species == species) kind.Add(fish);
+                kind.Sort((a, b) => b.Health.Injury.CompareTo(a.Health.Injury));
+                int losers = kind.Count - species.maxOfKind;
+                for (int i = 0; i < losers && i < kind.Count; i++)
+                {
+                    var rival = kind[kind.Count - 1 - (i % Mathf.Max(1, species.maxOfKind))];
+                    kind[i].Health.Injure(rules.rivalInjury, $"fighting {rival.FishName} over territory");
+                    wounded++;
+                }
+            }
+        }
+
         public static void Run(Tank tank, ref int eaten, ref int wounded)
         {
             var rules = Balance.Data.tankMates;
+            TerritoryFights(tank, ref wounded);
 
             foreach (var hunter in new List<Fish>(tank.Residents))
             {
@@ -96,7 +151,7 @@ namespace FishBreeder.Health
                 }
                 else if (GameRandom.Chance(rules.biteChance * strength))
                 {
-                    target.Health.Injure(rules.biteInjury, $"bitten by {hunter.FishName} the {hunter.Species}");
+                    target.Health.Injure(WoundFor(target, rules.biteInjury), $"bitten by {hunter.FishName} the {hunter.Species}");
                     wounded++;
                 }
             }
@@ -111,7 +166,7 @@ namespace FishBreeder.Health
                 if (nippers.Count == 0) continue;
                 var nipper = nippers[GameRandom.Range(0, nippers.Count)];
                 if (!GameRandom.Chance(rules.nipChance * Strength(tank, nipper.Species, victim.Species, false))) continue;
-                victim.Health.Injure(rules.nipInjury, $"nipped by {nipper.FishName} the {nipper.Species}");
+                victim.Health.Injure(WoundFor(victim, rules.nipInjury), $"nipped by {nipper.FishName} the {nipper.Species}");
                 wounded++;
             }
         }
@@ -228,12 +283,13 @@ namespace FishBreeder.Health
             var pairs = new List<Fish>();
             var rules = Balance.Data.tankMates;
             bool crowded = tank.SmallCount > tank.Capacity * rules.crowdedAbove;
+            var territorial = TankMates.OverMaxOfKind(tank);
             Group();
             foreach (var hunterKind in kinds)
                 foreach (var preyKind in kinds)
                 {
                     bool hunts = Relationships.Get(hunterKind, preyKind) == Relationship.Predator;
-                    bool fights = crowded && Relationships.AreCompetitive(hunterKind, preyKind);
+                    bool fights = (crowded && Relationships.AreCompetitive(hunterKind, preyKind)) || (hunterKind == preyKind && territorial.Contains(hunterKind));
                     if (!hunts && !fights) continue;
                     // Only goes for fish that come within range.
                     float range = hunts ? rules.huntRange : rules.fightRange;

@@ -5,8 +5,12 @@ using UnityEngine;
 
 namespace FishBreeder.Store
 {
-    /// <summary>Saved by name, so new kinds can go anywhere. Exhibits are the public aquarium's two big tanks.</summary>
-    public enum TankRole { Breeder, ForSale, Display, Quarantine, Exhibit }
+    /// <summary>
+    /// Saved by name, so new kinds can go anywhere. Exhibits are the public aquarium's two big tanks;
+    /// holding tanks (in the big breeding room) keep the fish the seller finds diving until they go
+    /// to the aquarium, the market or back to the wild.
+    /// </summary>
+    public enum TankRole { Breeder, ForSale, Display, Quarantine, Exhibit, Holding }
 
     /// <summary>A tank placed in the store: what it's for, and the systems that act on it.</summary>
     public class StoreTank : MonoBehaviour
@@ -57,11 +61,15 @@ namespace FishBreeder.Store
 
         public static string RoleName(TankRole role) => role == TankRole.ForSale ? "For Sale" : role.ToString();
 
+        /// <summary>The tank knows its role too: exhibits and holding tanks decide who may go in.</summary>
+        void SyncRole() => tank.Role = role;
+
         /// <summary>Turns the tank into another type, numbered among its new kind (the caller checks it's allowed and pays).</summary>
         public void SetRole(TankRole newRole, int newNumber)
         {
             role = newRole;
             number = newNumber;
+            SyncRole();
             gameObject.name = Title;
             tank.Title = Title;
             tank.PricesNewFish = role == TankRole.ForSale;
@@ -81,6 +89,7 @@ namespace FishBreeder.Store
             storeTank.role = role;
             storeTank.number = number;
             storeTank.tank = go.AddComponent<Tank>();
+            storeTank.SyncRole();
             storeTank.tank.Title = storeTank.Title;
             storeTank.tank.Build(size, decorations);
             storeTank.tank.PricesNewFish = role == TankRole.ForSale;

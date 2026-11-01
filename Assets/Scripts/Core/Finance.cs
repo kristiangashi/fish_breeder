@@ -14,6 +14,8 @@ namespace FishBreeder.Core
         Other,
         // Money in, added later (kinds are saved by position, so new ones go at the end)
         Tickets,
+        /// <summary>Fish sold on the fish market (from the aquarium's holding tanks and exhibits).</summary>
+        Market,
     }
 
     /// <summary>
@@ -81,7 +83,7 @@ namespace FishBreeder.Core
             SalesTotal = 0;
         }
 
-        public static bool IsIncome(MoneyKind kind) => kind <= MoneyKind.Refunds || kind == MoneyKind.Tickets;
+        public static bool IsIncome(MoneyKind kind) => kind <= MoneyKind.Refunds || kind == MoneyKind.Tickets || kind == MoneyKind.Market;
 
         public static string Name(MoneyKind kind)
         {
@@ -94,6 +96,7 @@ namespace FishBreeder.Core
                 case MoneyKind.Interest: return "Interest";
                 case MoneyKind.Refunds: return "Refunds";
                 case MoneyKind.Tickets: return "Aquarium tickets";
+                case MoneyKind.Market: return "Fish market";
                 case MoneyKind.FishAndEggs: return "Fish, eggs and fry";
                 case MoneyKind.Food: return "Food";
                 case MoneyKind.Care: return "Medicine, salt and repairs";

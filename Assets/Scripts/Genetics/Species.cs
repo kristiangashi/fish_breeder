@@ -27,7 +27,7 @@ namespace FishBreeder.Genetics
 
     /// <summary>
     /// Which fish limit a species counts against: small fish share the tank's main limit, medium
-    /// fish (the big wall-aquarium kinds) have their own much smaller one (<see cref="Core.TankSizeBalance.mediumCapacity"/>).
+    /// fish (the big kinds) have their own much smaller one (<see cref="Core.TankSizeBalance.mediumCapacity"/>).
     /// </summary>
     public enum BodyClass { Small, Medium }
 
@@ -84,6 +84,14 @@ namespace FishBreeder.Genetics
         /// <see cref="Core.GrowthBalance"/>). 0, or no more than <see cref="maxLength"/>, = it doesn't.
         /// </summary>
         public float fullGrownLength;
+        /// <summary>
+        /// Lives only in the public aquarium's exhibits (or a holding tank in the big breeding room
+        /// until it goes there): the fish the seller brings back from his dives. It goes in no other
+        /// tank and never comes in egg boxes.
+        /// </summary>
+        public bool eastWingOnly;
+        /// <summary>Most grown fish of its own kind that share a tank in peace; past it they fight until one dies (0 = no limit).</summary>
+        public int maxOfKind;
 
         /// <summary>How much of the body (fraction of its length) the wiggle takes to reach full strength after <see cref="bendStart"/>.</summary>
         public const float BendRamp = 0.3f;
@@ -124,6 +132,13 @@ namespace FishBreeder.Genetics
         /// <summary>How many times its longest shop size it can grow to with room (1 = it stays as it is).</summary>
         public float FullGrownRatio => maxLength > 0f && fullGrownLength > maxLength ? fullGrownLength / maxLength : 1f;
         public bool GrowsWithRoom => FullGrownRatio > 1.001f;
+        /// <summary>The longest it ever gets: its full-grown length if it grows with room, else its longest shop size.</summary>
+        public float LargestLength => GrowsWithRoom ? fullGrownLength : maxLength;
+        /// <summary>
+        /// It can live in the public aquarium: it keeps growing in big tanks (a hybrid, at home in
+        /// either until it's full grown) or lives only there. Little fish that stay little can't.
+        /// </summary>
+        public bool CanLiveInEastWing => eastWingOnly || GrowsWithRoom;
 
         public bool IsSaltwater => category == FishCategory.SaltwaterCold || category == FishCategory.SaltwaterTropical;
 
@@ -302,6 +317,24 @@ namespace FishBreeder.Genetics
             { "Pumpkinseed", 0.22f }, { "JackDempsey", 0.25f }, { "TexasCichlid", 0.3f }, { "Frontosa", 0.33f }, { "ArcticGrayling", 0.45f }, { "PeacockBass", 0.6f },
         };
 
+        /// <summary>The big wall fish only ever live in the public aquarium; the seller finds them on his dives.</summary>
+        static readonly HashSet<string> EastWingOnly = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin" };
+
+        /// <summary>
+        /// Fish that won't share a tank with too many of their own kind, from how the real fish
+        /// behave: red-tailed black sharks fight any other of their kind, and the big predatory
+        /// cichlids (peacock bass, oscars, green terrors, Texas cichlids, Jack Dempseys, flowerhorns)
+        /// only keep the peace in a pair or a few.
+        /// </summary>
+        static readonly Dictionary<string, int> MaxOfKind = new Dictionary<string, int>
+        {
+            { "RedTailShark", 1 }, { "PeacockBass", 2 }, { "Oscar", 2 }, { "GreenTerror", 2 }, { "TexasCichlid", 2 },
+            { "JackDempsey", 3 }, { "CrimsonJewelCichlid", 2 },
+        };
+
+        public static bool DefaultEastWingOnly(string id) => id != null && EastWingOnly.Contains(id);
+        public static int DefaultMaxOfKind(string id) => id != null && MaxOfKind.TryGetValue(id, out var n) ? n : 0;
+
         /// <summary>The default <see cref="fullGrownLength"/> for a species id (0 = doesn't grow with room).</summary>
         public static float DefaultFullGrownLength(string id) => id != null && FullGrownLengths.TryGetValue(id, out var l) ? l : 0f;
 
@@ -377,6 +410,8 @@ namespace FishBreeder.Genetics
             {
                 s.bendStart = DefaultBendStart(s.id);
                 s.fullGrownLength = DefaultFullGrownLength(s.id);
+                s.eastWingOnly = DefaultEastWingOnly(s.id);
+                s.maxOfKind = DefaultMaxOfKind(s.id);
                 SetHabits(s);
             }
             return list;

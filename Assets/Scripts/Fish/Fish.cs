@@ -349,14 +349,12 @@ namespace FishBreeder
         public bool MoveTo(Tank destination)
         {
             if (destination == null || destination == Tank || IsDead) return false;
-            if (!destination.HasRoomFor(Species))
+            var why = destination.WhyNotFor(this);
+            if (why != null)
             {
-                if (Species.IsMedium) GameLog.Add($"{FishName} won't fit in {destination.Title}: it already has {destination.MediumCount} of {destination.MediumCapacity} medium fish.");
-                return false;
-            }
-            if (MinTankSize > destination.SizeIndex)
-            {
-                GameLog.Add($"{FishName} won't go in {destination.Title}: {TankQuality.WantsText(MinTankSize).ToLower()}.");
+                if (why == "too small") GameLog.Add($"{FishName} won't go in {destination.Title}: {TankQuality.WantsText(MinTankSize).ToLower()}.");
+                else if (Species.IsMedium && !destination.IsExhibit && !destination.IsHolding && why == "full") GameLog.Add($"{FishName} won't fit in {destination.Title}: it already has {destination.MediumCount} of {destination.MediumCapacity} medium fish.");
+                else GameLog.Add($"{FishName} won't go in {destination.Title}: {why}.");
                 return false;
             }
             if (Tank != null) Tank.Remove(this);

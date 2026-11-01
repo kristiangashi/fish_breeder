@@ -374,9 +374,10 @@ namespace FishBreeder.Health
             else { comfort += 0.1f; Note(notes, "Nicely decorated", 0.1f); }
 
             if (tank.HasPests) { comfort -= weights.pestsComfortLoss; Note(notes, "Pests in the tank", -weights.pestsComfortLoss); }
-            var cramped = TankQuality.TooSmallFor(fish.MinTankSize, tank);
+            // A holding tank is only ever a short stay for the seller's finds: they don't mind it.
+            var cramped = tank.IsHolding ? null : TankQuality.TooSmallFor(fish.MinTankSize, tank);
             if (cramped != null) { comfort -= weights.crampedComfortLoss; Note(notes, $"Cramped: {cramped.ToLower()}", -weights.crampedComfortLoss); }
-            else
+            else if (!tank.IsHolding)
             {
                 // Big enough, but the aquarium's level has slipped below what this fish needs.
                 int needed = TankQuality.LevelNeeded(fish), quality = tank.Quality;

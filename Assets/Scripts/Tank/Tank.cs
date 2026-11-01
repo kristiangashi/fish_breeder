@@ -187,16 +187,25 @@ namespace FishBreeder
         /// The tank's fish limit. It's a soft limit: you can put more in (up to <see cref="HardCapacity"/>),
         /// but every fish over it hurts the health of all of them, dirties the water faster and spreads illness.
         /// </summary>
-        public int Capacity => CapacityOf(SizeInfo);
+        public int Capacity => IsExhibit ? Store.PublicAquarium.ExhibitCapacity(this) : IsHolding ? Store.PublicAquarium.HoldingCapacity(this) : CapacityOf(SizeInfo);
+
+        /// <summary>What the tank is for, set by <see cref="Store.StoreTank"/>: exhibits and holding tanks have their own rules about who goes in.</summary>
+        public Store.TankRole Role { get; set; }
+        /// <summary>One of the public aquarium's two exhibits: only fish that grow big, by size class (see <see cref="Store.PublicAquarium.SizeClass"/>).</summary>
+        public bool IsExhibit => Role == Store.TankRole.Exhibit;
+        /// <summary>A holding tank in the big breeding room, for the fish the seller brings back from his dives.</summary>
+        public bool IsHolding => Role == Store.TankRole.Holding;
 
         /// <summary>How far (0..1) fish here can grow towards their real full-grown length (see <see cref="GrowthBalance"/>).</summary>
         public float GrowthRoom => Balance.Data.growth.RoomFor(SizeInfo);
         /// <summary>How many fish a tank of this size holds, with the Roomy tanks perk.</summary>
-        public static int CapacityOf(TankSizeBalance size) => Mathf.Max(1, Mathf.RoundToInt(size.capacity * Perks.More(PerkEffect.RoomierTanks)));
+        public static int CapacityOf(TankSizeBalance size) => Mathf.Clamp(Mathf.RoundToInt(size.capacity * Perks.More(PerkEffect.RoomierTanks)), 1, MaxFish);
+        /// <summary>No ordinary tank holds more small fish than this, whatever its size or perks (the wall tanks included).</summary>
+        public static int MaxFish => Mathf.Max(1, Balance.Data.store.maxFishPerTank);
         /// <summary>Decoration spots: the size's own, plus any from the Aquascaper perk.</summary>
         public int DecorationSlots => SizeInfo.decorationSlots + Perks.Count(PerkEffect.DecorationSpots);
         /// <summary>No more small fish than this fit at all.</summary>
-        public int HardCapacity => Mathf.Max(Capacity, Mathf.FloorToInt(Capacity * Balance.Data.store.tankHardLimitMultiplier));
+        public int HardCapacity => Mathf.Max(Capacity, Mathf.Min(MaxFish, Mathf.FloorToInt(Capacity * Balance.Data.store.tankHardLimitMultiplier)));
         /// <summary>
         /// Medium fish (the big kinds) have their own limit, apart from the small fish, and it's a
         /// hard one: there's simply no room for another.
@@ -259,16 +268,89 @@ namespace FishBreeder
         public int FreeSpace => Mathf.Max(0, HardCapacity - SmallCount);
         /// <summary>Room left for small fish before the tank is overcrowded.</summary>
         public int FreeSpaceBeforeLimit => Mathf.Max(0, Capacity - SmallCount);
-        /// <summary>Whether one more of this kind fits: medium fish against their own limit, small fish against the hard limit.</summary>
-        public bool HasRoomFor(Genetics.Species species) => Suits(species) && (species != null && species.IsMedium ? MediumFreeSpace > 0 : !IsFull);
+        /// <summary>
+        /// Whether one more of this kind fits: in an exhibit, against its size class's limit; in a
+        /// holding tank, only the seller's finds; elsewhere medium fish against their own limit and
+        /// small fish against the hard limit (and never the fish that only live in the aquarium).
+        /// </summary>
+        public bool HasRoomFor(Genetics.Species species) => FreeSpaceFor(species) > 0;
 
         /// <summary>A public aquarium exhibit's climate: only fish suited to it go in (None takes any fish).</summary>
         public Store.ExhibitClimate Climate { get; set; }
 
         /// <summary>Whether this kind of fish suits the tank's climate (always, outside the public aquarium).</summary>
         public bool Suits(Genetics.Species species) => Store.PublicAquarium.Suits(Climate, species);
-        /// <summary>How many more of this kind fit (medium: their own limit; small: the hard limit).</summary>
-        public int FreeSpaceFor(Genetics.Species species) => species != null && species.IsMedium ? MediumFreeSpace : FreeSpace;
+        /// <summary>How many more of this kind fit (exhibits: its size class; holding tanks: the seller's finds; medium: their own limit; small: the hard limit).</summary>
+        public int FreeSpaceFor(Genetics.Species species)
+        {
+            if (species == null) return FreeSpace;
+            if (IsExhibit) return Store.PublicAquarium.ExhibitRoomFor(this, species);
+            if (IsHolding) return species.eastWingOnly ? Mathf.Max(0, Capacity - residents.Count) : 0;
+            if (species.eastWingOnly || !Suits(species)) return 0;
+            return species.IsMedium ? MediumFreeSpace : FreeSpace;
+        }
+
+        /// <summary>Which of the tank's limits a fish of this kind counts against: an exhibit's size classes, a holding tank's one limit, or medium against small.</summary>
+        public int LimitGroup(Genetics.Species species)
+        {
+            if (IsExhibit) return (int)Store.PublicAquarium.SizeClass(species);
+            if (IsHolding || species == null) return 0;
+            return species.IsMedium ? 1 : 0;
+        }
+
+        /// <summary>
+        /// Why this fish can't move in here (a few words for the move buttons), or null if it can:
+        /// only fish that grow big go in the exhibits, by size class and climate; the seller's finds
+        /// live only in the exhibits or a holding tank; and a fish that has grown to its full size
+        /// can't go back into an ordinary tank.
+        /// </summary>
+        public string WhyNotFor(Fish fish)
+        {
+            if (fish == null || fish.IsDead) return "gone";
+            var species = fish.Species;
+            if (IsExhibit)
+            {
+                if (fish.IdentityHidden) return "too young to tell";
+                if (!species.CanLiveInEastWing) return "too small a kind";
+                if (!Suits(species)) return $"{Store.PublicAquarium.ClimateName(Climate).ToLower()} only";
+                return HasRoomFor(species) ? null : $"no room for {Store.PublicAquarium.SizeName(Store.PublicAquarium.SizeClass(species)).ToLower()} fish";
+            }
+            if (IsHolding)
+            {
+                if (!species.eastWingOnly) return "seller's finds only";
+                return HasRoomFor(species) ? null : "full";
+            }
+            if (species.eastWingOnly) return "aquarium only";
+            if (fish.IsFullGrown) return "full grown: aquarium only";
+            if (fish.MinTankSize > SizeIndex) return "too small";
+            return HasRoomFor(species) ? null : "full";
+        }
+
+        /// <summary>For the move buttons: how many of the fish counted against the same limit as this one are here, and the limit.</summary>
+        public void CountFor(Genetics.Species species, out int have, out int limit)
+        {
+            if (IsExhibit)
+            {
+                var size = Store.PublicAquarium.SizeClass(species);
+                have = Store.PublicAquarium.CountOfSize(this, size);
+                limit = Store.PublicAquarium.ExhibitLimit(this, size);
+            }
+            else if (IsHolding)
+            {
+                have = residents.Count;
+                limit = Capacity;
+            }
+            else if (species != null && species.IsMedium)
+            {
+                have = MediumCount;
+                limit = MediumCapacity;
+            }
+            else
+            {
+                have = SmallCount;
+                limit = Capacity;
+            }
+        }
 
         /// <summary>1 in clean water, up to GameConfig.dirtyWaterInfectionMultiplier in filthy water; more again when overcrowded.</summary>
         public float InfectionMultiplier => Mathf.Lerp(GameConfig.Active.dirtyWaterInfectionMultiplier, 1f, waterQuality) * (pests ? 1.3f : 1f)

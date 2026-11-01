@@ -25,17 +25,13 @@ namespace FishBreeder.Store
 
         static readonly Vector3 StoreViewDirection = new Vector3(0f, 0.62f, -0.78f).normalized;
         static readonly Color StoreBackground = new Color(0.42f, 0.78f, 0.86f);
+        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment", "Any fish (dev)", "Dives" };
+        const int EggsTab = 0, FryTab = 1, DecorTab = 2, FoodTab = 3, EquipmentTab = 4, DevFryTab = 5, DivesTab = 6;
+        // The fish seller sells the fish (and dives for the aquarium's); the supplier menu (top bar) everything else.
 #if UNITY_EDITOR
-        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment", "Any fish (dev)" };
+        static readonly int[] FishSellerTabs = { EggsTab, FryTab, DivesTab, DevFryTab };
 #else
-        static readonly string[] SupplierTabs = { "Eggs", "Fry", "Decorations", "Food", "Equipment" };
-#endif
-        const int EggsTab = 0, FryTab = 1, DecorTab = 2, FoodTab = 3, EquipmentTab = 4, DevFryTab = 5;
-        // The fish seller sells the fish; the supplier menu (top bar) everything else.
-#if UNITY_EDITOR
-        static readonly int[] FishSellerTabs = { EggsTab, FryTab, DevFryTab };
-#else
-        static readonly int[] FishSellerTabs = { EggsTab, FryTab };
+        static readonly int[] FishSellerTabs = { EggsTab, FryTab, DivesTab };
 #endif
         // Equipment is bought from each aquarium's Upgrades tab, since what fits depends on the tank.
         static readonly int[] SupplierMenuTabs = { DecorTab, FoodTab };
@@ -100,7 +96,8 @@ namespace FishBreeder.Store
             HandleDevKeys();
             UpdateNightLook(dt);
             FishSeller.ShopOpen = shopDay.IsOpen;
-            FishSeller.Away = shopDay.Phase == DayPhase.Evening;
+            // Gone home for the night, or out on a dive until the next time step.
+            FishSeller.Away = shopDay.Phase == DayPhase.Evening || ScubaDives.Out;
             foreach (var levelUp in Progression.LevelUps) levelUp.age += dt;
             Progression.LevelUps.RemoveAll(l => l.age > 6f);
             UpdateMoney(dt);
@@ -1291,7 +1288,7 @@ namespace FishBreeder.Store
                 if (panZ >= 4f) WorldLabel(store.ExpansionPoint, "<b>Future expansion</b>\n<size=11>kept free for later</size>", scale, height);
             }
             // The seller is behind the breeding room's back wall: only labelled once the view is out there.
-            if (panZ >= 4f) WorldLabel(store.FishSellerPoint, FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes", scale, height);
+            if (panZ >= 4f) WorldLabel(store.FishSellerPoint, ScubaDives.Out ? "<b>Fish seller's van</b>\nout diving, back at the next time step" : FishSeller.Away ? "<b>Fish seller's van</b>\ngone home, back in the morning" : "<b>Fish seller's van</b>\negg and fry boxes, dives", scale, height);
             // The van is out of sight behind the breeding room: a sign over the back door slides the view there.
             if (panZ < 4f && ToGui(store.BackDoorSign, scale, height, out var door))
             {
@@ -1302,7 +1299,7 @@ namespace FishBreeder.Store
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
-                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.Exhibit ? $"+ {PublicAquarium.ClimateName(slot.exhibit)} aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Exhibit))}" : slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
+                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.Exhibit ? $"+ {PublicAquarium.ClimateName(slot.exhibit)} aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Exhibit))}" : slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.holding ? $"+ Holding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Holding))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
                     {
                         pendingSlot = slot;
                         panel = Panel.BuyTank;
@@ -1600,7 +1597,9 @@ namespace FishBreeder.Store
             shown = Mathf.Clamp(Ui.Toolbar(shown, tabNames), 0, tabs.Length - 1);
             supplierTab = tabs[shown];
             Ui.Label(atFishSeller ? "<size=11><i>Food and decorations are on the supplier menu: the Supplier (B) button up top.</i></size>" : "<size=11><i>Egg and fry boxes are at the fish seller's stall. Equipment is bought from each aquarium's Upgrades tab.</i></size>", Rich());
-            if (atFishSeller && FishSeller.Away)
+            if (atFishSeller && ScubaDives.Out)
+                Ui.Label($"<color={UiTheme.SunHex}>The fish seller is out diving. He's back at the next time step.</color>", Rich());
+            else if (atFishSeller && FishSeller.Away)
                 Ui.Label($"<color={UiTheme.SunHex}>The fish seller has gone home for the night. He's back in the morning.</color>", Rich());
             GUILayout.Space(2f);
 
@@ -1613,6 +1612,7 @@ namespace FishBreeder.Store
                 case FryTab: DrawEggOffers(true); break;
                 case DecorTab: DrawDecorationOffers(); break;
                 case FoodTab: DrawFoodOffers(); break;
+                case DivesTab: DrawDives(); break;
                 default: DrawDevFryOffers(); break;
             }
             UiCheck.EndScroll();
@@ -1623,9 +1623,12 @@ namespace FishBreeder.Store
 
         void DrawDeliverTo()
         {
-            if (orderTarget == null && store.Tanks.Count > 0) orderTarget = store.Tanks[0];
+            // The public aquarium's exhibits and the holding tanks never take boxes: little fish can't
+            // live in the exhibits, and the holding tanks are for the seller's finds.
+            var tanks = new List<StoreTank>();
+            foreach (var tank in store.Tanks) if (tank.Role != TankRole.Exhibit && tank.Role != TankRole.Holding) tanks.Add(tank);
+            if ((orderTarget == null || !tanks.Contains(orderTarget)) && tanks.Count > 0) orderTarget = tanks[0];
             Ui.Label("Deliver to:");
-            var tanks = store.Tanks;
             var names = new string[tanks.Count];
             int current = 0;
             for (int i = 0; i < tanks.Count; i++)
@@ -1641,6 +1644,79 @@ namespace FishBreeder.Store
 
         // Orders only fill a tank up to its limit; moving or breeding fish can push it over.
         static int FreeSpace(StoreTank tank) => Mathf.Max(0, tank.Tank.FreeSpaceBeforeLimit - EggClutch.EggsIn(tank.Tank, false));
+
+        /// <summary>
+        /// The seller's dives: book one (he's gone until the next time step and comes back with an
+        /// egg or fry for a holding tank), keep him diving, see what he might find, and upgrade his gear.
+        /// </summary>
+        void DrawDives()
+        {
+            var d = ScubaDives.Data;
+            Ui.Label($"<i>Some fish only live in the {PublicAquarium.RoomName.ToLower()}, and nobody sells them: the fish seller dives for them. Each dive he saves one egg or fry and brings it back at the next time step, for a holding tank in the big breeding room. He won't go while every holding tank is full. The rarer the fish is in the wild, the rarer the find; better gear finds rarer fish.</i>", Rich());
+            if (!ScubaDives.Unlocked)
+            {
+                Ui.Label($"<color=#ffd27f>Dives open at {Progression.LockText(XpTrack.Fishkeeping, d.unlockLevel)}.</color>", Rich());
+                return;
+            }
+            var holding = ScubaDives.HoldingTanks(store.Tanks);
+            if (holding.Count == 0) Ui.Label($"<color=#ffd27f>No holding tanks yet: click a spot in the big breeding room to buy one ({Economy.Format(StoreLayout.TankPrice(null, TankRole.Holding))}).</color>", Rich());
+            else
+            {
+                var lines = new List<string>();
+                foreach (var tank in holding) lines.Add($"{tank.Title}: {tank.Tank.Capacity - ScubaDives.RoomIn(tank.Tank)} / {tank.Tank.Capacity}");
+                Ui.Label("Holding tanks: " + string.Join("   ", lines), Rich());
+            }
+            GUILayout.Space(4f);
+            GUILayout.BeginVertical(UiTheme.Card);
+            if (ScubaDives.Out)
+            {
+                Ui.Label("<b>He's out diving.</b> He'll be back at the next time step (when the shop closes, or overnight).", Rich());
+                if (Ui.Button($"Call it off (get the {Economy.Format(ScubaDives.Fee)} back)")) ScubaDives.CancelDive();
+            }
+            else
+            {
+                var why = ScubaDives.WhyCantDive(store.Tanks);
+                GUI.enabled = why == null;
+                if (Ui.Button($"Send him diving  {Economy.Format(ScubaDives.Fee)}", UiTheme.Primary, GUILayout.Height(34f))) ScubaDives.TryDive(store.Tanks);
+                GUI.enabled = true;
+                if (why != null) Ui.Label($"<size=11><color=#ffd27f>{why}</color></size>", Rich());
+            }
+            ScubaDives.KeepDiving = Ui.Toggle(ScubaDives.KeepDiving, $" Keep diving: he goes again after each dive while a holding tank has room ({Economy.Format(ScubaDives.Fee)} each time)");
+            if (!string.IsNullOrEmpty(ScubaDives.LastFind)) Ui.Label($"<size=11>Last find: {ScubaDives.LastFind}</size>", Rich());
+            GUILayout.EndVertical();
+
+            GUILayout.Space(6f);
+            Ui.Label($"<b><color={UiTheme.SunHex}>WHAT HE MIGHT FIND</color></b>", Rich());
+            var next = ScubaDives.NextGear;
+            var now = ScubaDives.Odds(ScubaDives.GearLevel);
+            var better = next != null ? ScubaDives.Odds(ScubaDives.GearLevel + 1) : null;
+            for (int i = 0; i < now.Count; i++)
+            {
+                var (species, chance) = now[i];
+                GUILayout.BeginHorizontal(GUI.skin.box);
+                var rect = Ui.Slot("Picture", 48f, 48f, GUILayout.Width(48f), GUILayout.Height(48f));
+                GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
+                bool known = Journal.IsDiscovered(species);
+                var photo = known ? ItemPreviews.Fish(species) : null;
+                if (photo != null) GUI.DrawTexture(rect, photo, ScaleMode.ScaleToFit);
+                else GUI.Label(rect, "<size=26><b>?</b></size>", MysteryMark());
+                string size = PublicAquarium.SizeName(PublicAquarium.SizeClass(species)).ToLower();
+                string then = better != null && i < better.Count ? $", {Percent(better[i].chance)} with {next.name.ToLower()}" : "";
+                Ui.Label($"<b>{(known ? species.displayName : "A fish you haven't found yet")}</b>  <size=11>({ScubaDives.WildRarity(species).ToString().ToLower()} in the wild, a {size} fish)</size>\n<size=11>{Percent(chance)} of dives{then}</size>", Rich());
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(6f);
+            Ui.Label($"<b><color={UiTheme.SunHex}>HIS GEAR</color></b>", Rich());
+            Ui.Label(ScubaDives.GearLevel == 0 ? "Rented gear for now." : $"He dives with his {d.gear[ScubaDives.GearLevel - 1].name.ToLower()}.", Rich());
+            if (next != null)
+            {
+                int price = ScubaDives.GearPrice(next);
+                var why = ScubaDives.WhyCantUpgradeGear();
+                if (OfferRow(null, next.name, next.blurb, XpTrack.Fishkeeping, next.level, $"Buy {Economy.Format(price)}", why == null, 48f)) ScubaDives.TryUpgradeGear();
+            }
+            else Ui.Label($"<color={UiTheme.LeafHex}>He has the best gear there is.</color>", Rich());
+        }
 
         /// <summary>
         /// One thing for sale: its picture (a photo of the 3D design, or a drawn filler), name and
@@ -1723,7 +1799,7 @@ namespace FishBreeder.Store
                 bool mystery = EggBoxes.HasGoal(tier) && !goalMet;
                 if (mystery) details = $"<color=#ffd27f>To unlock: {EggBoxes.GoalText(tier)}.</color>";
                 bool away = FishSeller.Away;
-                string label = away ? "Back in the morning" : !goalMet ? $"Raise {tier.raiseCount} fish first" : free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
+                string label = away ? (ScubaDives.Out ? "Out diving" : "Back in the morning") : !goalMet ? $"Raise {tier.raiseCount} fish first" : free >= tier.eggs ? $"Buy {tier.eggs} {what}  {Economy.Format(price)}" : $"Needs {tier.eggs} free spaces";
                 bool canBuy = !away && goalMet && anyFish && free >= tier.eggs && Economy.CanAfford(price) && orderTarget != null;
                 var picture = mystery ? null : fry ? ItemPreviews.FryBox(tier.color) : ItemPreviews.EggBox(tier.color, tier.speckled);
                 if (OfferRow(picture, mystery ? "?" : fry ? EggBoxes.FryName(tier) : tier.name, details, XpTrack.Fishkeeping, tier.unlockLevel, label, canBuy))
@@ -1954,19 +2030,21 @@ namespace FishBreeder.Store
             UiCheck.End();
         }
 
-        static readonly TankRole[] BuyableRoles = { TankRole.ForSale, TankRole.Display, TankRole.Breeder, TankRole.Quarantine, TankRole.Exhibit };
+        static readonly TankRole[] BuyableRoles = { TankRole.ForSale, TankRole.Display, TankRole.Breeder, TankRole.Quarantine, TankRole.Exhibit, TankRole.Holding };
 
         void DrawBuyTank()
         {
             UiCheck.Begin("Buy a tank", panelRect, UiStyles.Window);
             var wall = Balance.Data.store.wallAquarium;
-            Ui.Label(pendingSlot.Exhibit ? $"The {PublicAquarium.ClimateName(pendingSlot.exhibit).ToLower()} aquarium" : pendingSlot.WallBreeder ? "The wall breeding tank" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
+            Ui.Label(pendingSlot.Exhibit ? $"The {PublicAquarium.ClimateName(pendingSlot.exhibit).ToLower()} aquarium" : pendingSlot.WallBreeder ? "The wall breeding tank" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.holding ? "A holding tank" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
             Ui.Label(pendingSlot.Exhibit
-                ? $"<i>One of the {PublicAquarium.RoomName.ToLower()}'s two exhibits: a tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it, for {(pendingSlot.exhibit == ExhibitClimate.Temperate ? "cold-water fish only (goldfish and their kin)" : "warm-water fish only")}. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations, and it can be raised taller later. Visitors pay to see it; nothing in it is sold.</i>"
+                ? $"<i>One of the {PublicAquarium.RoomName.ToLower()}'s two exhibits: a tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it, for {(pendingSlot.exhibit == ExhibitClimate.Temperate ? "cold-water fish only (goldfish and their kin)" : "warm-water fish only")}. Only fish that grow big live here: it holds {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Large)} large fish and {wall.decorationSlots} decorations, more once it's raised taller. Visitors pay to see it, and love variety; nothing in it is sold.</i>"
                 : pendingSlot.WallBreeder
                 ? $"<i>A wall aquarium for breeding, along the big breeding room's back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It has room for the biggest fish to pair up and breed, and it can be raised taller later.</i>"
                 : pendingSlot.wall
                 ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later.</i>"
+                : pendingSlot.holding
+                ? $"<i>A small tank for the fish the seller finds diving, which only live in the {PublicAquarium.RoomName.ToLower()}. It keeps {ScubaDives.Data.holdingFishPerSize[0]} of them (more when it's upgraded) until they go to the aquarium, the fish market or back to the wild. He only dives while a holding tank has room.</i>"
                 : pendingSlot.backRoom
                 ? "<i>Customers never come back here: it's for breeding and for keeping sick fish apart.</i>"
                 : "<i>Customers browse these. Breeder and quarantine tanks go in the breeding room.</i>", Rich());

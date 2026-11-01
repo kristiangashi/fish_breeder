@@ -837,6 +837,26 @@ namespace FishBreeder.Core
         {
             int count = tank.SmallCount;
             string dead = tank.Corpses.Count > 0 ? $"   <color=#ff8080>Dead: {tank.Corpses.Count}</color>" : "";
+            if (tank.IsExhibit)
+            {
+                // An exhibit counts its fish by size, each against its own limit.
+                var parts = new List<string>();
+                foreach (var size in new[] { AquariumSize.Small, AquariumSize.Medium, AquariumSize.Large })
+                {
+                    int have = PublicAquarium.CountOfSize(tank, size), limit = PublicAquarium.ExhibitLimit(tank, size);
+                    parts.Add($"<color={(have >= limit ? "#ffd27f" : "#ffffff")}>{PublicAquarium.SizeName(size)}: {have} / {limit}</color>");
+                }
+                Ui.Label($"{sizeName}. <b>{string.Join("   ", parts)}</b>{dead}", Rich());
+                Ui.Label("<size=11>Only fish that grow big live here: small, medium and large kinds by the size they grow to.</size>", Rich());
+                return;
+            }
+            if (tank.IsHolding)
+            {
+                int finds = tank.Residents.Count + EggClutch.EggsIn(tank);
+                Ui.Label($"{sizeName}. <color={(finds >= tank.Capacity ? "#ffd27f" : "#ffffff")}><b>Finds: {finds} / {tank.Capacity}</b></color>{dead}", Rich());
+                Ui.Label($"<size=11>For the fish the seller finds diving. Raise them here, then put them in the {PublicAquarium.RoomName.ToLower()}, sell them on the fish market or let them go.</size>", Rich());
+                return;
+            }
             // Medium fish have their own limit; it shows where they can live or already do.
             int medium = tank.MediumCount;
             if (medium > 0 || tank.IsWallAquarium)
@@ -1589,8 +1609,12 @@ namespace FishBreeder.Core
             var info = StoreLayout.SizeInfo(tank, next);
             if (info == null || upgradeTank == null) return;
             bool wall = tank.IsWallAquarium;
-            Ui.Label(wall
+            int step = next - Tank.WallSize;
+            Ui.Label(tank.IsExhibit
+                ? $"<size=11>{info.name}: raised to {info.height:0.0#} m tall, room for {PublicAquarium.ExhibitLimitAt(step, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimitAt(step, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimitAt(step, AquariumSize.Large)} large fish, {info.decorationSlots} decorations.</size>"
+                : wall
                 ? $"<size=11>{info.name}: raised to {info.height:0.0#} m tall, {Tank.CapacityOf(info)} fish and {Tank.MediumCapacityOf(info)} medium fish, {info.decorationSlots} decorations.</size>"
+                : tank.IsHolding ? $"<size=11>{info.name} tank: room for {ScubaDives.Data.holdingFishPerSize[Mathf.Min(next, ScubaDives.Data.holdingFishPerSize.Count - 1)]} of the seller's finds.</size>"
                 : $"<size=11>{info.name} tank: {Tank.CapacityOf(info)} fish, {info.decorationSlots} decorations.</size>", Rich());
             var reason = StoreLayout.WhyCantUpgrade(storeTank, next);
             if (reason != null && reason != StoreLayout.NoMoney)
@@ -1676,6 +1700,7 @@ namespace FishBreeder.Core
             if (!fish.IdentityHidden)
                 Ui.Label($"Attractiveness: <b>{fish.AttractivenessRating}</b>/100  <color={UiTheme.SunHex}>{AttractivenessStars(fish)}</color>\n<size=11>Eye-catching fish bring people in, get looked at more and sell more easily.</size>", Rich());
             if (storeTank.Role == TankRole.ForSale) DrawPrice(fish);
+            DrawAquariumFish(fish);
             if (fish.Health.IsSick)
             {
                 Ui.Label($"<size=11>Treat the tank with medicine on the Care tab. It goes to every fish in the water.</size>", Rich());
@@ -1814,6 +1839,48 @@ namespace FishBreeder.Core
                 : Research.Has(ResearchUnlock.Breeding) ? $"Not ready{how}: {notReady.Replace(fish.FishName + " ", "")}" : "Not ready to breed.", Rich());
         }
 
+        Fish releaseAsk;
+
+        /// <summary>
+        /// Where this kind may live in the public aquarium, and for the seller's finds in a holding
+        /// tank and fish in an exhibit: sell it on the fish market, or let it go back to the wild.
+        /// </summary>
+        void DrawAquariumFish(Fish fish)
+        {
+            if (fish.IdentityHidden) return;
+            var size = PublicAquarium.SizeClass(fish.Species);
+            if (size != AquariumSize.None || tank.IsExhibit) Ui.Label($"<size=11>{PublicAquarium.WhereItLives(fish)}</size>", Rich());
+            if (!tank.IsHolding && !tank.IsExhibit) return;
+            GUI.enabled = !ReadOnly;
+            GUILayout.BeginHorizontal();
+            int price = PublicAquarium.MarketPrice(fish);
+            if (Ui.Button(new GUIContent($"Sell on the market  {Economy.Format(price)}", "The fish market pays at once, a little under its appraised value")))
+            {
+                var next = NextLivingFish(fish);
+                selected.Remove(fish);
+                PublicAquarium.SellOnMarket(fish);
+                if (next != null && next != fish) Select(next);
+            }
+            if (releaseAsk != fish && Ui.Button(new GUIContent("Release...", "Let it go back to the wild: no money, a little Fishkeeping XP"))) releaseAsk = fish;
+            GUILayout.EndHorizontal();
+            if (releaseAsk == fish)
+            {
+                Ui.Label($"<size=11>Let {fish.FishName} go back to the wild? It's gone for good.</size>", Rich());
+                GUILayout.BeginHorizontal();
+                if (Ui.Button("Yes, let it go", UiTheme.Primary))
+                {
+                    var next = NextLivingFish(fish);
+                    selected.Remove(fish);
+                    releaseAsk = null;
+                    PublicAquarium.Release(fish);
+                    if (next != null && next != fish) Select(next);
+                }
+                if (Ui.Button("Cancel")) releaseAsk = null;
+                GUILayout.EndHorizontal();
+            }
+            GUI.enabled = true;
+        }
+
         /// <summary>Move buttons for every other tank, with how full each is; afterwards the next fish here is picked.</summary>
         Fish euthanizeAsk;
 
@@ -1860,12 +1927,11 @@ namespace FishBreeder.Core
                 }
                 bool wasEnabled = GUI.enabled;
                 var t = other.Tank;
-                bool tooSmall = fish.MinTankSize > t.SizeIndex;
-                bool wrongClimate = !t.Suits(fish.Species);
-                bool medium = fish.Species.IsMedium;
-                GUI.enabled = wasEnabled && t.HasRoomFor(fish.Species) && !tooSmall;
-                int have = medium ? t.MediumCount : t.SmallCount, limit = medium ? t.MediumCapacity : t.Capacity;
-                string count = wrongClimate ? $"<color=#ff9a8a>{PublicAquarium.ClimateName(t.Climate).ToLower()} only</color>" : tooSmall ? "<color=#ff9a8a>too small</color>" : have >= limit ? $"<color=#ff9a8a>{have}/{limit}</color>" : $"{have}/{limit}";
+                string why = t.WhyNotFor(fish);
+                GUI.enabled = wasEnabled && why == null;
+                t.CountFor(fish.Species, out int have, out int limit);
+                // A full tank shows its count; any other reason shows why.
+                string count = why == null ? $"{have}/{limit}" : why == "full" || why.StartsWith("no room") ? $"<color=#ff9a8a>{have}/{limit}</color>" : $"<color=#ff9a8a>{why}</color>";
                 if (Ui.Button($"{other.Title} ({count})", RichButton(), GUILayout.Width(146f)))
                 {
                     var next = NextLivingFish(fish);

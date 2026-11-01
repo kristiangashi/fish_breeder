@@ -81,6 +81,17 @@ namespace FishBreeder
             return eggs;
         }
 
+        /// <summary>Eggs waiting in this tank that will count against the same limit as a fish of this kind (see <see cref="Tank.LimitGroup"/>).</summary>
+        public static int EggsLike(Tank tank, Species species)
+        {
+            int group = tank.LimitGroup(species), eggs = 0;
+            foreach (var clutch in all)
+                if (clutch.Tank == tank)
+                    foreach (var genome in clutch.genomes)
+                        if (tank.LimitGroup(Species.Get(genome.species)) == group) eggs++;
+            return eggs;
+        }
+
         /// <summary>Eggs waiting in this tank that will hatch into medium fish (or into small ones).</summary>
         public static int EggsIn(Tank tank, bool medium)
         {

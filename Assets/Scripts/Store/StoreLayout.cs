@@ -64,6 +64,12 @@ namespace FishBreeder.Store
         const float BoothOffsetX = 3.1f, BoothZ = -6.7f;
         /// <summary>The big breeding room, west of the breeding room: just wide enough for the wall breeding tank and a palm.</summary>
         public const float BigRoomWidth = 11f;
+        /// <summary>
+        /// The big breeding room's three holding tank spots (x from its centre), in a row across the
+        /// room south of the wall breeding tank, clear of the bench on the west wall and the door on the east.
+        /// </summary>
+        static readonly float[] HoldingSpotsX = { -3.5f, -0.3f, 2.9f };
+        const float HoldingSpotZ = -2.2f;
         /// <summary>The door from the breeding room into the big breeding room, near the front of their shared wall.</summary>
         const float BigRoomDoorZ = -4f;
         // The breeding room's tanks stand round its walls like the shop's, in walking order:
@@ -142,6 +148,8 @@ namespace FishBreeder.Store
             /// <summary>One of the public aquarium's two exhibit spots, and which fish it takes (None anywhere else).</summary>
             public ExhibitClimate exhibit;
             public bool Exhibit => exhibit != ExhibitClimate.None;
+            /// <summary>One of the big breeding room's holding tank spots, for the fish the seller finds diving (they take nothing else).</summary>
+            public bool holding;
 
             public bool IsOpen => backRoom || section.unlocked;
 
@@ -170,6 +178,7 @@ namespace FishBreeder.Store
             public bool Allows(TankRole role)
             {
                 if (Exhibit || role == TankRole.Exhibit) return Exhibit && role == TankRole.Exhibit;
+                if (holding || role == TankRole.Holding) return holding && role == TankRole.Holding;
                 return WallBreeder ? role == TankRole.Breeder : backRoom == (role == TankRole.Breeder || role == TankRole.Quarantine);
             }
         }
@@ -275,6 +284,10 @@ namespace FishBreeder.Store
                     for (int i = SlotColumns.Length - 1; i >= 0; i--)
                         slots.Add(new Slot { section = section, position = new Vector3(cx + SlotColumns[i], StandHeight, FrontSlotZ), yaw = 180f });
             }
+            // The big breeding room's holding tanks, in a row across the room facing the front. They
+            // come last so the spots saves already know keep their numbers.
+            foreach (float x in HoldingSpotsX)
+                slots.Add(new Slot { backRoom = true, holding = true, position = new Vector3(BigRoomCenterX + x, StandHeight, HoldingSpotZ) });
 
             BuildShell();
             BuildBackRoom();
@@ -408,7 +421,8 @@ namespace FishBreeder.Store
             TankLevel(slot, role, out var track, out var level);
             if (slot.tank != null) reason = "There is already a tank here.";
             else if (!slot.IsOpen) reason = "This part of the store is locked.";
-            else if (!slot.Allows(role)) reason = slot.Exhibit ? "Only exhibits go in the public aquarium." : role == TankRole.Exhibit ? "Exhibits only go in the public aquarium." : slot.WallBreeder ? "The wall breeding tank is only for breeding." : slot.backRoom ? "Only breeder and quarantine tanks go in the breeding room." : "Breeder and quarantine tanks go in the breeding room.";
+            else if (!slot.Allows(role)) reason = slot.Exhibit ? "Only exhibits go in the public aquarium." : role == TankRole.Exhibit ? "Exhibits only go in the public aquarium." : slot.holding ? "Only holding tanks go here." : role == TankRole.Holding ? "Holding tanks go in the big breeding room." : slot.WallBreeder ? "The wall breeding tank is only for breeding." : slot.backRoom ? "Only breeder and quarantine tanks go in the breeding room." : "Breeder and quarantine tanks go in the breeding room.";
+            else if (role == TankRole.Holding && !ScubaDives.Unlocked) reason = $"Holding tanks come with the seller's dives: {Progression.LockText(XpTrack.Fishkeeping, ScubaDives.Data.unlockLevel)}.";
             else if (!slot.WallBreeder && !slot.Exhibit && CountTanks(role) >= SupplierCatalog.TankLimit(role)) reason = $"The store can't hold more {StoreTank.RoleName(role).ToLower()} tanks.";
             else if (!Progression.IsUnlocked(track, level)) reason = $"Needs {Progression.LockText(track, level)}.";
             else if (!Economy.CanAfford(TankPrice(slot, role))) reason = "Not enough money.";
@@ -499,8 +513,8 @@ namespace FishBreeder.Store
                 if (slot.Exhibit)
                 {
                     string kind = slot.exhibit == ExhibitClimate.Temperate ? "cold-water fish (goldfish and their kin)" : "warm-water fish";
-                    Fx.Card(tank.Title.ToUpper(), PublicAquarium.RoomName, $"A whole wall of the {PublicAquarium.RoomName.ToLower()} is one big exhibit now, for {kind}: room for {tank.Tank.Capacity} fish. Fill it, then set a ticket price at the booth.", "Fill it from the fish seller", UiTheme.Aqua);
-                    GameLog.Add($"The {tank.Title.ToLower()} is in! It takes {kind} and holds {tank.Tank.Capacity} fish and {tank.Tank.DecorationSlots} decorations. Visitors come once it has fish in it.");
+                    Fx.Card(tank.Title.ToUpper(), PublicAquarium.RoomName, $"A whole wall of the {PublicAquarium.RoomName.ToLower()} is one big exhibit now, for {kind} that grow big: room for {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large fish. Fill it with many kinds, then set a ticket price at the booth.", "Fill it with big fish", UiTheme.Aqua);
+                    GameLog.Add($"The {tank.Title.ToLower()} is in! It takes {kind} that grow big (no little fish), by size: {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large, and {tank.Tank.DecorationSlots} decorations. Visitors come once it has fish in it.");
                 }
                 else if (slot.WallBreeder)
                 {
@@ -513,6 +527,7 @@ namespace FishBreeder.Store
                     GameLog.Add($"The wall aquarium is in! {tank.Title} holds {tank.Tank.Capacity} fish and {tank.Tank.DecorationSlots} decorations.");
                 }
             }
+            else if (role == TankRole.Holding) GameLog.Add($"Your new {tank.Title.ToLower()} is set up. It keeps {tank.Tank.Capacity} of the fish the seller finds diving until they go to the {PublicAquarium.RoomName.ToLower()}, the market or back to the wild.");
             else GameLog.Add($"Your new {tank.Title.ToLower()} is set up and ready for fish.");
             return tank;
         }
@@ -542,7 +557,7 @@ namespace FishBreeder.Store
         /// <summary>The types a tank here could be turned into: the other kind for its room.</summary>
         public static TankRole[] OtherRoles(StoreTank tank)
         {
-            if (tank.Slot != null && (tank.Slot.WallBreeder || tank.Slot.Exhibit)) return new TankRole[0];
+            if (tank.Slot != null && (tank.Slot.WallBreeder || tank.Slot.Exhibit || tank.Slot.holding)) return new TankRole[0];
             if (tank.InBackRoom) return new[] { tank.Role == TankRole.Breeder ? TankRole.Quarantine : TankRole.Breeder };
             return new[] { tank.Role == TankRole.ForSale ? TankRole.Display : TankRole.ForSale };
         }
@@ -606,6 +621,7 @@ namespace FishBreeder.Store
                 case TankRole.Breeder: return new Color(0.42f, 0.52f, 0.68f);
                 case TankRole.ForSale: return new Color(0.42f, 0.62f, 0.44f);
                 case TankRole.Display: return new Color(0.7f, 0.6f, 0.4f);
+                case TankRole.Holding: return new Color(0.36f, 0.6f, 0.62f);
                 default: return new Color(0.7f, 0.44f, 0.44f);
             }
         }

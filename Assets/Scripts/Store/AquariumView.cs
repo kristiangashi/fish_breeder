@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using FishBreeder.Core;
+using FishBreeder.Genetics;
 using FishBreeder.Shop;
 using UnityEngine;
 
@@ -89,6 +91,7 @@ namespace FishBreeder.Store
             leftScroll = UiCheck.BeginScroll("Aquarium: rating and exhibits", leftScroll);
             DrawVisitors();
             DrawExhibits();
+            DrawLimits();
             DrawReviews();
             UiCheck.EndScroll();
             GUILayout.EndVertical();
@@ -120,6 +123,9 @@ namespace FishBreeder.Store
             else Ui.Label($"About <b>{PublicAquarium.VisitorsPerHour(store):0}</b> people an hour come to the booth while the shop is open (from {PublicAquarium.Data.visitorsPerHour:0} to start with).", Rich());
             float appeal = PublicAquarium.AquariumAppeal(store);
             Effect($"Appeal {appeal:0}/100 (the better exhibit counts 65%, the other 35%)", PublicAquarium.AppealMultiplier(appeal) - 1f);
+            int kinds = PublicAquarium.AquariumKinds(store);
+            float bonus = PublicAquarium.KindBonus(store);
+            Ui.Label($"<size=11>{kinds} kind{(kinds == 1 ? "" : "s")} of fish in the whole aquarium{(bonus > 0.05f ? $": +{bonus:0} appeal for the variety" : $". Past {PublicAquarium.Data.kindsBeforeBonus}, every kind adds appeal: people come to see lots of different fish.")}</size>", Rich());
             Effect($"{PublicAquarium.Stars:0.0} star rating", PublicAquarium.RatingMultiplier - 1f);
             var today = PublicAquarium.Today;
             if (today != null)
@@ -146,16 +152,58 @@ namespace FishBreeder.Store
                 var a = PublicAquarium.ExhibitAppeal(exhibit.Tank);
                 Ui.Label($"<b>{exhibit.Title}</b>  <size=11>({where})</size>   appeal <b>{a.total:0}</b>/100", Rich());
                 if (a.fish == 0 && exhibit.Tank.Residents.Count == 0) Ui.Label("<size=11><i>No fish yet. Visitors only come when there's something to see.</i></size>", Rich());
-                Part($"{a.fish} juveniles and adults", a.fullness, 30f);
-                Part($"{a.kinds} kind{(a.kinds == 1 ? "" : "s")} of fish", a.variety, 20f);
-                Part("How eye-catching they are", a.looks, 25f);
-                Part($"Aquarium quality {exhibit.Tank.Quality}", a.quality, 20f);
-                Part("Clear, clean water", a.clean, 5f);
+                var d = PublicAquarium.Data;
+                var sizes = new List<string>();
+                foreach (var size in new[] { AquariumSize.Small, AquariumSize.Medium, AquariumSize.Large })
+                    sizes.Add($"{PublicAquarium.SizeName(size).ToLower()} {PublicAquarium.CountOfSize(exhibit.Tank, size)}/{PublicAquarium.ExhibitLimit(exhibit.Tank, size)}");
+                Ui.Label($"<size=11>Fish by size: {string.Join(", ", sizes)}</size>", Rich());
+                Part($"{a.fish} juveniles and adults", a.fullness, d.fullnessPoints);
+                Part($"{a.kinds} kind{(a.kinds == 1 ? "" : "s")} of fish ({d.fullVarietyKinds} for full marks)", a.variety, d.varietyPoints);
+                if (a.samey < 0f) Part("Mostly one kind: samey", a.samey, 0f);
+                Part("How eye-catching they are", a.looks, d.looksPoints);
+                Part($"Aquarium quality {exhibit.Tank.Quality}", a.quality, d.qualityPoints);
+                Part("Clear, clean water", a.clean, d.cleanPoints);
                 if (a.dead < 0f) Part("Dead fish", a.dead, 0f);
                 if (a.dirty < 0f) Part("Dirty water or algae", a.dirty, 0f);
                 if (a.sick < 0f) Part("Sick fish", a.sick, 0f);
                 if (a.fighting < 0f) Part("Fish fighting", a.fighting, 0f);
                 GUILayout.EndVertical();
+            }
+        }
+
+        /// <summary>
+        /// Each kind in the aquarium and the most of it the player wants: grown fish past the limit
+        /// (babies grown up, usually) go to the fish market at the next time step, picked at random.
+        /// </summary>
+        static void DrawLimits()
+        {
+            GUILayout.Space(8f);
+            Heading("KINDS AND LIMITS");
+            Ui.Label("<size=11>Set the most of each kind you want here. When babies grow up and a kind goes over its limit, grown ones go to the fish market (picked at random) at the next time step. Fish in the exhibits and holding tanks can also be sold on the market or let go from the fish's window.</size>", Rich());
+            var ids = new List<string>();
+            foreach (var exhibit in PublicAquarium.Exhibits(store))
+                foreach (var fish in exhibit.Tank.Residents)
+                    if (fish != null && !fish.IsDead && !ids.Contains(fish.Species.id)) ids.Add(fish.Species.id);
+            if (ids.Count == 0)
+            {
+                Ui.Label("<size=11><i>No fish in the exhibits yet.</i></size>", Rich());
+                return;
+            }
+            bool canChange = !shopDay.IsOpen;
+            foreach (var id in ids)
+            {
+                var species = Species.Get(id);
+                int have = PublicAquarium.CountInAquarium(store, id), limit = PublicAquarium.SpeciesLimit(id);
+                GUILayout.BeginHorizontal();
+                string over = limit > 0 && have > limit ? $"<color={UiTheme.CoralHex}>" : "<color=#ffffff>";
+                Ui.Label($"<size=12>{species.displayName}  <size=11>({PublicAquarium.SizeName(PublicAquarium.SizeClass(species)).ToLower()})</size>: {over}{have}</color></size>", Rich());
+                GUI.enabled = canChange;
+                if (Ui.Button("-", GUILayout.Width(28f))) PublicAquarium.SetSpeciesLimit(id, limit <= 0 ? Mathf.Max(1, have - 1) : limit - 1);
+                Ui.Label($"<size=12>{(limit > 0 ? $"most {limit}" : "no limit")}</size>", Centered(), GUILayout.Width(74f));
+                if (Ui.Button("+", GUILayout.Width(28f))) PublicAquarium.SetSpeciesLimit(id, limit <= 0 ? have + 1 : limit + 1);
+                if (Ui.Button("Any", GUILayout.Width(40f))) PublicAquarium.SetSpeciesLimit(id, 0);
+                GUI.enabled = true;
+                GUILayout.EndHorizontal();
             }
         }
 

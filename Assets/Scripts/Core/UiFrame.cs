@@ -106,6 +106,19 @@ namespace FishBreeder.Core
             return label;
         }
 
+        /// <summary>A sunny section heading.</summary>
+        public Label Section(string text) => Label(text, "fb-section");
+
+        /// <summary>Words on the left (wrapping) and a value kept on the right.</summary>
+        public void Line(string text, string value, string tooltip = null)
+        {
+            var row = BeginRow("fb-line");
+            row.tooltip = tooltip ?? "";
+            Label(text, "fb-text fb-grow");
+            Label(value, "fb-text fb-value");
+            Pop();
+        }
+
         /// <summary>A small coloured tag with bold text (sex, age, NEW).</summary>
         public Label Badge(string text, Color color, string classes = "fb-badge")
         {

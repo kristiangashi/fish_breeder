@@ -700,3 +700,150 @@
     height: 720px;
     max-height: 100%;
 }
+
+/* Two scrolling halves side by side (reputation, finances, aquarium). */
+.fb-halves {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+    margin-top: 4px;
+}
+
+.fb-halves > .fb-scroll {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 0;
+}
+
+.fb-half--left {
+    margin-right: 16px;
+}
+
+/* A sunny section heading inside a window. */
+.fb-section {
+    -unity-font-style: bold;
+    color: var(--sun);
+    white-space: normal;
+    padding: 0;
+    margin: 10px 0 3px 0;
+    flex-shrink: 0;
+}
+
+/* A line with words on the left and a number kept to the right. */
+.fb-line {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.fb-value {
+    flex-shrink: 0;
+    margin-left: 10px;
+    -unity-text-align: upper-right;
+    white-space: nowrap;
+    padding: 0;
+}
+
+.fb-header-text {
+    white-space: nowrap;
+    padding: 0;
+    margin: 0 12px 0 0;
+    flex-shrink: 0;
+}
+
+/* Small step buttons (-, +, -5) and the number between them. */
+.unity-button.fb-step {
+    min-width: 30px;
+    min-height: 28px;
+    padding: 0 6px;
+    margin: 2px 2px;
+}
+
+.fb-step-value {
+    min-width: 74px;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    padding: 0;
+    margin: 0 2px;
+}
+
+/* The finances day-by-day chart: a bar up for profit, down for a loss. */
+.fb-chart {
+    flex-direction: row;
+    height: 130px;
+    background-color: rgba(0, 13, 26, 0.35);
+    border-radius: 6px;
+    padding: 4px;
+    margin: 3px 0;
+    flex-shrink: 0;
+}
+
+.fb-chart__slot {
+    flex-grow: 1;
+    flex-basis: 0;
+    align-items: center;
+}
+
+.fb-chart__half {
+    flex-grow: 1;
+    flex-basis: 0;
+    width: 60%;
+}
+
+.fb-chart__up {
+    justify-content: flex-end;
+    border-bottom-width: 1px;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.fb-chart__bar {
+    border-radius: 3px;
+}
+
+.fb-chart__day {
+    font-size: 10px;
+    -unity-text-align: middle-center;
+    padding: 0;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+#reputation-window, #finances-window, #aquarium-window {
+    width: 980px;
+    height: 700px;
+    max-height: 100%;
+}
+
+.fb-spread {
+    justify-content: space-between;
+}
+
+.fb-wrap {
+    flex-wrap: wrap;
+}
+
+.fb-center-row {
+    justify-content: center;
+}
+
+.unity-button.fb-button--gap {
+    margin-right: 6px;
+}
+
+.fb-category {
+    align-items: center;
+}
+
+.fb-category__name {
+    width: 190px;
+    flex-shrink: 1;
+    margin-right: 6px;
+}
+
+.fb-chart__bar {
+    width: 100%;
+}
+
+.fb-card--column > .unity-button.fb-button {
+    margin: 4px 0 0 0;
+}

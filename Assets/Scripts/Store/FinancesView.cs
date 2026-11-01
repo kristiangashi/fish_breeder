@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FishBreeder.Core;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace FishBreeder.Store
 {
@@ -9,7 +10,8 @@ namespace FishBreeder.Store
     /// always there; the rest opens up as you go: spending by category (Shopkeeping level), income
     /// by category (after your first sale), a day-by-day history (a higher Shopkeeping level),
     /// earnings per tank (after earning enough from sales) and the best-selling fish (the
-    /// Bookkeeper perk). Locked parts say what opens them.
+    /// Bookkeeper perk). Locked parts say what opens them. Drawn in the #finances-window
+    /// (Window.uxml, styled in FishBreeder.uss).
     /// </summary>
     public class FinancesView : MonoBehaviour
     {
@@ -19,8 +21,8 @@ namespace FishBreeder.Store
         static readonly string[] PeriodNames = { "Today", "Last 7 days", "All time" };
 
         Period period = Period.Week;
-        Vector2 leftScroll, rightScroll;
-        Rect window;
+        UiWindow window;
+        UiFrame ui;
 
         public static bool IsOpen => open;
         public static void Open() => open = true;
@@ -32,96 +34,72 @@ namespace FishBreeder.Store
             else Open();
         }
 
-        void Awake() => open = false;
+        void Awake()
+        {
+            open = false;
+            window = new UiWindow(transform, "finances-window", "Finances", 10, true, Close);
+            window.CloseButton.text = "Close (F / Esc)";
+            ui = window.Frame;
+        }
+
+        void OnDestroy() => window?.Destroy();
+
+        void OnDisable() => window?.Show(false);
 
         void Update()
         {
-            if (ViewMode.Watching || GUIUtility.keyboardControl != 0) return;
-            if (Input.GetKeyDown(KeyCode.F)) Toggle();
+            if (!ViewMode.Watching && !UiPanels.Typing && Input.GetKeyDown(KeyCode.F)) Toggle();
+            bool show = open && !ViewMode.Watching;
+            window.Show(show);
+            if (show) window.Fill(DrawHeader, DrawBody);
         }
 
-        void OnGUI()
+        void DrawHeader()
         {
-            if (!open || ViewMode.Watching) return;
-            UiTheme.Apply();
-            GUI.depth = -10;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            float width = Screen.width / scale;
-            float height = Screen.height / scale;
-            float w = Mathf.Min(980f, width - 40f);
-            float h = Mathf.Min(700f, height - 50f);
-            window = new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
-            GUI.DrawTexture(new Rect(0f, 0f, width, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, 0.45f), 0f, 0f);
+            ui.Label($"<size=18><b>{Economy.Format(Economy.Money)}</b></size>  in the till", "fb-text fb-header-text");
+        }
 
-            UiCheck.Begin("Finances window", window, UiStyles.Window);
-            GUILayout.BeginHorizontal();
-            Ui.Label("Finances", UiTheme.Title, GUILayout.ExpandWidth(false));
-            GUILayout.Space(16f);
-            Ui.Label($"<size=18><b>{Economy.Format(Economy.Money)}</b></size>  in the till", Rich(), GUILayout.ExpandWidth(false));
-            GUILayout.FlexibleSpace();
-            if (Ui.Button("Close (F / Esc)", GUILayout.Width(120f))) Close();
-            GUILayout.EndHorizontal();
-            Ui.Label("<size=12>Where your money comes from and where it goes. More of the books open up as the shop grows.</size>", Rich());
-            GUILayout.Space(4f);
-
-            float column = (w - UiStyles.Window.padding.horizontal - 16f) * 0.5f;
-            GUILayout.BeginHorizontal();
-            GUILayout.BeginVertical(GUILayout.Width(column));
-            leftScroll = UiCheck.BeginScroll("Finances: summary and categories", leftScroll);
+        void DrawBody()
+        {
+            ui.Label("Where your money comes from and where it goes. More of the books open up as the shop grows.", "fb-text fb-text--small");
+            ui.BeginRow("fb-halves");
+            ui.BeginScroll("fb-scroll fb-half--left");
             DrawSummary();
             DrawPeriodTabs();
             DrawCategories(true);
             DrawCategories(false);
-            UiCheck.EndScroll();
-            GUILayout.EndVertical();
-            GUILayout.Space(16f);
-            GUILayout.BeginVertical(GUILayout.Width(column));
-            rightScroll = UiCheck.BeginScroll("Finances: history and sales", rightScroll);
+            ui.Pop();
+            ui.BeginScroll();
             DrawHistory();
             DrawPerTank();
             DrawBestsellers();
-            UiCheck.EndScroll();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            UiCheck.End();
-
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && !UiLayout.Editing)
-            {
-                if (!window.Contains(e.mousePosition)) Close();
-                e.Use();
-            }
-            else if (e.type == EventType.ScrollWheel && window.Contains(e.mousePosition)) e.Use();
+            ui.Pop();
+            ui.Pop();
         }
 
-        static void DrawSummary()
+        void DrawSummary()
         {
-            Heading("TODAY AND YESTERDAY");
-            var today = Finance.Book(Economy.Day);
-            DayLine($"Today (day {Economy.Day})", today);
+            ui.Section("TODAY AND YESTERDAY");
+            DayLine($"Today (day {Economy.Day})", Finance.Book(Economy.Day));
             if (Economy.Day > 1) DayLine($"Yesterday (day {Economy.Day - 1})", Finance.Book(Economy.Day - 1));
         }
 
-        static void DayLine(string label, DayBook book)
+        void DayLine(string label, DayBook book)
         {
-            GUILayout.BeginVertical(UiTheme.Card);
-            Ui.Label($"<b>{label}</b>", Rich());
-            GUILayout.BeginHorizontal();
-            Ui.Label($"In <color={UiTheme.LeafHex}><b>{Economy.Format(book.Income)}</b></color>", Rich());
-            Ui.Label($"Out <color={UiTheme.CoralHex}><b>{Economy.Format(book.Spending)}</b></color>", Rich());
-            Ui.Label($"Profit {Signed(book.Profit)}", Rich());
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
+            ui.BeginCard();
+            ui.Label($"<b>{label}</b>");
+            ui.BeginRow("fb-row fb-spread");
+            ui.Label($"In <color={UiTheme.LeafHex}><b>{Economy.Format(book.Income)}</b></color>");
+            ui.Label($"Out <color={UiTheme.CoralHex}><b>{Economy.Format(book.Spending)}</b></color>");
+            ui.Label($"Profit {Signed(book.Profit)}");
+            ui.Pop();
+            ui.Pop();
         }
 
         void DrawPeriodTabs()
         {
-            GUILayout.Space(8f);
-            GUILayout.BeginHorizontal();
-            for (int i = 0; i < PeriodNames.Length; i++)
-                if (Ui.Button(PeriodNames[i], i == (int)period ? UiTheme.Primary : UiTheme.Skin.button)) period = (Period)i;
-            GUILayout.EndHorizontal();
+            ui.Space(6f);
+            period = (Period)ui.Tabs((int)period, PeriodNames);
         }
 
         List<DayBook> Books()
@@ -137,8 +115,7 @@ namespace FishBreeder.Store
         /// <summary>Money in (or out) by category over the chosen period, biggest first, with bars.</summary>
         void DrawCategories(bool income)
         {
-            GUILayout.Space(8f);
-            Heading(income ? "MONEY IN" : "MONEY OUT");
+            ui.Section(income ? "MONEY IN" : "MONEY OUT");
             bool shown = income ? Finance.ShowsIncome : Finance.ShowsSpending;
             if (!shown)
             {
@@ -161,28 +138,25 @@ namespace FishBreeder.Store
             order.Sort((a, b) => totals[b].CompareTo(totals[a]));
             if (order.Count == 0)
             {
-                Ui.Label("<i>Nothing yet.</i>", Rich());
+                ui.Label("<i>Nothing yet.</i>");
                 return;
             }
             var color = income ? UiTheme.Leaf : UiTheme.Coral;
             foreach (var k in order)
             {
-                GUILayout.BeginHorizontal();
-                Ui.Label(Finance.Name((MoneyKind)k), Rich(), GUILayout.Width(190f));
-                var bar = Ui.Slot("Bar", 60f, 10f, GUILayout.ExpandWidth(true));
-                bar.y += 6f;
-                GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 4f);
-                GUI.DrawTexture(new Rect(bar.x, bar.y, Mathf.Max(6f, bar.width * totals[k] / (float)sum), bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, color, 0f, 4f);
-                Ui.Label($"<b>{Economy.Format(totals[k])}</b>", Rich(), GUILayout.Width(80f));
-                GUILayout.EndHorizontal();
+                ui.BeginRow("fb-row fb-category");
+                ui.Label(Finance.Name((MoneyKind)k), "fb-text fb-category__name");
+                ui.Bar(totals[k] / (float)sum, color, "fb-bar fb-grow");
+                ui.Label($"<b>{Economy.Format(totals[k])}</b>", "fb-text fb-value");
+                ui.Pop();
             }
-            Ui.Label($"<size=11>Total: <b>{Economy.Format(sum)}</b></size>", Rich());
+            ui.Label($"Total: <b>{Economy.Format(sum)}</b>", "fb-small");
         }
 
         /// <summary>Profit day by day, as bars up (profit) or down (loss) from a middle line.</summary>
-        static void DrawHistory()
+        void DrawHistory()
         {
-            Heading("DAY BY DAY");
+            ui.Section("DAY BY DAY");
             if (!Finance.ShowsHistory)
             {
                 Locked($"Opens at {Progression.TrackName(XpTrack.Shopkeeping)} level {Finance.Settings.historyLevel}.");
@@ -191,30 +165,42 @@ namespace FishBreeder.Store
             var days = Finance.Recent(Finance.HistoryDays);
             int most = 1;
             foreach (var d in days) most = Mathf.Max(most, Mathf.Abs(d.Profit));
-            var area = Ui.Slot("Chart", 200f, 120f, GUILayout.ExpandWidth(true));
-            GUI.DrawTexture(area, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.35f), 0f, 6f);
-            float mid = area.y + area.height * 0.5f;
-            GUI.DrawTexture(new Rect(area.x + 4f, mid, area.width - 8f, 1f), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(1f, 1f, 1f, 0.25f), 0f, 0f);
-            float slot = (area.width - 8f) / days.Count;
-            for (int i = 0; i < days.Count; i++)
+            ui.Begin("chart", "fb-chart");
+            foreach (var day in days)
             {
-                int profit = days[i].Profit;
-                float hgt = (area.height * 0.5f - 14f) * Mathf.Abs(profit) / most;
-                var bar = profit >= 0 ? new Rect(area.x + 4f + slot * i + slot * 0.2f, mid - hgt, slot * 0.6f, hgt) : new Rect(area.x + 4f + slot * i + slot * 0.2f, mid + 1f, slot * 0.6f, hgt);
-                if (hgt > 0.5f) GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, profit >= 0 ? UiTheme.Leaf : UiTheme.Coral, 0f, 3f);
-                GUI.Label(new Rect(area.x + 4f + slot * i, area.yMax - 16f, slot, 16f), $"<size=10>{days[i].day}</size>", Centered());
-                GUI.Label(new Rect(area.x + 4f + slot * i, bar.y + (profit >= 0 ? -16f : hgt), slot, 16f), new GUIContent("", $"Day {days[i].day}: in {Economy.Format(days[i].Income)}, out {Economy.Format(days[i].Spending)}"));
+                int profit = day.Profit;
+                var slot = ui.Begin("slot", "fb-chart__slot");
+                slot.tooltip = $"Day {day.day}: in {Economy.Format(day.Income)}, out {Economy.Format(day.Spending)}";
+                float share = Mathf.Abs(profit) / (float)most * 100f;
+                ui.Begin("up", "fb-chart__half fb-chart__up");
+                if (profit > 0) ChartBar(share, UiTheme.Leaf);
+                ui.Pop();
+                ui.Begin("down", "fb-chart__half");
+                if (profit < 0) ChartBar(share, UiTheme.Coral);
+                ui.Pop();
+                ui.Label(day.day.ToString(), "fb-chart__day");
+                ui.Pop();
             }
+            ui.Pop();
             int week = 0;
             foreach (var d in days) week += d.Profit;
-            Ui.NamedLabel("Profit line", $"<size=11>Profit over these {days.Count} days: {Signed(week)}." + (string.IsNullOrEmpty(GUI.tooltip) ? "" : $"   {GUI.tooltip}") + "</size>", Rich());
+            string tip = ui.Tooltip.StartsWith("Day ") ? $"   {ui.Tooltip}" : "";
+            ui.Label($"Profit over these {days.Count} days: {Signed(week)}.{tip}", "fb-small");
+        }
+
+        void ChartBar(float percent, Color color)
+        {
+            var bar = ui.Begin("bar", "fb-chart__bar");
+            bar.style.height = Length.Percent(percent);
+            bar.style.backgroundColor = color;
+            bar.pickingMode = PickingMode.Ignore;
+            ui.Pop();
         }
 
         /// <summary>What each tank's fish have sold for, all time.</summary>
-        static void DrawPerTank()
+        void DrawPerTank()
         {
-            GUILayout.Space(8f);
-            Heading("EARNINGS PER TANK");
+            ui.Section("EARNINGS PER TANK");
             if (!Finance.ShowsPerTank)
             {
                 Locked($"Opens once you've earned {Economy.Format(Finance.Settings.perTankAfterEarning)} from sales ({Economy.Format(Finance.SalesTotal)} so far).");
@@ -224,10 +210,9 @@ namespace FishBreeder.Store
         }
 
         /// <summary>Which kinds of fish sell best, all time: money and how many.</summary>
-        static void DrawBestsellers()
+        void DrawBestsellers()
         {
-            GUILayout.Space(8f);
-            Heading("BEST-SELLING FISH");
+            ui.Section("BEST-SELLING FISH");
             if (!Finance.ShowsBestsellers)
             {
                 Locked("Opens with the Bookkeeper perk (Perks, Finances tree).");
@@ -246,11 +231,11 @@ namespace FishBreeder.Store
             return total;
         }
 
-        static void Ranked(Dictionary<string, int> money, Dictionary<string, int> counts)
+        void Ranked(Dictionary<string, int> money, Dictionary<string, int> counts)
         {
             if (money.Count == 0)
             {
-                Ui.Label("<i>No sales yet.</i>", Rich());
+                ui.Label("<i>No sales yet.</i>");
                 return;
             }
             var keys = new List<string>(money.Keys);
@@ -260,21 +245,12 @@ namespace FishBreeder.Store
             {
                 if (++rank > 10) break;
                 string count = counts != null && counts.TryGetValue(key, out var n) ? $"  <size=11>({n} sold)</size>" : "";
-                GUILayout.BeginHorizontal();
-                Ui.Label($"{rank}. {key}{count}", Rich());
-                Ui.Label($"<b>{Economy.Format(money[key])}</b>", Rich(), GUILayout.Width(80f));
-                GUILayout.EndHorizontal();
+                ui.Line($"{rank}. {key}{count}", $"<b>{Economy.Format(money[key])}</b>");
             }
         }
 
-        static void Locked(string why) => Ui.Label($"<color=#9fb4bc><b>Locked.</b> <i>{why}</i></color>", Rich());
+        void Locked(string why) => ui.Label($"<color=#9fb4bc><b>Locked.</b> <i>{why}</i></color>");
 
         static string Signed(int amount) => amount >= 0 ? $"<color={UiTheme.LeafHex}><b>+{Economy.Format(amount)}</b></color>" : $"<color={UiTheme.CoralHex}><b>-{Economy.Format(-amount)}</b></color>";
-
-        static void Heading(string text) => Ui.Label($"<b><color={UiTheme.SunHex}>{text}</color></b>", Rich());
-
-        static GUIStyle rich, centered;
-        static GUIStyle Rich() => rich != null ? rich : rich = new GUIStyle(UiTheme.Skin.label) { richText = true, wordWrap = true };
-        static GUIStyle Centered() => centered != null ? centered : centered = new GUIStyle(UiTheme.Skin.label) { richText = true, alignment = TextAnchor.MiddleCenter, padding = new RectOffset(0, 0, 0, 0) };
     }
 }

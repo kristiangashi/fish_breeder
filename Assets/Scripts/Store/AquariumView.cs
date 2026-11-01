@@ -10,7 +10,8 @@ namespace FishBreeder.Store
     /// The public aquarium window (U, the Aquarium button, or click the ticket booth). Left: the
     /// rating and what it does to visitor numbers, each exhibit's appeal piece by piece, and the
     /// latest reviews. Right: the ticket price, the booth's estimate of the day at that price
-    /// (a little off until the booth has all three upgrades), and the booth upgrades.
+    /// (a little off until the booth has all three upgrades), and the booth upgrades. Drawn in the
+    /// #aquarium-window (Window.uxml, styled in FishBreeder.uss).
     /// </summary>
     public class AquariumView : MonoBehaviour
     {
@@ -18,8 +19,8 @@ namespace FishBreeder.Store
         static StoreLayout store;
         static ShopDay shopDay;
 
-        Vector2 leftScroll, rightScroll;
-        Rect window;
+        UiWindow window;
+        UiFrame ui;
 
         public static bool IsOpen => open;
         public static void Close() => open = false;
@@ -48,115 +49,94 @@ namespace FishBreeder.Store
             shopDay = day;
         }
 
-        void Awake() => open = false;
+        void Awake()
+        {
+            open = false;
+            window = new UiWindow(transform, "aquarium-window", PublicAquarium.RoomName, 10, true, Close);
+            window.CloseButton.text = "Close (U / Esc)";
+            ui = window.Frame;
+        }
+
+        void OnDestroy() => window?.Destroy();
+
+        void OnDisable() => window?.Show(false);
 
         void Update()
         {
-            if (ViewMode.Watching || GUIUtility.keyboardControl != 0 || Tank.Focused != null) return;
-            if (Input.GetKeyDown(KeyCode.U)) Toggle();
+            if (!ViewMode.Watching && !UiPanels.Typing && Tank.Focused == null && Input.GetKeyDown(KeyCode.U)) Toggle();
+            bool show = open && !ViewMode.Watching && store != null;
+            window.Show(show);
+            if (show) window.Fill(DrawHeader, DrawBody);
         }
 
-        void OnGUI()
+        void DrawHeader()
         {
-            if (!open || ViewMode.Watching || store == null) return;
-            UiTheme.Apply();
-            GUI.depth = -10;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            float width = Screen.width / scale;
-            float height = Screen.height / scale;
-            float w = Mathf.Min(980f, width - 40f);
-            float h = Mathf.Min(700f, height - 50f);
-            window = new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
-            GUI.DrawTexture(new Rect(0f, 0f, width, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, 0.45f), 0f, 0f);
-
-            UiCheck.Begin("Aquarium window", window, UiStyles.Window);
-            GUILayout.BeginHorizontal();
-            Ui.Label(PublicAquarium.RoomName, UiTheme.Title, GUILayout.ExpandWidth(false));
-            GUILayout.Space(16f);
-            Ui.Label($"<size=22><color={UiTheme.SunHex}>{ReputationView.Stars(PublicAquarium.Stars)}</color></size>  <b>{PublicAquarium.Stars:0.0}</b> / 5", Rich(), GUILayout.ExpandWidth(false));
-            GUILayout.FlexibleSpace();
+            ui.Label($"<size=22><color={UiTheme.SunHex}>{ReputationView.Stars(PublicAquarium.Stars)}</color></size>  <b>{PublicAquarium.Stars:0.0}</b> / 5", "fb-text fb-header-text");
+            ui.Flex();
 #if UNITY_EDITOR
-            if (Ui.Button("+0.5 star (dev)", GUILayout.Width(120f))) PublicAquarium.DevChangeRating(0.1f);
-            if (Ui.Button("-0.5 star (dev)", GUILayout.Width(120f))) PublicAquarium.DevChangeRating(-0.1f);
+            if (ui.Button("+0.5 star (dev)", "fb-button fb-button--small")) PublicAquarium.DevChangeRating(0.1f);
+            if (ui.Button("-0.5 star (dev)", "fb-button fb-button--small")) PublicAquarium.DevChangeRating(-0.1f);
 #endif
-            if (Ui.Button("Close (U / Esc)", GUILayout.Width(120f))) Close();
-            GUILayout.EndHorizontal();
-            Ui.Label("<size=12>People pay at the booth to see the two exhibits, then leave. The better the exhibits look, the more people come and the more a ticket is worth. Every visitor leaves with an opinion of what they saw and what they paid; the day's visits move the aquarium's rating, and the rating multiplies how many come.</size>", Rich());
-            GUILayout.Space(4f);
+        }
 
-            float column = (w - UiStyles.Window.padding.horizontal - 16f) * 0.5f;
-            GUILayout.BeginHorizontal();
-            GUILayout.BeginVertical(GUILayout.Width(column));
-            leftScroll = UiCheck.BeginScroll("Aquarium: rating and exhibits", leftScroll);
+        void DrawBody()
+        {
+            ui.Label("People pay at the booth to see the two exhibits, then leave. The better the exhibits look, the more people come and the more a ticket is worth. Every visitor leaves with an opinion of what they saw and what they paid; the day's visits move the aquarium's rating, and the rating multiplies how many come.", "fb-text fb-text--small");
+            ui.BeginRow("fb-halves");
+            ui.BeginScroll("fb-scroll fb-half--left");
             DrawVisitors();
             DrawExhibits();
             DrawLimits();
             DrawReviews();
-            UiCheck.EndScroll();
-            GUILayout.EndVertical();
-            GUILayout.Space(16f);
-            GUILayout.BeginVertical(GUILayout.Width(column));
-            rightScroll = UiCheck.BeginScroll("Aquarium: tickets and booth", rightScroll);
+            ui.Pop();
+            ui.BeginScroll();
             DrawTickets();
             DrawBooth();
-            UiCheck.EndScroll();
-            GUILayout.EndVertical();
-            GUILayout.EndHorizontal();
-            UiCheck.End();
-
-            // Modal: clicks outside close it instead of reaching the store behind.
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && !UiLayout.Editing)
-            {
-                if (!window.Contains(e.mousePosition)) Close();
-                e.Use();
-            }
-            else if (e.type == EventType.ScrollWheel && window.Contains(e.mousePosition)) e.Use();
+            ui.Pop();
+            ui.Pop();
         }
 
-        static void DrawVisitors()
+        void DrawVisitors()
         {
-            Heading("VISITORS");
+            ui.Section("VISITORS");
             var why = PublicAquarium.WhyClosed(store);
-            if (why != null) Ui.Label($"<color={UiTheme.SunHex}>Closed: {why}</color>", Rich());
-            else Ui.Label($"About <b>{PublicAquarium.VisitorsPerHour(store):0}</b> people an hour come to the booth while the shop is open (from {PublicAquarium.Data.visitorsPerHour:0} to start with).", Rich());
+            if (why != null) ui.Label($"<color={UiTheme.SunHex}>Closed: {why}</color>");
+            else ui.Label($"About <b>{PublicAquarium.VisitorsPerHour(store):0}</b> people an hour come to the booth while the shop is open (from {PublicAquarium.Data.visitorsPerHour:0} to start with).");
             float appeal = PublicAquarium.AquariumAppeal(store);
             Effect($"Appeal {appeal:0}/100 (the better exhibit counts 65%, the other 35%)", PublicAquarium.AppealMultiplier(appeal) - 1f);
             int kinds = PublicAquarium.AquariumKinds(store);
             float bonus = PublicAquarium.KindBonus(store);
-            Ui.Label($"<size=11>{kinds} kind{(kinds == 1 ? "" : "s")} of fish in the whole aquarium{(bonus > 0.05f ? $": +{bonus:0} appeal for the variety" : $". Past {PublicAquarium.Data.kindsBeforeBonus}, every kind adds appeal: people come to see lots of different fish.")}</size>", Rich());
+            ui.Label($"{kinds} kind{(kinds == 1 ? "" : "s")} of fish in the whole aquarium{(bonus > 0.05f ? $": +{bonus:0} appeal for the variety" : $". Past {PublicAquarium.Data.kindsBeforeBonus}, every kind adds appeal: people come to see lots of different fish.")}", "fb-small");
             Effect($"{PublicAquarium.Stars:0.0} star rating", PublicAquarium.RatingMultiplier - 1f);
             var today = PublicAquarium.Today;
             if (today != null)
-                Ui.Label($"<size=12>Today so far: {today.visitors} came, {today.tickets} bought tickets ({Economy.Format(today.earnings)}), {today.turnedAway} turned away at the price, {today.happy} left happy.</size>", Rich());
+                ui.Label($"Today so far: {today.visitors} came, {today.tickets} bought tickets ({Economy.Format(today.earnings)}), {today.turnedAway} turned away at the price, {today.happy} left happy.", "fb-text fb-text--small");
         }
 
-        static void DrawExhibits()
+        void DrawExhibits()
         {
-            GUILayout.Space(8f);
-            Heading("THE EXHIBITS");
+            ui.Section("THE EXHIBITS");
             var exhibits = PublicAquarium.Exhibits(store);
             foreach (var climate in new[] { ExhibitClimate.Temperate, ExhibitClimate.Tropical })
             {
                 var exhibit = exhibits.Find(x => x.Climate == climate);
-                GUILayout.BeginVertical(UiTheme.Card);
+                ui.BeginCard();
                 string name = $"{PublicAquarium.ClimateName(climate)} aquarium";
                 string where = climate == ExhibitClimate.Temperate ? "north wall, cold-water fish" : "east wall, warm-water fish";
                 if (exhibit == null)
                 {
-                    Ui.Label($"<b>{name}</b>  <size=11>({where})</size>\n<size=11>Not built yet: click its wall in the aquarium to buy it ({Economy.Format(StoreLayout.TankPrice(null, TankRole.Exhibit))}).</size>", Rich());
-                    GUILayout.EndVertical();
+                    ui.Label($"<b>{name}</b>  <size=11>({where})</size>\n<size=11>Not built yet: click its wall in the aquarium to buy it ({Economy.Format(StoreLayout.TankPrice(null, TankRole.Exhibit))}).</size>");
+                    ui.Pop();
                     continue;
                 }
                 var a = PublicAquarium.ExhibitAppeal(exhibit.Tank);
-                Ui.Label($"<b>{exhibit.Title}</b>  <size=11>({where})</size>   appeal <b>{a.total:0}</b>/100", Rich());
-                if (a.fish == 0 && exhibit.Tank.Residents.Count == 0) Ui.Label("<size=11><i>No fish yet. Visitors only come when there's something to see.</i></size>", Rich());
+                ui.Label($"<b>{exhibit.Title}</b>  <size=11>({where})</size>   appeal <b>{a.total:0}</b>/100");
+                if (a.fish == 0 && exhibit.Tank.Residents.Count == 0) ui.Label("<i>No fish yet. Visitors only come when there's something to see.</i>", "fb-small");
                 var d = PublicAquarium.Data;
                 var sizes = new List<string>();
                 foreach (var size in new[] { AquariumSize.Small, AquariumSize.Medium, AquariumSize.Large })
                     sizes.Add($"{PublicAquarium.SizeName(size).ToLower()} {PublicAquarium.CountOfSize(exhibit.Tank, size)}/{PublicAquarium.ExhibitLimit(exhibit.Tank, size)}");
-                Ui.Label($"<size=11>Fish by size: {string.Join(", ", sizes)}</size>", Rich());
+                ui.Label($"Fish by size: {string.Join(", ", sizes)}", "fb-small");
                 Part($"{a.fish} juveniles and adults", a.fullness, d.fullnessPoints);
                 Part($"{a.kinds} kind{(a.kinds == 1 ? "" : "s")} of fish ({d.fullVarietyKinds} for full marks)", a.variety, d.varietyPoints);
                 if (a.samey < 0f) Part("Mostly one kind: samey", a.samey, 0f);
@@ -167,7 +147,7 @@ namespace FishBreeder.Store
                 if (a.dirty < 0f) Part("Dirty water or algae", a.dirty, 0f);
                 if (a.sick < 0f) Part("Sick fish", a.sick, 0f);
                 if (a.fighting < 0f) Part("Fish fighting", a.fighting, 0f);
-                GUILayout.EndVertical();
+                ui.Pop();
             }
         }
 
@@ -175,18 +155,17 @@ namespace FishBreeder.Store
         /// Each kind in the aquarium and the most of it the player wants: grown fish past the limit
         /// (babies grown up, usually) go to the fish market at the next time step, picked at random.
         /// </summary>
-        static void DrawLimits()
+        void DrawLimits()
         {
-            GUILayout.Space(8f);
-            Heading("KINDS AND LIMITS");
-            Ui.Label("<size=11>Set the most of each kind you want here. When babies grow up and a kind goes over its limit, grown ones go to the fish market (picked at random) at the next time step. Fish in the exhibits and holding tanks can also be sold on the market or let go from the fish's window.</size>", Rich());
+            ui.Section("KINDS AND LIMITS");
+            ui.Label("Set the most of each kind you want here. When babies grow up and a kind goes over its limit, grown ones go to the fish market (picked at random) at the next time step. Fish in the exhibits and holding tanks can also be sold on the market or let go from the fish's window.", "fb-small");
             var ids = new List<string>();
             foreach (var exhibit in PublicAquarium.Exhibits(store))
                 foreach (var fish in exhibit.Tank.Residents)
                     if (fish != null && !fish.IsDead && !ids.Contains(fish.Species.id)) ids.Add(fish.Species.id);
             if (ids.Count == 0)
             {
-                Ui.Label("<size=11><i>No fish in the exhibits yet.</i></size>", Rich());
+                ui.Label("<i>No fish in the exhibits yet.</i>", "fb-small");
                 return;
             }
             bool canChange = !shopDay.IsOpen;
@@ -194,122 +173,95 @@ namespace FishBreeder.Store
             {
                 var species = Species.Get(id);
                 int have = PublicAquarium.CountInAquarium(store, id), limit = PublicAquarium.SpeciesLimit(id);
-                GUILayout.BeginHorizontal();
+                ui.BeginRow();
                 string over = limit > 0 && have > limit ? $"<color={UiTheme.CoralHex}>" : "<color=#ffffff>";
-                Ui.Label($"<size=12>{species.displayName}  <size=11>({PublicAquarium.SizeName(PublicAquarium.SizeClass(species)).ToLower()})</size>: {over}{have}</color></size>", Rich());
-                GUI.enabled = canChange;
-                if (Ui.Button("-", GUILayout.Width(28f))) PublicAquarium.SetSpeciesLimit(id, limit <= 0 ? Mathf.Max(1, have - 1) : limit - 1);
-                Ui.Label($"<size=12>{(limit > 0 ? $"most {limit}" : "no limit")}</size>", Centered(), GUILayout.Width(74f));
-                if (Ui.Button("+", GUILayout.Width(28f))) PublicAquarium.SetSpeciesLimit(id, limit <= 0 ? have + 1 : limit + 1);
-                if (Ui.Button("Any", GUILayout.Width(40f))) PublicAquarium.SetSpeciesLimit(id, 0);
-                GUI.enabled = true;
-                GUILayout.EndHorizontal();
+                ui.Label($"<size=12>{species.displayName}  <size=11>({PublicAquarium.SizeName(PublicAquarium.SizeClass(species)).ToLower()})</size>: {over}{have}</color></size>", "fb-text fb-grow");
+                if (ui.Button("-", "fb-button fb-step", canChange)) PublicAquarium.SetSpeciesLimit(id, limit <= 0 ? Mathf.Max(1, have - 1) : limit - 1);
+                ui.Label($"<size=12>{(limit > 0 ? $"most {limit}" : "no limit")}</size>", "fb-text fb-step-value");
+                if (ui.Button("+", "fb-button fb-step", canChange)) PublicAquarium.SetSpeciesLimit(id, limit <= 0 ? have + 1 : limit + 1);
+                if (ui.Button("Any", "fb-button fb-step", canChange)) PublicAquarium.SetSpeciesLimit(id, 0);
+                ui.Pop();
             }
         }
 
-        static void DrawReviews()
+        void DrawReviews()
         {
-            GUILayout.Space(8f);
-            Heading("LATEST REVIEWS");
+            ui.Section("LATEST REVIEWS");
             var reviews = PublicAquarium.Reviews;
-            if (reviews.Count == 0) Ui.Label("<i>No reviews yet.</i>", Rich());
+            if (reviews.Count == 0) ui.Label("<i>No reviews yet.</i>");
             foreach (var review in reviews)
-                Ui.Label($"<size=11><color={UiTheme.SunHex}>{ReputationView.Stars(review.stars)}</color>  Day {review.day}</size>\n<i>\"{review.text}\"</i>", Rich());
+                ui.Label($"<size=11><color={UiTheme.SunHex}>{ReputationView.Stars(review.stars)}</color>  Day {review.day}</size>\n<i>\"{review.text}\"</i>");
         }
 
-        static void DrawTickets()
+        void DrawTickets()
         {
-            Heading("TICKET PRICE");
+            ui.Section("TICKET PRICE");
             bool canChange = !shopDay.IsOpen;
-            GUILayout.BeginHorizontal();
-            GUI.enabled = canChange;
             int price = PublicAquarium.TicketPrice;
-            if (Ui.Button("-5", GUILayout.Width(40f))) PublicAquarium.SetTicketPrice(price - 5);
-            if (Ui.Button("-1", GUILayout.Width(40f))) PublicAquarium.SetTicketPrice(price - 1);
-            Ui.Label($"<size=22><b>{Economy.Format(PublicAquarium.TicketPrice)}</b></size>", Centered(), GUILayout.Width(90f));
-            if (Ui.Button("+1", GUILayout.Width(40f))) PublicAquarium.SetTicketPrice(price + 1);
-            if (Ui.Button("+5", GUILayout.Width(40f))) PublicAquarium.SetTicketPrice(price + 5);
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-            if (!canChange) Ui.Label("<size=11><i>The price is on the board for today: change it once the shop has closed.</i></size>", Rich());
+            ui.BeginRow("fb-row fb-center-row");
+            if (ui.Button("-5", "fb-button fb-step", canChange)) PublicAquarium.SetTicketPrice(price - 5);
+            if (ui.Button("-1", "fb-button fb-step", canChange)) PublicAquarium.SetTicketPrice(price - 1);
+            ui.Label($"<size=22><b>{Economy.Format(PublicAquarium.TicketPrice)}</b></size>", "fb-text fb-step-value");
+            if (ui.Button("+1", "fb-button fb-step", canChange)) PublicAquarium.SetTicketPrice(price + 1);
+            if (ui.Button("+5", "fb-button fb-step", canChange)) PublicAquarium.SetTicketPrice(price + 5);
+            ui.Pop();
+            if (!canChange) ui.Label("<i>The price is on the board for today: change it once the shop has closed.</i>", "fb-small");
 
-            GUILayout.Space(6f);
-            Heading("THE BOOTH'S ESTIMATE");
+            ui.Section("THE BOOTH'S ESTIMATE");
             var guess = PublicAquarium.Guess(store, PublicAquarium.TicketPrice);
             float range = PublicAquarium.EstimatorRange;
             string sure = range <= 0.001f ? $"<color={UiTheme.LeafHex}>spot on</color>" : $"could be off by up to {range * 100f:0}% either way today";
-            GUILayout.BeginVertical(UiTheme.Card);
-            Ui.Label($"A fair ticket price: about <b>{Economy.Format(Mathf.Max(1, Mathf.RoundToInt(guess.fairPrice)))}</b>", Rich());
-            Ui.Label($"At {Economy.Format(PublicAquarium.TicketPrice)}: about <b>{guess.visitors:0}</b> people today, <b>{guess.tickets:0}</b> buying tickets, <b>{Economy.Format(Mathf.RoundToInt(guess.earnings))}</b>", Rich());
+            ui.BeginCard();
+            ui.Label($"A fair ticket price: about <b>{Economy.Format(Mathf.Max(1, Mathf.RoundToInt(guess.fairPrice)))}</b>");
+            ui.Label($"At {Economy.Format(PublicAquarium.TicketPrice)}: about <b>{guess.visitors:0}</b> people today, <b>{guess.tickets:0}</b> buying tickets, <b>{Economy.Format(Mathf.RoundToInt(guess.earnings))}</b>");
             int best = PublicAquarium.BestPriceGuess(store);
-            Ui.Label($"<size=11>Most ticket money at about {Economy.Format(best)}, but a lower price leaves people happier, and happy visitors raise the rating.</size>", Rich());
-            Ui.Label($"<size=11>The estimate {sure}. Upgrade the booth to make it surer.</size>", Rich());
-            GUILayout.BeginHorizontal();
-            GUI.enabled = canChange && best != PublicAquarium.TicketPrice;
-            if (Ui.Button($"Use {Economy.Format(best)}")) PublicAquarium.SetTicketPrice(best);
+            ui.Label($"Most ticket money at about {Economy.Format(best)}, but a lower price leaves people happier, and happy visitors raise the rating.", "fb-small");
+            ui.Label($"The estimate {sure}. Upgrade the booth to make it surer.", "fb-small");
+            ui.BeginRow("fb-row fb-wrap");
+            if (ui.Button($"Use {Economy.Format(best)}", "fb-button fb-button--gap", canChange && best != PublicAquarium.TicketPrice)) PublicAquarium.SetTicketPrice(best);
             int fair = Mathf.Max(1, Mathf.RoundToInt(guess.fairPrice));
-            GUI.enabled = canChange && fair != PublicAquarium.TicketPrice;
-            if (Ui.Button($"Use the fair price ({Economy.Format(fair)})")) PublicAquarium.SetTicketPrice(fair);
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-            Ui.Label("<size=11>Above what a visitor will pay, they walk off at the booth and grumble about it. Below it, the cheaper the ticket, the better they feel about the visit.</size>", Rich());
+            if (ui.Button($"Use the fair price ({Economy.Format(fair)})", "fb-button fb-button--gap", canChange && fair != PublicAquarium.TicketPrice)) PublicAquarium.SetTicketPrice(fair);
+            ui.Pop();
+            ui.Pop();
+            ui.Label("Above what a visitor will pay, they walk off at the booth and grumble about it. Below it, the cheaper the ticket, the better they feel about the visit.", "fb-small");
         }
 
-        static void DrawBooth()
+        void DrawBooth()
         {
-            GUILayout.Space(8f);
-            Heading("TICKET BOOTH UPGRADES");
+            ui.Section("TICKET BOOTH UPGRADES");
             var upgrades = PublicAquarium.Data.boothUpgrades;
-            Ui.Label($"<size=11>Up to {PublicAquarium.MaxInside} visitors inside at once.</size>", Rich());
+            ui.Label($"Up to {PublicAquarium.MaxInside} visitors inside at once.", "fb-small");
             for (int i = 0; upgrades != null && i < upgrades.Count; i++)
             {
                 var upgrade = upgrades[i];
                 bool owned = i < PublicAquarium.BoothLevel, next = i == PublicAquarium.BoothLevel;
-                GUILayout.BeginVertical(next ? UiTheme.CardSelected : UiTheme.Card);
-                GUILayout.BeginHorizontal();
+                ui.BeginCard(next);
                 var errors = PublicAquarium.Data.estimatorError;
                 float after = errors != null && errors.Count > 0 ? errors[Mathf.Min(i + 1, errors.Count - 1)] : 0f;
-                Ui.Label($"<b>{i + 1}. {upgrade.name}</b>  <size=11>{(owned ? $"<color={UiTheme.LeafHex}>done</color>" : $"estimate within {after * 100f:0}%, +{upgrade.extraVisitors} inside")}</size>", Rich());
-                GUILayout.FlexibleSpace();
-                if (!owned) Ui.Label($"<b>{Economy.Format(PublicAquarium.BoothUpgradePrice(upgrade))}</b>", Rich(), GUILayout.ExpandWidth(false));
-                GUILayout.EndHorizontal();
-                Ui.Label($"<size=11>{upgrade.blurb}</size>", Rich());
+                ui.Line($"<b>{i + 1}. {upgrade.name}</b>  <size=11>{(owned ? $"<color={UiTheme.LeafHex}>done</color>" : $"estimate within {after * 100f:0}%, +{upgrade.extraVisitors} inside")}</size>",
+                    owned ? "" : $"<b>{Economy.Format(PublicAquarium.BoothUpgradePrice(upgrade))}</b>");
+                ui.Label(upgrade.blurb, "fb-small");
                 if (next)
                 {
                     var why = PublicAquarium.WhyCantUpgradeBooth();
-                    GUI.enabled = why == null && !shopDay.IsOpen;
                     string label = shopDay.IsOpen ? "Wait until closing" : why == StoreLayout.NoMoney ? $"Need {Economy.Format(PublicAquarium.BoothUpgradePrice(upgrade) - Economy.Money)} more" : why != null ? "Not yet" : $"Upgrade for {Economy.Format(PublicAquarium.BoothUpgradePrice(upgrade))}";
-                    if (Ui.Button(label, UiTheme.Primary)) PublicAquarium.TryUpgradeBooth(store);
-                    GUI.enabled = true;
-                    if (why != null && why != StoreLayout.NoMoney) Ui.Label($"<size=11>{why}</size>", Rich());
+                    if (ui.Button(label, "fb-button fb-button--primary", why == null && !shopDay.IsOpen)) PublicAquarium.TryUpgradeBooth(store);
+                    if (why != null && why != StoreLayout.NoMoney) ui.Label(why, "fb-small");
                 }
-                GUILayout.EndVertical();
+                ui.Pop();
             }
         }
 
-        static void Part(string what, float points, float most)
+        void Part(string what, float points, float most)
         {
             string color = points > 0.05f ? UiTheme.LeafHex : points < -0.05f ? UiTheme.CoralHex : "#9fb4bc";
-            GUILayout.BeginHorizontal();
-            Ui.Label($"<size=12>{what}</size>", Rich());
-            Ui.Label($"<size=12><color={color}><b>{(points >= 0f ? "+" : "")}{points:0}</b></color>{(most > 0f ? $" / {most:0}" : "")}</size>", Rich(), GUILayout.Width(70f));
-            GUILayout.EndHorizontal();
+            ui.Line($"<size=12>{what}</size>", $"<size=12><color={color}><b>{(points >= 0f ? "+" : "")}{points:0}</b></color>{(most > 0f ? $" / {most:0}" : "")}</size>");
         }
 
-        static void Effect(string what, float change)
+        void Effect(string what, float change)
         {
             string color = change > 0.0005f ? UiTheme.LeafHex : change < -0.0005f ? UiTheme.CoralHex : "#9fb4bc";
-            GUILayout.BeginHorizontal();
-            Ui.Label(what, Rich());
-            Ui.Label($"<color={color}><b>{(change >= 0f ? "+" : "")}{change * 100f:0}%</b></color>", Rich(), GUILayout.Width(64f));
-            GUILayout.EndHorizontal();
+            ui.Line(what, $"<color={color}><b>{(change >= 0f ? "+" : "")}{change * 100f:0}%</b></color>");
         }
-
-        static void Heading(string text) => Ui.Label($"<b><color={UiTheme.SunHex}>{text}</color></b>", Rich());
-
-        static GUIStyle rich, centered;
-        static GUIStyle Rich() => rich != null ? rich : rich = new GUIStyle(UiTheme.Skin.label) { richText = true, wordWrap = true };
-        static GUIStyle Centered() => centered != null ? centered : centered = new GUIStyle(Rich()) { alignment = TextAnchor.MiddleCenter, wordWrap = false };
     }
 }

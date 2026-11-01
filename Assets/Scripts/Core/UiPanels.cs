@@ -62,12 +62,70 @@ namespace FishBreeder.Core
             document.sortingOrder = order;
             go.SetActive(true);
             var root = document.rootVisualElement;
-            // The layout's root covers the whole screen, so its pieces can place themselves on it.
+            // The layout's root covers the whole screen, so its pieces can place themselves on it,
+            // but only what's drawn on it takes clicks (see PointerOverUi).
             root.style.position = Position.Absolute;
             root.style.left = root.style.top = root.style.right = root.style.bottom = 0f;
+            root.pickingMode = PickingMode.Ignore;
             var gameFont = Font;
             if (gameFont != null) root.style.unityFontDefinition = FontDefinition.FromSDFFont(gameFont);
+            root.RegisterCallback<PointerMoveEvent>(TrackTooltip, TrickleDown.TrickleDown);
+            root.RegisterCallback<PointerLeaveEvent>(_ => HoverTooltip = "");
+            documents.Add(document);
             return document;
+        }
+
+        static readonly List<UIDocument> documents = new List<UIDocument>();
+
+        /// <summary>The tooltip of the element under the pointer (or of the nearest parent that has one), or "".</summary>
+        public static string HoverTooltip { get; private set; } = "";
+
+        static void TrackTooltip(PointerMoveEvent e)
+        {
+            string tip = "";
+            for (var element = e.target as VisualElement; element != null; element = element.hierarchy.parent)
+                if (!string.IsNullOrEmpty(element.tooltip))
+                {
+                    tip = element.tooltip;
+                    break;
+                }
+            HoverTooltip = tip;
+        }
+
+        /// <summary>
+        /// The mouse is over something drawn by a UI Toolkit screen (a window, bar or button), so a
+        /// click there is for the menu, not the store or tank behind it.
+        /// </summary>
+        public static bool PointerOverUi
+        {
+            get
+            {
+                var mouse = Input.mousePosition;
+                var screen = new Vector2(mouse.x, Screen.height - mouse.y);
+                documents.RemoveAll(d => d == null);
+                foreach (var document in documents)
+                {
+                    var panel = document.rootVisualElement?.panel;
+                    if (panel == null || !Showing(document.rootVisualElement)) continue;
+                    if (panel.Pick(RuntimePanelUtils.ScreenToPanel(panel, screen)) != null) return true;
+                }
+                return false;
+            }
+        }
+
+        /// <summary>Someone is typing in a text box (old or new UI), so single-key shortcuts should wait.</summary>
+        public static bool Typing
+        {
+            get
+            {
+                if (GUIUtility.keyboardControl != 0) return true;
+                foreach (var document in documents)
+                {
+                    var focused = document != null ? document.rootVisualElement?.focusController?.focusedElement as VisualElement : null;
+                    if (focused is TextField || focused?.GetFirstAncestorOfType<TextField>() != null) return true;
+                }
+                return false;
+            }
         }
 
         static FontAsset Font

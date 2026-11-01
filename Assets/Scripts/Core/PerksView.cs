@@ -8,15 +8,15 @@ namespace FishBreeder.Core
     /// (Finances, Construction, Public Relations), each with its three trees side by side. Every
     /// tree is a column of tiers; a tier's perks open once enough points are spent in the tiers
     /// above (the milestone bar between tiers shows how close it is). P opens and closes it; Esc
-    /// closes it (handled by the store view, which owns Esc).
+    /// closes it (handled by the store view, which owns Esc). Drawn in the #perks-window
+    /// (Window.uxml, styled in FishBreeder.uss).
     /// </summary>
     public class PerksView : MonoBehaviour
     {
         static bool open;
         static XpTrack page = XpTrack.Fishkeeping;
 
-        Vector2 scroll;
-        Rect window;
+        UiWindow window;
 
         public static bool IsOpen => open;
 
@@ -40,12 +40,20 @@ namespace FishBreeder.Core
         {
             open = false;
             page = XpTrack.Fishkeeping;
+            window = new UiWindow(transform, "perks-window", "Skills & perks", 10, true, Close);
+            window.CloseButton.text = "Close (P / Esc)";
         }
+
+        void OnDestroy() => window?.Destroy();
+
+        void OnDisable() => window?.Show(false);
 
         void Update()
         {
-            if (ViewMode.Watching || GUIUtility.keyboardControl != 0) return;
-            if (Input.GetKeyDown(KeyCode.P)) Toggle();
+            if (!ViewMode.Watching && !UiPanels.Typing && Input.GetKeyDown(KeyCode.P)) Toggle();
+            bool show = open && !ViewMode.Watching;
+            window.Show(show);
+            if (show) window.Fill(DrawHeader, DrawBody);
         }
 
         public static Color TreeColor(PerkTree tree)
@@ -61,152 +69,102 @@ namespace FishBreeder.Core
             }
         }
 
-        void OnGUI()
-        {
-            if (!open || ViewMode.Watching) return;
-            UiTheme.Apply();
-            GUI.depth = -10;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            float width = Screen.width / scale;
-            float height = Screen.height / scale;
-            float w = Mathf.Min(1020f, width - 40f);
-            float h = Mathf.Min(720f, height - 50f);
-            window = new Rect((width - w) * 0.5f, (height - h) * 0.5f, w, h);
-
-            GUI.DrawTexture(new Rect(0f, 0f, width, height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, 0.45f), 0f, 0f);
-
-            UiCheck.Begin("Perks", window, UiStyles.Window);
-            DrawHeader();
-            DrawTrees(w);
-            UiCheck.End();
-
-            // Modal: clicks outside close it instead of reaching the store behind.
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && !UiLayout.Editing)
-            {
-                if (!window.Contains(e.mousePosition)) Close();
-                e.Use();
-            }
-            else if (e.type == EventType.ScrollWheel && window.Contains(e.mousePosition)) e.Use();
-        }
-
         void DrawHeader()
         {
-            GUILayout.BeginHorizontal();
-            Ui.Label("Skills & perks", UiTheme.Title, GUILayout.ExpandWidth(false));
-            GUILayout.Space(16f);
+            var ui = window.Frame;
             PageTab(XpTrack.Fishkeeping);
             PageTab(XpTrack.Shopkeeping);
-            GUILayout.FlexibleSpace();
+            ui.Flex();
 #if UNITY_EDITOR
-            if (Ui.Button("Level up (dev)", GUILayout.Width(110f)))
+            if (ui.Button("Level up (dev)", "fb-button fb-button--small"))
                 Progression.DevAward(page, Progression.XpToNext(Progression.Level(page)) - Progression.Xp(page));
-            if (Ui.Button("Refund (dev)", GUILayout.Width(96f))) Perks.DevRefund();
+            if (ui.Button("Refund (dev)", "fb-button fb-button--small")) Perks.DevRefund();
 #endif
-            if (Ui.Button("Close (P / Esc)", GUILayout.Width(120f))) Close();
-            GUILayout.EndHorizontal();
+        }
+
+        void PageTab(XpTrack track)
+        {
+            int points = Perks.Available(track);
+            string badge = points > 0 ? $"  <color={(track == page ? "#7a3c00" : UiTheme.SunHex)}>●{points}</color>" : "";
+            string label = $"{Progression.TrackName(track)} {Progression.Level(track)}{badge}";
+            if (window.Frame.Button(label, track == page ? "fb-button fb-tab fb-tab--on" : "fb-button fb-tab")) page = track;
+        }
+
+        void DrawBody()
+        {
+            var ui = window.Frame;
             int points = Perks.Available(page);
             string pointsText = points > 0
                 ? $"<color={UiTheme.SunHex}><b>{points} perk point{(points == 1 ? "" : "s")} to spend.</b></color> Pick a perk in any of the three trees."
                 : $"No points to spend right now. Every {Progression.TrackName(page)} level gives one.";
-            Ui.Label($"<size=12>{pointsText}  Each tier opens once {Balance.Data.perkSettings.pointsPerTier} points are spent in the tiers above it.</size>", Rich());
-        }
+            ui.Label($"{pointsText}  Each tier opens once {Balance.Data.perkSettings.pointsPerTier} points are spent in the tiers above it.", "fb-text fb-text--small");
 
-        static void PageTab(XpTrack track)
-        {
-            int points = Perks.Available(track);
-            string badge = points > 0 ? $"  <color={UiTheme.SunHex}>●{points}</color>" : "";
-            string label = $"{Progression.TrackName(track)} {Progression.Level(track)}{badge}";
-            var style = track == page ? UiTheme.Primary : UiTheme.Skin.button;
-            if (Ui.Button(label, style, GUILayout.Width(170f), GUILayout.Height(30f))) page = track;
-        }
-
-        void DrawTrees(float windowWidth)
-        {
-            var trees = new List<PerkTree>();
+            ui.BeginScroll("fb-scroll fb-window__body");
+            ui.BeginRow("fb-columns");
             foreach (PerkTree tree in System.Enum.GetValues(typeof(PerkTree)))
-                if (Perks.TrackOf(tree) == page) trees.Add(tree);
-            // Each column and the gap after it share the list's visible width exactly.
-            float column = (UiCheck.ScrollWidth("Perks: trees", windowWidth - 60f) - 6f * trees.Count) / Mathf.Max(1, trees.Count);
-            scroll = UiCheck.BeginScroll("Perks: trees", scroll);
-            GUILayout.BeginHorizontal();
-            foreach (var tree in trees)
             {
-                GUILayout.BeginVertical(GUILayout.Width(column));
-                DrawTree(tree, column);
-                GUILayout.EndVertical();
-                GUILayout.Space(6f);
+                if (Perks.TrackOf(tree) != page) continue;
+                ui.BeginColumn("fb-column fb-columns__column");
+                DrawTree(tree);
+                ui.Pop();
             }
-            GUILayout.EndHorizontal();
-            UiCheck.EndScroll();
+            ui.Pop();
+            ui.Pop();
         }
 
-        void DrawTree(PerkTree tree, float width)
+        void DrawTree(PerkTree tree)
         {
+            var ui = window.Frame;
             var color = TreeColor(tree);
             string hex = "#" + ColorUtility.ToHtmlStringRGB(color);
-            Ui.Label($"<size=17><b><color={hex}>{Perks.TreeName(tree).ToUpper()}</color></b></size>", Rich());
-            Ui.Label($"<size=11>{Perks.TreeBlurb(tree)}  <b>{Perks.Spent(tree)}</b> spent.</size>", Rich());
+            ui.Label($"<size=17><b><color={hex}>{Perks.TreeName(tree).ToUpper()}</color></b></size>");
+            ui.Label($"{Perks.TreeBlurb(tree)}  <b>{Perks.Spent(tree)}</b> spent.", "fb-text fb-text--small");
             int tiers = Mathf.Max(1, Balance.Data.perkSettings.tiers);
             for (int tier = 1; tier <= tiers; tier++)
             {
                 var perks = new List<PerkBalance>();
                 foreach (var perk in Perks.All) if (perk != null && perk.tree == tree && Mathf.Clamp(perk.tier, 1, tiers) == tier) perks.Add(perk);
                 if (perks.Count == 0) continue;
-                DrawMilestone(tree, tier, color, width);
-                foreach (var perk in perks) DrawPerk(perk, color, hex);
+                DrawMilestone(tree, tier, color);
+                foreach (var perk in perks) DrawPerk(perk, hex);
             }
         }
 
         /// <summary>The tier's heading, and while it's locked, a bar of the points spent above towards opening it.</summary>
-        static void DrawMilestone(PerkTree tree, int tier, Color color, float width)
+        void DrawMilestone(PerkTree tree, int tier, Color color)
         {
+            var ui = window.Frame;
             bool unlocked = Perks.TierOpen(tree, tier);
             int need = Perks.NeededFor(tier);
             int have = Mathf.Min(need, Perks.SpentAbove(tree, tier));
-            GUILayout.Space(6f);
             string state = tier == 1 ? "" : unlocked ? $"  <color={UiTheme.LeafHex}>open</color>" : $"  <color=#9fb4bc>{have}/{need} points above</color>";
-            Ui.Label($"<size=12><b>TIER {tier}</b>{state}</size>", Rich());
+            ui.Label($"<size=12><b>TIER {tier}</b>{state}</size>", "fb-text fb-tier");
             if (tier == 1) return;
-            var bar = Ui.Slot("Bar", width - 10f, 6f, GUILayout.ExpandWidth(true));
-            GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0f, 0.05f, 0.1f, 0.6f), 0f, 3f);
-            float fill = need > 0 ? have / (float)need : 1f;
-            if (fill > 0f)
-                GUI.DrawTexture(new Rect(bar.x, bar.y, Mathf.Max(6f, bar.width * fill), bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f,
-                    unlocked ? color : Color.Lerp(color, Color.gray, 0.5f), 0f, 3f);
-            GUILayout.Space(3f);
+            ui.Bar(need > 0 ? have / (float)need : 1f, unlocked ? color : Color.Lerp(color, Color.gray, 0.5f), "fb-bar fb-bar--thin");
         }
 
-        static void DrawPerk(PerkBalance perk, Color color, string hex)
+        void DrawPerk(PerkBalance perk, string hex)
         {
+            var ui = window.Frame;
             int rank = Perks.Rank(perk);
             bool maxed = rank >= perk.maxRank;
             bool tierOpen = Perks.TierOpen(perk.tree, perk.tier);
             string why = Perks.WhyNot(perk);
-            var old = GUI.color;
-            if (!tierOpen) GUI.color = new Color(1f, 1f, 1f, 0.5f);
-            GUILayout.BeginVertical(rank > 0 ? UiTheme.CardSelected : UiTheme.Card);
-            GUILayout.BeginHorizontal();
-            GUILayout.BeginVertical();
+            ui.BeginCard(rank > 0, tierOpen ? "fb-card fb-card--column" : "fb-card fb-card--column fb-faded");
+            ui.BeginRow();
+            ui.BeginColumn("fb-column fb-grow");
             string pips = $"<color={hex}>{new string('●', rank)}</color><color=#4a6a74>{new string('●', Mathf.Max(0, perk.maxRank - rank))}</color>";
-            Ui.Label($"<b>{perk.name}</b>  <size=11>{pips}  {rank}/{perk.maxRank}</size>", Rich());
+            ui.Label($"<b>{perk.name}</b>  <size=11>{pips}  {rank}/{perk.maxRank}</size>");
             string now = rank > 0 ? perk.Describe(rank) : perk.Describe(1);
             string next = rank > 0 && !maxed ? $"  <color=#9fb4bc>(next: {perk.FormatValue(perk.perRank * (rank + 1))})</color>" : "";
-            Ui.Label($"<size=11>{now}.{next}</size>", Rich());
-            GUILayout.EndVertical();
-            GUI.enabled = why == null;
+            ui.Label($"{now}.{next}", "fb-text fb-text--small");
+            ui.Pop();
             string button = maxed ? "Max" : rank == 0 ? "Learn" : "+1";
-            if (Ui.Button(new GUIContent(button, why ?? $"Spend a point on {perk.name}"), GUILayout.Width(56f), GUILayout.Height(30f))) Perks.TrySpend(perk);
-            GUI.enabled = true;
-            GUILayout.EndHorizontal();
+            if (ui.Button(button, "fb-button fb-button--small", why == null, why ?? $"Spend a point on {perk.name}")) Perks.TrySpend(perk);
+            ui.Pop();
             if (why != null && !maxed && tierOpen && Perks.Available(Perks.TrackOf(perk.tree)) > 0)
-                Ui.Label($"<size=10><color=#ffb0a0>{why}</color></size>", Rich());
-            GUILayout.EndVertical();
-            GUI.color = old;
+                ui.Label($"<color=#ffb0a0>{why}</color>", "fb-text fb-text--tiny");
+            ui.Pop();
         }
-
-        static GUIStyle rich;
-        static GUIStyle Rich() => rich != null ? rich : rich = new GUIStyle(UiTheme.Skin.label) { richText = true, wordWrap = true };
     }
 }

@@ -419,3 +419,284 @@
     -unity-text-align: lower-right;
     white-space: normal;
 }
+
+/* ------------------------------------------------------------ game windows (Window.uxml) */
+
+.fb-window__header {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.fb-window__title {
+    margin-right: 14px;
+}
+
+/* Tabs and buttons a window puts beside its title. */
+.fb-window__header-content {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.unity-button.fb-window__close {
+    margin-left: 8px;
+}
+
+.fb-window__content {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+/* A line under a window that shows what the pointer is over. */
+.fb-tooltip-line {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: normal;
+    min-height: 16px;
+    padding: 0;
+    margin: 4px 0 0 0;
+    flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------ pieces UiFrame makes */
+
+.fb-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.unity-button.fb-tab {
+    margin: 2px 4px 2px 0;
+    min-height: 30px;
+}
+
+.unity-button.fb-tab--on {
+    background-color: rgb(255, 199, 97);
+    border-color: rgb(255, 235, 179);
+    color: var(--abyss);
+}
+
+.unity-button.fb-tab--on:hover {
+    background-color: rgb(255, 214, 128);
+    color: var(--abyss);
+}
+
+.unity-button.fb-button--small {
+    min-height: 26px;
+    font-size: 12px;
+    padding: 2px 8px 3px 8px;
+}
+
+.fb-card--column {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.fb-badge {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+    border-radius: 4px;
+    padding: 1px 6px 2px 6px;
+    margin: 2px 4px 2px 0;
+    white-space: nowrap;
+    flex-shrink: 0;
+    -unity-text-align: middle-center;
+}
+
+.fb-bar {
+    height: 8px;
+    background-color: rgba(0, 13, 26, 0.6);
+    border-radius: 4px;
+    margin: 3px 0;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.fb-bar__fill {
+    height: 100%;
+    min-width: 6px;
+    border-radius: 4px;
+}
+
+.fb-bar--thin {
+    height: 6px;
+}
+
+.fb-image {
+    flex-shrink: 0;
+}
+
+.unity-button.fb-image-button {
+    flex-direction: column;
+    align-items: center;
+    padding: 4px;
+}
+
+.fb-image-button__text {
+    white-space: normal;
+    -unity-text-align: middle-center;
+    font-size: 11px;
+    padding: 0;
+    margin: 2px 0 0 0;
+}
+
+.fb-toggle {
+    margin: 2px 0;
+}
+
+.fb-toggle .unity-toggle__checkmark {
+    background-color: rgb(3, 26, 41);
+    border-color: rgb(89, 204, 199);
+    border-radius: 4px;
+    -unity-background-image-tint-color: var(--leaf);
+}
+
+.fb-toggle .unity-toggle__text {
+    color: var(--sand);
+    white-space: normal;
+    margin-left: 4px;
+}
+
+.fb-slider {
+    flex-grow: 1;
+    margin: 4px 0;
+}
+
+.fb-slider .unity-base-slider__tracker {
+    background-color: rgba(0, 20, 31, 0.8);
+    border-color: rgb(64, 153, 158);
+    border-radius: 4px;
+}
+
+.fb-slider .unity-base-slider__dragger {
+    background-color: var(--coral);
+    border-width: 0;
+    border-radius: 8px;
+    width: 16px;
+    height: 16px;
+    margin-top: -7px;
+}
+
+.fb-field {
+    margin: 2px 0;
+}
+
+.fb-field .unity-text-field__input {
+    background-color: rgb(3, 26, 41);
+    border-color: rgb(64, 153, 158);
+    border-radius: 6px;
+    color: var(--sand);
+    padding: 3px 6px;
+}
+
+/* ------------------------------------------------------------ gauges (temperature, pH) */
+
+.fb-gauge {
+    height: 40px;
+    margin: 2px 2px;
+    flex-shrink: 0;
+}
+
+.fb-gauge__readout {
+    position: absolute;
+    top: 0;
+    font-size: 11px;
+    white-space: nowrap;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-gauge__track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 15px;
+    height: 10px;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.fb-gauge__band {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    background-color: rgba(255, 255, 255, 0.25);
+    border-width: 1px;
+    border-color: rgb(255, 255, 255);
+}
+
+.fb-gauge__marker {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    margin-left: -1px;
+    background-color: rgb(255, 255, 255);
+}
+
+.fb-gauge__ends {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 26px;
+    flex-direction: row;
+}
+
+.fb-gauge__end {
+    font-size: 10px;
+    color: rgb(191, 199, 209);
+    padding: 0;
+    margin: 0;
+}
+
+/* ------------------------------------------------------------ shared helpers for game windows */
+
+.fb-grow {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+/* Something locked or out of reach: still readable, clearly not available. */
+.fb-faded {
+    opacity: 0.5;
+}
+
+.fb-text--small {
+    font-size: 12px;
+}
+
+.fb-text--tiny {
+    font-size: 10px;
+}
+
+/* Columns side by side that share the width equally (the perk trees, journal pages). */
+.fb-columns {
+    flex-direction: row;
+    align-items: flex-start;
+}
+
+.fb-columns__column {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
+    margin-right: 8px;
+}
+
+.fb-tier {
+    margin-top: 8px;
+}
+
+/* ------------------------------------------------------------ window sizes */
+
+#perks-window {
+    width: 1020px;
+    height: 720px;
+    max-height: 100%;
+}

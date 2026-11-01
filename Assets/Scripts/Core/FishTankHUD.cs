@@ -101,7 +101,7 @@ namespace FishBreeder.Core
                 if (!enabled || tank == null) return false;
                 float scale = Mathf.Max(1f, Screen.height / 900f);
                 var m = new Vector2(Input.mousePosition.x / scale, (Screen.height - Input.mousePosition.y) / scale);
-                return leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m)
+                return UiPanels.PointerOverUi || leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m)
                     || pickerRect.Contains(m) || levelPopup.Contains(m);
             }
         }
@@ -1496,7 +1496,7 @@ namespace FishBreeder.Core
             if (Arranging == ArrangeMode.None) return false;
             var e = Event.current;
             var m = e.mousePosition;
-            bool overMenu = leftPanel.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m) || pickerRect.Contains(m);
+            bool overMenu = leftPanel.Contains(m) || logPanel.Contains(m) || tankBar.Contains(m) || pickerRect.Contains(m) || UiPanels.PointerOverUi;
             var ray = RayAt(m);
             if (Arranging == ArrangeMode.Decorations)
             {
@@ -2120,7 +2120,7 @@ namespace FishBreeder.Core
         void HandleClick()
         {
             var e = Event.current;
-            if (e.type != EventType.MouseDown || e.button != 0 || cam == null || UiLayout.Editing) return;
+            if (e.type != EventType.MouseDown || e.button != 0 || cam == null || UiLayout.Editing || UiPanels.PointerOverUi) return;
             var m = e.mousePosition;
             if (leftPanel.Contains(m) || fishWindow.Contains(m) || breedBar.Contains(m) || logPanel.Contains(m) || stepLeft.Contains(m) || stepRight.Contains(m)
                 || pickerRect.Contains(m) || levelPopup.Contains(m)) return;

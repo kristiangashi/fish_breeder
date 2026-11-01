@@ -2074,7 +2074,7 @@ namespace FishBreeder.Store
         void HandleClick()
         {
             var e = Event.current;
-            if (e.type != EventType.MouseDown || e.button != 0 || UiLayout.Editing) return;
+            if (e.type != EventType.MouseDown || e.button != 0 || UiLayout.Editing || UiPanels.PointerOverUi) return;
             if (topBar.Contains(e.mousePosition) || statusBar.Contains(e.mousePosition) || milestoneRect.Contains(e.mousePosition)) return;
             if (todo.Count > 0 && todoBar.Contains(e.mousePosition)) return;
             if (panel != Panel.None)

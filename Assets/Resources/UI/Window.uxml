@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="overlay" class="fb-screen fb-center">
+        <ui:VisualElement name="window" class="fb-window">
+            <ui:VisualElement name="header" class="fb-window__header">
+                <ui:Label name="title" text="Window" class="fb-title fb-window__title" />
+                <ui:VisualElement name="header-content" class="fb-window__header-content" />
+                <ui:Button name="close" text="Close (Esc)" class="fb-button fb-window__close" />
+            </ui:VisualElement>
+            <ui:VisualElement name="body" class="fb-window__content" />
+            <ui:VisualElement name="footer" class="fb-window__footer" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

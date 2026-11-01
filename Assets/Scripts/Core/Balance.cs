@@ -951,8 +951,9 @@ namespace FishBreeder.Core
         /// 13: decorations keep their own size in every tank (no longer grown with its height), and bigger wall pieces.
         /// 14: photo backgrounds for the wall aquariums.
         /// 15: full-grown lengths: oscars, goldfish and the other big growers keep growing in roomy tanks.
+        /// 16: six medium fish (pumpkinseed, Arctic grayling, Texas cichlid, frontosa, Jack Dempsey, peacock bass): their relationships, cross pairs and egg boxes.
         /// </summary>
-        public const int CurrentDataVersion = 15;
+        public const int CurrentDataVersion = 16;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1305,10 +1306,43 @@ namespace FishBreeder.Core
                 foreach (var s in data.species)
                     if (s != null && s.fullGrownLength <= 0f) s.fullGrownLength = Species.DefaultFullGrownLength(s.id);
             }
+            if (fromVersion < 16)
+            {
+                // The six medium fish of 2026-11-01 (AddMissingSpecies adds the fish themselves): who
+                // they eat and get on with, their cross-breeding partners, and their places in the
+                // egg boxes, as a fresh file would have them.
+                if (data.relationships != null)
+                {
+                    var known = new HashSet<string>();
+                    foreach (var r in data.relationships) if (r != null) known.Add(r.a + ">" + r.b);
+                    foreach (var r in Relationships.CreateDefaults())
+                        if ((MediumFish.Contains(r.a) || MediumFish.Contains(r.b)) && known.Add(r.a + ">" + r.b))
+                            data.relationships.Add(r);
+                }
+                if (data.crossBreeding != null && data.crossBreeding.pairs != null)
+                    foreach (var pair in CrossBreeding.DefaultPairs())
+                        if ((MediumFish.Contains(pair.a) || MediumFish.Contains(pair.b))
+                            && !data.crossBreeding.pairs.Exists(x => x != null && ((x.a == pair.a && x.b == pair.b) || (x.a == pair.b && x.b == pair.a))))
+                            data.crossBreeding.pairs.Add(pair);
+                if (data.supplier != null && data.supplier.eggTiers != null)
+                {
+                    var fresh = new SupplierBalance().eggTiers;
+                    EggTierBalance.FillHatchTables(fresh, Species.CreateDefaults());
+                    foreach (var tier in data.supplier.eggTiers)
+                    {
+                        if (tier == null || tier.hatch == null || tier.hatch.Count == 0) continue;
+                        var def = fresh.Find(t => t.id == tier.id);
+                        if (def == null) continue;
+                        foreach (var h in def.hatch)
+                            if (MediumFish.Contains(h.species) && !tier.hatch.Exists(x => x != null && x.species == h.species)) tier.hatch.Add(h);
+                    }
+                }
+            }
             data.dataVersion = CurrentDataVersion;
         }
 
         static readonly HashSet<string> BigFish = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin" };
+        static readonly HashSet<string> MediumFish = new HashSet<string> { "Pumpkinseed", "ArcticGrayling", "TexasCichlid", "Frontosa", "JackDempsey", "PeacockBass" };
 
         static bool IsWildTetra(BalanceData data, string id)
         {

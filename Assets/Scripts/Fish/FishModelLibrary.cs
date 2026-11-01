@@ -71,15 +71,40 @@ namespace FishBreeder
             { "BlackSkirtTetra", 0.55f }, { "BleedingHeartTetra", 0.5f }, { "RedeyeTetra", 0.45f }, { "SerpaeTetra", 0.4f }, { "FlameTetra", 0.4f },
             { "LemonTetra", 0.4f }, { "XRayTetra", 0.3f }, { "EmperorTetra", 0.35f }, { "CongoTetra", 0.3f }, { "BucktoothTetra", 0.25f },
             { "CrimsonJewelCichlid", 0.8f }, { "SilverFlamefin", 0.5f },
+            { "Pumpkinseed", 0.8f }, { "TexasCichlid", 0.7f }, { "JackDempsey", 0.7f }, { "Frontosa", 0.75f }, { "PeacockBass", 0.55f }, { "ArcticGrayling", 0.35f },
         };
 
-        /// <summary>Fish with their own atlases (folder, texture prefix, fish): the wild tetras in two Meshy sets, and the big wall-aquarium fish one per folder.</summary>
+        /// <summary>
+        /// The medium fish, which breathe and work their fins: tail beats per second, stroke, path
+        /// follow and tail twist, then the mouth (slit height, corner, hinge) measured on each Meshy
+        /// model in part space. Faster beats for the 15-40 cm fish than for the metre-long wall fish.
+        /// </summary>
+        static readonly Dictionary<string, (float beats, float stroke, float follow, float twist, float mouth, float corner, float hinge)> MediumFish =
+            new Dictionary<string, (float, float, float, float, float, float, float)>
+        {
+            { "CrimsonJewelCichlid", (1.2f, 1f, 0.8f, 6f, -0.037f, 0.468f, 0.08f) },
+            { "SilverFlamefin", (1.2f, 1f, 0.8f, 6f, -0.088f, 0.464f, 0.055f) },
+            { "Pumpkinseed", (2.2f, 0.85f, 0.7f, 8f, 0f, 0.47f, 0.05f) },
+            { "ArcticGrayling", (2.6f, 1f, 0.85f, 8f, 0.022f, 0.47f, 0.05f) },
+            { "TexasCichlid", (2f, 0.85f, 0.75f, 8f, -0.04f, 0.465f, 0.06f) },
+            { "Frontosa", (1.6f, 0.8f, 0.7f, 6f, -0.053f, 0.455f, 0.08f) },
+            { "JackDempsey", (2f, 0.85f, 0.75f, 8f, -0.01f, 0.47f, 0.06f) },
+            { "PeacockBass", (1.8f, 0.95f, 0.8f, 8f, -0.038f, 0.44f, 0.08f) },
+        };
+
+        /// <summary>Fish with their own atlases (folder, texture prefix, fish): the wild tetras in two Meshy sets, and the medium fish one per folder.</summary>
         static readonly (string folder, string prefix, string[] fish)[] TetraSets =
         {
             ("Fish/TetraSetA/", "TetraFishA", new[] { "BloodfinTetra", "SerpaeTetra", "XRayTetra", "BlackSkirtTetra", "RedeyeTetra", "LemonTetra", "BleedingHeartTetra", "BuenosAiresTetra" }),
             ("Fish/TetraSetB/", "TetraFishB", new[] { "EmperorTetra", "FlameTetra", "CongoTetra", "PenguinTetra", "GlowlightTetra", "BucktoothTetra", "RubyTetra", "SilvertipTetra", "RummyNoseTetra" }),
             ("Fish/CrimsonJewelCichlid/", "CrimsonJewelCichlid", new[] { "CrimsonJewelCichlid" }),
             ("Fish/SilverFlamefin/", "SilverFlamefin", new[] { "SilverFlamefin" }),
+            ("Fish/Pumpkinseed/", "Pumpkinseed", new[] { "Pumpkinseed" }),
+            ("Fish/ArcticGrayling/", "ArcticGrayling", new[] { "ArcticGrayling" }),
+            ("Fish/TexasCichlid/", "TexasCichlid", new[] { "TexasCichlid" }),
+            ("Fish/Frontosa/", "Frontosa", new[] { "Frontosa" }),
+            ("Fish/JackDempsey/", "JackDempsey", new[] { "JackDempsey" }),
+            ("Fish/PeacockBass/", "PeacockBass", new[] { "PeacockBass" }),
         };
 
         public Entry defaultModel = new Entry();
@@ -159,7 +184,7 @@ namespace FishBreeder
             AddSetFish(library, freshwater, fwAlbedo, fwNormal, fwSmoothness, "GoldenMbuna", 3f, 1f, 0.8f, 8f);
 
             // Wild tetras: quick little tail beats like the neon; the big bucktooth and congo a bit slower.
-            // The metre-long wall-aquarium fish beat slowly and deeply.
+            // The medium fish beat slower and deeper, the metre-long wall-aquarium ones slowest.
             foreach (var tetras in TetraSets)
             {
                 var tAlbedo = Resources.Load<Texture2D>(tetras.folder + tetras.prefix + "_Albedo");
@@ -167,17 +192,16 @@ namespace FishBreeder
                 var tSmoothness = Resources.Load<Texture2D>(tetras.folder + tetras.prefix + "_Smoothness");
                 foreach (var id in tetras.fish)
                 {
-                    if (id == "CrimsonJewelCichlid" || id == "SilverFlamefin")
+                    if (MediumFish.TryGetValue(id, out var m))
                     {
-                        AddSetFish(library, tetras.folder, tAlbedo, tNormal, tSmoothness, id, 1.2f, 1f, 0.8f, 6f);
+                        AddSetFish(library, tetras.folder, tAlbedo, tNormal, tSmoothness, id, m.beats, m.stroke, m.follow, m.twist);
                         // Big enough to see them breathe and work their fins. Mouths measured on the Meshy models.
-                        var wallFish = library.entries[library.entries.Count - 1];
-                        if (wallFish.species != id) continue;
-                        wallFish.animateMouthAndFins = true;
-                        bool cichlid = id == "CrimsonJewelCichlid";
-                        wallFish.mouthHeight = cichlid ? -0.037f : -0.088f;
-                        wallFish.mouthCorner = cichlid ? 0.468f : 0.464f;
-                        wallFish.mouthHinge = cichlid ? 0.08f : 0.055f;
+                        var medium = library.entries[library.entries.Count - 1];
+                        if (medium.species != id) continue;
+                        medium.animateMouthAndFins = true;
+                        medium.mouthHeight = m.mouth;
+                        medium.mouthCorner = m.corner;
+                        medium.mouthHinge = m.hinge;
                         continue;
                     }
                     bool big = id == "BucktoothTetra" || id == "CongoTetra";

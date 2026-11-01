@@ -11,6 +11,7 @@
 # thick body in its back half, or the hand-checked value in OVERRIDES; the mesh is cut flat there.
 # Fins mostly behind the cut are the tail, sideways pieces in the front are pectoral fins, and the
 # rest are dorsal (above the body's midline) or ventral (below). Barbels and lips stay on the head.
+# Fins add_pectorals.py added (faces on a material named "Pectoral") are always the pectorals.
 import bpy, bmesh, sys, os, math, json, glob
 from mathutils import Vector, Matrix
 from mathutils.bvhtree import BVHTree
@@ -97,6 +98,8 @@ OVERRIDES = {
     "RedeyeTetra": {"peduncle": 0.70}, "PenguinTetra": {"peduncle": 0.72}, "SilvertipTetra": {"peduncle": 0.75},
     "BleedingHeartTetra": {"peduncle": 0.76}, "SerpaeTetra": {"peduncle": 0.75}, "XRayTetra": {"peduncle": 0.73},
     "LemonTetra": {"peduncle": 0.70}, "BloodfinTetra": {"peduncle": 0.68},
+    # Medium fish (2026-11-01): the Jack Dempsey's long soft dorsal and anal fins hide its tail root.
+    "JackDempsey": {"peduncle": 0.80},
 }
 
 SID = ""
@@ -213,6 +216,13 @@ def classify(o, thin=0.2):
         elif c.z > mid[b]: labels[f.index] = "Dorsal"
         else: labels[f.index] = "Ventral"
     labels = smooth_labels(bm, labels, lambda l: l != "Body", 3)
+    # Fins add_pectorals.py made (on a material named "Pectoral") are the pectorals; then nothing else is.
+    made = [i for i, m in enumerate(o.data.materials) if m and m.name.startswith("Pectoral")]
+    if made:
+        for f in bm.faces:
+            if f.material_index in made: labels[f.index] = "Pectoral"
+            elif labels[f.index] == "Pectoral":
+                c = f.calc_center_median(); labels[f.index] = "Dorsal" if c.z > mid[bi(al(c))] else "Ventral"
     info = dict(pedAlong=ped_along, hmax=hmax, hmin=hmin, la=la, head=head, lengthAxis="XY"[la], L=round(L, 3), peduncle=round(ped / bins, 3))
     return bm, labels, info
 
@@ -225,8 +235,9 @@ def split(o, bm, labels):
         b2 = bm.copy(); b2.faces.ensure_lookup_table()
         bmesh.ops.delete(b2, geom=[f for f in b2.faces if labels[f.index] != part], context='FACES')
         if not b2.faces: b2.free(); continue
+        for f in b2.faces: f.material_index = 0  # the "Pectoral" marker material goes
         me = bpy.data.meshes.new(part); b2.to_mesh(me); b2.free()
-        for m in o.data.materials: me.materials.append(m)
+        for m in o.data.materials[:1]: me.materials.append(m)
         ob = bpy.data.objects.new(part, me); bpy.context.scene.collection.objects.link(ob)
         objs[part] = ob
     return objs

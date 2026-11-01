@@ -76,6 +76,12 @@ namespace FishBreeder.Genetics
             new CrossPair { a = "GreenTerror", b = "BlueAcara" },
             new CrossPair { a = "CrimsonJewelCichlid", b = "Oscar" },
             new CrossPair { a = "SilverFlamefin", b = "TigerBarb" },
+            // The medium fish (2026-11-01): Central American cichlids together, Africa's frontosa with
+            // the mbuna, the South American peacock bass with the oscar, and the two cold-water fish.
+            new CrossPair { a = "TexasCichlid", b = "JackDempsey" },
+            new CrossPair { a = "Frontosa", b = "GoldenMbuna" },
+            new CrossPair { a = "PeacockBass", b = "Oscar" },
+            new CrossPair { a = "Pumpkinseed", b = "ArcticGrayling" },
         };
 
         public static bool Compatible(Species a, Species b) => a != null && b != null && Compatible(a.id, b.id);

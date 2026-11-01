@@ -191,6 +191,12 @@ namespace FishBreeder.Genetics
             { "Oscar", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "CrimsonJewelCichlid", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "SilverFlamefin", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+            { "Pumpkinseed", new[] { FoodType.Bloodworms, FoodType.BrineShrimp } },
+            { "ArcticGrayling", new[] { FoodType.Bloodworms, FoodType.Flakes } },
+            { "TexasCichlid", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "Frontosa", new[] { FoodType.Premium, FoodType.BrineShrimp } },
+            { "JackDempsey", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "PeacockBass", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "GreenTerror", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "BlueAcara", new[] { FoodType.Bloodworms, FoodType.Premium } },
             { "GoldenMbuna", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
@@ -236,12 +242,14 @@ namespace FishBreeder.Genetics
             { "GlowlightTetra", new[] { "Plant", "TallPlant" } }, { "RubyTetra", new[] { "Plant", "FernRock" } }, { "RummyNoseTetra", new[] { "Plant", "Driftwood" } },
             { "SilvertipTetra", new[] { "Plant" } }, { "CongoTetra", new[] { "TallPlant" } },
             { "CrimsonJewelCichlid", new[] { "Rock", "Driftwood" } },
+            { "Pumpkinseed", new[] { "Plant", "TallPlant" } }, { "TexasCichlid", new[] { "Rock", "Driftwood" } }, { "Frontosa", new[] { "Rock" } },
+            { "JackDempsey", new[] { "Rock", "Driftwood" } }, { "PeacockBass", new[] { "Driftwood" } },
         };
 
         static readonly HashSet<string> Roamers = new HashSet<string>
         {
             "CometGoldfish", "Guppy", "TigerBarb", "ZebraDanio", "SilverDollar", "BlackMolly", "BloodfinTetra", "BuenosAiresTetra", "BucktoothTetra",
-            "SilverFlamefin",
+            "SilverFlamefin", "ArcticGrayling", "PeacockBass",
         };
 
         static void SetHabits(Species s)
@@ -258,6 +266,7 @@ namespace FishBreeder.Genetics
             { "Angelfish", 1 }, { "SilverDollar", 1 }, { "RedTailShark", 1 }, { "GreenTerror", 1 }, { "BlueAcara", 1 }, { "Oscar", 2 },
             { "CongoTetra", 1 }, { "BucktoothTetra", 1 },
             { "CrimsonJewelCichlid", Tank.WallSize }, { "SilverFlamefin", Tank.WallSize },
+            { "TexasCichlid", 1 }, { "JackDempsey", 1 }, { "Frontosa", 2 }, { "ArcticGrayling", 2 }, { "PeacockBass", 2 },
         };
 
         /// <summary>
@@ -274,19 +283,23 @@ namespace FishBreeder.Genetics
             { "BlackSkirtTetra", 0.35f }, { "BleedingHeartTetra", 0.33f }, { "RedeyeTetra", 0.3f }, { "SerpaeTetra", 0.28f }, { "FlameTetra", 0.28f },
             { "LemonTetra", 0.28f }, { "XRayTetra", 0.23f }, { "EmperorTetra", 0.25f }, { "CongoTetra", 0.23f }, { "BucktoothTetra", 0.2f },
             { "CrimsonJewelCichlid", 0.5f }, { "SilverFlamefin", 0.35f },
+            { "Pumpkinseed", 0.5f }, { "TexasCichlid", 0.43f }, { "JackDempsey", 0.43f }, { "Frontosa", 0.45f }, { "PeacockBass", 0.38f }, { "ArcticGrayling", 0.28f },
         };
 
         /// <summary>
         /// Real adult lengths of the fish that keep growing when they have room, from care sheets and
         /// FishBase: comets reach about 30 cm and fantails 20 cm in big tanks or ponds, oscars 35 cm,
         /// green terrors 30 cm, red hook silver dollars about 25 cm, Siamese algae eaters 16 cm,
-        /// electric blue acaras 17 cm and red-tailed black sharks 15 cm. The other fish are already
-        /// at (or drawn above) their real adult size, the big wall-aquarium kinds included.
+        /// electric blue acaras 17 cm and red-tailed black sharks 15 cm. The medium fish of
+        /// 2026-11-01 too: pumpkinseeds 22 cm, Jack Dempseys 25 cm, Texas cichlids 30 cm, frontosas
+        /// 33 cm, Arctic grayling 45 cm and peacock bass 60 cm. The other fish are already at (or
+        /// drawn above) their real adult size, the big wall-aquarium kinds included.
         /// </summary>
         static readonly Dictionary<string, float> FullGrownLengths = new Dictionary<string, float>
         {
             { "CometGoldfish", 0.3f }, { "FancyGoldfish", 0.2f }, { "Oscar", 0.35f }, { "GreenTerror", 0.3f },
             { "SilverDollar", 0.25f }, { "SiameseAlgaeEater", 0.16f }, { "BlueAcara", 0.17f }, { "RedTailShark", 0.15f },
+            { "Pumpkinseed", 0.22f }, { "JackDempsey", 0.25f }, { "TexasCichlid", 0.3f }, { "Frontosa", 0.33f }, { "ArcticGrayling", 0.45f }, { "PeacockBass", 0.6f },
         };
 
         /// <summary>The default <see cref="fullGrownLength"/> for a species id (0 = doesn't grow with room).</summary>
@@ -300,6 +313,8 @@ namespace FishBreeder.Genetics
         const string Cichlids = "Cichlids (Cichlidae)";
         const string Livebearers = "Livebearers (Poeciliidae)";
         const string Tetras = "Tetras (Characidae)";
+        const string Sunfishes = "Sunfishes (Centrarchidae)";
+        const string Salmonids = "Salmon, trout and grayling (Salmonidae)";
 
         /// <summary>Id of the egg box the wild tetras come in.</summary>
         public const string WildTetraBox = "WildTetra";
@@ -357,6 +372,7 @@ namespace FishBreeder.Genetics
             }
             list.AddRange(WildTetras());
             list.AddRange(BigFish());
+            list.AddRange(MediumFish());
             foreach (var s in list)
             {
                 s.bendStart = DefaultBendStart(s.id);
@@ -391,6 +407,45 @@ namespace FishBreeder.Genetics
                 s.daysToAdult = 8f;
                 s.litterMin = 3; s.litterMax = 6;
                 if (s.id == "CrimsonJewelCichlid") s.likesPlants = false;
+                s.bodyClass = BodyClass.Medium;
+                if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
+                if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Real medium-sized fish (2026-11-01), sold young at about half their full size and growing
+        /// up to it in roomy tanks. They count against a tank's medium-fish limit like the wall fish.
+        /// Two cold-water fish (the pumpkinseed sunfish of North American ponds and the Arctic
+        /// grayling of cold northern rivers, kept as cool as the heaters allow) and four tropical
+        /// cichlids: the Texas cichlid and Jack Dempsey from Central America, the frontosa from Lake
+        /// Tanganyika (hard, alkaline water) and the peacock bass, an Amazon predator that roams.
+        /// Care-sheet temperatures and pH; the grayling's 12-20 C is the cool end of what tanks reach.
+        /// </summary>
+        static List<Species> MediumFish()
+        {
+            var cold = FishCategory.FreshwaterCold;
+            var tropical = FishCategory.FreshwaterTropical;
+            var u = SpeciesRarity.Uncommon; var r = SpeciesRarity.Rare; var x = SpeciesRarity.Exotic;
+            var list = new List<Species>
+            {
+                Make("Pumpkinseed", "Pumpkinseed", "Lepomis gibbosus", Sunfishes, cold, u, 55, 28, 0.1f, 0.14f, 0.9f, 0.25f, 0.8f, 15f, 24f, 6.5f, 8f, 3.5f, 0),
+                Make("ArcticGrayling", "Arctic Grayling", "Thymallus arcticus", Salmonids, cold, x, 280, 140, 0.22f, 0.3f, 1f, 0.3f, 0.9f, 12f, 20f, 6.5f, 8f, 4f, 4),
+                Make("TexasCichlid", "Texas Cichlid", "Herichthys cyanoguttatus", Cichlids, tropical, r, 120, 60, 0.13f, 0.17f, 0.8f, 0.15f, 0.7f, 21f, 27f, 6.5f, 8f, 4f, 0),
+                Make("Frontosa", "Frontosa", "Cyphotilapia frontosa", Cichlids, tropical, x, 260, 130, 0.14f, 0.18f, 0.6f, 0.1f, 0.5f, 24f, 27f, 7.8f, 9f, 4f, 0),
+                Make("JackDempsey", "Jack Dempsey", "Rocio octofasciata", Cichlids, tropical, r, 110, 55, 0.12f, 0.16f, 0.8f, 0.15f, 0.7f, 22f, 29f, 6.5f, 8f, 4f, 0),
+                Make("PeacockBass", "Peacock Bass", "Cichla ocellaris", Cichlids, tropical, x, 380, 190, 0.28f, 0.36f, 0.8f, 0.2f, 0.8f, 24f, 29f, 6f, 7.5f, 4f, 0),
+            };
+            var levels = new Dictionary<string, int> { { "Pumpkinseed", 4 }, { "JackDempsey", 7 }, { "TexasCichlid", 9 }, { "Frontosa", 15 }, { "ArcticGrayling", 17 }, { "PeacockBass", 18 } };
+            var adult = new Dictionary<string, float> { { "Pumpkinseed", 6f }, { "JackDempsey", 7f }, { "TexasCichlid", 7f }, { "Frontosa", 9f }, { "ArcticGrayling", 7f }, { "PeacockBass", 8f } };
+            foreach (var s in list)
+            {
+                s.unlockLevel = levels[s.id];
+                s.daysToAdult = adult[s.id];
+                s.lifespanDays = s.id == "Frontosa" ? 150f : 120f;
+                s.litterMin = 3; s.litterMax = 6;
+                s.likesPlants = s.id == "Pumpkinseed";
                 s.bodyClass = BodyClass.Medium;
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;

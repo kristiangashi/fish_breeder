@@ -117,6 +117,28 @@ namespace FishBreeder.Genetics
             Eats(list, "SilverFlamefin", "NeonTetra", "Guppy", "Platy", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra");
             Both(list, Relationship.Preferred, "SilverFlamefin", "SilverFlamefin", "TigerBarb", "SilverDollar");
 
+            // The medium fish (2026-11-01). The peacock bass is a pure fish-eater that swallows anything
+            // up to a third of its size; the Central American cichlids (Texas, Jack Dempsey) eat small
+            // fish and fight each other and the other big cichlids; the frontosa lives in calm colonies
+            // but eats the little fish it finds at night; pumpkinseeds guard their patch from each other.
+            // Grayling shoal, and get on with the goldfish that share their cool water.
+            Eats(list, "PeacockBass", "NeonTetra", "Guppy", "ZebraDanio", "Platy", "BlackMolly", "Betta", "TigerBarb", "Corydoras", "Angelfish",
+                "GoldenMbuna", "SiameseAlgaeEater", "Clownfish", "FancyGoldfish", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra",
+                "EmperorTetra", "LemonTetra", "XRayTetra", "BloodfinTetra", "SerpaeTetra", "PenguinTetra", "BlackSkirtTetra", "RedeyeTetra", "BleedingHeartTetra",
+                "BuenosAiresTetra", "Pumpkinseed");
+            Both(list, Relationship.Competitive, "PeacockBass", "Oscar", "CrimsonJewelCichlid", "GreenTerror");
+            foreach (var cichlid in new[] { "TexasCichlid", "JackDempsey" })
+                Eats(list, cichlid, "NeonTetra", "Guppy", "ZebraDanio", "Platy", "BlackMolly", "Betta", "RubyTetra", "GlowlightTetra", "FlameTetra", "SilvertipTetra", "RummyNoseTetra");
+            Both(list, Relationship.Competitive, "TexasCichlid", "TexasCichlid", "JackDempsey", "GreenTerror", "Oscar", "BlueAcara", "Frontosa");
+            Both(list, Relationship.Competitive, "JackDempsey", "JackDempsey", "GreenTerror", "Oscar", "BlueAcara", "CrimsonJewelCichlid");
+            Eats(list, "Frontosa", "NeonTetra", "Guppy", "ZebraDanio", "RubyTetra", "GlowlightTetra", "FlameTetra");
+            Both(list, Relationship.Competitive, "Frontosa", "GoldenMbuna");
+            Both(list, Relationship.Preferred, "Frontosa", "Frontosa");
+            Eats(list, "Pumpkinseed", "NeonTetra", "Guppy", "RubyTetra");
+            Both(list, Relationship.Competitive, "Pumpkinseed", "Pumpkinseed");
+            Eats(list, "ArcticGrayling", "NeonTetra", "Guppy", "RubyTetra", "GlowlightTetra");
+            Both(list, Relationship.Preferred, "ArcticGrayling", "ArcticGrayling", "CometGoldfish");
+
             // Good company.
             Both(list, Relationship.Preferred, "NeonTetra", "NeonTetra", "Corydoras");
             Both(list, Relationship.Preferred, "ZebraDanio", "ZebraDanio", "FancyGoldfish");

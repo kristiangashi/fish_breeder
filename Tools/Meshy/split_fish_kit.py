@@ -1,6 +1,6 @@
 # Splits a multi-fish Meshy kit into one FBX per fish: centre, straighten, plump (Y = thickness), decimate.
 # Run with Blender's Python (Blender 4+/5, or `pip install bpy`):
-#   python3 split_fish_kit.py <kit name> <meshy_kit.fbx> <output folder>
+#   python3 split_fish_kit.py <kit name> <meshy_kit.fbx> <output folder> [<albedo> <normal> <roughness> [size]]
 # Add a kit to KITS for a new collage: each fish is found by the centre of its loose part in the
 # kit's X/Z layout (metres), then named, thickened and decimated as listed. Small loose pieces
 # (a fin Meshy left detached) join the fish whose centre is nearest.
@@ -9,10 +9,15 @@
 # along that midline, so a bent tail comes back in line with the body, fin and all.
 # Plumping scales thickness (Y) by up to the factor given, weighted by how thick the fish
 # already is around each point, so the body fills out while fins and the tail stay thin.
-import bpy, sys, json, math
+# An optional fourth number tips a fish Meshy made nose-down back level (degrees, + = nose up).
+# Re-baking (give the kit's albedo, normal and roughness maps and a texture size after the output
+# folder): decimating a Meshy atlas tears its texture where triangles end up spanning UV islands,
+# so the decimated fish gets fresh UVs and its own maps baked from the full-detail mesh:
+# <sid>_Albedo.png, <sid>_Normal.png and <sid>_Smoothness.png (inverted roughness) next to the FBX.
+import bpy, sys, os, json, math
 from mathutils import Vector, Matrix
 
-# kit -> {island centre (x, z): (species id, thickness multiplier, target triangles)}
+# kit -> {island centre (x, z): (species id, thickness multiplier, target triangles[, pitch])}
 KITS = {
     "freshwater": {
         (-0.64, 0.45): ("RedTailShark", 1.6, 2400),
@@ -52,6 +57,16 @@ KITS = {
     # every loose piece belongs to it. More triangles than the small fish since they're seen close up.
     "crimson_jewel": {(0.0, 0.0): ("CrimsonJewelCichlid", 1.0, 3000)},
     "silver_flamefin": {(0.0, 0.0): ("SilverFlamefin", 1.0, 3000)},
+    # Meshy_AI_Colorful_Freshwater_Fish_Collection (2026-11-01): six real medium fish, all made
+    # about 7% as thick as long, so they are plumped to their real width (12-17% of the length).
+    "colorful_freshwater": {
+        (-0.47, 0.72): ("Frontosa", 2.6, 3000, 12.0),
+        (0.47, 0.75): ("TexasCichlid", 2.3, 3000),
+        (-0.47, -0.02): ("Pumpkinseed", 2.3, 3000),
+        (0.49, -0.01): ("JackDempsey", 2.3, 3000),
+        (-0.46, -0.75): ("PeacockBass", 2.5, 3000),
+        (0.48, -0.75): ("ArcticGrayling", 1.9, 3000),
+    },
 }
 
 def straighten(pts):
@@ -123,7 +138,53 @@ def straighten(pts):
         p.y = head_y + side
     return stray
 
-def run(kit, src, outdir):
+def bake(high, low, maps, size, outdir, sid):
+    """Bakes colour, normals and roughness from the full-detail fish onto the decimated one, through fresh UVs."""
+    albedo, normal, rough = maps
+    mat = bpy.data.materials.new(sid + "_High"); mat.use_nodes = True
+    nt = mat.node_tree; bsdf = nt.nodes["Principled BSDF"]
+    def tex(path, colour):
+        n = nt.nodes.new("ShaderNodeTexImage"); n.image = bpy.data.images.load(path, check_existing=True)
+        n.image.colorspace_settings.name = 'sRGB' if colour else 'Non-Color'
+        return n
+    nt.links.new(tex(albedo, True).outputs[0], bsdf.inputs["Base Color"])
+    nm = nt.nodes.new("ShaderNodeNormalMap"); nt.links.new(tex(normal, False).outputs[0], nm.inputs["Color"])
+    nt.links.new(nm.outputs[0], bsdf.inputs["Normal"])
+    nt.links.new(tex(rough, False).outputs[0], bsdf.inputs["Roughness"])
+    bsdf.inputs["Metallic"].default_value = 0.0
+    high.data.materials.clear(); high.data.materials.append(mat)
+    # Fresh UVs on the decimated fish.
+    bpy.ops.object.select_all(action='DESELECT'); low.select_set(True); bpy.context.view_layer.objects.active = low
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.004, scale_to_bounds=True)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    lmat = bpy.data.materials.new(sid); lmat.use_nodes = True
+    low.data.materials.clear(); low.data.materials.append(lmat)
+    target = lmat.node_tree.nodes.new("ShaderNodeTexImage"); lmat.node_tree.nodes.active = target
+    sc = bpy.context.scene
+    sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 4
+    sc.render.bake.margin = 8
+    dims = [max(v.co[i] for v in high.data.vertices) - min(v.co[i] for v in high.data.vertices) for i in range(3)]
+    reach = max(dims) * 0.01
+    high.select_set(True); low.select_set(True); bpy.context.view_layer.objects.active = low
+    for name, kind, colour, px in (("Albedo", 'DIFFUSE', True, size), ("Normal", 'NORMAL', False, size // 2), ("Rough", 'ROUGHNESS', False, size // 2)):
+        img = bpy.data.images.new(f"{sid}_{name}", px, px, alpha=False)
+        img.colorspace_settings.name = 'sRGB' if colour else 'Non-Color'
+        target.image = img
+        kw = dict(pass_filter={'COLOR'}) if kind == 'DIFFUSE' else {}
+        bpy.ops.object.bake(type=kind, use_selected_to_active=True, cage_extrusion=reach, max_ray_distance=reach * 3, **kw)
+        if name == "Rough":
+            # Unity's smoothness is the inverse of roughness.
+            px_ = list(img.pixels)
+            for i in range(0, len(px_), 4):
+                for c in range(3): px_[i + c] = 1.0 - px_[i + c]
+            img.pixels[:] = px_
+            name = "Smoothness"
+        img.filepath_raw = os.path.join(outdir, f"{sid}_{name}.png"); img.file_format = 'PNG'; img.save()
+    lmat.node_tree.nodes.remove(target)
+    bpy.data.objects.remove(high, do_unlink=True)
+
+def run(kit, src, outdir, maps=None, size=2048):
     plan = KITS[kit]
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=src)
@@ -150,7 +211,8 @@ def run(kit, src, outdir):
         groups.setdefault(key, []).append(part)
     report = {}
     for key, parts in groups.items():
-        sid, plump, tris = plan[key]
+        sid, plump, tris = plan[key][:3]
+        pitch = plan[key][3] if len(plan[key]) > 3 else 0.0
         # A detached fin floats beside the body: move it onto the fish's midline (seen from above).
         main = max(parts, key=lambda p: len(p.data.vertices))
         mws = [main.matrix_world @ v.co for v in main.data.vertices]
@@ -176,6 +238,15 @@ def run(kit, src, outdir):
                          (min(p.y for p in pts) + max(p.y for p in pts)) / 2,
                          (min(p.z for p in pts) + max(p.z for p in pts)) / 2))
         pts = [p - centre for p in pts]
+        if pitch:
+            # Level a nose-down fish: turn it in the side view about its middle, nose up.
+            ws_ = lambda sel: (lambda ys: max(ys) - min(ys) if ys else 0)([p.y for p in pts if sel(p.x)])
+            x0, x1 = min(p.x for p in pts), max(p.x for p in pts)
+            head = 1 if ws_(lambda x: x > x1 - 0.2 * (x1 - x0)) > ws_(lambda x: x < x0 + 0.2 * (x1 - x0)) else -1
+            t = math.radians(pitch) * head
+            pts = [Vector((p.x * math.cos(t) - p.z * math.sin(t), p.y, p.x * math.sin(t) + p.z * math.cos(t))) for p in pts]
+            c2 = Vector(((min(p.x for p in pts) + max(p.x for p in pts)) / 2, 0, (min(p.z for p in pts) + max(p.z for p in pts)) / 2))
+            pts = [p - c2 for p in pts]
         # Plump the body but not the fins: how thick the fish is around each point (in side view)
         # decides how much that point is pushed out, so thin fins and the tail stay thin.
         cell = 0.012
@@ -201,11 +272,21 @@ def run(kit, src, outdir):
         part.select_set(True)
         bpy.context.view_layer.objects.active = part
         before = sum(len(p.vertices) - 2 for p in part.data.polygons)
+        high = None
+        if maps:
+            high = part.copy(); high.data = part.data.copy(); bpy.context.scene.collection.objects.link(high)
+            high.select_set(False)
         mod = part.modifiers.new("Decimate", 'DECIMATE')
         mod.ratio = min(1.0, tris / before)
         bpy.ops.object.modifier_apply(modifier=mod.name)
         bpy.ops.object.shade_smooth()
         after = sum(len(p.vertices) - 2 for p in part.data.polygons)
+        if high:
+            bpy.context.view_layer.objects.active = high; high.select_set(True)
+            bpy.ops.object.shade_smooth(); high.select_set(False)
+            bake(high, part, maps, size, outdir, sid)
+            bpy.ops.object.select_all(action='DESELECT'); part.select_set(True)
+            bpy.context.view_layer.objects.active = part
         bpy.ops.export_scene.fbx(filepath=f"{outdir}/{sid}.fbx", use_selection=True, mesh_smooth_type='FACE',
                                  path_mode='STRIP', embed_textures=False, add_leaf_bones=False, bake_anim=False)
         ws = [part.matrix_world @ v.co for v in part.data.vertices]
@@ -216,4 +297,4 @@ def run(kit, src, outdir):
 
 if __name__ == "__main__":
     args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
-    run(args[0], args[1], args[2])
+    run(args[0], args[1], args[2], args[3:6] if len(args) >= 6 else None, int(args[6]) if len(args) > 6 else 2048)

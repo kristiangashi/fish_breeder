@@ -26,10 +26,17 @@ namespace FishBreeder.Genetics
     public enum SpeciesRarity { Common, Uncommon, Rare, Exotic, Legendary, Ancient }
 
     /// <summary>
-    /// Which fish limit a species counts against: small fish share the tank's main limit, medium
-    /// fish (the big kinds) have their own much smaller one (<see cref="Core.TankSizeBalance.mediumCapacity"/>).
+    /// How big a kind of fish is, set per species in the balance console. It decides where the fish
+    /// can live and which limit it counts against:
+    /// Tiny: tank fish (neons, guppies, barbs) that stay little: ordinary tanks only, on the main fish limit.
+    /// Small: hybrids (oscars, goldfish) that grow big in big tanks: ordinary tanks or the public
+    ///   aquarium, on the main limit in tanks and the exhibits' small limit (20/30/40).
+    /// Medium: public aquarium fish (Jack Dempsey): the tanks' own medium limit and the exhibits' medium limit (5/10/15).
+    /// Large: the public aquarium's large fish (Silver Flamefin, Crimson Jewel): the medium limit in
+    ///   tanks and the exhibits' large limit (1/3/5).
+    /// Whether a kind lives only in the public aquarium is <see cref="Species.eastWingOnly"/>, apart from this.
     /// </summary>
-    public enum BodyClass { Small, Medium }
+    public enum SizeGroup { Tiny, Small, Medium, Large }
 
     /// <summary>
     /// A kind of fish and all its balancing numbers. Species is fixed for life and passed from
@@ -76,8 +83,8 @@ namespace FishBreeder.Genetics
         public float bendStart = 0.2f;
         /// <summary>How big small, medium and large fish of this kind look, as a share of the species' length (medium is normally 1).</summary>
         public float sizeSmall = 0.85f, sizeMedium = 1f, sizeLarge = 1.18f;
-        /// <summary>Small fish count against a tank's fish limit; medium fish against its separate medium limit.</summary>
-        public BodyClass bodyClass;
+        /// <summary>Tiny, Small (hybrid), Medium or Large: where it can live and which limits it counts against (see <see cref="SizeGroup"/>).</summary>
+        public SizeGroup sizeGroup;
         /// <summary>
         /// Length in metres the real fish reaches when it has room, like an oscar in a big aquarium.
         /// Adults keep growing past <see cref="maxLength"/> towards it in roomy tanks (see
@@ -127,7 +134,8 @@ namespace FishBreeder.Genetics
         /// <summary>Grazes algae off the glass and decorations at every time step.</summary>
         public bool eatsAlgae;
 
-        public bool IsMedium => bodyClass == BodyClass.Medium;
+        /// <summary>Counts against an ordinary tank's medium-fish limit rather than its main one: the Medium and Large groups.</summary>
+        public bool IsMedium => sizeGroup >= SizeGroup.Medium;
 
         /// <summary>How many times its longest shop size it can grow to with room (1 = it stays as it is).</summary>
         public float FullGrownRatio => maxLength > 0f && fullGrownLength > maxLength ? fullGrownLength / maxLength : 1f;
@@ -135,10 +143,10 @@ namespace FishBreeder.Genetics
         /// <summary>The longest it ever gets: its full-grown length if it grows with room, else its longest shop size.</summary>
         public float LargestLength => GrowsWithRoom ? fullGrownLength : maxLength;
         /// <summary>
-        /// It can live in the public aquarium: it keeps growing in big tanks (a hybrid, at home in
-        /// either until it's full grown) or lives only there. Little fish that stay little can't.
+        /// It can live in the public aquarium: any kind but the Tiny tank fish (or one set to live
+        /// only there). Those that keep growing in big tanks are at home in either until they're full grown.
         /// </summary>
-        public bool CanLiveInEastWing => eastWingOnly || GrowsWithRoom;
+        public bool CanLiveInEastWing => eastWingOnly || sizeGroup != SizeGroup.Tiny;
 
         public bool IsSaltwater => category == FishCategory.SaltwaterCold || category == FishCategory.SaltwaterTropical;
 
@@ -332,6 +340,23 @@ namespace FishBreeder.Genetics
             { "JackDempsey", 3 }, { "CrimsonJewelCichlid", 2 },
         };
 
+        /// <summary>
+        /// The size groups as Kristian set them out (2026-11-01). Small are the hybrids sold in the shop
+        /// that keep growing in big tanks; Medium the six real medium fish; Large the metre-long wall
+        /// fish. Every other kind is a Tiny tank fish.
+        /// </summary>
+        static readonly Dictionary<string, SizeGroup> SizeGroups = new Dictionary<string, SizeGroup>
+        {
+            { "CometGoldfish", SizeGroup.Small }, { "FancyGoldfish", SizeGroup.Small }, { "Oscar", SizeGroup.Small }, { "GreenTerror", SizeGroup.Small },
+            { "SilverDollar", SizeGroup.Small }, { "SiameseAlgaeEater", SizeGroup.Small }, { "BlueAcara", SizeGroup.Small }, { "RedTailShark", SizeGroup.Small },
+            { "Pumpkinseed", SizeGroup.Medium }, { "ArcticGrayling", SizeGroup.Medium }, { "TexasCichlid", SizeGroup.Medium },
+            { "Frontosa", SizeGroup.Medium }, { "JackDempsey", SizeGroup.Medium }, { "PeacockBass", SizeGroup.Medium },
+            { "CrimsonJewelCichlid", SizeGroup.Large }, { "SilverFlamefin", SizeGroup.Large },
+        };
+
+        /// <summary>The default <see cref="sizeGroup"/> for a species id (Tiny for any kind not in the table).</summary>
+        public static SizeGroup DefaultSizeGroup(string id) => id != null && SizeGroups.TryGetValue(id, out var g) ? g : SizeGroup.Tiny;
+
         public static bool DefaultEastWingOnly(string id) => id != null && EastWingOnly.Contains(id);
         public static int DefaultMaxOfKind(string id) => id != null && MaxOfKind.TryGetValue(id, out var n) ? n : 0;
 
@@ -411,6 +436,7 @@ namespace FishBreeder.Genetics
                 s.bendStart = DefaultBendStart(s.id);
                 s.fullGrownLength = DefaultFullGrownLength(s.id);
                 s.eastWingOnly = DefaultEastWingOnly(s.id);
+                s.sizeGroup = DefaultSizeGroup(s.id);
                 s.maxOfKind = DefaultMaxOfKind(s.id);
                 SetHabits(s);
             }
@@ -442,7 +468,6 @@ namespace FishBreeder.Genetics
                 s.daysToAdult = 8f;
                 s.litterMin = 3; s.litterMax = 6;
                 if (s.id == "CrimsonJewelCichlid") s.likesPlants = false;
-                s.bodyClass = BodyClass.Medium;
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }
@@ -481,7 +506,6 @@ namespace FishBreeder.Genetics
                 s.lifespanDays = s.id == "Frontosa" ? 150f : 120f;
                 s.litterMin = 3; s.litterMax = 6;
                 s.likesPlants = s.id == "Pumpkinseed";
-                s.bodyClass = BodyClass.Medium;
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }

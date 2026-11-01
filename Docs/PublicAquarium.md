@@ -117,17 +117,26 @@ already counts, and two count more. With no living fish in either exhibit the aq
 Kristian's second round of rules. Numbers are in the balance file under `aquarium` (and
 `aquarium.scuba` for the dives).
 
-- **No little fish.** Only two kinds of fish go in the exhibits: those that keep growing in big
-  tanks (oscars, goldfish, the medium cichlids...), which are *hybrids* that can live in ordinary
-  tanks or the exhibits, and those that only live here (`Species.eastWingOnly`: the Crimson Jewel
-  and Silver Flamefin, which no longer come in egg boxes). A hybrid that reaches its full-grown size
-  can't go back into an ordinary tank. Little fish already in an old save's exhibit stay until moved.
-- **Sizes.** Each candidate is small, medium or large by the longest it grows (`mediumFishFrom`
-  0.28 m, `largeFishFrom` 0.8 m): small are fantails, acaras, Siamese algae eaters, red-tailed
-  sharks, silver dollars, pumpkinseeds and Jack Dempseys; medium are comets, oscars, green terrors,
-  Texas cichlids, frontosas, Arctic grayling and peacock bass; large are the two wall fish. An
-  exhibit holds **20/30/40 small, 5/10/15 medium and 1/3/5 large** fish: as bought, after one
-  height upgrade, and after two or more (`smallPerExhibit` and so on).
+- **Size groups** (2026-11-01, `Species.sizeGroup`, set per fish in the balance console's *Fish
+  sizes* tab, which lists every fish under its group):
+  1. **Tiny: tank fish** (neons, tiger barbs, guppies, angelfish, every tetra...). Ordinary tanks
+     only, on the main fish limit. They can't go in the exhibits.
+  2. **Small: hybrids** (oscars, comet and fantail goldfish, green terrors, silver dollars, blue
+     acaras, Siamese algae eaters, red-tailed sharks). Sold in the shop, they keep growing in big
+     tanks; they live in ordinary tanks (main limit) or the exhibits until full grown, then only the
+     exhibits. Exhibits hold **20/30/40**.
+  3. **Medium: public aquarium fish** (Jack Dempsey, Texas cichlid, frontosa, pumpkinseed, Arctic
+     grayling, peacock bass). In ordinary tanks they count against the tank's own medium limit.
+     Exhibits hold **5/10/15**.
+  4. **Large: public aquarium large fish** (Silver Flamefin, Crimson Jewel Cichlid). Exhibits hold
+     **1/3/5**.
+
+  The numbers are as bought, after one height upgrade, and after two or more (`smallPerExhibit`,
+  `mediumPerExhibit`, `largePerExhibit`). Apart from the group, **aquarium only**
+  (`Species.eastWingOnly`, a tick on the same tab) keeps a kind out of every ordinary tank and the
+  egg boxes: the seller finds it on his dives. Today that's the two Large fish. Tiny fish already in
+  an old save's exhibit stay until moved. Before this the size was worked out from the longest a
+  fish grows (0.28 m and 0.8 m), which made oscars and comets medium and Jack Dempseys small.
 - **Ordinary tanks** never hold more than **80 small fish** (`store.maxFishPerTank`, soft and hard
   limit alike). The wall tank sizes are 60/65/70/75/80, down from 200-390.
 - **Variety matters.** Appeal is now fullness 20, variety 35 (8 kinds for full marks, the first

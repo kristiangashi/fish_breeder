@@ -75,11 +75,7 @@ namespace FishBreeder.Core
         public int reviewsKept = 12;
 
         [Header("Who lives in the exhibits")]
-        [Tooltip("Only fish that keep growing in big tanks, or that live only here, go in the exhibits. Those whose biggest length (m) is at least this are medium fish; below it, small.")]
-        public float mediumFishFrom = 0.28f;
-        [Tooltip("Fish whose biggest length (m) is at least this are large fish.")]
-        public float largeFishFrom = 0.8f;
-        [Tooltip("Small fish an exhibit holds as bought, then after each height upgrade (the last number carries on).")]
+        [Tooltip("Small fish (the hybrids, each species' Size group) an exhibit holds as bought, then after each height upgrade (the last number carries on).")]
         public List<int> smallPerExhibit = new List<int> { 20, 30, 40 };
         [Tooltip("Medium fish an exhibit holds as bought, then after each height upgrade.")]
         public List<int> mediumPerExhibit = new List<int> { 5, 10, 15 };
@@ -117,8 +113,8 @@ namespace FishBreeder.Store
     public enum ExhibitClimate { None, Temperate, Tropical }
 
     /// <summary>
-    /// How big a kind of fish is in the public aquarium, from the longest it ever grows: each size
-    /// has its own limit in an exhibit. None is a little fish that stays little and can't go in.
+    /// How big a kind of fish is in the public aquarium, from its <see cref="SizeGroup"/>: each size
+    /// has its own limit in an exhibit. None is a Tiny tank fish, which can't go in.
     /// </summary>
     public enum AquariumSize { None, Small, Medium, Large }
 
@@ -248,19 +244,22 @@ namespace FishBreeder.Store
         // ------------------------------------------------------------ who lives here
 
         /// <summary>
-        /// A kind of fish's size in the aquarium, from the longest it ever grows (its full-grown
-        /// length if it keeps growing in big tanks). Little fish that never grow big are None: they
-        /// can't go in at all.
+        /// A kind of fish's size in the aquarium: its size group (set per species in the balance
+        /// console). Tiny tank fish are None: they can't go in at all, unless set to live only here,
+        /// when they count as small.
         /// </summary>
         public static AquariumSize SizeClass(Species species)
         {
             if (species == null || !species.CanLiveInEastWing) return AquariumSize.None;
-            float length = species.LargestLength;
-            if (length >= Data.largeFishFrom) return AquariumSize.Large;
-            return length >= Data.mediumFishFrom ? AquariumSize.Medium : AquariumSize.Small;
+            switch (species.sizeGroup)
+            {
+                case SizeGroup.Large: return AquariumSize.Large;
+                case SizeGroup.Medium: return AquariumSize.Medium;
+                default: return AquariumSize.Small;
+            }
         }
 
-        public static string SizeName(AquariumSize size) => size == AquariumSize.None ? "Little" : size.ToString();
+        public static string SizeName(AquariumSize size) => size == AquariumSize.None ? "Tiny" : size.ToString();
 
         /// <summary>How many times an exhibit has been raised (0 as bought).</summary>
         public static int ExhibitStep(Tank tank) => tank != null && tank.IsWallAquarium ? tank.SizeIndex - Tank.WallSize : 0;
@@ -335,9 +334,10 @@ namespace FishBreeder.Store
             var species = fish.Species;
             var size = SizeClass(species);
             string room = RoomName.ToLower();
-            if (size == AquariumSize.None) return $"A little fish: it can't go in the {room}.";
+            if (size == AquariumSize.None) return $"A tiny tank fish: it lives in ordinary tanks, not the {room}.";
             string limits = $"{SizeName(size).ToLower()} fish in the {room} ({LimitsText(size)} per exhibit)";
             if (species.eastWingOnly) return $"Lives only in the {room}, or a holding tank until it goes there. A {limits}.";
+            if (!species.GrowsWithRoom) return $"Lives in ordinary tanks or the {room}. A {limits}.";
             if (fish.IsFullGrown) return $"Full grown: too big for any tank but the {room} now. A {limits}.";
             return $"Grows big: it can live in ordinary tanks or the {room} until it's full grown, then only the {room}. A {limits}.";
         }

@@ -96,9 +96,7 @@ namespace FishBreeder.Health
         /// </summary>
         public static float WoundFor(Fish victim, float amount)
         {
-            var size = Store.PublicAquarium.SizeClass(victim.Species);
-            bool big = size == Store.AquariumSize.Medium || size == Store.AquariumSize.Large || victim.Species.IsMedium;
-            return big ? amount * Mathf.Clamp01(Balance.Data.tankMates.bigFishInjury) : amount;
+            return victim.Species.IsMedium ? amount * Mathf.Clamp01(Balance.Data.tankMates.bigFishInjury) : amount;
         }
 
         /// <summary>

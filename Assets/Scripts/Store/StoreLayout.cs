@@ -513,7 +513,7 @@ namespace FishBreeder.Store
                 {
                     string kind = slot.exhibit == ExhibitClimate.Temperate ? "cold-water fish (goldfish and their kin)" : "warm-water fish";
                     Fx.Card(tank.Title.ToUpper(), PublicAquarium.RoomName, $"A whole wall of the {PublicAquarium.RoomName.ToLower()} is one big exhibit now, for {kind} that grow big: room for {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large fish. Fill it with many kinds, then set a ticket price at the booth.", "Fill it with big fish", UiTheme.Aqua);
-                    GameLog.Add($"The {tank.Title.ToLower()} is in! It takes {kind} that grow big (no little fish), by size: {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large, and {tank.Tank.DecorationSlots} decorations. Visitors come once it has fish in it.");
+                    GameLog.Add($"The {tank.Title.ToLower()} is in! It takes {kind} that grow big (no tiny tank fish), by size: {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large, and {tank.Tank.DecorationSlots} decorations. Visitors come once it has fish in it.");
                 }
                 else
                 {

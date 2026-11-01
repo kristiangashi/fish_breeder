@@ -311,7 +311,7 @@ namespace FishBreeder
             if (IsExhibit)
             {
                 if (fish.IdentityHidden) return "too young to tell";
-                if (!species.CanLiveInEastWing) return "too small a kind";
+                if (!species.CanLiveInEastWing) return "tiny fish: tanks only";
                 if (!Suits(species)) return $"{Store.PublicAquarium.ClimateName(Climate).ToLower()} only";
                 return HasRoomFor(species) ? null : $"no room for {Store.PublicAquarium.SizeName(Store.PublicAquarium.SizeClass(species)).ToLower()} fish";
             }
@@ -321,7 +321,7 @@ namespace FishBreeder
                 return HasRoomFor(species) ? null : "full";
             }
             if (species.eastWingOnly) return "aquarium only";
-            if (fish.IsFullGrown) return "full grown: aquarium only";
+            if (fish.IsFullGrown && species.CanLiveInEastWing) return "full grown: aquarium only";
             if (fish.MinTankSize > SizeIndex) return "too small";
             return HasRoomFor(species) ? null : "full";
         }

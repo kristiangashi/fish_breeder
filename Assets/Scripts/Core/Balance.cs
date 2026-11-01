@@ -959,8 +959,9 @@ namespace FishBreeder.Core
         /// 15: full-grown lengths: oscars, goldfish and the other big growers keep growing in roomy tanks.
         /// 16: six medium fish (pumpkinseed, Arctic grayling, Texas cichlid, frontosa, Jack Dempsey, peacock bass): their relationships, cross pairs and egg boxes.
         /// 17: the public aquarium's new rules: fish that only live there (eastWingOnly), most of a kind per tank (maxOfKind), and no ordinary tank over 80 small fish (the wall tanks were 200 to 390).
+        /// 18: size groups set per species (Tiny tank fish, Small hybrids, Medium and Large public aquarium fish) instead of worked out from length and body class.
         /// </summary>
-        public const int CurrentDataVersion = 17;
+        public const int CurrentDataVersion = 18;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1296,7 +1297,7 @@ namespace FishBreeder.Core
             }
             if (fromVersion < 12)
             {
-                // Medium fish have their own limit: the default per size, and which fish are medium.
+                // Medium fish have their own limit: the default per size (which fish are medium is the size group, version 18).
                 var fresh = new StoreBalance();
                 if (data.store != null)
                 {
@@ -1304,10 +1305,6 @@ namespace FishBreeder.Core
                     if (data.store.wallAquarium != null) data.store.wallAquarium.mediumCapacity = fresh.wallAquarium.mediumCapacity;
                     CopyMediumCapacity(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
                 }
-                var defaults = new Dictionary<string, Species>();
-                foreach (var s in Species.CreateDefaults()) defaults[s.id] = s;
-                foreach (var s in data.species)
-                    if (s != null && s.id != null && defaults.TryGetValue(s.id, out var d)) s.bodyClass = d.bodyClass;
             }
             if (fromVersion < 13 && data.store != null)
             {
@@ -1385,6 +1382,22 @@ namespace FishBreeder.Core
                         for (int i = 0; i < data.store.wallAquariumHeights.Count; i++)
                             if (data.store.wallAquariumHeights[i] != null)
                                 data.store.wallAquariumHeights[i].capacity = Mathf.Min(data.store.wallAquariumHeights[i].capacity, fresh.wallAquariumHeights[Mathf.Min(i, fresh.wallAquariumHeights.Count - 1)].capacity);
+                }
+            }
+            if (fromVersion < 18 && data.species != null)
+            {
+                // Size groups: the game's own fish get theirs from the table; any other kind (a copy
+                // made in the console) is Large if it lives only in the aquarium, Small if it grows
+                // with room, else Tiny, as the old length rules had it.
+                var ownFish = new HashSet<string>();
+                foreach (var s in Species.CreateDefaults()) ownFish.Add(s.id);
+                foreach (var s in data.species)
+                {
+                    if (s == null) continue;
+                    var group = Species.DefaultSizeGroup(s.id);
+                    if (!ownFish.Contains(s.id ?? ""))
+                        group = s.eastWingOnly ? SizeGroup.Large : s.GrowsWithRoom ? SizeGroup.Small : SizeGroup.Tiny;
+                    s.sizeGroup = group;
                 }
             }
             data.dataVersion = CurrentDataVersion;

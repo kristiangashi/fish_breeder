@@ -840,7 +840,7 @@ namespace FishBreeder.Core
                     parts.Add($"<color={(have >= limit ? "#ffd27f" : "#ffffff")}>{PublicAquarium.SizeName(size)}: {have} / {limit}</color>");
                 }
                 ui.Label($"{sizeName}. <b>{string.Join("   ", parts)}</b>{dead}");
-                ui.Label("Only fish that grow big live here: small, medium and large kinds by the size they grow to.", "fb-small");
+                ui.Label("No tiny tank fish here: small (hybrid), medium and large kinds, each size with its own limit.", "fb-small");
                 return;
             }
             if (tank.IsHolding)

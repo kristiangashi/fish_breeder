@@ -399,6 +399,15 @@ const META = {
   pointsPerTier: ["Points per tier", "Points spent in a tree's earlier tiers to open each next tier (tier 2 needs this many, tier 3 twice as many...)."],
   tiers: ["Tiers", "Tiers shown per tree."],
   maxInterestPerNight: ["Most interest per night ($)", "Cap on what the Savings account perk pays each night."],
+  // Scuba dives
+  diveFee: ["Dive fee ($)", "What each of the fish seller's dives costs."],
+  eggChance: ["Egg chance", "Chance a find comes back as an egg rather than a fry (livebearers always come as fry). 0.5 = half."],
+  holdingTankPrice: ["Holding tank price ($)", "What a holding tank in the big breeding room costs."],
+  holdingFishPerSize: ["Finds per holding tank", "How many finds a holding tank keeps at each size: standard, large, grand."],
+  xpFind: ["XP per find", "Fishkeeping XP for each find he brings back."],
+  xpRelease: ["XP per release", "Fishkeeping XP for letting a find go back to the wild."],
+  rarityWeights: ["Rarity weights", "How likely each wild rarity is to be found, relative to each other: Common, Uncommon, Rare, Exotic, Legendary, Ancient."],
+  rareBoost: ["Rare boost", "How much likelier rare finds get with this gear: a find's weight is multiplied by 1 + this × its rarity step / 5 (Common is step 0, Ancient step 5). Only the best gear he owns counts; boosts don't add up."],
 };
 
 const REPAIR_SUPPLIER = ["repairWearRemoved", "repairPriceSpread"];
@@ -417,6 +426,7 @@ const TABS = [
   ["store", "Store & supplier"],
   ["stock", "Eggs, decor & quality"],
   ["tanks", "Aquariums"],
+  ["dives", "Scuba dives"],
   ["equipment", "Equipment & repairs"],
   ["research", "Research"],
   ["eggs", "Egg hatching"],
@@ -2649,6 +2659,105 @@ function renderAquariums() {
   ];
 }
 
+// ---------------------------------------------------------------- scuba dives
+
+/** Mirrors ScubaDives.FindTable: each find's weight with the first `gearLevel` upgrades bought (0 = rented gear). */
+function diveWeights(scuba, gearLevel) {
+  let boost = 0;
+  for (let i = 0; i < gearLevel && i < scuba.gear.length; i++) boost = Math.max(boost, scuba.gear[i].rareBoost || 0);
+  const weights = scuba.rarityWeights || [];
+  return scuba.finds.map((f) => {
+    if (!speciesById(f.species)) return 0;
+    const step = f.rarity || 0;
+    const w = weights.length ? weights[Math.min(Math.max(step, 0), weights.length - 1)] : 1;
+    return Math.max(0, w * (1 + boost * step / 5));
+  });
+}
+
+/** The chance of each find on one dive with that gear (they add up to 1). */
+function diveOdds(scuba, gearLevel) {
+  const weights = diveWeights(scuba, gearLevel);
+  const total = weights.reduce((n, w) => n + w, 0);
+  return weights.map((w) => (total > 0 ? w / total : 0));
+}
+
+function renderDives() {
+  const aquarium = data.aquarium = data.aquarium || {};
+  const scuba = aquarium.scuba = aquarium.scuba || {};
+  scuba.finds = scuba.finds || [];
+  scuba.gear = scuba.gear || [];
+  scuba.rarityWeights = scuba.rarityWeights || [100, 40, 15, 5, 1.5, 0.5];
+
+  // Find chances: every fish he can find, by wild rarity, with each step of gear.
+  const oddsHead = el("thead");
+  const oddsBody = el("tbody");
+  const drawOdds = () => {
+    const columns = [0, ...scuba.gear.map((_, i) => i + 1)];
+    const odds = columns.map((g) => diveOdds(scuba, g));
+    oddsHead.replaceChildren(el("tr", {}, el("th", {}, "Fish"), el("th", { title: "How rare it is in the wild (picks its weight from the rarity weights below)." }, "Wild rarity"),
+      columns.map((g) => el("th", { title: g === 0 ? "Before any gear upgrade." : `With ${scuba.gear[g - 1].name || "this gear"} (upgrade ${g}).` }, g === 0 ? "Rented gear" : `${g}. ${scuba.gear[g - 1].name || "Gear " + g}`)),
+      el("th")));
+    oddsBody.replaceChildren(...scuba.finds.map((f, i) => {
+      const species = el("select", { onchange: (e) => { f.species = e.target.value; markDirty(); drawOdds(); } },
+        data.species.map((s) => el("option", { value: s.id }, `${s.displayName}${s.eastWingOnly ? "" : " (not aquarium-only)"}`)));
+      species.value = f.species;
+      const rarity = el("select", { onchange: (e) => { f.rarity = parseInt(e.target.value, 10); markDirty(); drawOdds(); } },
+        ENUMS.rarity.map((name, r) => el("option", { value: r }, name)));
+      rarity.value = f.rarity || 0;
+      return el("tr", {}, el("td", {}, species), el("td", {}, rarity),
+        columns.map((g, c) => el("td", { class: "pct readout" }, pct(odds[c][i]))),
+        el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { scuba.finds.splice(i, 1); markDirty(); drawOdds(); } }, "×")));
+    }));
+  };
+  const addFind = el("button", { class: "small", style: "margin-top:6px", onclick: () => {
+    const taken = new Set(scuba.finds.map((f) => f.species));
+    const next = data.species.find((s) => s.eastWingOnly && !taken.has(s.id)) || data.species[0];
+    scuba.finds.push({ species: next.id, rarity: next.rarity || 0 });
+    markDirty(); drawOdds();
+  } }, "+ Add a fish");
+
+  // What each gear upgrade does to each rarity's weight.
+  const gearBody = el("tbody");
+  const effect = (g) => ENUMS.rarity.map((name, step) => `${name} ×${+(1 + (g.rareBoost || 0) * step / 5).toFixed(2)}`).join(", ");
+  const drawGear = () => {
+    gearBody.replaceChildren(...scuba.gear.map((g, i) => {
+      const readout = el("td", { class: "readout" }, effect(g));
+      const refresh = () => { readout.textContent = effect(g); drawOdds(); };
+      const cell = (key, width) => { const c = input(g, key, refresh); if (width) c.style.width = width; return el("td", {}, c); };
+      return el("tr", {}, el("td", {}, String(i + 1)), cell("name", "190px"), cell("blurb", "260px"), cell("price", "80px"), cell("level", "60px"), cell("rareBoost", "70px"), readout,
+        el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { scuba.gear.splice(i, 1); markDirty(); drawGear(); drawOdds(); } }, "×")));
+    }));
+  };
+  const addGear = el("button", { class: "small", style: "margin-top:6px", onclick: () => {
+    const last = scuba.gear[scuba.gear.length - 1] || { name: "Gear", blurb: "", price: 2500, level: 14, rareBoost: 0.5 };
+    scuba.gear.push({ ...last, name: "New gear", price: Math.round(last.price * 1.8), level: last.level + 8, rareBoost: round2(last.rareBoost + 1) });
+    markDirty(); drawGear(); drawOdds();
+  } }, "+ Add an upgrade");
+
+  const weights = el("div", { class: "grid" }, ENUMS.rarity.map((name, r) => {
+    if (typeof scuba.rarityWeights[r] !== "number") scuba.rarityWeights[r] = 0;
+    return el("label", { class: "field", title: `Relative weight of a ${name.toLowerCase()} find, before gear.` }, el("span", {}, name),
+      input(scuba.rarityWeights, r, drawOdds));
+  }));
+
+  drawGear();
+  drawOdds();
+  return [
+    el("p", { class: "hint" }, "The fish seller's scuba dives for the fish that only live in the public aquarium. Each dive brings back one egg or fry, picked by weight: its wild rarity's weight × (1 + the best gear's rare boost × rarity step / 5), where Common is step 0 and Ancient step 5. Only the best gear he owns counts. Players never see these odds: the game only shows the kinds he has found before. Edits apply when you Save."),
+    el("div", { class: "card" }, el("h2", {}, "Chance of each fish per dive"),
+      el("p", { class: "hint" }, "Each column is one more gear upgrade bought, in order. The percentages redraw as you change rarities, weights or gear."),
+      el("div", { class: "scroll" }, el("table", {}, oddsHead, oddsBody)), addFind),
+    el("div", { class: "card" }, el("h2", {}, "Scuba gear upgrades"),
+      el("p", { class: "hint" }, "Bought in this order at the fish seller's van. Level is Fishkeeping. 'What it does' is how much likelier each rarity gets while it's his best gear (×1 = no change)."),
+      el("div", { class: "scroll" }, el("table", {},
+        el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Name"), el("th", {}, "Blurb"), el("th", {}, "Price ($)"), el("th", { title: "Fishkeeping level needed." }, "Level"),
+          el("th", { title: help("rareBoost") }, "Rare boost"), el("th", {}, "What it does"), el("th"))),
+        gearBody)), addGear),
+    el("div", { class: "card" }, el("h2", {}, "Rarity weights"), el("p", { class: "hint" }, help("rarityWeights")), weights),
+    el("div", { class: "card" }, el("h2", {}, "Dives and holding tanks"), objectForm(scuba, ["finds", "gear", "rarityWeights"])),
+  ];
+}
+
 function render() {
   indexPaths();
   $("#tabs").replaceChildren(...TABS.map(([key, name]) =>
@@ -2671,6 +2780,7 @@ function render() {
     case "eggs": content = renderEggs(); break;
     case "swim": content = renderSwim(); break;
     case "tanks": content = renderAquariums(); break;
+    case "dives": content = renderDives(); break;
     default: content = renderSection(tab);
   }
   $("#view").replaceChildren(...content);

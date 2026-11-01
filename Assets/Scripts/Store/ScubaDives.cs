@@ -74,7 +74,9 @@ namespace FishBreeder.Store
     /// <summary>
     /// The fish seller goes scuba diving for the fish that only live in the public aquarium. The
     /// player books a dive (a fee) and he's gone until the next time step, when he comes back with
-    /// one egg or fry he saved, which goes into a holding tank in the big breeding room. He won't go
+    /// one egg or fry he saved, which goes into a holding tank in the big breeding room. Nobody can
+    /// tell what it is until it grows into a juvenile (wild finds are generation 1, like a mystery
+    /// fry), and only then does it count as one of his past finds. He won't go
     /// while every holding tank is full. Better gear makes rare finds likelier. With Keep diving on,
     /// he books himself again after each dive while there's room and money.
     /// </summary>
@@ -97,6 +99,8 @@ namespace FishBreeder.Store
         public static bool KeepDiving { get; set; }
         /// <summary>What he brought back last time, for the seller's window.</summary>
         public static string LastFind { get; private set; } = "";
+        /// <summary>Every kind he has ever brought back (the player only sees one once it's grown enough to tell).</summary>
+        static readonly HashSet<string> found = new HashSet<string>();
 
         public static bool Unlocked => Progression.IsUnlocked(XpTrack.Fishkeeping, Data.unlockLevel);
         public static int Fee => Perks.Supplier(Data.diveFee);
@@ -107,6 +111,23 @@ namespace FishBreeder.Store
             Out = false;
             KeepDiving = false;
             LastFind = "";
+            found.Clear();
+        }
+
+        /// <summary>
+        /// The kinds he has found on any dive so far, for the seller's window: one each, and only
+        /// ones the player can tell (in the journal), so a find stays a mystery until it's a juvenile.
+        /// </summary>
+        public static List<Species> PastFinds()
+        {
+            var list = new List<Species>();
+            if (Data.finds == null) return list;
+            foreach (var find in Data.finds)
+            {
+                var species = find != null ? Species.Find(find.species) : null;
+                if (species != null && found.Contains(species.id) && Journal.IsDiscovered(species) && !list.Contains(species)) list.Add(species);
+            }
+            return list;
         }
 
         // ------------------------------------------------------------ holding room
@@ -250,15 +271,16 @@ namespace FishBreeder.Store
             var tank = holding.Tank;
             var genome = Genome.CreateRandom(species);
             bool egg = species.reproduction == Reproduction.EggLayer && GameRandom.Chance(Data.eggChance);
-            // He knows his fish, so a find is never a mystery fry (generation 2 shows what it is).
-            if (egg) EggClutch.LayFrom(tank, new List<Genome> { genome }, 2, "found by the fish seller", Mathf.Max(1, species.eggHatchSteps));
-            else FishFactory.Spawn(genome, 2, 0.05f, tank, tank.RandomFreePoint(0.1f), "found by the fish seller");
+            // A wild find is generation 1: a mystery until it grows into a juvenile and shows what it
+            // is (that's when it joins the journal).
+            if (egg) EggClutch.LayFrom(tank, new List<Genome> { genome }, 1, "found by the fish seller", Mathf.Max(1, species.eggHatchSteps));
+            else FishFactory.Spawn(genome, 1, 0.05f, tank, tank.RandomFreePoint(0.1f), "found by the fish seller");
             Progression.Award(XpTrack.Fishkeeping, Data.xpFind);
-            Journal.Discover(species);
-            var rarity = WildRarity(species);
-            LastFind = $"{(egg ? "An egg" : "A fry")} of a {species.displayName} ({rarity.ToString().ToLower()} in the wild), in {holding.Title}.";
-            GameLog.Add($"The fish seller is back from his dive! He saved {(egg ? "an egg" : "a fry")} of a {species.displayName} ({rarity.ToString().ToLower()} in the wild) and put it in {holding.Title}. Raise it there, then put it in the {PublicAquarium.RoomName.ToLower()}, sell it on the fish market or let it go.");
-            Fx.Card("BACK FROM THE DIVE", species.displayName, $"{(egg ? "An egg" : "A fry")} he saved on his dive, {rarity.ToString().ToLower()} in the wild. It's waiting in {holding.Title}.", "Raise it for the aquarium", UiTheme.Aqua);
+            found.Add(species.id);
+            string what = egg ? "an egg" : "a fry";
+            LastFind = $"{(egg ? "An egg" : "A fry")}, in {holding.Title}. What it is shows once it's a juvenile.";
+            GameLog.Add($"The fish seller is back from his dive! He saved {what} and put it in {holding.Title}. It's too small to tell what it is: raise it into a juvenile to find out, then put it in the {PublicAquarium.RoomName.ToLower()}, sell it on the fish market or let it go.");
+            Fx.Card("BACK FROM THE DIVE", egg ? "A mystery egg" : "A mystery fry", $"{(egg ? "An egg" : "A fry")} he saved on his dive, too small to tell what it is yet. It's waiting in {holding.Title}: raise it into a juvenile to find out.", "Raise it and see", UiTheme.Aqua);
         }
 
         // ------------------------------------------------------------ gear
@@ -294,7 +316,7 @@ namespace FishBreeder.Store
 
         // ------------------------------------------------------------ saving
 
-        internal static ScubaSave Save() => new ScubaSave { gear = GearLevel, diving = Out, keepDiving = KeepDiving, lastFind = LastFind };
+        internal static ScubaSave Save() => new ScubaSave { gear = GearLevel, diving = Out, keepDiving = KeepDiving, lastFind = LastFind, found = new List<string>(found) };
 
         internal static void Load(ScubaSave s)
         {
@@ -304,6 +326,10 @@ namespace FishBreeder.Store
             Out = s.diving;
             KeepDiving = s.keepDiving;
             LastFind = s.lastFind ?? "";
+            if (s.found != null) found.UnionWith(s.found);
+            // A save from before past finds: every find was discovered on the spot, so any dive fish
+            // in the journal is one he found.
+            else if (Data.finds != null) foreach (var find in Data.finds) if (find != null && !string.IsNullOrEmpty(find.species)) found.Add(find.species);
         }
     }
 
@@ -313,5 +339,7 @@ namespace FishBreeder.Store
         public int gear;
         public bool diving, keepDiving;
         public string lastFind;
+        /// <summary>Every kind he has found (null in saves from before past finds).</summary>
+        public List<string> found;
     }
 }

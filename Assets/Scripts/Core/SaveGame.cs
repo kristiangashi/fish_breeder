@@ -845,6 +845,7 @@ namespace FishBreeder.Store
                         saved.slot = to;
                         saved.role = TankRole.Exhibit.ToString();
                     }
+                    if (saved.slot >= 0 && saved.slot < slots.Count && slots[saved.slot].retired && !RetireWallBreeder(saved, d.tanks)) continue;
                     if (saved.slot < 0 || saved.slot >= slots.Count || slots[saved.slot].tank != null) continue;
                     if (!SaveGame.TryEnum(saved.role, out TankRole role)) continue;
                     var slot = slots[saved.slot];
@@ -866,6 +867,33 @@ namespace FishBreeder.Store
                 }
             BuildShell();
             RefreshEmptySlots();
+        }
+
+        /// <summary>
+        /// The big breeding room's wall breeding tank is gone: one in a save is refunded, and its fish
+        /// and eggs move into a grand breeder in a free spot in the breeding room (its decorations
+        /// don't fit, so they go). With no free spot its fish go back to the fish seller. False if
+        /// there's nowhere for it.
+        /// </summary>
+        bool RetireWallBreeder(TankSave saved, List<TankSave> all)
+        {
+            int refund = Balance.Data.store.wallBreederPrice;
+            Economy.Earn(refund, "the wall breeding tank, taken out", MoneyKind.Refunds);
+            // A spot no other saved tank is coming back to.
+            int to = -1;
+            for (int i = 0; i < slots.Count && to < 0; i++)
+                if (slots[i].tank == null && slots[i].IsOpen && !slots[i].wall && slots[i].Allows(TankRole.Breeder) && !all.Exists(t => t.slot == i)) to = i;
+            if (to < 0)
+            {
+                GameLog.Add($"The wall breeding tank is gone from the big breeding room, which only has holding tanks now. It was refunded ({Economy.Format(refund)}), and with no free spot in the breeding room its fish went back to the fish seller.");
+                return false;
+            }
+            saved.slot = to;
+            saved.role = TankRole.Breeder.ToString();
+            saved.size = Balance.Data.store.tankSizes.Count - 1;
+            saved.decor = new List<DecorSave>();
+            GameLog.Add($"The wall breeding tank is gone from the big breeding room, which only has holding tanks now. It was refunded ({Economy.Format(refund)}), and its fish moved into a free grand breeder tank in the breeding room.");
+            return true;
         }
 
         /// <summary>

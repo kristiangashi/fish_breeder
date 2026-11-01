@@ -16,6 +16,8 @@ namespace FishBreeder.Core
             public string title;
             public string blurb;
             public FishCategory[] categories;
+            /// <summary>The fish only the fish seller's dives turn up (whatever their water); they're left out of the other groups.</summary>
+            public bool diveFinds;
         }
 
         public static readonly Group[] Groups =
@@ -23,6 +25,7 @@ namespace FishBreeder.Core
             new Group { title = "Cold fresh water", blurb = "Hardy fish for unheated tanks.", categories = new[] { FishCategory.FreshwaterCold } },
             new Group { title = "Tropical fresh water", blurb = "Warm-water fish from rivers and lakes.", categories = new[] { FishCategory.FreshwaterTropical, FishCategory.BottomFeeder, FishCategory.Shellfish } },
             new Group { title = "Salt water", blurb = "Reef fish: they need salt water tanks.", categories = new[] { FishCategory.SaltwaterTropical, FishCategory.SaltwaterCold } },
+            new Group { title = "Dive finds", blurb = "Fish no supplier sells: only the fish seller's dives turn them up, and there are more out there.", categories = new FishCategory[0], diveFinds = true },
         };
 
         static readonly HashSet<string> discovered = new HashSet<string>();
@@ -51,7 +54,7 @@ namespace FishBreeder.Core
         {
             var list = new List<Species>();
             foreach (var species in Species.All)
-                if (System.Array.IndexOf(group.categories, species.category) >= 0) list.Add(species);
+                if (group.diveFinds ? species.eastWingOnly : !species.eastWingOnly && System.Array.IndexOf(group.categories, species.category) >= 0) list.Add(species);
             return list;
         }
 

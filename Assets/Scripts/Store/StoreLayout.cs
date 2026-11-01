@@ -17,8 +17,8 @@ namespace FishBreeder.Store
     /// (temperate on the north wall, tropical on the east; see <see cref="PublicAquarium"/>). Its
     /// west wall north of the main floor is boarded up for a later expansion. Shop tanks stand
     /// round the walls, facing into the room, which leaves the middle free to walk about. Breeder and quarantine tanks live round the
-    /// walls of the breeding room (the back room) to the west, which customers never see; through a door in its west wall is the big breeding room, whose back
-    /// wall takes a wall breeding tank for the big fish. The fish seller parks his van in the empty
+    /// walls of the breeding room (the back room) to the west, which customers never see; through a door in its west wall is the big breeding room, where
+    /// holding tanks along the back wall keep the fish the seller finds diving. The fish seller parks his van in the empty
     /// parking lot behind the breeding room, by its back door. Every spot has room for the biggest
     /// tank size, so tanks can be upgraded where they stand.
     /// </summary>
@@ -62,14 +62,14 @@ namespace FishBreeder.Store
         const float ArchZ = 10f, ArchWidth = 3f, ArchHeight = 2.8f;
         /// <summary>The ticket booth on the pavement, east of the aquarium's entrance (from the room's centre).</summary>
         const float BoothOffsetX = 3.1f, BoothZ = -6.7f;
-        /// <summary>The big breeding room, west of the breeding room: just wide enough for the wall breeding tank and a palm.</summary>
+        /// <summary>The big breeding room, west of the breeding room: room for its three holding tanks, a bench and a palm.</summary>
         public const float BigRoomWidth = 11f;
         /// <summary>
-        /// The big breeding room's three holding tank spots (x from its centre), in a row across the
-        /// room south of the wall breeding tank, clear of the bench on the west wall and the door on the east.
+        /// The big breeding room's three holding tank spots (x from its centre), in a row along its
+        /// back wall, clear of the bench on the west wall and the door on the east.
         /// </summary>
         static readonly float[] HoldingSpotsX = { -3.5f, -0.3f, 2.9f };
-        const float HoldingSpotZ = -2.2f;
+        const float HoldingSpotZ = BackSlotZ;
         /// <summary>The door from the breeding room into the big breeding room, near the front of their shared wall.</summary>
         const float BigRoomDoorZ = -4f;
         // The breeding room's tanks stand round its walls like the shop's, in walking order:
@@ -143,7 +143,7 @@ namespace FishBreeder.Store
             public float yaw;         // 0: the tank's front faces -Z, the entrance side
             public StoreTank tank;
             public GameObject emptyMarker;
-            /// <summary>A wall where only a wall aquarium goes (the public aquarium's exhibits, and the big breeding room's back wall).</summary>
+            /// <summary>A wall where only a wall aquarium goes (the public aquarium's exhibits).</summary>
             public bool wall;
             /// <summary>One of the public aquarium's two exhibit spots, and which fish it takes (None anywhere else).</summary>
             public ExhibitClimate exhibit;
@@ -151,10 +151,13 @@ namespace FishBreeder.Store
             /// <summary>One of the big breeding room's holding tank spots, for the fish the seller finds diving (they take nothing else).</summary>
             public bool holding;
 
-            public bool IsOpen => backRoom || section.unlocked;
+            /// <summary>
+            /// Where the big breeding room's wall breeding tank was: kept in the list so saved spot
+            /// numbers still line up, but nothing goes here (see <see cref="Load"/>).
+            /// </summary>
+            public bool retired;
 
-            /// <summary>The big breeding room's wall breeding tank.</summary>
-            public bool WallBreeder => wall && backRoom;
+            public bool IsOpen => !retired && (backRoom || section.unlocked);
 
             /// <summary>
             /// The floor in front of the tank here: its middle for a free-standing tank, and just
@@ -172,14 +175,14 @@ namespace FishBreeder.Store
 
             /// <summary>
             /// Breeder and quarantine tanks go in the back room, display and for sale tanks on the
-            /// shop floor; the wall breeding tank is only ever a breeder, and the public aquarium's
-            /// spots only take exhibits (which go nowhere else).
+            /// shop floor; the public aquarium's spots only take exhibits (which go nowhere else).
             /// </summary>
             public bool Allows(TankRole role)
             {
+                if (retired) return false;
                 if (Exhibit || role == TankRole.Exhibit) return Exhibit && role == TankRole.Exhibit;
                 if (holding || role == TankRole.Holding) return holding && role == TankRole.Holding;
-                return WallBreeder ? role == TankRole.Breeder : backRoom == (role == TankRole.Breeder || role == TankRole.Quarantine);
+                return backRoom == (role == TankRole.Breeder || role == TankRole.Quarantine);
             }
         }
 
@@ -252,8 +255,9 @@ namespace FishBreeder.Store
 
             tankRoot = new GameObject("Tanks").transform;
             tankRoot.SetParent(transform, false);
-            // Walking order runs west to east: the big breeding room's wall tank comes first.
-            slots.Add(WallSlot(null, new Vector3(BigRoomCenterX, 0f, SectionDepth * 0.5f + WallThickness * 0.5f), 0f));
+            // Walking order runs west to east. Spot 0 was the big breeding room's wall breeding tank,
+            // which is gone; it stays as a spot nothing goes in so saved spot numbers still match.
+            slots.Add(new Slot { backRoom = true, retired = true, position = new Vector3(BigRoomCenterX, StandHeight, HoldingSpotZ) });
             foreach (var spot in BackRoomSpots)
                 slots.Add(new Slot { backRoom = true, position = new Vector3(BackRoomCenterX + spot.x, StandHeight, spot.y), yaw = spot.z });
             // Round the walls in walking order. The main floor: up the west wall (its front is the
@@ -329,11 +333,11 @@ namespace FishBreeder.Store
             sections.Add(new Section { index = sections.Count, name = name, basePrice = price, unlocked = unlocked });
         }
 
-        /// <summary>Tanks of this kind, towards the store's limit (the wall breeding tank has its own room, so it doesn't count).</summary>
+        /// <summary>Tanks of this kind, towards the store's limit.</summary>
         public int CountTanks(TankRole role)
         {
             int count = 0;
-            foreach (var tank in tanks) if (tank.Role == role && (tank.Slot == null || !tank.Slot.WallBreeder)) count++;
+            foreach (var tank in tanks) if (tank.Role == role) count++;
             return count;
         }
 
@@ -393,11 +397,11 @@ namespace FishBreeder.Store
             return true;
         }
 
-        /// <summary>What a tank for this spot costs: a wall aquarium's own price on a wall (the wall breeding tank's in the big breeding room), the usual price anywhere else.</summary>
+        /// <summary>What a tank for this spot costs: a wall aquarium's own price on a wall, the usual price anywhere else.</summary>
         public static int TankPrice(Slot slot, TankRole role)
         {
             if (slot == null || !slot.wall || slot.Exhibit) return SupplierCatalog.TankPrice(role);
-            return Perks.Build(slot.WallBreeder ? Balance.Data.store.wallBreederPrice : Balance.Data.store.wallAquariumPrice);
+            return Perks.Build(Balance.Data.store.wallAquariumPrice);
         }
 
         /// <summary>The level that unlocks a tank of this kind for this spot: a wall aquarium needs more.</summary>
@@ -405,14 +409,9 @@ namespace FishBreeder.Store
         {
             SupplierCatalog.TankLevel(role, out track, out level);
             if (slot == null || !slot.wall || slot.Exhibit) return;
-            // The wall breeding tank is for breeding the big fish, so it goes with fishkeeping;
-            // other wall aquariums are for showing, so they go with shopkeeping.
-            if (slot.WallBreeder) level = Mathf.Max(level, Balance.Data.store.wallBreederLevel);
-            else
-            {
-                track = XpTrack.Shopkeeping;
-                level = Mathf.Max(level, Balance.Data.store.wallAquariumLevel);
-            }
+            // Wall aquariums are for showing, so they go with shopkeeping.
+            track = XpTrack.Shopkeeping;
+            level = Mathf.Max(level, Balance.Data.store.wallAquariumLevel);
         }
 
         public bool CanBuyTank(Slot slot, TankRole role, out string reason)
@@ -421,9 +420,9 @@ namespace FishBreeder.Store
             TankLevel(slot, role, out var track, out var level);
             if (slot.tank != null) reason = "There is already a tank here.";
             else if (!slot.IsOpen) reason = "This part of the store is locked.";
-            else if (!slot.Allows(role)) reason = slot.Exhibit ? "Only exhibits go in the public aquarium." : role == TankRole.Exhibit ? "Exhibits only go in the public aquarium." : slot.holding ? "Only holding tanks go here." : role == TankRole.Holding ? "Holding tanks go in the big breeding room." : slot.WallBreeder ? "The wall breeding tank is only for breeding." : slot.backRoom ? "Only breeder and quarantine tanks go in the breeding room." : "Breeder and quarantine tanks go in the breeding room.";
+            else if (!slot.Allows(role)) reason = slot.Exhibit ? "Only exhibits go in the public aquarium." : role == TankRole.Exhibit ? "Exhibits only go in the public aquarium." : slot.holding ? "Only holding tanks go here." : role == TankRole.Holding ? "Holding tanks go in the big breeding room." : slot.backRoom ? "Only breeder and quarantine tanks go in the breeding room." : "Breeder and quarantine tanks go in the breeding room.";
             else if (role == TankRole.Holding && !ScubaDives.Unlocked) reason = $"Holding tanks come with the seller's dives: {Progression.LockText(XpTrack.Fishkeeping, ScubaDives.Data.unlockLevel)}.";
-            else if (!slot.WallBreeder && !slot.Exhibit && CountTanks(role) >= SupplierCatalog.TankLimit(role)) reason = $"The store can't hold more {StoreTank.RoleName(role).ToLower()} tanks.";
+            else if (!slot.Exhibit && CountTanks(role) >= SupplierCatalog.TankLimit(role)) reason = $"The store can't hold more {StoreTank.RoleName(role).ToLower()} tanks.";
             else if (!Progression.IsUnlocked(track, level)) reason = $"Needs {Progression.LockText(track, level)}.";
             else if (!Economy.CanAfford(TankPrice(slot, role))) reason = "Not enough money.";
             return reason == null;
@@ -503,7 +502,7 @@ namespace FishBreeder.Store
                 GameLog.Add(reason);
                 return null;
             }
-            if (!Economy.TrySpend(TankPrice(slot, role), slot.WallBreeder ? "the wall breeding tank" : slot.Exhibit ? $"the {PublicAquarium.ClimateName(slot.exhibit).ToLower()} aquarium" : slot.wall ? "a wall aquarium" : $"a {StoreTank.RoleName(role).ToLower()} tank", MoneyKind.Tanks)) return null;
+            if (!Economy.TrySpend(TankPrice(slot, role), slot.Exhibit ? $"the {PublicAquarium.ClimateName(slot.exhibit).ToLower()} aquarium" : slot.wall ? "a wall aquarium" : $"a {StoreTank.RoleName(role).ToLower()} tank", MoneyKind.Tanks)) return null;
             var tank = PlaceTank(slot, role, null);
             Progression.Award(XpTrack.Shopkeeping, Balance.Data.progression.xpBuyTank);
             if (slot.wall)
@@ -515,11 +514,6 @@ namespace FishBreeder.Store
                     string kind = slot.exhibit == ExhibitClimate.Temperate ? "cold-water fish (goldfish and their kin)" : "warm-water fish";
                     Fx.Card(tank.Title.ToUpper(), PublicAquarium.RoomName, $"A whole wall of the {PublicAquarium.RoomName.ToLower()} is one big exhibit now, for {kind} that grow big: room for {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large fish. Fill it with many kinds, then set a ticket price at the booth.", "Fill it with big fish", UiTheme.Aqua);
                     GameLog.Add($"The {tank.Title.ToLower()} is in! It takes {kind} that grow big (no little fish), by size: {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimit(tank.Tank, AquariumSize.Large)} large, and {tank.Tank.DecorationSlots} decorations. Visitors come once it has fish in it.");
-                }
-                else if (slot.WallBreeder)
-                {
-                    Fx.Card("WALL BREEDING TANK", tank.Title, $"The back wall of the big breeding room is one big breeding tank now: room for {tank.Tank.Capacity} fish, and big enough for the biggest fish to breed.", "Pair up some big fish", UiTheme.Aqua);
-                    GameLog.Add($"The wall breeding tank is in! {tank.Title} holds {tank.Tank.Capacity} fish and {tank.Tank.DecorationSlots} decorations.");
                 }
                 else
                 {
@@ -557,7 +551,7 @@ namespace FishBreeder.Store
         /// <summary>The types a tank here could be turned into: the other kind for its room.</summary>
         public static TankRole[] OtherRoles(StoreTank tank)
         {
-            if (tank.Slot != null && (tank.Slot.WallBreeder || tank.Slot.Exhibit || tank.Slot.holding)) return new TankRole[0];
+            if (tank.Slot != null && (tank.Slot.Exhibit || tank.Slot.holding)) return new TankRole[0];
             if (tank.InBackRoom) return new[] { tank.Role == TankRole.Breeder ? TankRole.Quarantine : TankRole.Breeder };
             return new[] { tank.Role == TankRole.ForSale ? TankRole.Display : TankRole.ForSale };
         }
@@ -934,9 +928,8 @@ namespace FishBreeder.Store
         Transform bigRoomShell;
 
         /// <summary>
-        /// Staff only: the big breeding room, through a door in the breeding room's west wall. Its
-        /// back wall is kept for the wall breeding tank, where the big fish breed. Rebuilt with the
-        /// rest of the shell, so the wall opens up round the tank once it's in.
+        /// Staff only: the big breeding room, through a door in the breeding room's west wall, where
+        /// the holding tanks stand along the back wall. Rebuilt with the rest of the shell.
         /// </summary>
         void BuildBigRoomShell()
         {
@@ -947,7 +940,7 @@ namespace FishBreeder.Store
             float cx = BigRoomCenterX, halfW = BigRoomWidth * 0.5f, halfD = SectionDepth * 0.5f, t = WallThickness;
             // The floor runs under the west wall; the wall it shares with the breeding room stands on that room's floor.
             Floor(root, new Vector3(cx - t * 0.5f, -0.05f, 0f), new Vector3(BigRoomWidth + t, 0.1f, SectionDepth), BackRoomFloorColor);
-            TankWall(root, null, new Vector3(cx - t * 0.5f, 0f, halfD + t * 0.5f), 0f, BigRoomWidth + t);
+            Wall(root, "BackWall", new Vector3(cx - t * 0.5f, WallHeight * 0.5f, halfD + t * 0.5f), new Vector3(BigRoomWidth + t, WallHeight, t), WallColor);
             Wall(root, "SideWall", new Vector3(cx - halfW - t * 0.5f, WallHeight * 0.5f, 0f), new Vector3(t, WallHeight, SectionDepth + t * 2f), WallColor);
             Wall(root, "FrontWall", new Vector3(cx - t * 0.5f, FrontWallHeight * 0.5f, -halfD - t * 0.5f), new Vector3(BigRoomWidth + t, FrontWallHeight, t), WallColor);
             Palm(root, new Vector3(cx - halfW + 0.45f, 0f, -halfD + 0.45f));
@@ -956,9 +949,7 @@ namespace FishBreeder.Store
             Wall(root, "Buckets", new Vector3(cx - halfW + 0.35f, 1.05f, -1f), new Vector3(0.3f, 0.3f, 0.3f), new Color(0.3f, 0.5f, 0.75f));
             Wall(root, "Buckets", new Vector3(cx - halfW + 0.35f, 1.05f, -0.6f), new Vector3(0.3f, 0.3f, 0.3f), new Color(0.95f, 0.6f, 0.3f));
             Wall(root, "Nets", new Vector3(cx - halfW + 0.3f, 0.98f, 0.4f), new Vector3(0.36f, 0.16f, 0.5f), new Color(0.3f, 0.62f, 0.66f));
-            var tank = slots.Find(s => s.WallBreeder);
-            if (tank == null || tank.tank == null || tank.tank.transform.position.y + tank.tank.Tank.InnerSize.y < 2.9f)
-                Surfboard(root, new Vector3(cx + 2f, 3.1f, halfD - 0.06f), BoardColors[3]);
+            Surfboard(root, new Vector3(cx + 2f, 3.1f, halfD - 0.06f), BoardColors[3]);
         }
 
         /// <summary>

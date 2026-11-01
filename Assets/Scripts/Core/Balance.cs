@@ -386,7 +386,7 @@ namespace FishBreeder.Core
             new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, mediumCapacity = 4, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
             new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, mediumCapacity = 5, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
         };
-        [Tooltip("The wall aquarium (the public aquarium's two exhibits, and the big breeding room's wall breeding tank): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
+        [Tooltip("The wall aquarium (the public aquarium's two exhibits): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
         public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, mediumCapacity = 5, unlockLevel = 1, decorationSlots = 48 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
@@ -398,17 +398,15 @@ namespace FishBreeder.Core
         public int wallAquariumPrice = 12000;
         [Tooltip("Shopkeeping level needed to buy the wall aquarium.")]
         public int wallAquariumLevel = 8;
-        [Tooltip("What the wall breeding tank costs: a wall aquarium for breeding the big fish, along the back wall of the big breeding room (west of the breeding room).")]
+        [Tooltip("What the big breeding room's wall breeding tank cost (it's gone: saves that had one are refunded this).")]
         public int wallBreederPrice = 15000;
-        [Tooltip("Fishkeeping level needed to buy the wall breeding tank.")]
-        public int wallBreederLevel = 10;
         [Tooltip("What it costs to turn a tank into another type (for sale and display swap on the shop floor, breeder and quarantine in the breeding room).")]
         public int changeTankTypePrice = 100;
         [Tooltip("Decoration ids the three starting tanks come with.")]
         public List<string> starterDecorations = new List<string>();
         [Tooltip("A tank's fish count is a soft limit: you can go over it (with serious problems for the fish) up to this many times the limit.")]
         public float tankHardLimitMultiplier = 1.5f;
-        [Tooltip("No ordinary tank (the wall breeding tank included) holds more small fish than this, soft limit or hard, whatever its size or perks.")]
+        [Tooltip("No ordinary tank holds more small fish than this, soft limit or hard, whatever its size or perks.")]
         public int maxFishPerTank = 80;
 
         public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>

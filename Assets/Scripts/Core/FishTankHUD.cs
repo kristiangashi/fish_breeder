@@ -1831,9 +1831,9 @@ namespace FishBreeder.Core
         /// </summary>
         void DrawAquariumFish(Fish fish)
         {
-            if (fish.IdentityHidden) return;
-            var size = PublicAquarium.SizeClass(fish.Species);
-            if (size != AquariumSize.None || tank.IsExhibit) Ui.Label($"<size=11>{PublicAquarium.WhereItLives(fish)}</size>", Rich());
+            // A mystery find can still be sold or let go, but where it may live would give it away.
+            var size = fish.IdentityHidden ? AquariumSize.None : PublicAquarium.SizeClass(fish.Species);
+            if (!fish.IdentityHidden && (size != AquariumSize.None || tank.IsExhibit)) Ui.Label($"<size=11>{PublicAquarium.WhereItLives(fish)}</size>", Rich());
             if (!tank.IsHolding && !tank.IsExhibit) return;
             GUI.enabled = !ReadOnly;
             GUILayout.BeginHorizontal();

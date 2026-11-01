@@ -129,7 +129,7 @@ Kristian's second round of rules. Numbers are in the balance file under `aquariu
   exhibit holds **20/30/40 small, 5/10/15 medium and 1/3/5 large** fish: as bought, after one
   height upgrade, and after two or more (`smallPerExhibit` and so on).
 - **Ordinary tanks** never hold more than **80 small fish** (`store.maxFishPerTank`, soft and hard
-  limit alike). The wall tank sizes (the wall breeding tank) are 60/65/70/75/80, down from 200-390.
+  limit alike). The wall tank sizes are 60/65/70/75/80, down from 200-390.
 - **Variety matters.** Appeal is now fullness 20, variety 35 (8 kinds for full marks, the first
   kinds counting most), looks 20, quality 15, clean water 5; an exhibit where one kind is over 40%
   of the fish loses up to 20 as "samey", and each kind across the whole aquarium past five adds 2
@@ -146,10 +146,22 @@ Kristian's second round of rules. Numbers are in the balance file under `aquariu
   fee back if they filled up while he was out). "Keep diving" books the next dive after each one.
   Finds are weighted by real-world rarity (Silver Flamefin common, flowerhorn-type Crimson Jewel
   legendary); four gear upgrades (wetsuit, dive computer, scooter, rebreather) make rare finds
-  likelier.
-- **Holding tanks** (TankRole.Holding): three spots in a row across the big breeding room (the west
-  wing), $900 each. They only take the seller's finds: 1/2/3 of them at standard/large/grand size.
-  Nothing breeds there. From there a find goes to an exhibit, the market or back to the wild.
+  likelier. The player never sees the odds: the admin console's Scuba dives tab shows each fish's
+  chance per dive with each gear upgrade, and what each upgrade does to each rarity.
+- **Finds are a mystery** until they grow into juveniles: a wild find is generation 1, so it's a
+  mystery fry (or an egg) and the seller's message doesn't say what it is. It joins the journal when
+  it grows enough to tell. It can still be sold on the market or released while it's a mystery.
+- **Past finds** in the Dives tab: one picture for every kind he has ever found, once the player can
+  tell what it is (saved as `scuba.found`). The journal keeps the dive fish in their own **Dive
+  finds** section (`Species.eastWingOnly`), so the "?" cards show there are more out there.
+- **Holding tanks** (TankRole.Holding): three spots in a row along the back wall of the big breeding
+  room (the west wing), $900 each. They only take the seller's finds: 1/2/3 of them at
+  standard/large/grand size. Nothing breeds there. From there a find goes to an exhibit, the market
+  or back to the wild.
+- **No wall breeding tank.** The big breeding room only has the holding tanks now. Its old spot
+  (spot 0) stays in the list so saved spot numbers line up; a save that had one is refunded
+  (`store.wallBreederPrice`) and its fish and eggs move into a grand breeder in a free breeding room
+  spot (or back to the seller if there is none).
 - **Fights.** Some kinds won't share a tank with too many of their own (`Species.maxOfKind`: red-tailed
   black shark 1, peacock bass, oscar, green terror, Texas cichlid and Crimson Jewel 2, Jack Dempsey 3).
   Past that the losers take `tankMates.rivalInjury` (0.13) a time step until one dies: about eight

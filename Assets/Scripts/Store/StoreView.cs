@@ -522,7 +522,7 @@ namespace FishBreeder.Store
             if (focused != null)
             {
                 var at = focused.transform.position;
-                if (focused.Slot != null && focused.Slot.WallBreeder) panX = StoreLayout.BigRoomCenterX;
+                if (focused.Slot != null && focused.Slot.holding) panX = StoreLayout.BigRoomCenterX;
                 else panX = focused.InBackRoom ? StoreLayout.BackRoomCenterX : Mathf.Round(at.x / StoreLayout.SectionWidth) * StoreLayout.SectionWidth;
                 // Back out over the north end of the East wing for a tank up there.
                 panZ = at.z > StoreLayout.SectionDepth * 0.5f ? at.z - 2f - StoreLookZ : 0f;
@@ -637,7 +637,7 @@ namespace FishBreeder.Store
                 case Panel.Register: panelRect = Centered(width, height, 500f, 560f); DrawRegister(); break;
                 case Panel.Supplier: panelRect = Centered(width, height, 760f, Mathf.Min(700f, height - 100f)); DrawSupplier(); break;
                 case Panel.Unlock: panelRect = Centered(width, height, 380f, 170f); DrawUnlock(); break;
-                case Panel.BuyTank: panelRect = Centered(width, height, 460f, pendingSlot != null && pendingSlot.wall && !pendingSlot.WallBreeder ? 330f : 250f); DrawBuyTank(); break;
+                case Panel.BuyTank: panelRect = Centered(width, height, 460f, pendingSlot != null && pendingSlot.wall ? 330f : 250f); DrawBuyTank(); break;
                 case Panel.DayReport: panelRect = Centered(width, height, 520f, shopDay.LastReport != null && shopDay.LastReport.aquarium != null ? 600f : 440f); DrawDayReport(); break;
                 case Panel.Owner: panelRect = Centered(width, height, 480f, 400f); DrawOwnerPick(); break;
             }
@@ -1299,7 +1299,7 @@ namespace FishBreeder.Store
 
             if (!shopDay.IsOpen)
                 foreach (var slot in store.Slots)
-                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.Exhibit ? $"+ {PublicAquarium.ClimateName(slot.exhibit)} aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Exhibit))}" : slot.WallBreeder ? $"+ Wall breeding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Breeder))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.holding ? $"+ Holding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Holding))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
+                    if (slot.IsOpen && slot.tank == null && ClickableLabel(slot.FloorFront + Vector3.up * 0.3f, slot.Exhibit ? $"+ {PublicAquarium.ClimateName(slot.exhibit)} aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Exhibit))}" : slot.wall ? $"+ Wall aquarium\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Display))}" : slot.holding ? $"+ Holding tank\n{Economy.Format(StoreLayout.TankPrice(slot, TankRole.Holding))}" : slot.backRoom ? "+ Breeder or quarantine tank" : "+ Tank spot", scale, height))
                     {
                         pendingSlot = slot;
                         panel = Panel.BuyTank;
@@ -1647,7 +1647,7 @@ namespace FishBreeder.Store
 
         /// <summary>
         /// The seller's dives: book one (he's gone until the next time step and comes back with an
-        /// egg or fry for a holding tank), keep him diving, see what he might find, and upgrade his gear.
+        /// egg or fry for a holding tank), keep him diving, see his past finds, and upgrade his gear.
         /// </summary>
         void DrawDives()
         {
@@ -1686,28 +1686,36 @@ namespace FishBreeder.Store
             GUILayout.EndVertical();
 
             GUILayout.Space(6f);
-            Ui.Label($"<b><color={UiTheme.SunHex}>WHAT HE MIGHT FIND</color></b>", Rich());
-            var next = ScubaDives.NextGear;
-            var now = ScubaDives.Odds(ScubaDives.GearLevel);
-            var better = next != null ? ScubaDives.Odds(ScubaDives.GearLevel + 1) : null;
-            for (int i = 0; i < now.Count; i++)
+            // One picture for each kind he has ever brought back (once it's grown enough to tell),
+            // so the player can see what he's capable of. The odds stay hidden.
+            Ui.Label($"<b><color={UiTheme.SunHex}>PAST FINDS</color></b>", Rich());
+            var past = ScubaDives.PastFinds();
+            if (past.Count == 0) Ui.Label("<size=11><i>Nothing yet. What he brings back shows here once it has grown enough to tell what it is.</i></size>", Rich());
+            else
             {
-                var (species, chance) = now[i];
-                GUILayout.BeginHorizontal(GUI.skin.box);
-                var rect = Ui.Slot("Picture", 48f, 48f, GUILayout.Width(48f), GUILayout.Height(48f));
-                GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
-                bool known = Journal.IsDiscovered(species);
-                var photo = known ? ItemPreviews.Fish(species) : null;
-                if (photo != null) GUI.DrawTexture(rect, photo, ScaleMode.ScaleToFit);
-                else GUI.Label(rect, "<size=26><b>?</b></size>", MysteryMark());
-                string size = PublicAquarium.SizeName(PublicAquarium.SizeClass(species)).ToLower();
-                string then = better != null && i < better.Count ? $", {Percent(better[i].chance)} with {next.name.ToLower()}" : "";
-                Ui.Label($"<b>{(known ? species.displayName : "A fish you haven't found yet")}</b>  <size=11>({ScubaDives.WildRarity(species).ToString().ToLower()} in the wild, a {size} fish)</size>\n<size=11>{Percent(chance)} of dives{then}</size>", Rich());
-                GUILayout.EndHorizontal();
+                const float icon = 48f;
+                int perRow = Mathf.Max(1, Mathf.FloorToInt((panelRect.width - 40f) / (icon + 6f)));
+                for (int i = 0; i < past.Count; i += perRow)
+                {
+                    GUILayout.BeginHorizontal();
+                    for (int j = i; j < Mathf.Min(past.Count, i + perRow); j++)
+                    {
+                        var species = past[j];
+                        var rect = Ui.Slot("Past find", icon, icon, GUILayout.Width(icon), GUILayout.Height(icon));
+                        GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.24f, 0.3f, 0.9f), 0f, 4f);
+                        var photo = ItemPreviews.Fish(species);
+                        if (photo != null) GUI.DrawTexture(rect, photo, ScaleMode.ScaleToFit);
+                        GUI.Label(rect, new GUIContent(string.Empty, species.displayName));
+                        GUILayout.Space(6f);
+                    }
+                    GUILayout.FlexibleSpace();
+                    GUILayout.EndHorizontal();
+                }
             }
 
             GUILayout.Space(6f);
             Ui.Label($"<b><color={UiTheme.SunHex}>HIS GEAR</color></b>", Rich());
+            var next = ScubaDives.NextGear;
             Ui.Label(ScubaDives.GearLevel == 0 ? "Rented gear for now." : $"He dives with his {d.gear[ScubaDives.GearLevel - 1].name.ToLower()}.", Rich());
             if (next != null)
             {
@@ -2036,11 +2044,9 @@ namespace FishBreeder.Store
         {
             UiCheck.Begin("Buy a tank", panelRect, UiStyles.Window);
             var wall = Balance.Data.store.wallAquarium;
-            Ui.Label(pendingSlot.Exhibit ? $"The {PublicAquarium.ClimateName(pendingSlot.exhibit).ToLower()} aquarium" : pendingSlot.WallBreeder ? "The wall breeding tank" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.holding ? "A holding tank" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
+            Ui.Label(pendingSlot.Exhibit ? $"The {PublicAquarium.ClimateName(pendingSlot.exhibit).ToLower()} aquarium" : pendingSlot.wall ? "A wall aquarium" : pendingSlot.holding ? "A holding tank" : pendingSlot.backRoom ? "Buy a tank for the breeding room" : "Buy a tank for this spot", UiTheme.Title);
             Ui.Label(pendingSlot.Exhibit
                 ? $"<i>One of the {PublicAquarium.RoomName.ToLower()}'s two exhibits: a tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it, for {(pendingSlot.exhibit == ExhibitClimate.Temperate ? "cold-water fish only (goldfish and their kin)" : "warm-water fish only")}. Only fish that grow big live here: it holds {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Small)} small, {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Medium)} medium and {PublicAquarium.ExhibitLimitAt(0, AquariumSize.Large)} large fish and {wall.decorationSlots} decorations, more once it's raised taller. Visitors pay to see it, and love variety; nothing in it is sold.</i>"
-                : pendingSlot.WallBreeder
-                ? $"<i>A wall aquarium for breeding, along the big breeding room's back wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It has room for the biggest fish to pair up and breed, and it can be raised taller later.</i>"
                 : pendingSlot.wall
                 ? $"<i>One tank along this whole wall ({wall.width:0.#} m long, {wall.depth:0.#} m deep), set into it and reaching out behind it. It holds {Tank.CapacityOf(wall)} fish (or {Tank.MediumCapacityOf(wall)} of the big medium kinds) and {wall.decorationSlots} decorations: four grand tanks' worth, and it can be raised taller later.</i>"
                 : pendingSlot.holding
@@ -2053,7 +2059,7 @@ namespace FishBreeder.Store
                 if (!pendingSlot.Allows(role)) continue;
                 StoreLayout.TankLevel(pendingSlot, role, out var track, out var level);
                 GUI.enabled = !shopDay.IsOpen && store.CanBuyTank(pendingSlot, role, out _);
-                string kind = pendingSlot.Exhibit ? $"{PublicAquarium.ClimateName(pendingSlot.exhibit)} aquarium" : pendingSlot.WallBreeder ? "Wall breeding tank" : pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
+                string kind = pendingSlot.Exhibit ? $"{PublicAquarium.ClimateName(pendingSlot.exhibit)} aquarium" : pendingSlot.wall ? $"Wall aquarium ({StoreTank.RoleName(role).ToLower()})" : $"{StoreTank.RoleName(role)} tank";
                 string text = Progression.IsUnlocked(track, level)
                     ? pendingSlot.Exhibit ? $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}" : $"{kind}   {Economy.Format(StoreLayout.TankPrice(pendingSlot, role))}   ({store.CountTanks(role)}/{SupplierCatalog.TankLimit(role)} {StoreTank.RoleName(role).ToLower()} owned)"
                     : $"{kind}: needs {Progression.LockText(track, level)}";

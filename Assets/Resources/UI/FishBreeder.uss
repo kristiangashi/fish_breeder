@@ -1628,14 +1628,16 @@
     flex-shrink: 0;
 }
 
+/* Two to a row, one at each side. */
 .fb-move-buttons {
     flex-shrink: 0;
+    justify-content: space-between;
 }
 
 .unity-button.fb-move-button {
-    width: 146px;
+    width: 140px;
     white-space: normal;
-    margin: 2px 4px 2px 0;
+    margin: 2px 0;
 }
 
 /* The previous-tank, top-view and next-tank buttons along the bottom. */

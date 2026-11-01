@@ -164,10 +164,12 @@ namespace FishBreeder.Core
             return frames >= FramesToCount;
         }
 
-        static void Report(string id, string what)
+        static void Report(string id, string what) => Record(id, $"{id}: {what} (screen {Screen.width}x{Screen.height})");
+
+        /// <summary>Records a problem found by another check (see <see cref="UiToolkitCheck"/>), once per id.</summary>
+        public static void Record(string id, string line)
         {
             if (!reported.Add(id)) return;
-            string line = $"{id}: {what} (screen {Screen.width}x{Screen.height})";
             Problems.Add(line);
 #if UNITY_EDITOR
             Debug.LogWarning("[UI overflow] " + line);

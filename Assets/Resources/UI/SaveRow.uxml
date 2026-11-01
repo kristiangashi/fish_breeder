@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="save-row" class="fb-card">
+        <ui:Label name="description" text="&lt;b&gt;Save 1&lt;/b&gt;   Day 4   $1,250" class="fb-card__text" />
+        <ui:Button name="load" text="Load" class="fb-button fb-button--primary" />
+        <ui:Button name="delete" text="Delete" class="fb-button" />
+    </ui:VisualElement>
+</ui:UXML>

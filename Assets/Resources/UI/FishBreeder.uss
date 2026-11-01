@@ -1,0 +1,421 @@
+/*
+ * The game's look for UI Toolkit screens, matching UiTheme's IMGUI colours: deep lagoon windows
+ * with a bright aqua rim, turquoise buttons, coral for the main action, sunny yellow titles and
+ * warm sand text. Every UXML screen links this sheet, so UI Builder previews it too.
+ *
+ * Sizes are in UI units: the panel scales so the screen is always 900 units tall (see UiPanels).
+ * Nothing here sets a fixed height on text; boxes grow to fit what's in them.
+ */
+
+:root {
+    --abyss: rgb(5, 28, 43);
+    --deep: rgb(8, 51, 74);
+    --lagoon: rgb(10, 92, 112);
+    --turquoise: rgb(26, 158, 163);
+    --aqua: rgb(92, 230, 217);
+    --coral: rgb(255, 117, 94);
+    --sun: rgb(255, 212, 97);
+    --sand: rgb(255, 245, 222);
+    --muted: rgb(159, 180, 188);
+    --faint: rgb(111, 143, 153);
+    --danger: rgb(255, 176, 160);
+    --leaf: rgb(143, 240, 160);
+
+    font-size: 13px;
+    color: var(--sand);
+}
+
+/* ------------------------------------------------------------ screens and windows */
+
+/* Fills the whole screen. */
+.fb-screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Puts its child (a window) in the middle of the screen. */
+.fb-center {
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.fb-dim {
+    background-color: rgba(3, 15, 26, 0.55);
+}
+
+.fb-window {
+    background-color: rgba(8, 64, 84, 0.97);
+    border-width: 2px;
+    border-color: var(--aqua);
+    border-radius: 12px;
+    padding: 12px 16px 14px 16px;
+    max-width: 100%;
+    /* Gets shorter on a short screen: its scrolling body gives up the room. */
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+/* A window that comes from a template (Load Game, Settings): the template's own box spans the
+   screen's width and lets the window inside shrink. */
+.fb-page {
+    align-self: stretch;
+    align-items: center;
+    flex-shrink: 1;
+    min-height: 0;
+}
+
+.fb-window--narrow {
+    width: 320px;
+}
+
+.fb-window--confirm {
+    width: 400px;
+}
+
+.fb-window--medium {
+    width: 520px;
+}
+
+.fb-window--wide {
+    width: 640px;
+}
+
+/* The part of a window that scrolls when the screen is too short for all of it. */
+.fb-window__body {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 60px;
+}
+
+/* A row of buttons at the bottom of a window, kept on the right. */
+.fb-window__footer {
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    margin-top: 10px;
+}
+
+/* ------------------------------------------------------------ text */
+
+/* Text and buttons never squash below their own height when a window gets short. */
+.fb-title, .fb-heading, .fb-text, .fb-small, .fb-game-title, .fb-subtitle, .unity-button.fb-button {
+    flex-shrink: 0;
+}
+
+.fb-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--sun);
+    white-space: normal;
+    margin-bottom: 4px;
+    padding: 0;
+}
+
+.fb-heading {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--aqua);
+    white-space: normal;
+    margin: 10px 0 2px 0;
+    padding: 0;
+}
+
+.fb-text {
+    white-space: normal;
+    padding: 0;
+    margin: 2px 0;
+}
+
+.fb-small {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: normal;
+    padding: 0;
+    margin: 2px 0;
+}
+
+.fb-italic {
+    -unity-font-style: italic;
+}
+
+.fb-warning {
+    color: var(--danger);
+}
+
+/* ------------------------------------------------------------ buttons */
+
+.unity-button.fb-button {
+    background-color: rgb(24, 140, 148);
+    border-width: 1px;
+    border-color: rgb(115, 230, 217);
+    border-radius: 8px;
+    color: var(--sand);
+    -unity-font-style: bold;
+    font-size: 13px;
+    padding: 4px 12px 5px 12px;
+    margin: 3px 0;
+    min-height: 34px;
+    white-space: nowrap;
+    transition-property: background-color, scale;
+    transition-duration: 0.08s;
+}
+
+.unity-button.fb-button:hover {
+    background-color: rgb(40, 172, 178);
+    border-color: rgb(178, 255, 242);
+    color: rgb(255, 255, 255);
+}
+
+.unity-button.fb-button:active {
+    background-color: rgb(13, 97, 112);
+    scale: 0.98 0.98;
+}
+
+.unity-button.fb-button:disabled {
+    opacity: 0.4;
+}
+
+.unity-button.fb-button--primary {
+    background-color: rgb(250, 120, 92);
+    border-color: rgb(255, 204, 153);
+}
+
+.unity-button.fb-button--primary:hover {
+    background-color: rgb(255, 150, 115);
+    border-color: rgb(255, 230, 191);
+}
+
+.unity-button.fb-button--primary:active {
+    background-color: rgb(204, 82, 66);
+}
+
+.unity-button.fb-button--primary:disabled {
+    background-color: rgb(24, 140, 148);
+    border-color: rgb(115, 230, 217);
+}
+
+.unity-button.fb-button--tall {
+    min-height: 42px;
+    font-size: 15px;
+    margin: 4px 0;
+}
+
+/* Buttons side by side get a little room between them. */
+.fb-window__footer > .unity-button.fb-button {
+    margin-left: 6px;
+}
+
+/* A small square button holding a drawn arrow (see .fb-chevron). */
+.unity-button.fb-button--icon {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+/* An arrow head drawn from two borders, so it never depends on the font. */
+.fb-chevron {
+    width: 9px;
+    height: 9px;
+    border-left-width: 3px;
+    border-bottom-width: 3px;
+    border-color: var(--sand);
+}
+
+.fb-chevron--left {
+    rotate: 45deg;
+    margin-left: 4px;
+}
+
+.fb-chevron--right {
+    rotate: -135deg;
+    margin-right: 4px;
+}
+
+/* ------------------------------------------------------------ layout helpers */
+
+.fb-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.fb-spacer {
+    flex-grow: 1;
+}
+
+.fb-column {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* ------------------------------------------------------------ cards and lists */
+
+.fb-card {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(15, 77, 97, 0.95);
+    border-width: 1px;
+    border-color: rgb(64, 153, 158);
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-bottom: 5px;
+}
+
+.fb-card:hover {
+    border-color: var(--aqua);
+}
+
+.fb-card--selected {
+    background-color: rgba(31, 128, 140, 0.97);
+    border-width: 2px;
+    border-color: var(--sun);
+}
+
+/* The text part of a card takes the room the buttons leave and wraps inside it. */
+.fb-card__text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    white-space: normal;
+    padding: 0;
+    margin: 0 8px 0 0;
+}
+
+.fb-card > .unity-button.fb-button {
+    flex-shrink: 0;
+    margin: 0 0 0 6px;
+}
+
+.fb-scroll {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.fb-scroll .unity-scroller--vertical {
+    width: 10px;
+    margin-left: 4px;
+}
+
+.fb-scroll .unity-scroller--vertical .unity-slider {
+    width: 10px;
+    min-width: 0;
+    margin: 0;
+}
+
+.fb-scroll .unity-scroller--vertical .unity-base-slider__drag-container {
+    width: 10px;
+}
+
+.fb-scroll .unity-scroller--vertical .unity-base-slider__tracker {
+    background-color: rgba(0, 20, 31, 0.6);
+    border-width: 0;
+    border-radius: 5px;
+}
+
+.fb-scroll .unity-scroller--vertical .unity-base-slider__dragger {
+    background-color: rgb(92, 214, 207);
+    border-width: 0;
+    border-radius: 5px;
+}
+
+.fb-scroll .unity-scroller__low-button,
+.fb-scroll .unity-scroller__high-button {
+    display: none;
+}
+
+/* ------------------------------------------------------------ settings rows */
+
+/* A setting: its name, then the value between back and forward arrows. */
+.fb-choice {
+    flex-direction: row;
+    align-items: center;
+    margin: 2px 0;
+}
+
+.fb-choice__label {
+    width: 150px;
+    flex-shrink: 1;
+    white-space: normal;
+    padding: 0;
+    margin: 0 6px 0 0;
+}
+
+.fb-choice__value {
+    flex-grow: 1;
+    min-width: 120px;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    padding: 0 4px;
+    margin: 0;
+}
+
+.fb-choice:disabled {
+    opacity: 0.45;
+}
+
+/* ------------------------------------------------------------ main menu */
+
+.fb-backdrop {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+}
+
+.fb-bubble {
+    position: absolute;
+    border-radius: 50%;
+    background-color: rgba(178, 242, 255, 0.18);
+}
+
+/* The title and whichever page is showing, down the middle of the screen. */
+.fb-menu-column {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    padding: 9% 20px 40px 20px;
+}
+
+.fb-game-title {
+    font-size: 52px;
+    -unity-font-style: bold;
+    color: var(--sun);
+    -unity-text-align: middle-center;
+    white-space: normal;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-subtitle {
+    font-size: 15px;
+    color: rgb(159, 230, 224);
+    -unity-text-align: middle-center;
+    white-space: normal;
+    padding: 0;
+    margin: 0 0 26px 0;
+}
+
+.fb-menu-buttons {
+    width: 320px;
+    max-width: 100%;
+}
+
+.fb-footer {
+    position: absolute;
+    right: 12px;
+    bottom: 6px;
+    left: 12px;
+    font-size: 11px;
+    color: var(--faint);
+    -unity-text-align: lower-right;
+    white-space: normal;
+}

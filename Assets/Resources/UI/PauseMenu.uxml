@@ -1,0 +1,30 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Template name="LoadWindow" src="LoadWindow.uxml" />
+    <ui:Template name="SettingsWindow" src="SettingsWindow.uxml" />
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="pause-menu" class="fb-screen fb-dim fb-center">
+        <ui:VisualElement name="main-page" class="fb-window fb-window--narrow">
+            <ui:Label text="Paused" class="fb-title" />
+            <ui:Label name="save-state" text="Save 1, day 4, saved less than a minute ago" class="fb-small" />
+            <ui:VisualElement class="fb-column" style="margin-top: 6px;">
+                <ui:Button name="resume" text="Resume (Esc)" class="fb-button fb-button--primary fb-button--tall" />
+                <ui:Button name="save" text="Save Game" class="fb-button fb-button--tall" />
+                <ui:Button name="load-game" text="Load Game" class="fb-button fb-button--tall" />
+                <ui:Button name="settings-button" text="Settings" class="fb-button fb-button--tall" />
+                <ui:Button name="save-and-quit" text="Save and Quit" class="fb-button fb-button--tall" />
+                <ui:Button name="quit-without-saving" text="Quit Without Saving" class="fb-button fb-button--tall" />
+            </ui:VisualElement>
+            <ui:Label name="notice" text="Game saved." class="fb-text" />
+        </ui:VisualElement>
+        <ui:VisualElement name="quit-page" class="fb-window fb-window--confirm">
+            <ui:Label text="Quit without saving?" class="fb-title" />
+            <ui:Label name="quit-warning" text="Anything since the last save is lost. Save 1 stays as it was." class="fb-text" />
+            <ui:VisualElement class="fb-window__footer">
+                <ui:Button name="confirm-quit" text="Quit Without Saving" class="fb-button fb-button--primary" />
+                <ui:Button name="cancel" text="Cancel" class="fb-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Instance template="LoadWindow" name="load-page" class="fb-page" />
+        <ui:Instance template="SettingsWindow" name="settings-page" class="fb-page" />
+    </ui:VisualElement>
+</ui:UXML>

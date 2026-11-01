@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="choice" class="fb-choice">
+        <ui:Label name="choice-label" text="Setting" class="fb-choice__label" />
+        <ui:Button name="previous" class="fb-button fb-button--icon">
+            <ui:VisualElement picking-mode="Ignore" class="fb-chevron fb-chevron--left" />
+        </ui:Button>
+        <ui:Label name="value" text="Value" class="fb-choice__value" />
+        <ui:Button name="next" class="fb-button fb-button--icon">
+            <ui:VisualElement picking-mode="Ignore" class="fb-chevron fb-chevron--right" />
+        </ui:Button>
+    </ui:VisualElement>
+</ui:UXML>

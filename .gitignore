@@ -32,3 +32,6 @@ Thumbs.db
 
 # Raw Meshy downloads (keep the cleaned FBX/GLB in Assets/Art/Fish/Meshy)
 MeshyRaw/
+
+# UI check pictures (F8 in the menus)
+/UiCheck/

@@ -1,0 +1,22 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Template name="LoadWindow" src="LoadWindow.uxml" />
+    <ui:Template name="SettingsWindow" src="SettingsWindow.uxml" />
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="main-menu" class="fb-screen" style="background-color: rgb(5, 28, 43);">
+        <ui:VisualElement name="backdrop" picking-mode="Ignore" class="fb-backdrop fb-no-check" />
+        <ui:VisualElement name="menu-column" picking-mode="Ignore" class="fb-menu-column">
+            <ui:Label text="Fish Breeder" class="fb-game-title" />
+            <ui:Label text="Breed, raise and sell fish in your own little shop" class="fb-subtitle" />
+            <ui:VisualElement name="main-page" class="fb-menu-buttons">
+                <ui:Button name="continue" text="Continue" class="fb-button fb-button--primary fb-button--tall" />
+                <ui:Button name="new-game" text="New Game" class="fb-button fb-button--tall" />
+                <ui:Button name="load-game" text="Load Game" class="fb-button fb-button--tall" />
+                <ui:Button name="settings-button" text="Settings" class="fb-button fb-button--tall" />
+                <ui:Button name="quit" text="Quit" class="fb-button fb-button--tall" />
+            </ui:VisualElement>
+            <ui:Instance template="LoadWindow" name="load-page" class="fb-page" />
+            <ui:Instance template="SettingsWindow" name="settings-page" class="fb-page" />
+        </ui:VisualElement>
+        <ui:Label name="footer" text="Saves: ...   v0.1" picking-mode="Ignore" class="fb-footer" />
+    </ui:VisualElement>
+</ui:UXML>

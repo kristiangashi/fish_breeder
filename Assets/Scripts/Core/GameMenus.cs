@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using FishBreeder.Shop;
 using FishBreeder.Store;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
 namespace FishBreeder.Core
 {
@@ -65,20 +67,13 @@ namespace FishBreeder.Core
         }
     }
 
-    /// <summary>The pieces both menus share: the list of saves and the Settings window.</summary>
+    /// <summary>
+    /// The pieces both menus share. The layouts live in Resources/UI (MainMenu.uxml, PauseMenu.uxml,
+    /// and the LoadWindow, SettingsWindow, SaveRow and ChoiceRow pieces they're built from); edit
+    /// them in UI Builder. This code only fills them in and reacts to clicks.
+    /// </summary>
     public static class MenuScreens
     {
-        static int confirmDelete = -1;
-        static Vector2 scroll;
-        static List<SaveSlot> slots;
-
-        /// <summary>Re-reads the save folder the next time the list is drawn.</summary>
-        public static void RefreshSaves()
-        {
-            slots = null;
-            confirmDelete = -1;
-        }
-
         public static string Describe(SaveSlot slot)
         {
             if (!slot.readable) return $"<b>Save {slot.slot}</b>   <color=#ffb0a0>can't be read</color>";
@@ -86,250 +81,279 @@ namespace FishBreeder.Core
             return $"<b>Save {slot.slot}</b>   Day {slot.day}   {Economy.Format(slot.money)}{levels}\n<size=11><color=#9fb4bc>Saved {slot.written:d MMM yyyy, HH:mm}</color></size>";
         }
 
-        /// <summary>
-        /// Every save with Load and Delete buttons, newest first. Returns the slot picked to load, or 0.
-        /// Delete asks once more before it removes anything. <paramref name="playing"/> is the slot
-        /// being played, which can't be deleted.
-        /// </summary>
-        public static int DrawSaves(float height, int playing = 0)
+        /// <summary>The UI check (F8) runs in the editor and in development builds.</summary>
+        public static bool DevChecks => Application.isEditor || Debug.isDebugBuild;
+    }
+
+    /// <summary>
+    /// The Load Game window: every save with Load and Delete buttons, newest first. Delete asks once
+    /// more before it removes anything, and the save being played can't be deleted.
+    /// </summary>
+    public class SaveListView
+    {
+        readonly ScrollView list;
+        readonly Label empty;
+        readonly VisualTreeAsset rowLayout;
+        readonly int playing;
+        readonly Action<int> load;
+        int confirmDelete = -1;
+
+        public SaveListView(VisualElement window, int playing, Action<int> load, Action back)
         {
-            if (slots == null) slots = SaveGame.Slots();
-            if (slots.Count == 0)
-            {
-                Ui.Label("<i>No saves yet.</i>", Rich());
-                return 0;
-            }
-            int picked = 0;
-            scroll = GUILayout.BeginScrollView(scroll, GUILayout.Height(height));
+            list = window.Q<ScrollView>("save-list");
+            empty = window.Q<Label>("no-saves");
+            rowLayout = UiPanels.Layout("SaveRow");
+            this.playing = playing;
+            this.load = load;
+            window.Q<Button>("back").clicked += back;
+        }
+
+        /// <summary>Re-reads the save folder.</summary>
+        public void Refresh()
+        {
+            confirmDelete = -1;
+            Rebuild(SaveGame.Slots());
+        }
+
+        void Rebuild(List<SaveSlot> slots)
+        {
+            list.Clear();
+            UiPanels.Show(empty, slots.Count == 0);
+            UiPanels.Show(list, slots.Count > 0);
             foreach (var slot in slots)
             {
-                GUILayout.BeginHorizontal(slot.slot == playing ? UiTheme.CardSelected : UiTheme.Card);
-                Ui.NamedLabel("Save line", Describe(slot) + (slot.slot == playing ? $"  <color={UiTheme.SunHex}>(playing)</color>" : ""), Rich());
-                GUILayout.FlexibleSpace();
-                GUI.enabled = slot.readable;
-                if (Ui.Button("Load", UiTheme.Primary, GUILayout.Width(70f), GUILayout.Height(34f))) picked = slot.slot;
-                GUI.enabled = slot.slot != playing;
-                if (confirmDelete == slot.slot)
+                var row = rowLayout.Instantiate();
+                var card = row.Q("save-row");
+                bool isPlaying = slot.slot == playing;
+                if (isPlaying) card.AddToClassList("fb-card--selected");
+                row.Q<Label>("description").text = MenuScreens.Describe(slot) + (isPlaying ? $"  <color={UiTheme.SunHex}>(playing)</color>" : "");
+                var loadButton = row.Q<Button>("load");
+                loadButton.SetEnabled(slot.readable);
+                int number = slot.slot;
+                loadButton.clicked += () => load(number);
+                var delete = row.Q<Button>("delete");
+                delete.SetEnabled(!isPlaying);
+                delete.text = confirmDelete == number ? "Delete for good" : "Delete";
+                delete.clicked += () =>
                 {
-                    if (Ui.Button("Delete for good", GUILayout.Width(118f), GUILayout.Height(34f)))
+                    if (confirmDelete == number)
                     {
-                        SaveGame.Delete(slot.slot);
-                        RefreshSaves();
-                        GUI.enabled = true;
-                        GUILayout.EndHorizontal();
-                        break;
+                        SaveGame.Delete(number);
+                        Refresh();
                     }
-                }
-                else if (Ui.Button("Delete", GUILayout.Width(70f), GUILayout.Height(34f))) confirmDelete = slot.slot;
-                GUI.enabled = true;
-                GUILayout.EndHorizontal();
+                    else
+                    {
+                        confirmDelete = number;
+                        Rebuild(slots);
+                    }
+                };
+                list.Add(row);
             }
-            GUILayout.EndScrollView();
-            return picked;
         }
+    }
 
-        /// <summary>Screen, graphics and autosave settings; each change applies and is kept right away.</summary>
-        public static void DrawSettings()
+    /// <summary>The Settings window: screen, graphics and autosave settings; each change applies and is kept right away.</summary>
+    public class SettingsView
+    {
+        /// <summary>One setting row: the value between back and forward arrows that step through the choices.</summary>
+        class Choice
         {
-            Ui.Label("Display", UiTheme.Heading);
-            if (Application.isEditor) Ui.Label("<size=11><i>Screen mode and size only change in a built game; the editor's Game view sizes itself.</i></size>", Rich());
-            int mode = Choice("Screen mode", GameSettings.Fullscreen ? 1 : 0, new[] { "Windowed", "Fullscreen" });
-            if (mode != (GameSettings.Fullscreen ? 1 : 0)) GameSettings.Fullscreen = mode == 1;
+            readonly VisualElement row;
+            readonly Label value;
+            readonly Func<string[]> names;
+            readonly Func<int> get;
+            readonly Action<int> set;
 
-            var sizes = GameSettings.Resolutions();
-            int current = Mathf.Max(0, sizes.IndexOf(GameSettings.Resolution));
-            var names = new string[sizes.Count];
-            for (int i = 0; i < sizes.Count; i++) names[i] = $"{sizes[i].x} × {sizes[i].y}";
-            int size = Choice("Resolution", current, names);
-            if (size != current) GameSettings.Resolution = sizes[size];
+            public Choice(VisualElement row, Func<string[]> names, Func<int> get, Action<int> set, Action changed)
+            {
+                this.row = row;
+                value = row.Q<Label>("value");
+                this.names = names;
+                this.get = get;
+                this.set = set;
+                row.Q<Button>("previous").clicked += () => { Step(-1); changed(); };
+                row.Q<Button>("next").clicked += () => { Step(1); changed(); };
+            }
 
-            GUILayout.Space(8f);
-            Ui.Label("Graphics", UiTheme.Heading);
-            int quality = Choice("Quality", GameSettings.Quality, QualitySettings.names);
-            if (quality != GameSettings.Quality) GameSettings.Quality = quality;
-            int vsync = Choice("VSync", GameSettings.VSync ? 1 : 0, new[] { "Off", "On" });
-            if (vsync != (GameSettings.VSync ? 1 : 0)) GameSettings.VSync = vsync == 1;
-            GUI.enabled = !GameSettings.VSync;
-            var caps = GameSettings.FrameCapChoices;
-            var capNames = new string[caps.Length];
-            for (int i = 0; i < caps.Length; i++) capNames[i] = caps[i] > 0 ? $"{caps[i]} fps" : "No limit";
-            int cap = Mathf.Max(0, System.Array.IndexOf(caps, GameSettings.FrameCap));
-            int newCap = Choice("Frame rate limit", cap, capNames);
-            if (newCap != cap) GameSettings.FrameCap = caps[newCap];
-            GUI.enabled = true;
+            void Step(int by)
+            {
+                var choices = names();
+                if (choices.Length == 0) return;
+                int index = Mathf.Clamp(get(), 0, choices.Length - 1);
+                set((index + by + choices.Length) % choices.Length);
+            }
 
-            GUILayout.Space(8f);
-            Ui.Label("Saving", UiTheme.Heading);
-            var minutes = GameSettings.AutosaveChoices;
-            var minuteNames = new string[minutes.Length];
-            for (int i = 0; i < minutes.Length; i++) minuteNames[i] = minutes[i] > 0 ? $"Every {minutes[i]} minutes" : "Off";
-            int auto = Mathf.Max(0, System.Array.IndexOf(minutes, GameSettings.AutosaveMinutes));
-            int newAuto = Choice("Autosave", auto, minuteNames);
-            if (newAuto != auto) GameSettings.AutosaveMinutes = minutes[newAuto];
-            Ui.Label(GameSettings.Autosave
-                ? "<size=11><i>The game also saves whenever the day moves on and when you quit.</i></size>"
-                : "<size=11><i>Only the pause menu's Save buttons save. Quitting the window without them loses your progress.</i></size>", Rich());
+            public void Refresh(bool enabled = true)
+            {
+                var choices = names();
+                value.text = choices.Length > 0 ? choices[Mathf.Clamp(get(), 0, choices.Length - 1)] : "-";
+                row.SetEnabled(enabled);
+            }
         }
 
-        /// <summary>A row with a label and the value between ◀ and ▶ buttons that step through the choices.</summary>
-        static int Choice(string label, int index, string[] choices)
+        readonly List<Choice> choices = new List<Choice>();
+        readonly Choice frameCap;
+        readonly Label autosaveNote;
+
+        public SettingsView(VisualElement window, Action back)
         {
-            int count = Mathf.Max(1, choices.Length);
-            index = Mathf.Clamp(index, 0, count - 1);
-            GUILayout.BeginHorizontal();
-            Ui.Label(label, GUILayout.Width(150f));
-            if (Ui.Button("◀", GUILayout.Width(34f))) index = (index - 1 + count) % count;
-            Ui.NamedLabel(label + " value", choices.Length > 0 ? choices[index] : "-", Centered(), GUILayout.Width(180f));
-            if (Ui.Button("▶", GUILayout.Width(34f))) index = (index + 1) % count;
-            GUILayout.EndHorizontal();
-            return index;
+            window.Q<Button>("back").clicked += back;
+            UiPanels.Show(window.Q("editor-note"), Application.isEditor);
+            autosaveNote = window.Q<Label>("autosave-note");
+
+            Add(window, "screen-mode", () => new[] { "Windowed", "Fullscreen" },
+                () => GameSettings.Fullscreen ? 1 : 0, i => GameSettings.Fullscreen = i == 1);
+            Add(window, "resolution", () => GameSettings.Resolutions().ConvertAll(r => $"{r.x} × {r.y}").ToArray(),
+                () => Mathf.Max(0, GameSettings.Resolutions().IndexOf(GameSettings.Resolution)), i => GameSettings.Resolution = GameSettings.Resolutions()[i]);
+            Add(window, "quality", () => QualitySettings.names,
+                () => GameSettings.Quality, i => GameSettings.Quality = i);
+            Add(window, "vsync", () => new[] { "Off", "On" },
+                () => GameSettings.VSync ? 1 : 0, i => GameSettings.VSync = i == 1);
+            frameCap = Add(window, "frame-cap", () => Array.ConvertAll(GameSettings.FrameCapChoices, c => c > 0 ? $"{c} fps" : "No limit"),
+                () => Mathf.Max(0, Array.IndexOf(GameSettings.FrameCapChoices, GameSettings.FrameCap)), i => GameSettings.FrameCap = GameSettings.FrameCapChoices[i]);
+            Add(window, "autosave", () => Array.ConvertAll(GameSettings.AutosaveChoices, m => m > 0 ? $"Every {m} minutes" : "Off"),
+                () => Mathf.Max(0, Array.IndexOf(GameSettings.AutosaveChoices, GameSettings.AutosaveMinutes)), i => GameSettings.AutosaveMinutes = GameSettings.AutosaveChoices[i]);
+            Refresh();
         }
 
-        /// <summary>Starts a menu frame: theme, scaling for big screens, and the dimmed backdrop.</summary>
-        public static Vector2 Begin(float dim)
+        Choice Add(VisualElement window, string name, Func<string[]> names, Func<int> get, Action<int> set)
         {
-            UiTheme.Apply();
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            var size = new Vector2(Screen.width / scale, Screen.height / scale);
-            if (dim > 0f) GUI.DrawTexture(new Rect(0f, 0f, size.x, size.y), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.01f, 0.06f, 0.1f, dim), 0f, 0f);
-            return size;
+            var choice = new Choice(window.Q(name), names, get, set, Refresh);
+            choices.Add(choice);
+            return choice;
         }
 
-        /// <summary>Menus are modal: clicks and scrolls stop here instead of reaching the game behind.</summary>
-        public static void Swallow()
+        public void Refresh()
         {
-            var e = Event.current;
-            if (e.type == EventType.MouseDown || e.type == EventType.MouseUp || e.type == EventType.ScrollWheel) e.Use();
+            foreach (var choice in choices) choice.Refresh(choice != frameCap || !GameSettings.VSync);
+            autosaveNote.text = GameSettings.Autosave
+                ? "The game also saves whenever the day moves on and when you quit."
+                : "Only the pause menu's Save buttons save. Quitting the window without them loses your progress.";
         }
-
-        static GUIStyle rich, centered;
-        public static GUIStyle Rich() => rich != null ? rich : rich = new GUIStyle(UiTheme.Skin.label) { richText = true, wordWrap = true };
-        static GUIStyle Centered() => centered != null ? centered : centered = new GUIStyle(UiTheme.Skin.label) { alignment = TextAnchor.MiddleCenter };
     }
 
     /// <summary>
     /// The title screen: Continue (the save played last), New Game, Load Game, Settings and Quit.
-    /// Shown when the game starts; the pause menu comes back here.
+    /// Shown when the game starts; the pause menu comes back here. Layout: Resources/UI/MainMenu.uxml.
     /// </summary>
     public class MainMenu : MonoBehaviour
     {
         enum Page { Main, Load, Settings }
 
+        public static MainMenu Current { get; private set; }
+
         Page page;
         SaveSlot latest;
+        UIDocument document;
+        VisualElement root, mainPage, loadPage, settingsPage;
+        Button continueButton;
+        SaveListView saves;
+        SettingsView settings;
+        Texture2D backdropTexture;
+        readonly List<VisualElement> bubbleViews = new List<VisualElement>();
         readonly List<Vector4> bubbles = new List<Vector4>();
+        float nextCheck;
 
         void Start()
         {
-            latest = SaveGame.Latest();
-            MenuScreens.RefreshSaves();
-            for (int i = 0; i < 40; i++) bubbles.Add(NewBubble(Random.value));
+            Current = this;
+            document = UiPanels.Open("Main menu", "MainMenu", transform, 0);
+            root = document.rootVisualElement;
+            mainPage = root.Q("main-page");
+            loadPage = root.Q("load-page");
+            settingsPage = root.Q("settings-page");
+
+            continueButton = root.Q<Button>("continue");
+            continueButton.clicked += () => { if (latest != null) GameSession.Play(latest.slot, false); };
+            root.Q<Button>("new-game").clicked += GameSession.NewGame;
+            root.Q<Button>("load-game").clicked += () => Show(Page.Load);
+            root.Q<Button>("settings-button").clicked += () => Show(Page.Settings);
+            root.Q<Button>("quit").clicked += GameSession.Quit;
+            UiPanels.Show(loadPage.Q("load-warning"), false);
+            saves = new SaveListView(loadPage, 0, slot => GameSession.Play(slot, false), () => Show(Page.Main));
+            settings = new SettingsView(settingsPage, () => Show(Page.Main));
+
+            string where = Application.isEditor ? "Editor saves" : "Saves";
+            root.Q<Label>("footer").text = $"{where}: {SaveGame.Folder}   v{Application.version}";
+            BuildBackdrop(root.Q("backdrop"));
+            Show(Page.Main);
         }
+
+        void OnDestroy()
+        {
+            if (Current == this) Current = null;
+            if (backdropTexture != null) Destroy(backdropTexture);
+        }
+
+        void Show(Page show)
+        {
+            page = show;
+            if (page == Page.Main)
+            {
+                latest = SaveGame.Latest();
+                continueButton.SetEnabled(latest != null);
+                continueButton.text = latest != null ? $"Continue  <size=12>(Save {latest.slot}, day {latest.day})</size>" : "Continue";
+            }
+            if (page == Page.Load) saves.Refresh();
+            if (page == Page.Settings) settings.Refresh();
+            UiPanels.Show(mainPage, page == Page.Main);
+            UiPanels.Show(loadPage, page == Page.Load);
+            UiPanels.Show(settingsPage, page == Page.Settings);
+        }
+
+        /// <summary>Deep water, darker towards the bottom, with bubbles rising past.</summary>
+        void BuildBackdrop(VisualElement backdrop)
+        {
+            backdropTexture = UiPanels.Gradient(UiTheme.Lagoon, UiTheme.Abyss);
+            backdrop.style.backgroundImage = backdropTexture;
+            for (int i = 0; i < 40; i++)
+            {
+                var bubble = new VisualElement { pickingMode = PickingMode.Ignore };
+                bubble.AddToClassList("fb-bubble");
+                backdrop.Add(bubble);
+                bubbleViews.Add(bubble);
+                bubbles.Add(NewBubble(UnityEngine.Random.value));
+            }
+        }
+
+        static Vector4 NewBubble(float y) => new Vector4(UnityEngine.Random.value, y, UnityEngine.Random.Range(3f, 14f), UnityEngine.Random.Range(0.02f, 0.08f));
 
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape) && page != Page.Main) Back();
+            if (root == null) return;
+            if (Input.GetKeyDown(KeyCode.Escape) && page != Page.Main && !UiToolkitCheck.Sweeping) Show(Page.Main);
             for (int i = 0; i < bubbles.Count; i++)
             {
                 var b = bubbles[i];
                 b.y -= b.w * Time.unscaledDeltaTime;
-                bubbles[i] = b.y < -0.05f ? NewBubble(1.05f) : b;
+                if (b.y < -0.05f) b = NewBubble(1.05f);
+                bubbles[i] = b;
+                var view = bubbleViews[i];
+                view.style.left = Length.Percent(b.x * 100f);
+                view.style.top = Length.Percent(b.y * 100f);
+                view.style.width = b.z;
+                view.style.height = b.z;
             }
-        }
-
-        static Vector4 NewBubble(float y) => new Vector4(Random.value, y, Random.Range(3f, 14f), Random.Range(0.02f, 0.08f));
-
-        void Back()
-        {
-            page = Page.Main;
-            latest = SaveGame.Latest();
-        }
-
-        void OnGUI()
-        {
-            var size = MenuScreens.Begin(0f);
-            DrawBackdrop(size);
-
-            var titleStyle = new GUIStyle(UiTheme.Title) { fontSize = 52, alignment = TextAnchor.MiddleCenter };
-            var subStyle = new GUIStyle(MenuScreens.Rich()) { alignment = TextAnchor.MiddleCenter, fontSize = 15 };
-            Ui.Label(new Rect(0f, size.y * 0.12f, size.x, 70f), "Fish Breeder", titleStyle);
-            Ui.Label(new Rect(0f, size.y * 0.12f + 66f, size.x, 26f), "<color=#9fe6e0>Breed, raise and sell fish in your own little shop</color>", subStyle);
-
-            float top = size.y * 0.12f + 120f;
-            if (page == Page.Main) DrawMain(size, top);
-            else if (page == Page.Load) DrawLoad(size, top);
-            else DrawSettings(size, top);
-
-            var small = new GUIStyle(MenuScreens.Rich()) { alignment = TextAnchor.LowerRight, fontSize = 11 };
-            string where = Application.isEditor ? "Editor saves" : "Saves";
-            Ui.Label(new Rect(0f, size.y - 26f, size.x - 12f, 20f), $"<color=#6f8f99>{where}: {SaveGame.Folder}   v{Application.version}</color>", small);
-        }
-
-        void DrawBackdrop(Vector2 size)
-        {
-            // Deep water: darker towards the bottom, with bubbles rising past.
-            const int bands = 24;
-            for (int i = 0; i < bands; i++)
+            if (!MenuScreens.DevChecks || UiToolkitCheck.Sweeping) return;
+            if (Input.GetKeyDown(KeyCode.F8)) RunUiCheck();
+            else if (Time.unscaledTime > nextCheck)
             {
-                var color = Color.Lerp(UiTheme.Lagoon, UiTheme.Abyss, i / (float)(bands - 1));
-                GUI.DrawTexture(new Rect(0f, size.y * i / bands, size.x, size.y / bands + 1f), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, color, 0f, 0f);
+                nextCheck = Time.unscaledTime + 1f;
+                UiToolkitCheck.Check(root, $"Main menu: {page}");
             }
-            foreach (var b in bubbles)
+        }
+
+        /// <summary>F8: every page at every screen size in <see cref="UiToolkitCheck.SweepSizes"/>, with pictures.</summary>
+        public Coroutine RunUiCheck()
+        {
+            var was = page;
+            var pages = new List<KeyValuePair<string, Action>>
             {
-                var rect = new Rect(b.x * size.x, b.y * size.y, b.z, b.z);
-                GUI.DrawTexture(rect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.7f, 0.95f, 1f, 0.18f), 0f, b.z * 0.5f);
-            }
-        }
-
-        void DrawMain(Vector2 size, float top)
-        {
-            float w = 320f;
-            var area = new Rect((size.x - w) * 0.5f, top, w, 360f);
-            GUILayout.BeginArea(area);
-            var tall = GUILayout.Height(44f);
-            GUI.enabled = latest != null;
-            string continueText = latest != null ? $"Continue  <size=12>(Save {latest.slot}, day {latest.day})</size>" : "Continue";
-            if (Ui.Button(continueText, UiTheme.Primary, tall)) GameSession.Play(latest.slot, false);
-            GUI.enabled = true;
-            GUILayout.Space(6f);
-            if (Ui.Button("New Game", tall)) GameSession.NewGame();
-            GUILayout.Space(6f);
-            if (Ui.Button("Load Game", tall))
-            {
-                MenuScreens.RefreshSaves();
-                page = Page.Load;
-            }
-            GUILayout.Space(6f);
-            if (Ui.Button("Settings", tall)) page = Page.Settings;
-            GUILayout.Space(6f);
-            if (Ui.Button("Quit", tall)) GameSession.Quit();
-            GUILayout.EndArea();
-        }
-
-        void DrawLoad(Vector2 size, float top)
-        {
-            float w = Mathf.Min(640f, size.x - 40f), h = Mathf.Min(460f, size.y - top - 40f);
-            var window = new Rect((size.x - w) * 0.5f, top, w, h);
-            UiCheck.Begin("Main menu: load", window, UiStyles.Window);
-            Ui.Label("Load Game", UiTheme.Title);
-            int picked = MenuScreens.DrawSaves(h - 110f);
-            GUILayout.FlexibleSpace();
-            if (Ui.Button("Back (Esc)", GUILayout.Width(110f))) Back();
-            UiCheck.End();
-            if (picked > 0) GameSession.Play(picked, false);
-        }
-
-        void DrawSettings(Vector2 size, float top)
-        {
-            float w = Mathf.Min(520f, size.x - 40f), h = Mathf.Min(470f, size.y - top - 40f);
-            var window = new Rect((size.x - w) * 0.5f, top, w, h);
-            UiCheck.Begin("Main menu: settings", window, UiStyles.Window);
-            Ui.Label("Settings", UiTheme.Title);
-            MenuScreens.DrawSettings();
-            GUILayout.FlexibleSpace();
-            if (Ui.Button("Back (Esc)", GUILayout.Width(110f))) Back();
-            UiCheck.End();
+                new KeyValuePair<string, Action>("Main", () => Show(Page.Main)),
+                new KeyValuePair<string, Action>("Load Game", () => Show(Page.Load)),
+                new KeyValuePair<string, Action>("Settings", () => Show(Page.Settings)),
+            };
+            return StartCoroutine(UiToolkitCheck.Sweep("Main menu", root, pages, () => Show(was)));
         }
     }
 
@@ -337,6 +361,7 @@ namespace FishBreeder.Core
     /// The in-game menu, opened with Esc when nothing else is left to close: Resume, Save Game,
     /// Load Game, Settings, Save and Quit (to the main menu) and Quit Without Saving. The game
     /// stands still while it's open, and the store's menus and keys are switched off behind it.
+    /// Layout: Resources/UI/PauseMenu.uxml.
     /// </summary>
     public class PauseMenu : MonoBehaviour
     {
@@ -348,11 +373,18 @@ namespace FishBreeder.Core
         Page page;
         int openedFrame;
         float timeScale = 1f;
-        string notice;
-        float noticeTime;
+        float noticeTime = -10f;
+        float nextCheck;
         readonly List<Behaviour> paused = new List<Behaviour>();
 
+        UIDocument document;
+        VisualElement root, mainPage, quitPage, loadPage, settingsPage;
+        Label saveState, notice, quitWarning, loadWarning;
+        SaveListView saves;
+        SettingsView settings;
+
         public static bool IsOpen => instance != null && instance.enabled;
+        public static PauseMenu Current => instance;
         /// <summary>True on the frame the menu closed, so the same Esc doesn't open something else.</summary>
         public static bool JustClosed => closedFrame == Time.frameCount;
 
@@ -365,6 +397,41 @@ namespace FishBreeder.Core
         void Awake()
         {
             instance = this;
+            document = UiPanels.Open("Pause menu", "PauseMenu", transform, 100);
+            root = document.rootVisualElement;
+            mainPage = root.Q("main-page");
+            quitPage = root.Q("quit-page");
+            loadPage = root.Q("load-page");
+            settingsPage = root.Q("settings-page");
+            saveState = root.Q<Label>("save-state");
+            notice = root.Q<Label>("notice");
+            quitWarning = root.Q<Label>("quit-warning");
+            loadWarning = loadPage.Q<Label>("load-warning");
+
+            root.Q<Button>("resume").clicked += Close;
+            root.Q<Button>("save").clicked += () => Notice(Save() ? "Game saved." : "<color=#ffb0a0>Saving failed (see the log).</color>");
+            root.Q<Button>("load-game").clicked += () => Show(Page.Load);
+            root.Q<Button>("settings-button").clicked += () => Show(Page.Settings);
+            root.Q<Button>("save-and-quit").clicked += () =>
+            {
+                if (Save()) GameSession.ToMainMenu();
+                else Notice("<color=#ffb0a0>Saving failed, so the game didn't quit.</color>");
+            };
+            root.Q<Button>("quit-without-saving").clicked += () => Show(Page.ConfirmQuit);
+            root.Q<Button>("confirm-quit").clicked += () =>
+            {
+                if (AutoSave.Current != null) AutoSave.Current.Stop();
+                GameSession.ToMainMenu();
+            };
+            root.Q<Button>("cancel").clicked += () => Show(Page.Main);
+            saves = new SaveListView(loadPage, SaveGame.Slot, slot =>
+            {
+                if (AutoSave.Current != null) AutoSave.Current.Stop();
+                GameSession.Play(slot, false);
+            }, () => Show(Page.Main));
+            settings = new SettingsView(settingsPage, () => Show(Page.Main));
+
+            UiPanels.Show(root, false);
             enabled = false;
         }
 
@@ -375,9 +442,9 @@ namespace FishBreeder.Core
 
         void OnEnable()
         {
-            page = Page.Main;
+            if (root == null) return;
             openedFrame = Time.frameCount;
-            notice = null;
+            noticeTime = -10f;
             timeScale = Time.timeScale;
             Time.timeScale = 0f;
             // Everything that takes clicks or keys in the store goes quiet until the menu closes.
@@ -388,10 +455,14 @@ namespace FishBreeder.Core
                     behaviour.enabled = false;
                     paused.Add(behaviour);
                 }
+            UiPanels.Show(root, true);
+            Show(Page.Main);
         }
 
         void OnDisable()
         {
+            if (root == null) return;
+            UiPanels.Show(root, false);
             Time.timeScale = timeScale;
             foreach (var behaviour in paused) if (behaviour != null) behaviour.enabled = true;
             paused.Clear();
@@ -400,25 +471,51 @@ namespace FishBreeder.Core
 
         void Close() => enabled = false;
 
-        void Update()
+        void Show(Page show)
         {
-            if (Time.frameCount == openedFrame || !Input.GetKeyDown(KeyCode.Escape)) return;
-            if (page == Page.Main) Close();
-            else page = Page.Main;
+            page = show;
+            if (page == Page.Load) saves.Refresh();
+            if (page == Page.Settings) settings.Refresh();
+            UiPanels.Show(mainPage, page == Page.Main);
+            UiPanels.Show(quitPage, page == Page.ConfirmQuit);
+            UiPanels.Show(loadPage, page == Page.Load);
+            UiPanels.Show(settingsPage, page == Page.Settings);
+            Refresh();
         }
 
-        void OnGUI()
+        void Notice(string text)
         {
-            GUI.depth = -100;
-            var size = MenuScreens.Begin(0.55f);
-            switch (page)
+            notice.text = text;
+            noticeTime = Time.unscaledTime;
+            Refresh();
+        }
+
+        /// <summary>The lines that change while the menu is open (time since the last save, the notice).</summary>
+        void Refresh()
+        {
+            saveState.text = $"Save {SaveGame.Slot}, day {Economy.Day}, {SinceSave()}";
+            loadWarning.text = $"Loading leaves this game without saving it ({SinceSave()}).";
+            quitWarning.text = $"Anything since the last save is lost (you {SinceSave().Replace("not saved", "haven't saved")}). Save {SaveGame.Slot} stays as it was.";
+            UiPanels.Show(notice, Time.unscaledTime - noticeTime < 3f);
+        }
+
+        void Update()
+        {
+            if (UiToolkitCheck.Sweeping) return;
+            Refresh();
+            if (Time.frameCount != openedFrame && Input.GetKeyDown(KeyCode.Escape))
             {
-                case Page.Main: DrawMain(size); break;
-                case Page.Load: DrawLoad(size); break;
-                case Page.Settings: DrawSettings(size); break;
-                default: DrawConfirmQuit(size); break;
+                if (page == Page.Main) Close();
+                else Show(Page.Main);
+                return;
             }
-            MenuScreens.Swallow();
+            if (!MenuScreens.DevChecks) return;
+            if (Input.GetKeyDown(KeyCode.F8)) RunUiCheck();
+            else if (Time.unscaledTime > nextCheck)
+            {
+                nextCheck = Time.unscaledTime + 1f;
+                UiToolkitCheck.Check(root, $"Pause menu: {page}");
+            }
         }
 
         static string SinceSave()
@@ -434,93 +531,18 @@ namespace FishBreeder.Core
             return auto != null && auto.SaveNow();
         }
 
-        void DrawMain(Vector2 size)
+        /// <summary>F8 while paused: every page at every screen size in <see cref="UiToolkitCheck.SweepSizes"/>, with pictures.</summary>
+        public Coroutine RunUiCheck()
         {
-            float w = 320f, h = 375f;
-            var window = new Rect((size.x - w) * 0.5f, (size.y - h) * 0.5f, w, h);
-            UiCheck.Begin("Pause menu", window, UiStyles.Window);
-            Ui.Label("Paused", UiTheme.Title);
-            Ui.NamedLabel("Pause: save state", $"<size=11><color=#9fb4bc>Save {SaveGame.Slot}, day {Economy.Day}, {SinceSave()}</color></size>", MenuScreens.Rich());
-            GUILayout.Space(6f);
-            var tall = GUILayout.Height(38f);
-            if (Ui.Button("Resume (Esc)", UiTheme.Primary, tall)) Close();
-            GUILayout.Space(4f);
-            if (Ui.Button("Save Game", tall))
+            var was = page;
+            var pages = new List<KeyValuePair<string, Action>>
             {
-                notice = Save() ? "Game saved." : "<color=#ffb0a0>Saving failed (see the log).</color>";
-                noticeTime = Time.unscaledTime;
-            }
-            GUILayout.Space(4f);
-            if (Ui.Button("Load Game", tall))
-            {
-                MenuScreens.RefreshSaves();
-                page = Page.Load;
-            }
-            GUILayout.Space(4f);
-            if (Ui.Button("Settings", tall)) page = Page.Settings;
-            GUILayout.Space(4f);
-            if (Ui.Button("Save and Quit", tall))
-            {
-                if (Save()) GameSession.ToMainMenu();
-                else
-                {
-                    notice = "<color=#ffb0a0>Saving failed, so the game didn't quit.</color>";
-                    noticeTime = Time.unscaledTime;
-                }
-            }
-            GUILayout.Space(4f);
-            if (Ui.Button("Quit Without Saving", tall)) page = Page.ConfirmQuit;
-            if (notice != null && Time.unscaledTime - noticeTime < 3f) Ui.NamedLabel("Pause: notice", notice, MenuScreens.Rich());
-            UiCheck.End();
-        }
-
-        void DrawConfirmQuit(Vector2 size)
-        {
-            float w = 400f, h = 190f;
-            var window = new Rect((size.x - w) * 0.5f, (size.y - h) * 0.5f, w, h);
-            UiCheck.Begin("Pause menu: quit", window, UiStyles.Window);
-            Ui.Label("Quit without saving?", UiTheme.Title);
-            Ui.NamedLabel("Pause: quit warning", $"Anything since the last save is lost (you {SinceSave().Replace("not saved", "haven't saved")}). Save {SaveGame.Slot} stays as it was.", MenuScreens.Rich());
-            GUILayout.FlexibleSpace();
-            GUILayout.BeginHorizontal();
-            if (Ui.Button("Quit Without Saving", UiTheme.Primary, GUILayout.Height(34f)))
-            {
-                if (AutoSave.Current != null) AutoSave.Current.Stop();
-                GameSession.ToMainMenu();
-            }
-            if (Ui.Button("Cancel", GUILayout.Width(100f), GUILayout.Height(34f))) page = Page.Main;
-            GUILayout.EndHorizontal();
-            UiCheck.End();
-        }
-
-        void DrawLoad(Vector2 size)
-        {
-            float w = Mathf.Min(640f, size.x - 40f), h = Mathf.Min(480f, size.y - 60f);
-            var window = new Rect((size.x - w) * 0.5f, (size.y - h) * 0.5f, w, h);
-            UiCheck.Begin("Pause menu: load", window, UiStyles.Window);
-            Ui.Label("Load Game", UiTheme.Title);
-            Ui.NamedLabel("Pause: load warning", $"<size=11><color=#9fb4bc>Loading leaves this game without saving it ({SinceSave()}).</color></size>", MenuScreens.Rich());
-            int picked = MenuScreens.DrawSaves(h - 130f, SaveGame.Slot);
-            GUILayout.FlexibleSpace();
-            if (Ui.Button("Back (Esc)", GUILayout.Width(110f))) page = Page.Main;
-            UiCheck.End();
-            if (picked > 0)
-            {
-                if (AutoSave.Current != null) AutoSave.Current.Stop();
-                GameSession.Play(picked, false);
-            }
-        }
-
-        void DrawSettings(Vector2 size)
-        {
-            float w = Mathf.Min(520f, size.x - 40f), h = Mathf.Min(500f, size.y - 60f);
-            var window = new Rect((size.x - w) * 0.5f, (size.y - h) * 0.5f, w, h);
-            UiCheck.Begin("Pause menu: settings", window, UiStyles.Window);
-            Ui.Label("Settings", UiTheme.Title);
-            MenuScreens.DrawSettings();
-            GUILayout.FlexibleSpace();
-            if (Ui.Button("Back (Esc)", GUILayout.Width(110f))) page = Page.Main;
-            UiCheck.End();
+                new KeyValuePair<string, Action>("Paused", () => Show(Page.Main)),
+                new KeyValuePair<string, Action>("Load Game", () => Show(Page.Load)),
+                new KeyValuePair<string, Action>("Settings", () => Show(Page.Settings)),
+                new KeyValuePair<string, Action>("Quit without saving", () => Show(Page.ConfirmQuit)),
+            };
+            return StartCoroutine(UiToolkitCheck.Sweep("Pause menu", root, pages, () => Show(was)));
         }
     }
 }

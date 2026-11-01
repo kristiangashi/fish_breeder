@@ -1,0 +1,35 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <ui:Template name="ChoiceRow" src="ChoiceRow.uxml" />
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="settings-window" class="fb-window fb-window--medium">
+        <ui:Label text="Settings" class="fb-title" />
+        <ui:ScrollView name="settings-body" class="fb-scroll fb-window__body">
+            <ui:Label text="Display" class="fb-heading" />
+            <ui:Label name="editor-note" text="Screen mode and size only change in a built game; the editor&apos;s Game view sizes itself." class="fb-small fb-italic" />
+            <ui:Instance template="ChoiceRow" name="screen-mode">
+                <ui:AttributeOverrides element-name="choice-label" text="Screen mode" />
+            </ui:Instance>
+            <ui:Instance template="ChoiceRow" name="resolution">
+                <ui:AttributeOverrides element-name="choice-label" text="Resolution" />
+            </ui:Instance>
+            <ui:Label text="Graphics" class="fb-heading" />
+            <ui:Instance template="ChoiceRow" name="quality">
+                <ui:AttributeOverrides element-name="choice-label" text="Quality" />
+            </ui:Instance>
+            <ui:Instance template="ChoiceRow" name="vsync">
+                <ui:AttributeOverrides element-name="choice-label" text="VSync" />
+            </ui:Instance>
+            <ui:Instance template="ChoiceRow" name="frame-cap">
+                <ui:AttributeOverrides element-name="choice-label" text="Frame rate limit" />
+            </ui:Instance>
+            <ui:Label text="Saving" class="fb-heading" />
+            <ui:Instance template="ChoiceRow" name="autosave">
+                <ui:AttributeOverrides element-name="choice-label" text="Autosave" />
+            </ui:Instance>
+            <ui:Label name="autosave-note" text="The game also saves whenever the day moves on and when you quit." class="fb-small fb-italic" />
+        </ui:ScrollView>
+        <ui:VisualElement class="fb-window__footer">
+            <ui:Button name="back" text="Back (Esc)" class="fb-button" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

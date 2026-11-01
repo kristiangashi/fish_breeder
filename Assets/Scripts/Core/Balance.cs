@@ -318,6 +318,8 @@ namespace FishBreeder.Core
         public float height = 0.3f;
         [Tooltip("Goes along the back of the tank (tall pieces) rather than the front.")]
         public bool back;
+        [Tooltip("Wall aquarium: Bigger (+) presses taken off the largest size the player can make it (0 = the store's limit).")]
+        public int maxSizeStepsOff;
 
         /// <summary>The XP track whose level unlocks it.</summary>
         public XpTrack UnlockTrack => fishkeepingUnlock ? XpTrack.Fishkeeping : XpTrack.Shopkeeping;
@@ -503,10 +505,10 @@ namespace FishBreeder.Core
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
             new DecorationBalance { id = "Diver", name = "Deep-sea diver", price = 120, unlockLevel = 9, height = 0.32f },
             // Rarer plants for skilled fishkeepers (see AddMissingDecorations).
-            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.32f },
-            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true },
-            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f },
-            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true },
+            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.28f, maxSizeStepsOff = 2 },
+            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2 },
+            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f, maxSizeStepsOff = 2 },
+            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true, maxSizeStepsOff = 2 },
         };
         [Tooltip("Fishkeeping level needed for care products.")]
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
@@ -1007,6 +1009,7 @@ namespace FishBreeder.Core
                 if (parsed.supplier != null) EggTierBalance.FillHatchTables(parsed.supplier.eggTiers, parsed.species);
                 if (parsed.supplier != null && !json.Contains("\"passable\"")) FillPassable(parsed.supplier.decorations);
                 if (parsed.supplier != null) AddMissingDecorations(parsed.supplier.decorations);
+                if (parsed.supplier != null && !json.Contains("\"maxSizeStepsOff\"")) FillMaxSizeStepsOff(parsed.supplier.decorations);
                 return parsed;
             }
             catch (Exception e)
@@ -1053,6 +1056,23 @@ namespace FishBreeder.Core
             var added = new HashSet<string> { "Crypt", "JungleVal", "AmazonSword", "Aponogeton" };
             foreach (var d in new SupplierBalance().decorations)
                 if (added.Contains(d.id) && !decorations.Exists(x => x != null && x.id == d.id)) decorations.Add(d);
+        }
+
+        /// <summary>
+        /// A file saved before the level 25 plants' size cap: every piece gets its default. The
+        /// Cryptocoryne lost its roots then too, so its old height would make the leaves bigger.
+        /// </summary>
+        static void FillMaxSizeStepsOff(List<DecorationBalance> decorations)
+        {
+            if (decorations == null) return;
+            var defaults = new SupplierBalance().decorations;
+            foreach (var item in decorations)
+                foreach (var d in defaults)
+                    if (item != null && d.id == item.id)
+                    {
+                        item.maxSizeStepsOff = d.maxSizeStepsOff;
+                        if (item.id == "Crypt" && Mathf.Approximately(item.height, 0.32f)) item.height = d.height;
+                    }
         }
 
         /// <summary>A file saved before plants could be swum through: the grassy ones get their default.</summary>

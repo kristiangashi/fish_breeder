@@ -137,6 +137,8 @@ namespace FishBreeder
         {
             var item = Find(id);
             if (item == null || root == null) return false;
+            // A piece made bigger before its cap came down shrinks to the cap.
+            size = Mathf.Min(size, MaxSize(item));
             int spot = FreeSpot(item.back);
             if (spot < 0) return false;
             var piece = Build(item, spots[spot], size);
@@ -227,6 +229,17 @@ namespace FishBreeder
         /// <summary>A piece's size as the player set it (1 = normal).</summary>
         public float SizeAt(int index) => index >= 0 && index < placed.Count ? placed[index].size : 1f;
 
+        /// <summary>Each Smaller or Bigger press changes a wall aquarium decoration's size by this factor.</summary>
+        public const float SizeStep = 1.15f;
+
+        /// <summary>The biggest the player can make this piece: the store's limit, less its own steps off.</summary>
+        static float MaxSize(DecorationBalance item)
+        {
+            float max = Balance.Data.store.wallDecorationMaxSize;
+            if (item != null && item.maxSizeStepsOff > 0) max /= Mathf.Pow(SizeStep, item.maxSizeStepsOff);
+            return Mathf.Max(max, 1f);
+        }
+
         /// <summary>
         /// Wall aquarium only: makes a piece this many times its current size, within the balance's
         /// limits, still standing on the sand and inside the glass. It stays where it is from now on.
@@ -236,7 +249,7 @@ namespace FishBreeder
             if (!WallAquarium || index < 0 || index >= placed.Count || placed[index].piece == null) return;
             var p = placed[index];
             var store = Balance.Data.store;
-            float size = Mathf.Clamp(p.size * factor, Mathf.Min(store.wallDecorationMinSize, 1f), Mathf.Max(store.wallDecorationMaxSize, 1f));
+            float size = Mathf.Clamp(p.size * factor, Mathf.Min(store.wallDecorationMinSize, 1f), MaxSize(Find(p.id)));
             if (Mathf.Abs(size - 1f) < 0.02f) size = 1f;
             var t = p.piece.transform;
             var before = Footprint(p.piece);

@@ -1403,8 +1403,7 @@ namespace FishBreeder.Core
             picker = Picker.None;
         }
 
-        /// <summary>Each Smaller or Bigger press changes a wall aquarium decoration's size by this factor.</summary>
-        const float DecorSizeStep = 1.15f;
+        const float DecorSizeStep = TankDecor.SizeStep;
 
         public void StopArranging()
         {

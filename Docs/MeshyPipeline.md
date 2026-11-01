@@ -103,6 +103,8 @@ instead: new UVs going around the stem and up the height, painted as vertical st
 plant's green with brown roots. A piece with its own `<id>_Albedo` (and `_MetallicSmoothness`) texture gets
 its own material; the rest share the atlas.
 
+After that, `Tools/Meshy/fix_crypt_roots.py` took the Cryptocoryne's roots and bulb off and cut its base flat so it sits in the gravel (run it again after re-running split_plants.py). `Tools/Meshy/fix_grayling_snout.py` folds a stray knob on the Arctic grayling's snout back into the head.
+
 ## Checklist per fish model
 
 - [ ] Generated with white body and target poly count

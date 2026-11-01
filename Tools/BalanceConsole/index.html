@@ -94,6 +94,25 @@
   .swim-ruler i { position: absolute; top: 0; width: 1px; background: var(--muted); }
   .swim-ruler span { position: absolute; top: 7px; transform: translateX(-50%); white-space: nowrap; }
   .swim-top { display: block; max-width: 100%; max-height: 120px; margin: 6px auto 0; }
+  .species-wrap { max-height: calc(100vh - 260px); min-height: 240px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+  table.species-table { width: max-content; min-width: 100%; }
+  table.species-table thead th { position: sticky; top: 0; z-index: 2; background: var(--panel); box-shadow: inset 0 -1px var(--line); }
+  table.species-table .name { position: sticky; left: 0; z-index: 1; background: var(--panel); box-shadow: inset -1px 0 var(--line); }
+  table.species-table thead th.name { z-index: 3; }
+  table.species-table th.name { color: var(--ink); font-weight: 400; }
+  table.species-table td input[type=number] { width: 72px; min-width: 0; }
+  table.species-table td input[type=text] { width: 170px; }
+  table.species-table td select { min-width: 0; width: auto; }
+  table.species-table td.pick { cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  table.species-table td.pick:hover { color: var(--accent); }
+  table.species-table tbody tr:hover td, table.species-table tbody tr:hover .name { background: var(--chip); }
+  button.link { border: none; background: none; padding: 0; color: var(--accent); text-align: left; white-space: nowrap; }
+  button.link:hover { text-decoration: underline; }
+  .col-picker { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+  .col-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 18px; }
+  .col-group { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+  .col-group label { display: flex; align-items: center; gap: 6px; }
+  .col-group label.group { font-weight: 600; margin-bottom: 2px; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .tile { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
   .tile-label { font-size: 12px; color: var(--muted); }
@@ -463,7 +482,7 @@ const SPECIES_GROUPS = [
 
 let data = null;
 let tab = "species";
-let selectedSpecies = 0;
+let selectedSpecies = -1; // -1 = the all-species table, otherwise that species' full form
 let selectedDisease = 0;
 let dirty = false;
 let query = "";
@@ -691,19 +710,155 @@ function listTable(title, list, extra = []) {
 
 // ---------------------------------------------------------------- tabs
 
+// Short headings for the all-species table; the full name and help show in the heading's tooltip.
+const SPECIES_SHORT = {
+  id: "Id", scientificName: "Latin name", family: "Family", category: "Category", reproduction: "Reproduction", rarity: "Rarity",
+  unlockLevel: "Unlock level", onlyInBox: "Only in box", baseValue: "Value ($)", fryPrice: "Fry ($)",
+  sizeGroup: "Size group", eastWingOnly: "Aquarium only", minTankSize: "Smallest tank", maxOfKind: "Most of kind",
+  tempMin: "Temp min", tempMax: "Temp max", phMin: "pH min", phMax: "pH max", salinityMin: "Salt min", salinityMax: "Salt max",
+  likesPlants: "Likes plants", schoolSize: "School", likedDecorations: "Favourite decor", roams: "Roams",
+  hungerToleranceDays: "Starves after (days)", favoriteFoods: "Favourite foods", eatsAlgae: "Eats algae",
+  daysToAdult: "Days to adult", lifespanDays: "Lifespan", litterMin: "Litter min", litterMax: "Litter max",
+  gestationSteps: "Pregnancy (steps)", eggHatchSteps: "Eggs hatch (steps)",
+  minLength: "Length min", maxLength: "Length max", fullGrownLength: "Full-grown length", sizeSmall: "Small x", sizeMedium: "Medium x",
+  sizeLarge: "Large x", speed: "Speed", depthMin: "Depth low", depthMax: "Depth high", style: "Style", bendStart: "Wiggle starts",
+};
+const SPECIES_VIEW_KEY = "fishBreederSpeciesTable";
+// Hidden columns (so attributes added later show up on their own), the sort, and whether the column picker is open.
+const speciesView = (() => {
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(SPECIES_VIEW_KEY) || "null"); } catch { return null; } })() || {};
+  return { hidden: saved.hidden || [], sortKey: saved.sortKey || "displayName", sortDir: saved.sortDir || 1, picker: false, filter: "" };
+})();
+function keepSpeciesView() {
+  try { localStorage.setItem(SPECIES_VIEW_KEY, JSON.stringify({ hidden: speciesView.hidden, sortKey: speciesView.sortKey, sortDir: speciesView.sortDir })); } catch {}
+}
+
+/** Every species attribute as [group title, keys], in form order, with anything the groups miss under "Other". */
+function speciesColumnGroups() {
+  const all = new Set(data.species.flatMap((s) => Object.keys(s)));
+  all.add("likedDecorations"); all.add("roams");
+  const groups = SPECIES_GROUPS.map(([title, keys]) => [title, keys.filter((k) => k !== "displayName" && all.has(k))]);
+  const grouped = new Set(SPECIES_GROUPS.flatMap(([, keys]) => keys));
+  const other = [...all].filter((k) => !grouped.has(k));
+  if (other.length) groups.push(["Other", other]);
+  return groups.filter(([, keys]) => keys.length);
+}
+
+/** A list attribute as words: favourite foods and decorations by name. */
+function speciesListText(s, key) {
+  const list = s[key] || [];
+  if (key === "favoriteFoods") return list.map((i) => FOOD_NAMES[i] || i).join(", ");
+  if (key === "likedDecorations") return list.map((id) => ((data.supplier.decorations || []).find((d) => d.id === id) || { name: id }).name || id).join(", ");
+  return list.join(", ");
+}
+
+/** What a column sorts by: enums in their own order (Common before Rare), ticks as 1/0, lists by their words. */
+function speciesSortValue(s, key) {
+  const v = s[key];
+  if (Array.isArray(v)) return speciesListText(s, key).toLowerCase();
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "string") return v.toLowerCase();
+  return v ?? -Infinity;
+}
+
+function speciesTable() {
+  const species = data.species;
+  const groups = speciesColumnGroups();
+  const hidden = new Set(speciesView.hidden);
+  const columns = groups.flatMap(([, keys]) => keys).filter((k) => !hidden.has(k));
+  const open = (i) => { selectedSpecies = i; window.scrollTo(0, 0); render(); };
+  const setSort = (key) => {
+    speciesView.sortDir = speciesView.sortKey === key ? -speciesView.sortDir : 1;
+    speciesView.sortKey = key;
+    keepSpeciesView(); render();
+  };
+  const head = (key, text, extraClass = "") => el("th", {
+    class: "sorthead" + (speciesView.sortKey === key ? (speciesView.sortDir > 0 ? " asc" : " desc") : "") + extraClass,
+    title: [nice(key), help(key)].filter((t) => t).join(". "),
+    onclick: () => setSort(key) }, text);
+
+  const order = species.map((s, i) => i);
+  const { sortKey, sortDir } = speciesView;
+  order.sort((a, b) => compareValues(speciesSortValue(species[a], sortKey), speciesSortValue(species[b], sortKey)) * sortDir
+    || compareValues(species[a].displayName.toLowerCase(), species[b].displayName.toLowerCase()));
+
+  const cell = (s, i, key) => {
+    if (Array.isArray(s[key]) || key === "likedDecorations" || key === "favoriteFoods")
+      return el("td", { class: "readout pick", title: "Click to edit in the full form", onclick: () => open(i) }, speciesListText(s, key) || "none");
+    if (!(key in s)) return el("td", { class: "readout" }, "");
+    return el("td", {}, input(s, key));
+  };
+  const matches = (s) => {
+    const text = speciesView.filter.trim().toLowerCase();
+    return !text || [s.displayName, s.id, s.scientificName, s.family].some((t) => String(t || "").toLowerCase().includes(text));
+  };
+  const rows = order.map((i) => {
+    const s = species[i];
+    const row = el("tr", {},
+      el("th", { class: "name" }, el("button", { class: "link", title: "Open the full form", onclick: () => open(i) }, s.displayName)),
+      columns.map((key) => cell(s, i, key)));
+    row.style.display = matches(s) ? "" : "none";
+    return row;
+  });
+  const table = el("table", { class: "species-table sortable" },
+    el("thead", {}, el("tr", {}, head("displayName", "Species", " name"), columns.map((k) => head(k, SPECIES_SHORT[k] || nice(k))))),
+    el("tbody", {}, rows));
+  table._sortKey = "species-table"; // sorted here by the data, not by the generic table sorter
+
+  const count = el("span", { class: "hint", style: "margin:0" });
+  const showCount = () => {
+    const shown = species.filter(matches).length;
+    count.textContent = `${shown === species.length ? species.length : `${shown} of ${species.length}`} species · ${columns.length} of ${columns.length + hidden.size} columns`;
+  };
+  showCount();
+  const filter = el("input", { type: "search", placeholder: "Find a species…", value: speciesView.filter, style: "width:200px", oninput: (e) => {
+    speciesView.filter = e.target.value;
+    rows.forEach((row, n) => { row.style.display = matches(species[order[n]]) ? "" : "none"; });
+    showCount();
+  } });
+  const setHidden = (keys, hide) => {
+    const set = new Set(speciesView.hidden);
+    keys.forEach((k) => (hide ? set.add(k) : set.delete(k)));
+    speciesView.hidden = [...set]; keepSpeciesView(); render();
+  };
+  const toolbar = el("div", { class: "row" }, filter,
+    el("button", { class: "small" + (speciesView.picker ? " primary" : ""), onclick: () => { speciesView.picker = !speciesView.picker; render(); } }, speciesView.picker ? "Done choosing columns" : "Choose columns…"),
+    count);
+
+  const picker = speciesView.picker ? el("div", { class: "col-picker" },
+    el("div", { class: "row" },
+      el("button", { class: "small", onclick: () => setHidden(groups.flatMap(([, k]) => k), false) }, "Show all"),
+      el("button", { class: "small", onclick: () => setHidden(groups.flatMap(([, k]) => k), true) }, "Hide all"),
+      el("span", { class: "hint", style: "margin:0" }, "The species name always shows. Your choice is remembered in this browser.")),
+    el("div", { class: "col-groups" }, groups.map(([title, keys]) => {
+      const shownHere = keys.filter((k) => !hidden.has(k)).length;
+      const all = el("input", { type: "checkbox", onchange: (e) => setHidden(keys, !e.target.checked) });
+      all.checked = shownHere === keys.length;
+      all.indeterminate = shownHere > 0 && shownHere < keys.length;
+      return el("div", { class: "col-group" },
+        el("label", { class: "check group" }, all, title),
+        keys.map((k) => {
+          const box = el("input", { type: "checkbox", onchange: (e) => setHidden([k], !e.target.checked) });
+          box.checked = !hidden.has(k);
+          return el("label", { class: "check", title: help(k) }, box, SPECIES_SHORT[k] || nice(k));
+        }));
+    }))) : null;
+
+  return el("div", { class: "card" },
+    el("h2", {}, "All species"),
+    el("p", { class: "hint" }, "Click a column heading to sort by it (again to flip it). Edit values right in the table; click a species name for its full form with the favourite foods and decorations, Duplicate and Delete. Rows don't move while you type; click a heading to re-sort."),
+    toolbar, picker,
+    el("div", { class: "species-wrap" }, table));
+}
+
 function renderSpecies() {
   const species = data.species;
-  selectedSpecies = Math.min(selectedSpecies, species.length - 1);
+  if (selectedSpecies >= species.length) selectedSpecies = -1;
+  if (selectedSpecies < 0) return [speciesTable()];
 
-  const overviewKeys = ["rarity", "baseValue", "unlockLevel", "category"];
-  const overview = el("div", { class: "card" },
-    el("h2", {}, "Prices and rarity at a glance"),
-    el("p", { class: "hint" }, "Edit here or in the full form below. Value is what a healthy, common-looking adult is worth. Unlock level is the Fishkeeping level at which the species can hatch from egg boxes."),
-    el("div", { class: "scroll" }, el("table", {},
-      el("thead", {}, el("tr", {}, el("th", {}, "Species"), overviewKeys.map((k) => el("th", { title: help(k) }, nice(k))))),
-      el("tbody", {}, species.map((s, i) => el("tr", {},
-        el("td", {}, el("a", { href: "#", onclick: (e) => { e.preventDefault(); selectedSpecies = i; render(); } }, s.displayName)),
-        overviewKeys.map((k) => el("td", {}, input(s, k)))))))));
+  const back = el("div", { class: "row" },
+    el("button", { onclick: () => { selectedSpecies = -1; render(); } }, "← All species"),
+    el("span", { class: "hint", style: "margin:0" }, `Full form for ${species[selectedSpecies].displayName}`));
 
   const list = el("div", { class: "list" }, species.map((s, i) =>
     el("button", { class: i === selectedSpecies ? "active" : "", onclick: () => { selectedSpecies = i; render(); } },
@@ -719,7 +874,7 @@ function renderSpecies() {
       const gone = species.splice(selectedSpecies, 1)[0];
       data.relationships = (data.relationships || []).filter((r) => r.a !== gone.id && r.b !== gone.id);
       crossData().pairs = crossData().pairs.filter((p) => p.a !== gone.id && p.b !== gone.id);
-      selectedSpecies = 0; markDirty(); render();
+      selectedSpecies = -1; markDirty(); render();
     } }, "Delete"));
 
   const s = species[selectedSpecies];
@@ -728,7 +883,7 @@ function renderSpecies() {
     el("div", { class: "card" }, el("h2", {}, title), el("div", { class: "grid" }, keys.filter((k) => k in s || k === "likedDecorations" || k === "roams").map((k) => field(s, k))))));
   const note = el("p", { class: "hint" }, "Tank mates it doesn't get on with are set on the Relationships tab, and which species it can breed with on the Cross-breeding tab. New species need a Meshy model to look right; without one they use a placeholder body.");
 
-  return [overview, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
+  return [back, el("div", { class: "split" }, el("div", { class: "card" }, list, actions), el("div", {}, form, note))];
 }
 
 const REL_LETTER = ["·", "P", "C", "+"];

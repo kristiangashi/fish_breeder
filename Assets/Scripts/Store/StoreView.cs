@@ -171,7 +171,7 @@ namespace FishBreeder.Store
             else if (focused != null && (escape || zoomOut)) StepBackInTank();
             else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
             // With nothing left to step back from, Esc opens the pause menu.
-            else if (focused == null && escape && panel == Panel.None && following < 0 && !UiLayout.Editing) PauseMenu.Open();
+            else if (focused == null && escape && panel == Panel.None && following < 0) PauseMenu.Open();
             else if (focused == null && escape && panel != Panel.DayReport && panel != Panel.Owner) panel = Panel.None;
             if (focused == null && panel == Panel.None && Input.GetKeyDown(KeyCode.C) && !UiPanels.Typing) following++;
             var person = focused == null ? FollowedPerson() : null;
@@ -184,7 +184,7 @@ namespace FishBreeder.Store
             {
                 // The scroll wheel zooms in and out (arranging uses it to turn pieces; over a menu it scrolls the menu).
                 float wheel = Input.mouseScrollDelta.y;
-                if (wheel != 0f && hud.Arranging == FishTankHUD.ArrangeMode.None && !hud.MouseOverMenu && !AnyWindowOpen && panel == Panel.None && !UiLayout.Editing)
+                if (wheel != 0f && hud.Arranging == FishTankHUD.ArrangeMode.None && !hud.MouseOverMenu && !AnyWindowOpen && panel == Panel.None)
                     hud.ZoomWheel(wheel);
                 if (hud.Arranging == FishTankHUD.ArrangeMode.Decorations) GetTopPose(focused, null, null, Vector2.zero, 1f, cam, hud.MenuCover, out targetPosition, out targetRotation);
                 else if (hud.TopView) GetTopPose(focused, hud.Focus, hud.ZoomPoint, hud.ViewPan, hud.ViewZoom, cam, hud.MenuCover, out targetPosition, out targetRotation);
@@ -264,8 +264,7 @@ namespace FishBreeder.Store
 
         void HandleStoreCameraInput(float dt)
         {
-            // The menu layout editor uses the arrow keys to nudge.
-            if (UiPanels.Typing || UiLayout.Editing) return;
+            if (UiPanels.Typing) return;
             float pan = 0f, up = 0f;
             if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) pan -= 1f;
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) pan += 1f;
@@ -681,7 +680,7 @@ namespace FishBreeder.Store
             {
                 coinBurst = false;
                 var at = money.worldBound;
-                Fx.ScreenBurst(UiPanels.PanelToFx(money, new Vector2(at.x + 40f, at.center.y)), UiTheme.Sun, 14, false, 0.8f);
+                Fx.ScreenBurst(new Vector2(at.x + 40f, at.center.y), UiTheme.Sun, 14, false, 0.8f);
             }
             ui.Label($"<b>Day {Economy.Day}</b>", "fb-text fb-bar-item");
             if (ui.Button($"<color={UiTheme.SunHex}>{Stars(Economy.Reputation * 5f)}</color>", "fb-button fb-flat", true, "Reputation (Y)")) ReputationView.Toggle();
@@ -921,7 +920,7 @@ namespace FishBreeder.Store
                 banner.style.opacity = alpha;
                 banner.style.translate = new Translate(0f, drop);
                 var at = banner.worldBound;
-                if (at.width > 0f && celebratedLevelUps.Add(levelUp)) Fx.ScreenBurst(UiPanels.PanelToFx(banner, at.center), null, 40, false, 1.4f);
+                if (at.width > 0f && celebratedLevelUps.Add(levelUp)) Fx.ScreenBurst(at.center, null, 40, false, 1.4f);
             }
             celebratedLevelUps.RemoveWhere(l => !Progression.LevelUps.Contains(l));
         }
@@ -1280,7 +1279,7 @@ namespace FishBreeder.Store
         void HandleStoreClick()
         {
             if (!Input.GetMouseButtonDown(0) || focused != null || ViewMode.Watching || panel != Panel.None || pendingStep != PendingStep.None) return;
-            if (UiLayout.Editing || UiPanels.PointerOverUi || FxOverlay.MouseOverCard) return;
+            if (UiPanels.PointerOverUi || FxOverlay.MouseOverCard) return;
             var ray = cam.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out var hit, 100f, StoreClickable.Mask, QueryTriggerInteraction.Collide)) return;
             var clickable = hit.collider.GetComponent<StoreClickable>();

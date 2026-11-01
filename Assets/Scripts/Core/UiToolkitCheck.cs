@@ -8,7 +8,7 @@ using UnityEngine.UIElements;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// The overflow check for UI Toolkit screens (the IMGUI ones go through <see cref="UiCheck"/>).
+    /// The overflow check for every screen.
     /// <see cref="Check"/> walks everything showing and records, in <see cref="UiCheck.Problems"/>:
     /// anything partly off the screen, anything poking out of the box it sits in, and text that needs
     /// more room than its box gives it. Inside a scroll list only the sides count, since the list

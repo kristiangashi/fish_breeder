@@ -296,21 +296,6 @@ namespace FishBreeder.Core
         {
             if (GameSettings.Autosave) SaveNow();
         }
-
-        void OnGUI()
-        {
-            if (SaveGame.LastSaved < 0f) return;
-            float age = Time.unscaledTime - SaveGame.LastSaved;
-            if (age > 2.5f) return;
-            var style = new GUIStyle(GUI.skin.label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerRight };
-            float alpha = Mathf.Clamp01((2.5f - age) / 0.6f);
-            var rect = new Rect(Screen.width - 220f, Screen.height - 40f, 200f, 28f);
-            GUI.color = new Color(0f, 0f, 0f, 0.6f * alpha);
-            GUI.Label(new Rect(rect.x + 1f, rect.y + 1f, rect.width, rect.height), "Game saved", style);
-            GUI.color = new Color(1f, 1f, 1f, alpha);
-            GUI.Label(rect, "Game saved", style);
-            GUI.color = Color.white;
-        }
     }
 
     // ==================================================================== the save file

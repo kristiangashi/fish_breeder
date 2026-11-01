@@ -1703,3 +1703,166 @@
     border-width: 2px;
     border-color: var(--sun);
 }
+
+/* ------------------------------------------------------------ effects (FxOverlay.uxml) */
+
+.fb-particle {
+    position: absolute;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.fb-floater {
+    position: absolute;
+    translate: -50% -50%;
+    -unity-font-style: bold;
+    white-space: nowrap;
+    text-shadow: 1.5px 1.5px 0 rgba(0, 20, 31, 0.7);
+    padding: 0;
+    margin: 0;
+}
+
+/* A celebration card that drops in at the top (milestones, new fish, research). */
+.fb-celebration {
+    position: absolute;
+    left: 50%;
+    width: 520px;
+    max-width: 96%;
+    min-height: 118px;
+    translate: -50% 0;
+    flex-direction: row;
+    padding: 14px;
+}
+
+.fb-celebration__stripe {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 4px;
+    height: 3px;
+    border-radius: 2px;
+}
+
+.fb-celebration__icon {
+    width: 112px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background-color: rgba(13, 107, 128, 0.9);
+    align-items: center;
+    justify-content: center;
+    margin-right: 14px;
+}
+
+.fb-celebration__image {
+    width: 104px;
+    height: 80px;
+}
+
+.fb-celebration__star {
+    font-size: 46px;
+    color: var(--sun);
+    padding: 0;
+    margin: 0;
+}
+
+.fb-celebration__text {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.fb-celebration__kicker {
+    font-size: 11px;
+    -unity-font-style: bold;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-celebration__title {
+    font-size: 22px;
+    -unity-font-style: bold;
+    color: var(--sun);
+    white-space: normal;
+    padding: 0;
+    margin: 0 0 2px 0;
+}
+
+.fb-celebration__line {
+    margin: 0 0 2px 0;
+}
+
+/* The OPEN! stamp, big and tilted in the middle of the screen. */
+.fb-stamp {
+    position: absolute;
+    left: 50%;
+    top: 42%;
+    translate: -50% -50%;
+    rotate: -8deg;
+    font-size: 84px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-stamp--shadow {
+    margin: 5px 0 0 5px;
+}
+
+.fb-day__glow {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    -unity-background-image-tint-color: rgba(255, 217, 102, 0.35);
+}
+
+.fb-day__sun {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    -unity-background-image-tint-color: rgb(255, 209, 97);
+}
+
+.fb-day__horizon {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(5, 51, 77);
+}
+
+.fb-day-bubble {
+    position: absolute;
+    -unity-background-image-tint-color: rgba(217, 247, 255, 0.8);
+}
+
+.fb-day__title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 30%;
+    font-size: 54px;
+    -unity-font-style: bold;
+    color: var(--sand);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.fb-day__subtitle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 38%;
+    font-size: 18px;
+    color: var(--aqua);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.fb-saved-notice {
+    position: absolute;
+    right: 20px;
+    bottom: 12px;
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: rgb(255, 255, 255);
+    text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
+}

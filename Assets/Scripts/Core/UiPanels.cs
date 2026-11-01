@@ -11,9 +11,9 @@ namespace FishBreeder.Core
     /// Code only finds elements by name, fills in text and reacts to clicks.
     ///
     /// Every screen shares one set of panel settings: the UI scales so the screen is always 900
-    /// units tall (the same scale the IMGUI menus use at 900 px and up), so a wide screen gets more
+    /// units tall, so a wide screen gets more
     /// room across and nothing ever gets taller than it is. The game's font is Segoe UI taken from
-    /// the system at runtime, like the IMGUI screens; where that's missing, Unity's default is used.
+    /// the system at runtime; where that's missing, Unity's default is used.
     /// </summary>
     public static class UiPanels
     {
@@ -85,18 +85,6 @@ namespace FishBreeder.Core
             foreach (var document in documents)
                 if (document.isActiveAndEnabled && document.rootVisualElement != null && Showing(document.rootVisualElement)) roots.Add(document.rootVisualElement);
             return roots;
-        }
-
-        /// <summary>
-        /// A point on a panel in the screen coordinates the effects overlay (<see cref="Fx"/>) draws in:
-        /// pixels divided by the IMGUI scale (Screen.height / 900, never below 1).
-        /// </summary>
-        public static Vector2 PanelToFx(VisualElement element, Vector2 point)
-        {
-            var size = element.panel != null ? element.panel.visualTree.layout.size : new Vector2(Screen.width, Screen.height);
-            if (size.x <= 0f || size.y <= 0f) return point;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            return new Vector2(point.x / size.x * Screen.width / scale, point.y / size.y * Screen.height / scale);
         }
 
         /// <summary>Where a screen pixel (origin bottom left, like Input.mousePosition) falls on an element's panel.</summary>

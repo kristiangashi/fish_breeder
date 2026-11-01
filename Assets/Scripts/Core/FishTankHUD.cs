@@ -150,8 +150,8 @@ namespace FishBreeder.Core
             // However the close-up ended (a click outside the water, the fish moved away), the next one starts at its normal distance.
             if (!CloseUp) CloseZoom = 1f;
             // Clicks in the water: picking fish, or picking up decorations and the background while arranging.
-            if (tank != null && cam != null && !UiLayout.Editing && !HandleArranging() && Arranging == ArrangeMode.None) HandleClick();
-            if (tank == null || UiPanels.Typing || UiLayout.Editing) return;
+            if (tank != null && cam != null && !HandleArranging() && Arranging == ArrangeMode.None) HandleClick();
+            if (tank == null || UiPanels.Typing) return;
             if (Arranging == ArrangeMode.Decorations && heldPiece >= 0 && tank.Decor != null)
             {
                 if (Input.GetKeyDown(KeyCode.Q)) tank.Decor.Turn(heldPiece, -15f);
@@ -1946,7 +1946,7 @@ namespace FishBreeder.Core
         /// <summary>A left click in the water (not on a menu): picks the fish there, or zooms in on the spot.</summary>
         void HandleClick()
         {
-            if (!Input.GetMouseButtonDown(0) || cam == null || UiLayout.Editing || UiPanels.PointerOverUi || FxOverlay.MouseOverCard) return;
+            if (!Input.GetMouseButtonDown(0) || cam == null || UiPanels.PointerOverUi || FxOverlay.MouseOverCard) return;
             var ray = cam.ScreenPointToRay(Input.mousePosition);
             Fish fish = null;
             if (Physics.Raycast(ray, out var hit, 50f)) fish = hit.collider.GetComponentInParent<Fish>();

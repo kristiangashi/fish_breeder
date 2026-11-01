@@ -33,7 +33,7 @@ namespace FishBreeder.Core
         /// <summary>The element the last call made or reused.</summary>
         public VisualElement Last { get; private set; }
 
-        /// <summary>The tooltip of whatever the pointer is over, or "" (like IMGUI's GUI.tooltip).</summary>
+        /// <summary>The tooltip of whatever the pointer is over, or "".</summary>
         public string Tooltip => UiPanels.HoverTooltip;
 
         public void Begin(VisualElement container)
@@ -333,6 +333,9 @@ namespace FishBreeder.Core
             return clicked;
         }
 
+        public const float TempMin = 10f, TempMax = 34f;
+        public const float PhMin = 5f, PhMax = 9.5f;
+
         static Texture2D heatScale, phScale;
 
         static Texture2D HeatScale => heatScale != null ? heatScale : heatScale = Stripe("HeatScale",
@@ -343,11 +346,11 @@ namespace FishBreeder.Core
 
         /// <summary>Temperature scale with the water at <paramref name="celsius"/> and, when known, the range the fish likes.</summary>
         public VisualElement Temperature(float celsius, Vector2? liked) =>
-            Gauge(HeatScale, UiGauges.TempMin, UiGauges.TempMax, celsius, liked, $"{celsius:0.#} C", "cold", "hot");
+            Gauge(HeatScale, TempMin, TempMax, celsius, liked, $"{celsius:0.#} C", "cold", "hot");
 
         /// <summary>pH scale: acidic (low) on the left, alkaline (high) on the right.</summary>
         public VisualElement Ph(float ph, Vector2? liked) =>
-            Gauge(PhScale, UiGauges.PhMin, UiGauges.PhMax, ph, liked, $"pH {ph:0.0}", "acidic", "alkaline");
+            Gauge(PhScale, PhMin, PhMax, ph, liked, $"pH {ph:0.0}", "acidic", "alkaline");
 
         /// <summary>A coloured scale with the liked range outlined and a marker where the value is now.</summary>
         VisualElement Gauge(Texture2D scale, float min, float max, float value, Vector2? liked, string valueText, string lowWord, string highWord)

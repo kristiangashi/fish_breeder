@@ -89,7 +89,7 @@ namespace FishBreeder.Core
         public static void Burst(Vector3 world, Color color, int count = 14, bool bubbles = false)
             => Bursts.Add(new PendingBurst { world = world, color = color, count = count, bubbles = bubbles });
 
-        /// <summary>A burst at a point on the GUI (unscaled GUI units).</summary>
+        /// <summary>A burst at a point on the screen, in UI units (the screen is 900 tall; see <see cref="UiPanels"/>).</summary>
         public static void ScreenBurst(Vector2 gui, Color? color, int count, bool bubbles, float speed = 1f)
         {
             for (int i = 0; i < count; i++)

@@ -1,31 +1,80 @@
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace FishBreeder.Core
 {
     /// <summary>
     /// Draws the screen side of <see cref="Fx"/>: floating words, confetti and bubble bursts,
-    /// celebration cards (milestones, new species), the OPEN! stamp and the day-change wash. Sits
+    /// celebration cards (milestones, new species), the OPEN! stamp, the day-change wash and the
+    /// "Game saved" note after each save. Sits
     /// above the other screens. In watch mode only the day wash shows; cards wait until you're back.
+    /// UI Toolkit, on its own panel (FxOverlay.uxml, styled in FishBreeder.uss); positions are in
+    /// the panel's units (the screen is 900 tall), the same units <see cref="Fx.ScreenBurst"/> takes.
     /// </summary>
     public class FxOverlay : MonoBehaviour
     {
         const float CardIn = 0.45f, CardHold = 3.6f, CardOut = 0.4f;
         const float DayLength = 2.4f;
 
-        GUIStyle floatStyle, cardTitle, cardKicker, cardText, stampStyle, dayTitle, daySub;
-        Rect cardRect;
-        static Rect shownCard;
+        static FxOverlay instance;
+
+        UIDocument document;
+        VisualElement root, dayView, particlesView, floatersView, card, cardStripe, sun, sunGlow, horizon;
+        Label cardKicker, cardTitle, cardText, cardReward, cardStar, stamp, stampShadow, dayTitle, daySubtitle, saved;
+        Image cardImage;
+        Texture2D dayTexture;
+        readonly UiFrame particles = new UiFrame(), floaters = new UiFrame(), bubbles = new UiFrame();
 
         /// <summary>The mouse is over the celebration card (a click there is the card's, not the store's).</summary>
-        public static bool MouseOverCard
+        public static bool MouseOverCard => instance != null && instance.card != null && UiPanels.Showing(instance.card)
+            && instance.card.worldBound.Contains(UiPanels.ScreenToPanel(instance.root, Input.mousePosition));
+
+        void Awake()
         {
-            get
+            instance = this;
+            document = UiPanels.Open("Effects", "FxOverlay", transform, 50);
+            root = document.rootVisualElement;
+            dayView = root.Q("day");
+            sunGlow = root.Q("sun-glow");
+            sun = root.Q("sun");
+            horizon = root.Q("horizon");
+            dayTitle = root.Q<Label>("day-title");
+            daySubtitle = root.Q<Label>("day-subtitle");
+            particlesView = root.Q("particles");
+            floatersView = root.Q("floaters");
+            card = root.Q("card");
+            cardStripe = root.Q("card-stripe");
+            cardImage = root.Q<Image>("card-image");
+            cardStar = root.Q<Label>("card-star");
+            cardKicker = root.Q<Label>("card-kicker");
+            cardTitle = root.Q<Label>("card-title");
+            cardText = root.Q<Label>("card-text");
+            cardReward = root.Q<Label>("card-reward");
+            stamp = root.Q<Label>("stamp");
+            stampShadow = root.Q<Label>("stamp-shadow");
+            saved = root.Q<Label>("saved");
+            sun.style.backgroundImage = UiTheme.Circle;
+            sunGlow.style.backgroundImage = UiTheme.Circle;
+            dayTexture = UiPanels.Gradient(new Color(0.05f, 0.38f, 0.52f, 0.92f), new Color(0.01f, 0.1f, 0.2f, 0.96f));
+            dayView.style.backgroundImage = dayTexture;
+            // A click on the card closes it (and for a new fish opens the journal on it).
+            card.RegisterCallback<PointerDownEvent>(_ =>
             {
-                if (Fx.Current == null) return false;
-                float scale = Mathf.Max(1f, Screen.height / 900f);
-                return shownCard.Contains(new Vector2(Input.mousePosition.x / scale, (Screen.height - Input.mousePosition.y) / scale));
-            }
+                var current = Fx.Current;
+                if (current == null) return;
+                Fx.Current = null;
+                if (current.species != null) JournalView.Open(current.species.id);
+            });
         }
+
+        void OnDestroy()
+        {
+            if (instance == this) instance = null;
+            if (document != null) Destroy(document.gameObject);
+            if (dayTexture != null) Destroy(dayTexture);
+        }
+
+        void OnDisable() => UiPanels.Show(root, false);
 
         void Update()
         {
@@ -68,223 +117,193 @@ namespace FishBreeder.Core
         /// <summary>A card is done: for a new species, open the journal on it (after the last of a run of them).</summary>
         void FinishCard()
         {
-            var card = Fx.Current;
+            var finished = Fx.Current;
             Fx.Current = null;
-            if (card.species == null) return;
+            if (finished.species == null) return;
             foreach (var next in Fx.Queue)
                 if (next.species != null) return;
-            JournalView.Open(card.species.id);
+            JournalView.Open(finished.species.id);
         }
 
-        void OnGUI()
-        {
-            UiTheme.Apply();
-            GUI.depth = -20;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-            float width = Screen.width / scale;
-            float height = Screen.height / scale;
-            EnsureStyles();
+        Vector2 Size => root.panel != null ? root.panel.visualTree.layout.size : new Vector2(1600f, 900f);
 
-            if (!ViewMode.Watching)
-            {
-                var cam = Camera.main;
-                ConvertBursts(cam, scale, height);
-                if (Event.current.type == EventType.Repaint)
-                {
-                    DrawFloaters(cam, scale, height);
-                    DrawParticles();
-                }
-                DrawCard(width);
-                if (Event.current.type == EventType.Repaint) DrawStamp(width, height);
-            }
-            else Fx.Bursts.Clear();
-            if (Event.current.type == EventType.Repaint) DrawDay(width, height);
+        void LateUpdate()
+        {
+            UiPanels.Show(root, true);
+            bool watching = ViewMode.Watching;
+            if (watching) Fx.Bursts.Clear();
+            else ConvertBursts();
+            particles.Begin(particlesView);
+            if (!watching) DrawParticles();
+            particles.End();
+            floaters.Begin(floatersView);
+            if (!watching) DrawFloaters();
+            floaters.End();
+            DrawCard(!watching);
+            DrawStamp(!watching);
+            DrawDay();
+            DrawSaved();
         }
 
-        void ConvertBursts(Camera cam, float scale, float height)
+        /// <summary>"Game saved" in the bottom right corner for a moment after every save, fading out.</summary>
+        void DrawSaved()
         {
-            if (Fx.Bursts.Count == 0) return;
+            float age = SaveGame.LastSaved < 0f ? 99f : Time.unscaledTime - SaveGame.LastSaved;
+            UiPanels.Show(saved, age <= 2.5f);
+            saved.style.opacity = Mathf.Clamp01((2.5f - age) / 0.6f);
+        }
+
+        void ConvertBursts()
+        {
+            var cam = Camera.main;
             foreach (var burst in Fx.Bursts)
             {
                 if (cam == null) break;
                 var screen = cam.WorldToScreenPoint(burst.world);
                 if (screen.z <= 0f) continue;
-                Fx.ScreenBurst(new Vector2(screen.x / scale, height - screen.y / scale), burst.color, burst.count, burst.bubbles, 0.7f);
+                Fx.ScreenBurst(UiPanels.ScreenToPanel(root, screen), burst.color, burst.count, burst.bubbles, 0.7f);
             }
             Fx.Bursts.Clear();
         }
 
-        void DrawFloaters(Camera cam, float scale, float height)
+        void DrawFloaters()
         {
+            var cam = Camera.main;
             if (cam == null) return;
-            var old = GUI.color;
             foreach (var floater in Fx.Floaters)
             {
                 var screen = cam.WorldToScreenPoint(floater.world);
-                if (screen.z <= 0f) continue;
                 float t = floater.age / floater.life;
                 float pop = 1f + 0.7f * Mathf.Clamp01(1f - floater.age * 6f);
                 float alpha = t < 0.6f ? 1f : 1f - (t - 0.6f) / 0.4f;
-                var gui = new Vector2(screen.x / scale, height - screen.y / scale - floater.age * 34f);
-                floatStyle.fontSize = Mathf.RoundToInt(floater.size * pop);
-                var content = new GUIContent(floater.text);
-                var size = floatStyle.CalcSize(content);
-                var rect = new Rect(gui.x - size.x * 0.5f, gui.y - size.y * 0.5f, size.x, size.y);
-                GUI.color = new Color(0f, 0.08f, 0.12f, alpha * 0.7f);
-                GUI.Label(new Rect(rect.x + 1.5f, rect.y + 1.5f, rect.width, rect.height), content, floatStyle);
-                GUI.color = new Color(floater.color.r, floater.color.g, floater.color.b, alpha);
-                GUI.Label(rect, content, floatStyle);
+                var at = UiPanels.ScreenToPanel(root, screen);
+                var label = floaters.Label(floater.text, "fb-floater");
+                UiPanels.Show(label, screen.z > 0f);
+                label.style.left = at.x;
+                label.style.top = at.y - floater.age * 34f;
+                label.style.fontSize = Mathf.RoundToInt(floater.size * pop);
+                label.style.color = new Color(floater.color.r, floater.color.g, floater.color.b, 1f);
+                label.style.opacity = alpha;
             }
-            GUI.color = old;
         }
 
         void DrawParticles()
         {
-            var old = GUI.color;
             foreach (var p in Fx.Particles)
             {
                 float t = p.age / p.life;
                 var color = p.color;
                 color.a = t < 0.7f ? 1f : 1f - (t - 0.7f) / 0.3f;
-                GUI.color = color;
                 float s = p.size * (p.bubble ? Mathf.Lerp(0.6f, 1.1f, t) : 1f);
-                GUI.DrawTexture(new Rect(p.pos.x - s * 0.5f, p.pos.y - s * 0.5f, s, s), p.bubble ? UiTheme.Bubble : UiTheme.Circle);
+                var dot = particles.Begin("dot", "fb-particle");
+                particles.Pop();
+                dot.style.backgroundImage = p.bubble ? UiTheme.Bubble : UiTheme.Circle;
+                dot.style.unityBackgroundImageTintColor = color;
+                dot.style.left = p.pos.x - s * 0.5f;
+                dot.style.top = p.pos.y - s * 0.5f;
+                dot.style.width = s;
+                dot.style.height = s;
             }
-            GUI.color = old;
         }
 
-        void DrawCard(float width)
+        void DrawCard(bool show)
         {
-            var card = Fx.Current;
-            if (card == null) return;
-            // The card grows to fit its text (research cards say a lot).
-            const float w = 520f;
-            float textW = w - 14f - 112f - 14f - 14f;
-            var title = new GUIContent(card.title);
-            var subtitle = new GUIContent(card.subtitle);
-            var reward = new GUIContent($"<b><color={UiTheme.LeafHex}>{card.reward}</color></b>");
-            float titleH = Mathf.Max(30f, cardTitle.CalcHeight(title, textW));
-            float subtitleH = cardText.CalcHeight(subtitle, textW);
-            float rewardH = cardText.CalcHeight(reward, textW);
-            float h = Mathf.Max(118f, 12f + 16f + titleH + subtitleH + 4f + rewardH + 14f);
-            float t = card.age;
-            float y;
+            var current = Fx.Current;
+            UiPanels.Show(card, show && current != null);
+            if (!show || current == null) return;
+            cardKicker.text = current.kicker;
+            cardKicker.style.color = current.accent;
+            cardStripe.style.backgroundColor = current.accent;
+            cardTitle.text = current.title;
+            cardText.text = current.subtitle;
+            cardReward.text = $"<b><color={UiTheme.LeafHex}>{current.reward}</color></b>";
+            var icon = current.species != null ? ItemPreviews.Fish(current.species) : null;
+            cardImage.image = icon;
+            UiPanels.Show(cardImage, icon != null);
+            UiPanels.Show(cardStar, icon == null);
+            if (icon != null) cardImage.style.translate = new Translate(0f, Mathf.Sin(Time.unscaledTime * 3f) * 3f);
+            else cardStar.style.rotate = new Rotate(Mathf.Sin(Time.unscaledTime * 2.5f) * 8f);
+
+            // Drops in from the top, waits, and goes back up. The card grows to fit its text.
+            float h = card.resolvedStyle.height;
+            if (float.IsNaN(h) || h < 118f) h = 118f;
+            float t = current.age, y;
             if (t < CardIn) y = Mathf.LerpUnclamped(-h - 20f, 96f, EaseOutBack(t / CardIn));
             else if (t < CardIn + CardHold) y = 96f;
             else y = Mathf.Lerp(96f, -h - 20f, (t - CardIn - CardHold) / CardOut);
-            cardRect = new Rect((width - w) * 0.5f, y, w, h);
-            shownCard = cardRect;
+            card.style.top = y;
+            // Sliding in or out it's meant to be partly off the top: the UI check only looks once it's still.
+            card.EnableInClassList(UiToolkitCheck.SkipClass, t < CardIn || t > CardIn + CardHold);
 
-            if (!card.burst && t > CardIn * 0.6f)
+            if (!current.burst && t > CardIn * 0.6f)
             {
-                card.burst = true;
-                Fx.ScreenBurst(cardRect.center, null, 40, false, 1.4f);
-                Fx.ScreenBurst(cardRect.center, new Color(0.85f, 0.97f, 1f), 14, true);
-            }
-
-            GUI.Box(cardRect, GUIContent.none, UiStyles.Window);
-            // A soft glow stripe in the card's accent colour along the top.
-            GUI.DrawTexture(new Rect(cardRect.x + 12f, cardRect.y + 4f, cardRect.width - 24f, 3f), Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, card.accent, 0f, 2f);
-
-            var iconRect = new Rect(cardRect.x + 14f, cardRect.y + 14f, 112f, h - 28f);
-            GUI.DrawTexture(iconRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, new Color(0.05f, 0.42f, 0.5f, 0.9f), 0f, 12f);
-            var icon = card.species != null ? ItemPreviews.Fish(card.species) : null;
-            if (icon != null)
-            {
-                float bob = Mathf.Sin(Time.unscaledTime * 3f) * 3f;
-                GUI.DrawTexture(new Rect(iconRect.x + 4f, iconRect.y + 4f + bob, iconRect.width - 8f, iconRect.height - 8f), icon, ScaleMode.ScaleToFit);
-            }
-            else
-            {
-                float spin = Mathf.Sin(Time.unscaledTime * 2.5f) * 8f;
-                var pivot = iconRect.center;
-                var matrix = GUI.matrix;
-                GUIUtility.RotateAroundPivot(spin, pivot * Mathf.Max(1f, Screen.height / 900f));
-                GUI.Label(iconRect, $"<size=46><color={UiTheme.SunHex}>★</color></size>", cardTitle);
-                GUI.matrix = matrix;
-            }
-
-            float x = iconRect.xMax + 14f;
-            cardKicker.normal.textColor = card.accent;
-            float ty = cardRect.y + 12f;
-            UiCheck.Label("Celebration card: kicker", new Rect(x, ty, textW, 18f), new GUIContent(card.kicker), cardKicker);
-            ty += 16f;
-            UiCheck.Label("Celebration card: title", new Rect(x, ty, textW, titleH), title, cardTitle);
-            ty += titleH;
-            UiCheck.Label("Celebration card: text", new Rect(x, ty, textW, subtitleH), subtitle, cardText);
-            ty += subtitleH + 4f;
-            UiCheck.Label("Celebration card: reward", new Rect(x, ty, textW, rewardH), reward, cardText);
-
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && cardRect.Contains(e.mousePosition) && !UiLayout.Editing)
-            {
-                e.Use();
-                Fx.Current = null;
-                if (card.species != null) JournalView.Open(card.species.id);
+                current.burst = true;
+                var center = new Vector2(Size.x * 0.5f, 96f + h * 0.5f);
+                Fx.ScreenBurst(center, null, 40, false, 1.4f);
+                Fx.ScreenBurst(center, new Color(0.85f, 0.97f, 1f), 14, true);
             }
         }
 
-        void DrawStamp(float width, float height)
+        void DrawStamp(bool show)
         {
-            if (Fx.StampAge < 0f) return;
+            bool on = show && Fx.StampAge >= 0f;
+            UiPanels.Show(stamp, on);
+            UiPanels.Show(stampShadow, on);
+            if (!on) return;
             float t = Fx.StampAge;
             float size = t < 0.22f ? Mathf.Lerp(3f, 1f, t / 0.22f) : 1f + Mathf.Sin(Mathf.Clamp01((t - 0.22f) / 0.2f) * Mathf.PI) * 0.08f;
             float alpha = t < 1.3f ? Mathf.Clamp01(t * 8f) : 1f - (t - 1.3f) / 0.5f;
-            var center = new Vector2(width * 0.5f, height * 0.42f);
-            var matrix = GUI.matrix;
-            float scale = Mathf.Max(1f, Screen.height / 900f);
-            GUIUtility.ScaleAroundPivot(new Vector2(size, size), center * scale);
-            GUIUtility.RotateAroundPivot(-8f, center * scale);
-            var rect = new Rect(center.x - 220f, center.y - 60f, 440f, 120f);
-            var old = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, alpha * 0.35f);
-            GUI.Label(new Rect(rect.x + 5f, rect.y + 5f, rect.width, rect.height), Fx.StampText, stampStyle);
-            GUI.color = new Color(Fx.StampColor.r, Fx.StampColor.g, Fx.StampColor.b, alpha);
-            GUI.Label(rect, Fx.StampText, stampStyle);
-            GUI.color = old;
-            GUI.matrix = matrix;
+            foreach (var label in new[] { stampShadow, stamp })
+            {
+                label.text = Fx.StampText;
+                label.style.scale = new Scale(new Vector3(size, size, 1f));
+            }
+            stamp.style.color = new Color(Fx.StampColor.r, Fx.StampColor.g, Fx.StampColor.b, alpha);
+            stampShadow.style.color = new Color(0f, 0f, 0f, alpha * 0.35f);
             if (Fx.StampFresh)
             {
                 Fx.StampFresh = false;
-                Fx.ScreenBurst(center, null, 36, false, 1.6f);
+                Fx.ScreenBurst(new Vector2(Size.x * 0.5f, Size.y * 0.42f), null, 36, false, 1.6f);
             }
         }
 
-        void DrawDay(float width, float height)
+        /// <summary>The new day washes over the screen: the sun comes up over the horizon, bubbles rise, and the day's name shows.</summary>
+        void DrawDay()
         {
-            if (Fx.DayAge < 0f) return;
-            float t = Fx.DayAge;
-            float alpha = t < 0.35f ? t / 0.35f : t > DayLength - 0.6f ? (DayLength - t) / 0.6f : 1f;
-            alpha = Mathf.Clamp01(alpha);
-            var old = GUI.color;
-            UiTheme.Gradient(new Rect(0f, 0f, width, height), new Color(0.05f, 0.38f, 0.52f, 0.92f * alpha), new Color(0.01f, 0.1f, 0.2f, 0.96f * alpha));
-
-            // The sun comes up over the horizon while the day changes.
-            float rise = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 1.4f));
-            float sunSize = 120f;
-            var sun = new Rect(width * 0.5f - sunSize * 0.5f, height * 0.62f - rise * 140f, sunSize, sunSize);
-            GUI.color = new Color(1f, 0.85f, 0.4f, alpha * 0.35f);
-            GUI.DrawTexture(new Rect(sun.x - 40f, sun.y - 40f, sun.width + 80f, sun.height + 80f), UiTheme.Circle);
-            GUI.color = new Color(1f, 0.82f, 0.38f, alpha);
-            GUI.DrawTexture(sun, UiTheme.Circle);
-            GUI.color = new Color(0.02f, 0.2f, 0.3f, alpha);
-            GUI.DrawTexture(new Rect(0f, height * 0.62f + sunSize * 0.5f, width, height), Texture2D.whiteTexture);
-
-            // Rising bubbles across the screen.
-            for (int i = 0; i < 18; i++)
+            bool on = Fx.DayAge >= 0f;
+            UiPanels.Show(dayView, on);
+            bubbles.Begin(dayView.Q("day-bubbles"));
+            if (on)
             {
-                float bx = (i * 97.3f) % width;
-                float by = height - ((t * (60f + i * 7f) + i * 53f) % (height + 40f));
-                float bs = 8f + (i * 13 % 7) * 3f;
-                GUI.color = new Color(0.85f, 0.97f, 1f, alpha * 0.8f);
-                GUI.DrawTexture(new Rect(bx, by, bs, bs), UiTheme.Bubble);
+                var size = Size;
+                float t = Fx.DayAge;
+                float alpha = t < 0.35f ? t / 0.35f : t > DayLength - 0.6f ? (DayLength - t) / 0.6f : 1f;
+                dayView.style.opacity = Mathf.Clamp01(alpha);
+                float rise = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / 1.4f));
+                const float sunSize = 120f;
+                float sunTop = size.y * 0.62f - rise * 140f;
+                sun.style.left = size.x * 0.5f - sunSize * 0.5f;
+                sun.style.top = sunTop;
+                sunGlow.style.left = size.x * 0.5f - sunSize * 0.5f - 40f;
+                sunGlow.style.top = sunTop - 40f;
+                horizon.style.top = size.y * 0.62f + sunSize * 0.5f;
+                for (int i = 0; i < 18; i++)
+                {
+                    float bx = (i * 97.3f) % size.x;
+                    float by = size.y - ((t * (60f + i * 7f) + i * 53f) % (size.y + 40f));
+                    float bs = 8f + (i * 13 % 7) * 3f;
+                    var bubble = bubbles.Begin("bubble", "fb-day-bubble");
+                    bubbles.Pop();
+                    bubble.style.backgroundImage = UiTheme.Bubble;
+                    bubble.style.left = bx;
+                    bubble.style.top = by;
+                    bubble.style.width = bs;
+                    bubble.style.height = bs;
+                }
+                dayTitle.text = Fx.DayTitle;
+                daySubtitle.text = Fx.DaySubtitle;
             }
-
-            GUI.color = new Color(1f, 1f, 1f, alpha);
-            GUI.Label(new Rect(0f, height * 0.3f, width, 70f), Fx.DayTitle, dayTitle);
-            GUI.Label(new Rect(0f, height * 0.3f + 70f, width, 30f), Fx.DaySubtitle, daySub);
-            GUI.color = old;
+            bubbles.End();
         }
 
         static float EaseOutBack(float t)
@@ -292,24 +311,6 @@ namespace FishBreeder.Core
             const float c1 = 1.70158f, c3 = c1 + 1f;
             t = Mathf.Clamp01(t) - 1f;
             return 1f + c3 * t * t * t + c1 * t * t;
-        }
-
-        void EnsureStyles()
-        {
-            if (floatStyle != null) return;
-            var skin = UiTheme.Skin;
-            floatStyle = new GUIStyle(skin.label) { fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = true };
-            floatStyle.normal.textColor = Color.white;
-            cardKicker = new GUIStyle(skin.label) { fontSize = 11, fontStyle = FontStyle.Bold, wordWrap = false };
-            cardTitle = new GUIStyle(skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, wordWrap = true, richText = true, alignment = TextAnchor.MiddleLeft };
-            cardTitle.normal.textColor = UiTheme.Sun;
-            cardText = new GUIStyle(skin.label) { fontSize = 13, wordWrap = true, richText = true };
-            stampStyle = new GUIStyle(skin.label) { fontSize = 84, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
-            stampStyle.normal.textColor = Color.white;
-            dayTitle = new GUIStyle(skin.label) { fontSize = 54, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
-            dayTitle.normal.textColor = UiTheme.Sand;
-            daySub = new GUIStyle(skin.label) { fontSize = 18, alignment = TextAnchor.MiddleCenter, wordWrap = false };
-            daySub.normal.textColor = UiTheme.Aqua;
         }
     }
 }

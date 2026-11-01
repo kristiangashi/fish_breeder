@@ -37,10 +37,19 @@ namespace FishBreeder.Core
         /// <summary>True while a sweep has the screens drawing off screen.</summary>
         public static bool Sweeping { get; private set; }
 
-        /// <summary>Checks everything showing under <paramref name="root"/>; returns how many problems it found.</summary>
+        /// <summary>
+        /// Checks everything showing under <paramref name="root"/> (null: every UI Toolkit screen
+        /// showing); returns how many problems it found.
+        /// </summary>
         public static int Check(VisualElement root, string screen)
         {
-            if (root == null || root.panel == null) return 0;
+            if (root == null)
+            {
+                int all = 0;
+                foreach (var showing in UiPanels.ShowingRoots()) all += Check(showing, screen);
+                return all;
+            }
+            if (root.panel == null) return 0;
             var panel = root.panel.visualTree.worldBound;
             string size = $"{panel.width:0}x{panel.height:0} UI units";
             int found = 0;
@@ -160,7 +169,7 @@ namespace FishBreeder.Core
                         for (int i = 0; i < 3; i++) yield return null;
                         yield return new WaitForEndOfFrame();
                         Check(root, $"{screen}: {page.Key} at {size.x}x{size.y}");
-                        Picture(target, Path.Combine(folder, $"{screen} - {page.Key} - {size.x}x{size.y}.png"));
+                        Picture(target, Path.Combine(folder, FileName($"{screen} - {page.Key} - {size.x}x{size.y}.png")));
                         pictures++;
                     }
                     settings.targetTexture = null;
@@ -179,6 +188,12 @@ namespace FishBreeder.Core
             int problems = UiCheck.Problems.Count;
             Debug.Log($"[UI check] {screen}: {pages.Count} pages at {SweepSizes.Length} screen sizes, {problems} problem{(problems == 1 ? "" : "s")}. {pictures} pictures in {folder}"
                 + (problems > 0 ? "\n" + string.Join("\n", UiCheck.Problems) : ""));
+        }
+
+        static string FileName(string name)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+            return name;
         }
 
         static void Picture(RenderTexture source, string path)

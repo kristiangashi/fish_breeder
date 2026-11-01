@@ -14,6 +14,18 @@ namespace FishBreeder.Core
 
         GUIStyle floatStyle, cardTitle, cardKicker, cardText, stampStyle, dayTitle, daySub;
         Rect cardRect;
+        static Rect shownCard;
+
+        /// <summary>The mouse is over the celebration card (a click there is the card's, not the store's).</summary>
+        public static bool MouseOverCard
+        {
+            get
+            {
+                if (Fx.Current == null) return false;
+                float scale = Mathf.Max(1f, Screen.height / 900f);
+                return shownCard.Contains(new Vector2(Input.mousePosition.x / scale, (Screen.height - Input.mousePosition.y) / scale));
+            }
+        }
 
         void Update()
         {
@@ -162,6 +174,7 @@ namespace FishBreeder.Core
             else if (t < CardIn + CardHold) y = 96f;
             else y = Mathf.Lerp(96f, -h - 20f, (t - CardIn - CardHold) / CardOut);
             cardRect = new Rect((width - w) * 0.5f, y, w, h);
+            shownCard = cardRect;
 
             if (!card.burst && t > CardIn * 0.6f)
             {

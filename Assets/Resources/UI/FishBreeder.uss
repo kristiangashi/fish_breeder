@@ -1018,3 +1018,399 @@
 .fb-cross {
     margin-top: 6px;
 }
+
+/* ------------------------------------------------------------ store screen (StoreHud.uxml) */
+
+/* The bars across the top and the row under them (to-do bar, milestones, shop clock). */
+.fb-hud-top {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 8px;
+}
+
+/* A thin rounded strip: the top and status bars, the shop clock, the log. */
+.fb-strip {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    background-color: rgba(8, 64, 87, 0.93);
+    border-width: 1px;
+    border-color: rgb(77, 199, 194);
+    border-radius: 10px;
+    padding: 3px 10px;
+}
+
+.fb-status-bar {
+    margin-top: 4px;
+}
+
+.fb-bar-item {
+    white-space: nowrap;
+    margin-right: 14px;
+    flex-shrink: 0;
+}
+
+.unity-button.fb-bar-button {
+    margin: 3px 0 3px 5px;
+    min-height: 30px;
+}
+
+/* Money and stars look like words and light up under the pointer. */
+.unity-button.fb-flat {
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+    min-height: 30px;
+    margin: 0 8px 0 0;
+    padding: 2px 6px;
+}
+
+.unity-button.fb-flat:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.unity-button.fb-money {
+    min-width: 92px;
+    -unity-text-align: middle-left;
+}
+
+.unity-button.fb-speed {
+    min-width: 36px;
+    margin: 3px 0 3px 4px;
+}
+
+/* A level, its XP bar and the numbers. */
+.fb-meter {
+    margin-right: 16px;
+    flex-shrink: 0;
+}
+
+.fb-meter__name {
+    white-space: nowrap;
+    margin-right: 6px;
+}
+
+.fb-bar.fb-meter__bar {
+    width: 84px;
+    height: 10px;
+    border-radius: 5px;
+}
+
+.fb-meter__xp {
+    font-size: 11px;
+    white-space: nowrap;
+    margin-left: 6px;
+}
+
+.fb-goals {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 200px;
+    margin: 4px 0;
+}
+
+.fb-under-bars {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-top: 8px;
+}
+
+/* A box on its own on the screen (the to-do bar, milestones). */
+.fb-panel {
+    background-color: rgba(8, 64, 84, 0.97);
+    border-width: 2px;
+    border-color: var(--aqua);
+    border-radius: 12px;
+    padding: 8px 12px;
+}
+
+.fb-todo {
+    width: 560px;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* In a tank the to-do bar stays clear of the tank menu on the left. */
+.fb-todo--tank {
+    margin-left: 310px;
+}
+
+.fb-milestones {
+    width: 280px;
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+.fb-clock {
+    width: 320px;
+    flex-shrink: 0;
+    margin-left: 12px;
+    flex-wrap: nowrap;
+}
+
+.fb-todo__paused {
+    align-items: center;
+}
+
+/* Level-ups and all caught up: a bright box across the middle. */
+.fb-banners {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: 200px;
+    align-items: center;
+}
+
+.fb-banner {
+    width: 620px;
+    max-width: 100%;
+    background-color: rgba(8, 64, 84, 0.97);
+    border-width: 2px;
+    border-color: var(--aqua);
+    border-radius: 12px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: rgb(255, 255, 255);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.fb-banner--small {
+    width: auto;
+}
+
+.fb-log {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    width: 560px;
+    max-width: 90%;
+    max-height: 200px;
+    overflow: hidden;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-end;
+    padding: 4px 10px;
+}
+
+.fb-log__line {
+    margin: 0;
+    padding: 1px 0;
+    flex-shrink: 0;
+}
+
+/* Labels over the store: their bottom middle sits on the point they belong to. */
+.fb-world-label {
+    position: absolute;
+    translate: -50% -100%;
+    background-color: rgba(8, 64, 87, 0.9);
+    border-width: 1px;
+    border-color: rgb(77, 199, 194);
+    border-radius: 10px;
+    padding: 4px 10px 5px 10px;
+    margin: 0;
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    color: var(--sand);
+    font-size: 13px;
+    -unity-font-style: normal;
+}
+
+.unity-button.fb-world-label--button {
+    min-height: 0;
+    -unity-font-style: normal;
+}
+
+.unity-button.fb-world-label--button:hover {
+    background-color: rgba(8, 64, 87, 0.95);
+    border-color: var(--sun);
+    color: var(--sun);
+}
+
+.unity-button.fb-world-button {
+    position: absolute;
+    translate: -50% -100%;
+    font-size: 12px;
+    min-height: 0;
+    padding: 4px 8px 5px 8px;
+    margin: 0;
+}
+
+.fb-watch-hint {
+    left: 50%;
+    top: auto;
+    bottom: 24px;
+    translate: -50% 0;
+    font-size: 14px;
+}
+
+.unity-button.fb-watch-button {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+}
+
+/* A shopper's thought bubble with the face for their mood. */
+.fb-mood {
+    position: absolute;
+    translate: -50% -100%;
+    align-items: center;
+    -unity-background-scale-mode: stretch-to-fill;
+}
+
+.fb-mood__face {
+    position: absolute;
+}
+
+.fb-mood__money {
+    position: absolute;
+    right: 0;
+    top: -4px;
+    font-size: 18px;
+    color: rgb(46, 158, 62);
+    padding: 0;
+    margin: 0;
+}
+
+.fb-money-popup {
+    position: absolute;
+    translate: -50% -50%;
+    color: var(--sun);
+    text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    padding: 0;
+    margin: 0;
+}
+
+/* ------------------------------------------------------------ store windows */
+
+#register-window {
+    width: 500px;
+}
+
+#supplier-window {
+    width: 760px;
+    height: 700px;
+    max-height: 100%;
+}
+
+#unlock-window {
+    width: 380px;
+}
+
+#buy-tank-window {
+    width: 460px;
+}
+
+#day-report-window {
+    width: 520px;
+}
+
+#owner-window {
+    width: 480px;
+}
+
+#confirm-window {
+    width: 400px;
+}
+
+.fb-gap-above {
+    margin-top: 8px;
+}
+
+.fb-gap-row {
+    margin-top: 4px;
+}
+
+.unity-button.fb-button--wrap {
+    white-space: normal;
+}
+
+/* Buttons three to a row (the supplier's Deliver to). */
+.fb-grid3 > .unity-button {
+    width: 32%;
+    white-space: normal;
+}
+
+.fb-owner-card {
+    width: 170px;
+    margin: 0 12px;
+    align-items: center;
+}
+
+.fb-owner-card__picture {
+    width: 150px;
+    height: 220px;
+    background-color: rgba(51, 61, 77, 0.9);
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+.fb-icon {
+    background-color: rgba(51, 61, 77, 0.9);
+    border-radius: 4px;
+    margin: 0 6px 6px 0;
+    flex-shrink: 0;
+}
+
+.fb-icon--rare {
+    background-color: rgba(115, 89, 38, 0.9);
+}
+
+/* Something for sale: picture, name and details, and the buy button on the right. */
+.fb-offer {
+    align-items: center;
+}
+
+.fb-offer__picture {
+    background-color: rgba(51, 61, 77, 0.9);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-right: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.fb-offer__picture--locked {
+    opacity: 0.55;
+}
+
+.fb-offer__mystery {
+    font-size: 40px;
+    -unity-text-align: middle-center;
+    padding: 0;
+    margin: 0;
+}
+
+.fb-offer__text {
+    min-width: 0;
+}
+
+.fb-offer__buy {
+    width: 170px;
+    flex-shrink: 0;
+    margin-left: 8px;
+    justify-content: center;
+}
+
+.fb-small--bright {
+    color: rgb(214, 230, 232);
+}
+
+.fb-pool {
+    margin-left: 80px;
+    align-items: center;
+}
+
+.fb-pool__label {
+    width: 62px;
+    margin-right: 4px;
+}
+
+.fb-pool__tip {
+    margin-left: 80px;
+}

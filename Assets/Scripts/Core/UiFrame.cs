@@ -30,6 +30,9 @@ namespace FishBreeder.Core
         readonly Stack<VisualElement> open = new Stack<VisualElement>();
         readonly Stack<int> next = new Stack<int>();
 
+        /// <summary>The element the last call made or reused.</summary>
+        public VisualElement Last { get; private set; }
+
         /// <summary>The tooltip of whatever the pointer is over, or "" (like IMGUI's GUI.tooltip).</summary>
         public string Tooltip => UiPanels.HoverTooltip;
 
@@ -82,6 +85,7 @@ namespace FishBreeder.Core
                 into.Add(element);
             }
             SetClasses(element, classes);
+            Last = element;
             return element;
         }
 

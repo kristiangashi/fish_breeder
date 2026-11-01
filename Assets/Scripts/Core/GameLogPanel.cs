@@ -5,7 +5,7 @@ namespace FishBreeder.Core
     /// <summary>
     /// The message log in the bottom-left corner. It shows the newest messages that fit, measured
     /// line by line with their wrapping, and grows upward from the bottom of its space, so a long
-    /// message never runs off the edge.
+    /// message never runs off the edge. <see cref="Fill"/> is the same for UI Toolkit screens.
     /// </summary>
     public static class GameLogPanel
     {
@@ -29,6 +29,13 @@ namespace FishBreeder.Core
             UiCheck.Begin(id, rect, box);
             for (int i = first; i < entries.Count; i++) Ui.Label(Line(entries, i), Style());
             UiCheck.End();
+        }
+
+        /// <summary>The newest messages (at most <paramref name="maxEntries"/>), oldest first, into a UI Toolkit box that keeps them to its height.</summary>
+        public static void Fill(UiFrame ui, int maxEntries)
+        {
+            var entries = GameLog.Entries;
+            for (int i = Mathf.Max(0, entries.Count - maxEntries); i < entries.Count; i++) ui.Label(Line(entries, i), "fb-text fb-log__line");
         }
 
         static string Line(System.Collections.Generic.IReadOnlyList<string> entries, int i)

@@ -77,6 +77,35 @@ namespace FishBreeder.Core
 
         static readonly List<UIDocument> documents = new List<UIDocument>();
 
+        /// <summary>Every UI Toolkit screen showing now (for the UI check).</summary>
+        public static List<VisualElement> ShowingRoots()
+        {
+            documents.RemoveAll(d => d == null);
+            var roots = new List<VisualElement>();
+            foreach (var document in documents)
+                if (document.isActiveAndEnabled && document.rootVisualElement != null && Showing(document.rootVisualElement)) roots.Add(document.rootVisualElement);
+            return roots;
+        }
+
+        /// <summary>
+        /// A point on a panel in the screen coordinates the effects overlay (<see cref="Fx"/>) draws in:
+        /// pixels divided by the IMGUI scale (Screen.height / 900, never below 1).
+        /// </summary>
+        public static Vector2 PanelToFx(VisualElement element, Vector2 point)
+        {
+            var size = element.panel != null ? element.panel.visualTree.layout.size : new Vector2(Screen.width, Screen.height);
+            if (size.x <= 0f || size.y <= 0f) return point;
+            float scale = Mathf.Max(1f, Screen.height / 900f);
+            return new Vector2(point.x / size.x * Screen.width / scale, point.y / size.y * Screen.height / scale);
+        }
+
+        /// <summary>Where a screen pixel (origin bottom left, like Input.mousePosition) falls on an element's panel.</summary>
+        public static Vector2 ScreenToPanel(VisualElement element, Vector3 screen)
+        {
+            var size = element.panel != null ? element.panel.visualTree.layout.size : new Vector2(Screen.width, Screen.height);
+            return new Vector2(screen.x / Mathf.Max(1, Screen.width) * size.x, (1f - screen.y / Mathf.Max(1, Screen.height)) * size.y);
+        }
+
         /// <summary>The tooltip of the element under the pointer (or of the nearest parent that has one), or "".</summary>
         public static string HoverTooltip { get; private set; } = "";
 

@@ -37,12 +37,15 @@ namespace FishBreeder.Core
         /// <summary>
         /// The fish that only live in the public aquarium, by how rare they are in the wild: the
         /// tinfoil-barb-type Silver Flamefin is common in big South East Asian rivers, while a
-        /// flowerhorn-type Crimson Jewel is a cichlid hybrid that hardly ever turns up wild.
+        /// flowerhorn-type Crimson Jewel is a cichlid hybrid that hardly ever turns up wild. Giant
+        /// trevally hunt reef edges in packs; the humphead wrasse is endangered and seldom seen.
         /// </summary>
         public static List<ScubaFindBalance> CreateDefaults() => new List<ScubaFindBalance>
         {
             new ScubaFindBalance { species = "SilverFlamefin", rarity = SpeciesRarity.Common },
             new ScubaFindBalance { species = "CrimsonJewelCichlid", rarity = SpeciesRarity.Legendary },
+            new ScubaFindBalance { species = "GiantTrevally", rarity = SpeciesRarity.Rare },
+            new ScubaFindBalance { species = "NapoleonWrasse", rarity = SpeciesRarity.Legendary },
         };
     }
 

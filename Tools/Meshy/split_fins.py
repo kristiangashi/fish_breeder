@@ -100,6 +100,9 @@ OVERRIDES = {
     "LemonTetra": {"peduncle": 0.70}, "BloodfinTetra": {"peduncle": 0.68},
     # Medium fish (2026-11-01): the Jack Dempsey's long soft dorsal and anal fins hide its tail root.
     "JackDempsey": {"peduncle": 0.80},
+    # Reef collage (2026-11-02): the tangs' tall soft dorsal and anal fins are thick enough to pass
+    # for body and the narrowest point lands mid-body, and they run into the tail (cut: fins are cut at the peduncle), and the coral beauty's tail root is further forward.
+    "YellowTang": {"peduncle": 0.82, "cut": True}, "BlueTang": {"peduncle": 0.84, "cut": True}, "CoralBeauty": {"peduncle": 0.80},
 }
 
 SID = ""
@@ -205,7 +208,9 @@ def classify(o, thin=0.2):
     for comp in components(bm, labels, "Fin"):
         area = sum(f.calc_area() for f in comp)
         behind = sum(f.calc_area() for f in comp if al(f.calc_center_median()) < ped_along) / area
-        for f in comp: whole[f.index] = "Tail" if behind > 0.65 else "Front" if behind < 0.35 else "Cut"
+        kind = "Tail" if behind > 0.65 else "Front" if behind < 0.35 else "Cut"
+        if OVERRIDES.get(SID, {}).get("cut") and kind == "Front": kind = "Cut"  # long fins that run into the tail
+        for f in comp: whole[f.index] = kind
     for f in bm.faces:
         c = f.calc_center_median(); a = al(c)
         kind = whole.get(f.index, "Cut")

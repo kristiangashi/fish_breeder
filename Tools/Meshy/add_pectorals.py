@@ -30,6 +30,21 @@ FINS = {
                         src=((0.37, -0.135), (0.46, -0.185), 0.015)),
     "ArcticGrayling": dict(root=(0.22, -0.05), length=0.14, h0=0.03, hmax=0.045, droop=25, flare=30, pointed=True,
                            src=((0.445, -0.09), (0.425, -0.165), 0.012)),
+    # Meshy_AI_Colorful_Aquarium_Fish_Collage and _Reef_Fish_Collage (2026-11-02): pale fins from
+    # the tail (the cardinalfish's from its pale first dorsal), one colour each (flat); the
+    # trevally's long sickle fins.
+    "BanggaiCardinal": dict(root=(0.22, -0.03), length=0.12, h0=0.03, hmax=0.05, droop=20, flare=30, pointed=False, flat=True,
+                            src=((0.29, 0.12), (0.29, 0.2), 0.01)),
+    "CoralBeauty": dict(root=(0.25, -0.06), length=0.12, h0=0.03, hmax=0.05, droop=20, flare=28, pointed=False,
+                        flat=True, src=((0.86, -0.02), (0.96, -0.02), 0.02)),
+    "ClownTrigger": dict(root=(0.32, 0.0), length=0.1, h0=0.03, hmax=0.05, droop=15, flare=30, pointed=False,
+                         flat=True, src=((0.86, 0.0), (0.97, 0.0), 0.03)),
+    "GiantTrevally": dict(root=(0.22, -0.03), length=0.25, h0=0.03, hmax=0.045, droop=12, flare=22, pointed=True,
+                          flat=True, src=((0.8, 0.0), (0.95, 0.08), 0.01)),
+    "PicassoTrigger": dict(root=(0.33, 0.0), length=0.1, h0=0.03, hmax=0.05, droop=15, flare=30, pointed=False,
+                           flat=True, src=((0.84, 0.03), (0.96, 0.05), 0.03)),
+    "RoyalGramma": dict(root=(0.27, -0.02), length=0.13, h0=0.03, hmax=0.05, droop=22, flare=28, pointed=False,
+                        flat=True, src=((0.24, -0.05), (0.43, -0.22), 0.008)),
 }
 
 NA, NB = 8, 6          # grid steps along and across each fin
@@ -116,7 +131,9 @@ def add(o, f):
                 sy = surface_y(p.x, p.z, s)
                 if s * p.y < s * sy + GAP * L: p.y = sy + s * GAP * L
                 v = bm.verts.new(p)
-                c = Vector(sr) + sdir * a + sperp * (b * sh)
+                # flat: one colour for the whole fin, from the middle of the source line (a re-baked
+                # fish's UV islands are small, and a fin spanning two of them smears).
+                c = Vector(sr) + sdir * 0.5 if f.get("flat") else Vector(sr) + sdir * a + sperp * (b * sh)
                 grid[i, j] = (v, sample_uv(c.x, c.y))
         faces = []
         for i in range(NA):

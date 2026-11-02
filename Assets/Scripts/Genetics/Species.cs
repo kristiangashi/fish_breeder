@@ -258,6 +258,18 @@ namespace FishBreeder.Genetics
             { "Frontosa", new[] { FoodType.Premium, FoodType.BrineShrimp } },
             { "JackDempsey", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "PeacockBass", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "BanggaiCardinal", new[] { FoodType.BrineShrimp, FoodType.Premium } },
+            { "CoralBeauty", new[] { FoodType.AlgaeWafers, FoodType.BrineShrimp } },
+            { "ClownLoach", new[] { FoodType.Bloodworms, FoodType.AlgaeWafers } },
+            { "ClownTrigger", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "GiantTrevally", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "WatchmanGoby", new[] { FoodType.BrineShrimp, FoodType.Bloodworms } },
+            { "NapoleonWrasse", new[] { FoodType.Premium, FoodType.BrineShrimp } },
+            { "BlueTang", new[] { FoodType.AlgaeWafers, FoodType.BrineShrimp } },
+            { "PicassoTrigger", new[] { FoodType.Premium, FoodType.Bloodworms } },
+            { "RoyalGramma", new[] { FoodType.BrineShrimp, FoodType.Flakes } },
+            { "YellowTang", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
+            { "ZebraLoach", new[] { FoodType.Bloodworms, FoodType.AlgaeWafers } },
             { "GreenTerror", new[] { FoodType.Premium, FoodType.Bloodworms } },
             { "BlueAcara", new[] { FoodType.Bloodworms, FoodType.Premium } },
             { "GoldenMbuna", new[] { FoodType.AlgaeWafers, FoodType.Flakes } },
@@ -305,12 +317,18 @@ namespace FishBreeder.Genetics
             { "CrimsonJewelCichlid", new[] { "Rock", "Driftwood" } },
             { "Pumpkinseed", new[] { "Plant", "TallPlant" } }, { "TexasCichlid", new[] { "Rock", "Driftwood" } }, { "Frontosa", new[] { "Rock" } },
             { "JackDempsey", new[] { "Rock", "Driftwood" } }, { "PeacockBass", new[] { "Driftwood" } },
+            // Reef fish shelter in rockwork and caves, the cardinalfish among seaweed (wild ones hover
+            // in sea urchin spines), gobies by a burrow under a rock or shell; loaches hide under wood.
+            { "BanggaiCardinal", new[] { "Seaweed", "Rock" } }, { "RoyalGramma", new[] { "Grotto", "Rock" } }, { "WatchmanGoby", new[] { "Rock", "Clam" } },
+            { "CoralBeauty", new[] { "Grotto", "Rock" } }, { "ZebraLoach", new[] { "Driftwood", "Rock" } }, { "ClownLoach", new[] { "Driftwood", "Rock" } },
+            { "YellowTang", new[] { "Rock", "Seaweed" } }, { "BlueTang", new[] { "Grotto", "Rock" } }, { "PicassoTrigger", new[] { "Rock" } },
+            { "ClownTrigger", new[] { "Grotto", "Rock" } }, { "NapoleonWrasse", new[] { "Grotto", "Rock" } },
         };
 
         static readonly HashSet<string> Roamers = new HashSet<string>
         {
             "CometGoldfish", "Guppy", "TigerBarb", "ZebraDanio", "SilverDollar", "BlackMolly", "BloodfinTetra", "BuenosAiresTetra", "BucktoothTetra",
-            "SilverFlamefin", "ArcticGrayling", "PeacockBass",
+            "SilverFlamefin", "ArcticGrayling", "PeacockBass", "YellowTang", "BlueTang", "GiantTrevally",
         };
 
         static void SetHabits(Species s)
@@ -328,6 +346,8 @@ namespace FishBreeder.Genetics
             { "CongoTetra", 1 }, { "BucktoothTetra", 1 },
             { "CrimsonJewelCichlid", Tank.WallSize }, { "SilverFlamefin", Tank.WallSize },
             { "TexasCichlid", 1 }, { "JackDempsey", 1 }, { "Frontosa", 2 }, { "ArcticGrayling", 2 }, { "PeacockBass", 2 },
+            { "ClownLoach", 1 }, { "YellowTang", 1 }, { "PicassoTrigger", 1 }, { "BlueTang", 2 }, { "ClownTrigger", 2 },
+            { "GiantTrevally", Tank.WallSize }, { "NapoleonWrasse", Tank.WallSize },
         };
 
         /// <summary>
@@ -345,6 +365,8 @@ namespace FishBreeder.Genetics
             { "LemonTetra", 0.28f }, { "XRayTetra", 0.23f }, { "EmperorTetra", 0.25f }, { "CongoTetra", 0.23f }, { "BucktoothTetra", 0.2f },
             { "CrimsonJewelCichlid", 0.5f }, { "SilverFlamefin", 0.35f },
             { "Pumpkinseed", 0.5f }, { "TexasCichlid", 0.43f }, { "JackDempsey", 0.43f }, { "Frontosa", 0.45f }, { "PeacockBass", 0.38f }, { "ArcticGrayling", 0.28f },
+            { "BanggaiCardinal", 0.45f }, { "CoralBeauty", 0.45f }, { "ClownLoach", 0.22f }, { "ClownTrigger", 0.55f }, { "GiantTrevally", 0.4f }, { "WatchmanGoby", 0.25f },
+            { "NapoleonWrasse", 0.45f }, { "BlueTang", 0.45f }, { "PicassoTrigger", 0.55f }, { "RoyalGramma", 0.3f }, { "YellowTang", 0.5f }, { "ZebraLoach", 0.2f },
         };
 
         /// <summary>
@@ -353,35 +375,44 @@ namespace FishBreeder.Genetics
         /// green terrors 30 cm, red hook silver dollars about 25 cm, Siamese algae eaters 16 cm,
         /// electric blue acaras 17 cm and red-tailed black sharks 15 cm. The medium fish of
         /// 2026-11-01 too: pumpkinseeds 22 cm, Jack Dempseys 25 cm, Texas cichlids 30 cm, frontosas
-        /// 33 cm, Arctic grayling 45 cm and peacock bass 60 cm. The other fish are already at (or
-        /// drawn above) their real adult size, the big wall-aquarium kinds included.
+        /// 33 cm, Arctic grayling 45 cm and peacock bass 60 cm. The reef collage of 2026-11-02 too:
+        /// yellow tangs 20 cm, Picasso triggerfish 25 cm, blue tangs and clown loaches 30 cm and clown
+        /// triggerfish 50 cm. The other fish are already at (or drawn above) their real adult size,
+        /// the big wall-aquarium kinds included.
         /// </summary>
         static readonly Dictionary<string, float> FullGrownLengths = new Dictionary<string, float>
         {
             { "CometGoldfish", 0.3f }, { "FancyGoldfish", 0.2f }, { "Oscar", 0.35f }, { "GreenTerror", 0.3f },
             { "SilverDollar", 0.25f }, { "SiameseAlgaeEater", 0.16f }, { "BlueAcara", 0.17f }, { "RedTailShark", 0.15f },
             { "Pumpkinseed", 0.22f }, { "JackDempsey", 0.25f }, { "TexasCichlid", 0.3f }, { "Frontosa", 0.33f }, { "ArcticGrayling", 0.45f }, { "PeacockBass", 0.6f },
+            { "YellowTang", 0.2f }, { "PicassoTrigger", 0.25f }, { "BlueTang", 0.3f }, { "ClownLoach", 0.3f }, { "ClownTrigger", 0.5f },
         };
 
         /// <summary>The big wall fish only ever live in the public aquarium; the seller finds them on his dives.</summary>
-        static readonly HashSet<string> EastWingOnly = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin" };
+        static readonly HashSet<string> EastWingOnly = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin", "GiantTrevally", "NapoleonWrasse" };
 
         /// <summary>
         /// Fish that won't share a tank with too many of their own kind, from how the real fish
         /// behave: red-tailed black sharks fight any other of their kind, and the big predatory
         /// cichlids (peacock bass, oscars, green terrors, Texas cichlids, Jack Dempseys, flowerhorns)
-        /// only keep the peace in a pair or a few.
+        /// only keep the peace in a pair or a few. On the reef: triggerfish and dwarf angels fight
+        /// any other of their kind, tangs a pair at most, watchman gobies share a burrow in a pair,
+        /// and a humphead wrasse's harem has one big male.
         /// </summary>
         static readonly Dictionary<string, int> MaxOfKind = new Dictionary<string, int>
         {
             { "RedTailShark", 1 }, { "PeacockBass", 2 }, { "Oscar", 2 }, { "GreenTerror", 2 }, { "TexasCichlid", 2 },
             { "JackDempsey", 3 }, { "CrimsonJewelCichlid", 2 },
+            { "ClownTrigger", 1 }, { "PicassoTrigger", 1 }, { "CoralBeauty", 1 }, { "YellowTang", 2 }, { "BlueTang", 2 }, { "WatchmanGoby", 2 },
+            { "NapoleonWrasse", 2 },
         };
 
         /// <summary>
         /// The size groups as Kristian set them out (2026-11-01). Small are the hybrids sold in the shop
         /// that keep growing in big tanks; Medium the six real medium fish; Large the metre-long wall
-        /// fish. Every other kind is a Tiny tank fish.
+        /// fish. Every other kind is a Tiny tank fish. The reef collage (2026-11-02): tangs, the Picasso
+        /// triggerfish and the clown loach grow big with room (Small), the clown triggerfish is a
+        /// Medium fish and the giant trevally and humphead wrasse are Large dive finds.
         /// </summary>
         static readonly Dictionary<string, SizeGroup> SizeGroups = new Dictionary<string, SizeGroup>
         {
@@ -390,6 +421,8 @@ namespace FishBreeder.Genetics
             { "Pumpkinseed", SizeGroup.Medium }, { "ArcticGrayling", SizeGroup.Medium }, { "TexasCichlid", SizeGroup.Medium },
             { "Frontosa", SizeGroup.Medium }, { "JackDempsey", SizeGroup.Medium }, { "PeacockBass", SizeGroup.Medium },
             { "CrimsonJewelCichlid", SizeGroup.Large }, { "SilverFlamefin", SizeGroup.Large },
+            { "ClownLoach", SizeGroup.Small }, { "YellowTang", SizeGroup.Small }, { "BlueTang", SizeGroup.Small }, { "PicassoTrigger", SizeGroup.Small },
+            { "ClownTrigger", SizeGroup.Medium }, { "GiantTrevally", SizeGroup.Large }, { "NapoleonWrasse", SizeGroup.Large },
         };
 
         /// <summary>The default <see cref="sizeGroup"/> for a species id (Tiny for any kind not in the table).</summary>
@@ -411,6 +444,9 @@ namespace FishBreeder.Genetics
         const string Tetras = "Tetras (Characidae)";
         const string Sunfishes = "Sunfishes (Centrarchidae)";
         const string Salmonids = "Salmon, trout and grayling (Salmonidae)";
+        const string Loaches = "Botiid loaches (Botiidae)";
+        const string Surgeonfish = "Surgeonfish and tangs (Acanthuridae)";
+        const string Triggerfish = "Triggerfish (Balistidae)";
 
         /// <summary>Id of the egg box the wild tetras come in.</summary>
         public const string WildTetraBox = "WildTetra";
@@ -469,6 +505,7 @@ namespace FishBreeder.Genetics
             list.AddRange(WildTetras());
             list.AddRange(BigFish());
             list.AddRange(MediumFish());
+            list.AddRange(CollageFish());
             foreach (var s in list)
             {
                 s.bendStart = DefaultBendStart(s.id);
@@ -544,6 +581,61 @@ namespace FishBreeder.Genetics
                 s.lifespanDays = s.id == "Frontosa" ? 150f : 120f;
                 s.litterMin = 3; s.litterMax = 6;
                 s.likesPlants = s.id == "Pumpkinseed";
+                if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
+                if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// The two Meshy collages of 2026-11-02: ten reef fish and two loaches. Reef fish need salt
+        /// water (32-35 ppt, pH 8.1-8.4), so they come once marine salt is unlocked. The banggai
+        /// cardinalfish, royal gramma, watchman goby and coral beauty stay small; the tangs, the
+        /// Picasso triggerfish and the clown loach (sold young) grow big with room; the clown
+        /// triggerfish is a medium fish; the giant trevally and the humphead wrasse are metre-long
+        /// fish the seller only finds diving. The zebra and clown loaches are freshwater shoalers that
+        /// rummage on the bottom. Care-sheet temperatures and pH; mouthbrooding cardinals have few young.
+        /// </summary>
+        static List<Species> CollageFish()
+        {
+            var reef = FishCategory.SaltwaterTropical;
+            var tropical = FishCategory.FreshwaterTropical;
+            var u = SpeciesRarity.Uncommon; var r = SpeciesRarity.Rare; var x = SpeciesRarity.Exotic; var l = SpeciesRarity.Legendary;
+            var list = new List<Species>
+            {
+                Make("ZebraLoach", "Zebra Loach", "Botia striata", Loaches, tropical, u, 32, 18, 0.07f, 0.09f, 1f, 0f, 0.25f, 23f, 26f, 6.5f, 7.5f, 3f, 5),
+                Make("ClownLoach", "Clown Loach", "Chromobotia macracanthus", Loaches, tropical, r, 75, 38, 0.08f, 0.11f, 1f, 0.02f, 0.35f, 25f, 30f, 6f, 7.5f, 3f, 5),
+                Make("WatchmanGoby", "Yellow Watchman Goby", "Cryptocentrus cinctus", "Gobies (Gobiidae)", reef, r, 80, 40, 0.07f, 0.1f, 0.7f, 0f, 0.15f, 24f, 27f, 8.1f, 8.4f, 3f, 0),
+                Make("RoyalGramma", "Royal Gramma", "Gramma loreto", "Basslets (Grammatidae)", reef, r, 90, 45, 0.06f, 0.08f, 0.9f, 0.1f, 0.5f, 24f, 27f, 8.1f, 8.4f, 3f, 0),
+                Make("BanggaiCardinal", "Banggai Cardinalfish", "Pterapogon kauderni", "Cardinalfish (Apogonidae)", reef, x, 130, 65, 0.06f, 0.08f, 0.6f, 0.3f, 0.75f, 24f, 28f, 8.1f, 8.4f, 3f, 3),
+                Make("CoralBeauty", "Coral Beauty", "Centropyge bispinosa", "Marine angelfish (Pomacanthidae)", reef, x, 150, 75, 0.08f, 0.1f, 0.8f, 0.15f, 0.6f, 24f, 27f, 8.1f, 8.4f, 3f, 0),
+                Make("YellowTang", "Yellow Tang", "Zebrasoma flavescens", Surgeonfish, reef, x, 180, 90, 0.08f, 0.11f, 1.2f, 0.2f, 0.8f, 24f, 27f, 8.1f, 8.4f, 2.5f, 0),
+                Make("PicassoTrigger", "Picasso Triggerfish", "Rhinecanthus aculeatus", Triggerfish, reef, x, 200, 100, 0.08f, 0.11f, 0.8f, 0.1f, 0.6f, 24f, 27f, 8.1f, 8.4f, 3f, 0),
+                Make("BlueTang", "Blue Tang", "Paracanthurus hepatus", Surgeonfish, reef, x, 220, 110, 0.08f, 0.12f, 1.2f, 0.25f, 0.85f, 24f, 27f, 8.1f, 8.4f, 2.5f, 0),
+                Make("ClownTrigger", "Clown Triggerfish", "Balistoides conspicillum", Triggerfish, reef, x, 520, 260, 0.15f, 0.2f, 0.8f, 0.15f, 0.7f, 24f, 27f, 8.1f, 8.4f, 4f, 0),
+                Make("GiantTrevally", "Giant Trevally", "Caranx ignobilis", "Jacks (Carangidae)", reef, x, 900, 450, 0.9f, 1.1f, 1.3f, 0.25f, 0.85f, 24f, 28f, 8.1f, 8.4f, 4f, 3),
+                Make("NapoleonWrasse", "Humphead Wrasse", "Cheilinus undulatus", "Wrasses (Labridae)", reef, l, 1500, 750, 1f, 1.25f, 0.5f, 0.15f, 0.7f, 24f, 28f, 8.1f, 8.4f, 4f, 0),
+            };
+            var levels = new Dictionary<string, int>
+            {
+                { "ZebraLoach", 6 }, { "ClownLoach", 8 }, { "WatchmanGoby", 10 }, { "RoyalGramma", 11 }, { "BanggaiCardinal", 12 }, { "YellowTang", 14 },
+                { "CoralBeauty", 16 }, { "PicassoTrigger", 17 }, { "BlueTang", 19 }, { "GiantTrevally", 22 }, { "ClownTrigger", 24 }, { "NapoleonWrasse", 30 },
+            };
+            var adult = new Dictionary<string, float>
+            {
+                { "ZebraLoach", 4.5f }, { "ClownLoach", 7f }, { "WatchmanGoby", 5f }, { "RoyalGramma", 5f }, { "BanggaiCardinal", 6f }, { "YellowTang", 7f },
+                { "CoralBeauty", 6f }, { "PicassoTrigger", 7f }, { "BlueTang", 7f }, { "GiantTrevally", 8f }, { "ClownTrigger", 9f }, { "NapoleonWrasse", 10f },
+            };
+            foreach (var s in list)
+            {
+                s.unlockLevel = levels[s.id];
+                s.daysToAdult = adult[s.id];
+                s.lifespanDays = s.maxLength >= 0.15f ? 150f : 100f;
+                if (s.category == reef) { s.salinityMin = 32f; s.salinityMax = 35f; }
+                if (s.id == "ZebraLoach" || s.id == "ClownLoach" || s.id == "WatchmanGoby") s.style = SwimStyle.Bottom;
+                s.litterMin = s.id == "BanggaiCardinal" ? 2 : 3;
+                s.litterMax = s.id == "BanggaiCardinal" ? 4 : 6;
+                s.likesPlants = s.id == "ZebraLoach" || s.id == "ClownLoach" || s.id == "BanggaiCardinal" || s.id == "YellowTang";
                 if (Favourites.TryGetValue(s.id, out var foods)) s.favoriteFoods = new List<FoodType>(foods);
                 if (MinTankSizes.TryGetValue(s.id, out var size)) s.minTankSize = size;
             }

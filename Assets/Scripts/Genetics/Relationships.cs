@@ -139,6 +139,26 @@ namespace FishBreeder.Genetics
             Eats(list, "ArcticGrayling", "NeonTetra", "Guppy", "RubyTetra", "GlowlightTetra");
             Both(list, Relationship.Preferred, "ArcticGrayling", "ArcticGrayling", "CometGoldfish");
 
+            // The reef collage (2026-11-02). The giant trevally hunts anything small enough on the reef;
+            // the humphead wrasse and both triggerfish crunch up little fish (and fight each other);
+            // tangs and dwarf angels quarrel over grazing room with their own kind and each other.
+            // Loaches, banggai cardinals and the trevally shoal.
+            var reefSmall = new[] { "Clownfish", "BanggaiCardinal", "RoyalGramma", "WatchmanGoby", "CoralBeauty" };
+            Eats(list, "GiantTrevally", "Clownfish", "BanggaiCardinal", "RoyalGramma", "WatchmanGoby", "CoralBeauty", "YellowTang", "PicassoTrigger", "BlueTang");
+            Eats(list, "NapoleonWrasse", reefSmall);
+            Eats(list, "ClownTrigger", reefSmall);
+            Eats(list, "PicassoTrigger", "BanggaiCardinal", "RoyalGramma", "WatchmanGoby");
+            Both(list, Relationship.Competitive, "ClownTrigger", "PicassoTrigger", "YellowTang", "BlueTang", "NapoleonWrasse");
+            Both(list, Relationship.Competitive, "YellowTang", "YellowTang", "BlueTang", "CoralBeauty");
+            Both(list, Relationship.Competitive, "BlueTang", "BlueTang");
+            Both(list, Relationship.Competitive, "CoralBeauty", "CoralBeauty");
+            Both(list, Relationship.Competitive, "RoyalGramma", "RoyalGramma");
+            Both(list, Relationship.Preferred, "WatchmanGoby", "WatchmanGoby");
+            Both(list, Relationship.Preferred, "BanggaiCardinal", "BanggaiCardinal", "Clownfish");
+            Both(list, Relationship.Preferred, "GiantTrevally", "GiantTrevally");
+            Both(list, Relationship.Preferred, "ClownLoach", "ClownLoach", "ZebraLoach");
+            Both(list, Relationship.Preferred, "ZebraLoach", "ZebraLoach");
+
             // Good company.
             Both(list, Relationship.Preferred, "NeonTetra", "NeonTetra", "Corydoras");
             Both(list, Relationship.Preferred, "ZebraDanio", "ZebraDanio", "FancyGoldfish");

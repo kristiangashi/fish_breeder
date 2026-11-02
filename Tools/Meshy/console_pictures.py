@@ -3,12 +3,15 @@
 # the fish's length, nose on the left, so a position across the picture is a fraction of the body
 # from nose (0) to tail tip (1), the same measure the game's swim spine uses.
 # Run with Blender's Python (`pip install bpy`):  python3 console_pictures.py <project root> [species ids...]
-# (with ids, only those fish are drawn; without, every fish)
+# (with ids, only those fish are drawn; without, every fish), or in Blender with the arguments after
+# "--": blender -b --factory-startup --python-use-system-env --python console_pictures.py -- <root> [ids...]
+# (PYTHONPATH set to a Python 3.13 site-packages with Pillow, since Blender's own Python has none).
 import bpy, sys, os, glob, math
 from mathutils import Matrix
 from PIL import Image
 
-root = sys.argv[1]
+args = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:]
+root = args[0]
 out = os.path.join(root, "Tools", "BalanceConsole", "fish")
 os.makedirs(out, exist_ok=True)
 WIDTH = 480
@@ -19,7 +22,7 @@ def atlas_for(folder):
 
 for fbx in sorted(glob.glob(os.path.join(root, "Assets", "Resources", "Fish", "*", "*.fbx"))):
     sid = os.path.basename(fbx)[:-4]
-    if sys.argv[2:] and sid not in sys.argv[2:]: continue
+    if args[1:] and sid not in args[1:]: continue
     tex = atlas_for(os.path.dirname(fbx))
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=fbx)
@@ -79,7 +82,7 @@ for fbx in sorted(glob.glob(os.path.join(root, "Assets", "Resources", "Fish", "*
             (r[1], u[1], back[1], pos[1]),
             (r[2], u[2], back[2], pos[2]),
             (0, 0, 0, 1)))
-        path = f"/tmp/_cp_{view}.png"
+        path = os.path.join(bpy.app.tempdir or out, f"_cp_{view}.png")
         sc.render.filepath = path
         bpy.ops.render.render(write_still=True)
         im = Image.open(path).convert("RGBA")

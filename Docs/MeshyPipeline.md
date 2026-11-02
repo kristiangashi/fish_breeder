@@ -103,6 +103,8 @@ instead: new UVs going around the stem and up the height, painted as vertical st
 plant's green with brown roots. A piece with its own `<id>_Albedo` (and `_MetallicSmoothness`) texture gets
 its own material; the rest share the atlas.
 
+The Stone Spire Grotto (`Grotto`, Shopkeeping 25, Large tanks and up plus the wall aquarium: `DecorationBalance.minTankSize`) was a single 434k-triangle Meshy model, cut by `Tools/Meshy/bake_decoration.py` to 6000 triangles with fresh UVs and its own albedo, normal and metallic-smoothness maps baked from the full model, plus a 600-triangle `_Collider` that keeps its caves open.
+
 After that, `Tools/Meshy/fix_crypt_roots.py` took the Cryptocoryne's roots and bulb off and cut its base flat so it sits in the gravel (run it again after re-running split_plants.py). `Tools/Meshy/fix_grayling_snout.py` folds a stray knob on the Arctic grayling's snout back into the head.
 
 ## Checklist per fish model

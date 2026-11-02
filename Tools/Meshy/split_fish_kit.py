@@ -14,7 +14,15 @@
 # folder): decimating a Meshy atlas tears its texture where triangles end up spanning UV islands,
 # so the decimated fish gets fresh UVs and its own maps baked from the full-detail mesh:
 # <sid>_Albedo.png, <sid>_Normal.png and <sid>_Smoothness.png (inverted roughness) next to the FBX.
+# Fish under 2400 triangles (the small ones) get maps half that size.
+# Rounding (kits in ROUND_KITS, whose second number is the real fish's width as a share of its
+# length): Meshy's later collages are as thick as real fish but slab-sided, flat cut-outs with a
+# hard rim. Each cross-section is reshaped into a full oval of the real width, fins left alone.
+# Front fill (also ROUND_KITS, when re-baking): Meshy paints these fish from the side and leaves
+# grey filler where the surface turns away from the side view (the nose, forehead and belly), so
+# the side pattern is carried round onto those surfaces (a clown loach's eye stripe meets over its head).
 import bpy, sys, os, json, math
+import numpy as np
 from mathutils import Vector, Matrix
 
 # kit -> {island centre (x, z): (species id, thickness multiplier, target triangles[, pitch])}
@@ -67,7 +75,201 @@ KITS = {
         (-0.46, -0.75): ("PeacockBass", 2.5, 3000),
         (0.48, -0.75): ("ArcticGrayling", 1.9, 3000),
     },
+    # Meshy_AI_Colorful_Aquarium_Fish_Collage and _Reef_Fish_Collage (2026-11-02): rounded to real
+    # widths (see ROUND_KITS) and front-filled. Fish that grow big get more triangles.
+    "aquarium_collage": {
+        (-0.66, 0.20): ("BanggaiCardinal", 0.17, 1800),
+        (-0.02, 0.19): ("CoralBeauty", 0.21, 1800),
+        (0.64, 0.19): ("ClownLoach", 0.19, 2400),
+        (-0.66, -0.22): ("ClownTrigger", 0.25, 3000),
+        (0.00, -0.23): ("GiantTrevally", 0.19, 3000),
+        (0.64, -0.23): ("WatchmanGoby", 0.18, 1800),
+    },
+    "reef_collage": {
+        (-0.66, 0.20): ("NapoleonWrasse", 0.26, 3000),
+        (0.02, 0.21): ("BlueTang", 0.19, 2400),
+        (0.67, 0.21): ("PicassoTrigger", 0.25, 2400),
+        (-0.66, -0.22): ("RoyalGramma", 0.21, 1800),
+        (0.02, -0.22): ("YellowTang", 0.2, 2400),
+        (0.67, -0.23): ("ZebraLoach", 0.19, 1800),
+    },
 }
+
+# Kits whose second number is a real width (share of the length) to round the body out to.
+ROUND_KITS = {"aquarium_collage", "reef_collage"}
+
+def round_body(pts, width, power=2.2, cell=0.012):
+    """Reshapes a slab-sided fish (lying along X, Y sideways, Z up) so every cross-section is an
+    oval as wide as the real fish (width x length at the thickest), keeping its side outline and
+    leaving thin fins as they are. Each vertex's sideways offset from the midline is scaled."""
+    x0, x1 = min(p.x for p in pts), max(p.x for p in pts)
+    L = x1 - x0
+    # The midline of each column (side view) is the median of its vertices' sideways positions;
+    # each cell's half-width is the farthest any of its vertices sits from it.
+    colys = {}
+    for p in pts: colys.setdefault(round(p.x / cell), []).append(p.y)
+    colmid = {kx: sorted(ys)[len(ys) // 2] for kx, ys in colys.items()}
+    hw = {}
+    for p in pts:
+        kx = round(p.x / cell); k = (kx, round(p.z / cell))
+        hw[k] = max(hw.get(k, 0.0), abs(p.y - colmid[kx]))
+    cells = hw
+    cols = {}
+    for (kx, kz) in cells: cols.setdefault(kx, []).append(kz)
+    info = {}
+    for kx, kzs in cols.items():
+        lo, hi = min(kzs), max(kzs)
+        mid = (lo + hi) / 2; band = max(1.0, 0.25 * (hi - lo))
+        # The middle of the column's height: its median, so a pectoral fin sticking out doesn't count.
+        mids = sorted(hw[kx, kz] for kz in kzs if abs(kz - mid) <= band)
+        tcol = mids[len(mids) // 2] if mids else 0.0
+        body = [kz for kz in kzs if hw[kx, kz] >= 0.3 * tcol] if tcol > 0 else []
+        if not body: continue
+        info[kx] = dict(t=tcol, lo=min(body), hi=max(body), body=set(body), mid=colmid[kx])
+    keys = sorted(info)
+    near = lambda kx: [j for j in keys if abs(j - kx) <= 2]
+    smooth = {kx: sum(info[j]["t"] for j in near(kx)) / len(near(kx)) for kx in keys}
+    ts = sorted(t for kx, t in smooth.items() if 0.15 <= (kx * cell - x0) / L <= 0.75)
+    tref = ts[int(len(ts) * 0.8)]
+    s = width * L / 2 / max(1e-9, tref)
+    k = {}
+    for kx in keys:
+        c = info[kx]
+        zc = (c["lo"] + c["hi"]) / 2; hh = (c["hi"] - c["lo"]) / 2 + 0.5
+        for kz in c["body"]:
+            u = min(1.0, abs(kz - zc) / hh)
+            e = s * smooth[kx] * (1 - u ** power) ** (1 / power)
+            k[kx, kz] = max(0.55, min(3.0, e / max(1e-9, hw[kx, kz])))
+    # Soften cell to cell so the surface stays smooth.
+    soft = {}
+    for (kx, kz) in k:
+        ring = [k.get((kx + i, kz + j), 1.0) for i in (-1, 0, 1) for j in (-1, 0, 1) if (kx + i, kz + j) in cells]
+        soft[kx, kz] = sum(ring) / len(ring)
+    def at(x, z):
+        fx, fz = x / cell, z / cell
+        ix, iz = math.floor(fx), math.floor(fz)
+        tx, tz = fx - ix, fz - iz
+        out = 0.0
+        for a, wa in ((ix, 1 - tx), (ix + 1, tx)):
+            for b, wb in ((iz, 1 - tz), (iz + 1, tz)):
+                out += wa * wb * soft.get((a, b), 1.0)
+        return out
+    def mid_at(x):
+        fx = x / cell; ix = math.floor(fx); t = fx - ix
+        a = info.get(ix, info.get(ix + 1)); b = info.get(ix + 1, a)
+        if a is None: return 0.0
+        return a["mid"] * (1 - t) + b["mid"] * t
+    for p in pts:
+        m = mid_at(p.x)
+        p.y = m + (p.y - m) * at(p.x, p.z)
+    return s
+
+def side_pictures(high, sid, outdir, px=1024, margin=0.02, erode=0.025):
+    """Pictures of the full-detail fish from both sides (its own texture, unlit), with the rim
+    where the surface turns away cut off and filled again from the pattern inside it, so the
+    side pattern runs right to the outline. Returns the two images and the framing."""
+    sc = bpy.context.scene
+    ws = [v.co for v in high.data.vertices]
+    x0, x1 = min(p.x for p in ws), max(p.x for p in ws)
+    z0, z1 = min(p.z for p in ws), max(p.z for p in ws)
+    L = x1 - x0
+    W = L * (1 + 2 * margin); H = (z1 - z0) + 2 * margin * L
+    cx, cz = (x0 + x1) / 2, (z0 + z1) / 2
+    hidden = []
+    for o in sc.objects:
+        if o is not high and not o.hide_render: o.hide_render = True; hidden.append(o)
+    sc.render.engine = 'BLENDER_EEVEE'
+    sc.render.film_transparent = True
+    sc.view_settings.view_transform = 'Standard'; sc.view_settings.look = 'None'
+    sc.view_settings.exposure = 0; sc.view_settings.gamma = 1
+    sc.render.resolution_percentage = 100
+    sc.render.resolution_x = px; sc.render.resolution_y = max(8, int(round(px * H / W)))
+    cam = bpy.data.cameras.new("Side"); cam.type = 'ORTHO'; cam.ortho_scale = max(W, H)
+    co = bpy.data.objects.new("Side", cam); sc.collection.objects.link(co); sc.camera = co
+    old = list(high.data.materials)
+    em = bpy.data.materials.new(sid + "_Flat"); em.use_nodes = True; nt = em.node_tree
+    for n in list(nt.nodes):
+        if n.type != 'OUTPUT_MATERIAL': nt.nodes.remove(n)
+    tex = [n for n in old[0].node_tree.nodes if n.type == 'TEX_IMAGE' and n.image.colorspace_settings.name == 'sRGB'][0]
+    img = nt.nodes.new("ShaderNodeTexImage"); img.image = tex.image
+    e = nt.nodes.new("ShaderNodeEmission"); nt.links.new(img.outputs[0], e.inputs[0])
+    nt.links.new(e.outputs[0], nt.nodes["Material Output"].inputs[0])
+    high.data.materials.clear(); high.data.materials.append(em)
+    pics = []
+    r = max(1, int(erode * L / W * px))
+    for s in (-1, 1):
+        co.location = (cx, s * 10 * L, cz)
+        co.rotation_euler = (math.pi / 2, 0, 0 if s < 0 else math.pi)
+        cam.clip_start = 0.01; cam.clip_end = 20 * L
+        path = os.path.join(outdir, f"_{sid}_side{'L' if s < 0 else 'R'}.png")
+        sc.render.filepath = path; bpy.ops.render.render(write_still=True)
+        im = bpy.data.images.load(path); im.colorspace_settings.name = 'sRGB'
+        w_, h_ = im.size
+        a = np.array(im.pixels[:], dtype=np.float32).reshape(h_, w_, 4)
+        rgb = a[..., :3].copy(); valid = a[..., 3] > 0.99
+        for _ in range(r):
+            v = valid.copy()
+            v[1:] &= valid[:-1]; v[:-1] &= valid[1:]; v[:, 1:] &= valid[:, :-1]; v[:, :-1] &= valid[:, 1:]
+            valid = v
+        rgb *= valid[..., None]
+        kept = valid.copy()
+        for _ in range(4 * r + 80):
+            if valid.all(): break
+            acc = np.zeros_like(rgb); cnt = np.zeros(valid.shape, np.float32)
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                sh = np.roll(valid, (dy, dx), (0, 1)); acc += np.roll(rgb, (dy, dx), (0, 1)) * sh[..., None]; cnt += sh
+            grow = (~valid) & (cnt > 0)
+            rgb[grow] = acc[grow] / cnt[grow][:, None]
+            valid = valid | grow
+        # Soften the filled rim so the fill's streaks don't show on the back and belly.
+        for _ in range(2 * r):
+            soft = rgb.copy()
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)): soft += np.roll(rgb, (dy, dx), (0, 1))
+            rgb = np.where(kept[..., None], rgb, soft / 5)
+        a[..., :3] = rgb; a[..., 3] = 1
+        im.pixels[:] = a.ravel()
+        im.filepath_raw = path; im.file_format = 'PNG'; im.save()
+        pics.append(im)
+    high.data.materials.clear()
+    for m in old: high.data.materials.append(m)
+    bpy.data.objects.remove(co, do_unlink=True)
+    for o in hidden: o.hide_render = False
+    sc.render.film_transparent = False
+    return pics, (cx, cz, W, H)
+
+def add_front_fill(mat, pics, frame):
+    """Mixes the side pictures into the fish's colour wherever its surface faces away from the
+    sides (fully more than about 55 degrees off, fading out by 30), left picture on the left side, right on the right."""
+    (left, right), (cx, cz, W, H) = pics, frame
+    nt = mat.node_tree; bsdf = nt.nodes["Principled BSDF"]
+    orig = bsdf.inputs["Base Color"].links[0].from_socket
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    pos = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(geo.outputs["Position"], pos.inputs[0])
+    nrm = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(geo.outputs["Normal"], nrm.inputs[0])
+    def op(kind, a, b=None):
+        n = nt.nodes.new("ShaderNodeMath"); n.operation = kind
+        for i, val in enumerate((a, b)):
+            if val is None: continue
+            if isinstance(val, (int, float)): n.inputs[i].default_value = val
+            else: nt.links.new(val, n.inputs[i])
+        return n.outputs[0]
+    du = op('DIVIDE', op('SUBTRACT', pos.outputs[0], cx), W)
+    v = op('ADD', op('DIVIDE', op('SUBTRACT', pos.outputs[2], cz), H), 0.5)
+    def sample(im, sign):
+        uu = op('ADD', op('MULTIPLY', du, sign), 0.5)
+        c = nt.nodes.new("ShaderNodeCombineXYZ"); nt.links.new(uu, c.inputs[0]); nt.links.new(v, c.inputs[1])
+        t = nt.nodes.new("ShaderNodeTexImage"); t.image = im; t.extension = 'EXTEND'
+        nt.links.new(c.outputs[0], t.inputs[0])
+        return t.outputs[0]
+    pick = nt.nodes.new("ShaderNodeMix"); pick.data_type = 'RGBA'
+    nt.links.new(op('GREATER_THAN', nrm.outputs[1], 0.0), pick.inputs[0])
+    nt.links.new(sample(left, 1), pick.inputs[6]); nt.links.new(sample(right, -1), pick.inputs[7])
+    w = nt.nodes.new("ShaderNodeMapRange"); w.clamp = True
+    nt.links.new(op('ABSOLUTE', nrm.outputs[1]), w.inputs[0])
+    w.inputs[1].default_value = 0.55; w.inputs[2].default_value = 0.85; w.inputs[3].default_value = 1.0; w.inputs[4].default_value = 0.0
+    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = 'RGBA'
+    nt.links.new(w.outputs[0], mix.inputs[0]); nt.links.new(orig, mix.inputs[6]); nt.links.new(pick.outputs[2], mix.inputs[7])
+    nt.links.new(mix.outputs[2], bsdf.inputs["Base Color"])
 
 def straighten(pts):
     """Unbends a fish lying along X (Y sideways, Z up) in place; returns how far the tail had strayed."""
@@ -138,9 +340,10 @@ def straighten(pts):
         p.y = head_y + side
     return stray
 
-def bake(high, low, maps, size, outdir, sid):
+def bake(high, low, maps, size, outdir, sid, fill=False):
     """Bakes colour, normals and roughness from the full-detail fish onto the decimated one, through fresh UVs."""
     albedo, normal, rough = maps
+    high.data.transform(high.matrix_world); high.matrix_world = Matrix.Identity(4)
     mat = bpy.data.materials.new(sid + "_High"); mat.use_nodes = True
     nt = mat.node_tree; bsdf = nt.nodes["Principled BSDF"]
     def tex(path, colour):
@@ -153,6 +356,8 @@ def bake(high, low, maps, size, outdir, sid):
     nt.links.new(tex(rough, False).outputs[0], bsdf.inputs["Roughness"])
     bsdf.inputs["Metallic"].default_value = 0.0
     high.data.materials.clear(); high.data.materials.append(mat)
+    if fill:
+        add_front_fill(mat, *side_pictures(high, sid, outdir))
     # Fresh UVs on the decimated fish.
     bpy.ops.object.select_all(action='DESELECT'); low.select_set(True); bpy.context.view_layer.objects.active = low
     bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
@@ -249,16 +454,21 @@ def run(kit, src, outdir, maps=None, size=2048):
             pts = [p - c2 for p in pts]
         # Plump the body but not the fins: how thick the fish is around each point (in side view)
         # decides how much that point is pushed out, so thin fins and the tail stay thin.
-        cell = 0.012
+        if kit in ROUND_KITS:
+            plump = round(round_body(pts, plump), 2)
+            for v, p in zip(part.data.vertices, pts): v.co = rot.inverted() @ p
+            cell = None
+        else:
+            cell = 0.012
         thick = {}
-        for p in pts:
+        for p in (pts if cell else []):
             k = (round(p.x / cell), round(p.z / cell))
             thick[k] = max(thick.get(k, 0.0), abs(p.y))
-        tmax = max(thick.values())
+        tmax = max(thick.values()) if thick else 1.0
         def local(p):
             kx, kz = round(p.x / cell), round(p.z / cell)
             return max(thick.get((kx + i, kz + j), 0.0) for i in (-1, 0, 1) for j in (-1, 0, 1))
-        for v, p in zip(part.data.vertices, pts):
+        for v, p in zip(part.data.vertices, pts if cell else []):
             t = (local(p) / tmax - 0.25) / 0.45
             t = max(0.0, min(1.0, t)); t = t * t * (3 - 2 * t)
             p.y *= 1 + (plump - 1) * t
@@ -284,14 +494,14 @@ def run(kit, src, outdir, maps=None, size=2048):
         if high:
             bpy.context.view_layer.objects.active = high; high.select_set(True)
             bpy.ops.object.shade_smooth(); high.select_set(False)
-            bake(high, part, maps, size, outdir, sid)
+            bake(high, part, maps, size if tris >= 2400 else size // 2, outdir, sid, kit in ROUND_KITS)
             bpy.ops.object.select_all(action='DESELECT'); part.select_set(True)
             bpy.context.view_layer.objects.active = part
         bpy.ops.export_scene.fbx(filepath=f"{outdir}/{sid}.fbx", use_selection=True, mesh_smooth_type='FACE',
                                  path_mode='STRIP', embed_textures=False, add_leaf_bones=False, bake_anim=False)
         ws = [part.matrix_world @ v.co for v in part.data.vertices]
         dims = [round(max(p[i] for p in ws) - min(p[i] for p in ws), 3) for i in range(3)]
-        report[sid] = {"pieces": len(parts), "tail_bend": round(stray, 3), "verts": len(part.data.vertices),
+        report[sid] = {"pieces": len(parts), "tail_bend": round(stray, 3), "plump": plump, "verts": len(part.data.vertices),
                        "tris_before": before, "tris_after": after, "dims_xyz": dims}
     print(json.dumps(report, indent=1))
 

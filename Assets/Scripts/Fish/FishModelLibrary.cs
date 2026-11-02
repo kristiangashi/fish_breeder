@@ -72,6 +72,8 @@ namespace FishBreeder
             { "LemonTetra", 0.4f }, { "XRayTetra", 0.3f }, { "EmperorTetra", 0.35f }, { "CongoTetra", 0.3f }, { "BucktoothTetra", 0.25f },
             { "CrimsonJewelCichlid", 0.8f }, { "SilverFlamefin", 0.5f },
             { "Pumpkinseed", 0.8f }, { "TexasCichlid", 0.7f }, { "JackDempsey", 0.7f }, { "Frontosa", 0.75f }, { "PeacockBass", 0.55f }, { "ArcticGrayling", 0.35f },
+            { "BanggaiCardinal", 0.75f }, { "CoralBeauty", 0.8f }, { "ClownLoach", 0.3f }, { "ClownTrigger", 0.85f }, { "GiantTrevally", 0.6f }, { "WatchmanGoby", 0.35f },
+            { "NapoleonWrasse", 0.7f }, { "BlueTang", 0.8f }, { "PicassoTrigger", 0.85f }, { "RoyalGramma", 0.45f }, { "YellowTang", 0.85f }, { "ZebraLoach", 0.25f },
         };
 
         /// <summary>
@@ -90,6 +92,24 @@ namespace FishBreeder
             { "Frontosa", (1.6f, 0.8f, 0.7f, 6f, -0.053f, 0.455f, 0.08f) },
             { "JackDempsey", (2f, 0.85f, 0.75f, 8f, -0.01f, 0.47f, 0.06f) },
             { "PeacockBass", (1.8f, 0.95f, 0.8f, 8f, -0.038f, 0.44f, 0.08f) },
+            // Reef collage (2026-11-02): the clown triggerfish rows with its fins and hardly bends; the
+            // trevally is a fast, deep-beating hunter; the humphead wrasse cruises slowly.
+            { "ClownTrigger", (1.6f, 0.6f, 0.6f, 5f, 0.048f, 0.45f, 0.05f) },
+            { "GiantTrevally", (1.4f, 1.1f, 0.85f, 7f, -0.03f, 0.47f, 0.06f) },
+            { "NapoleonWrasse", (1f, 0.8f, 0.7f, 6f, 0f, 0.46f, 0.07f) },
+        };
+
+        /// <summary>
+        /// Swimming of the other fish with their own folders (tail beats, stroke, path follow, twist):
+        /// the reef collage's small fish. The banggai cardinal hovers, tangs and triggers row with
+        /// their fins and beat slowly; gramma, goby and loaches wriggle quickly.
+        /// </summary>
+        static readonly Dictionary<string, (float beats, float stroke, float follow, float twist)> OwnSwim =
+            new Dictionary<string, (float, float, float, float)>
+        {
+            { "BanggaiCardinal", (2.5f, 0.6f, 0.7f, 6f) }, { "RoyalGramma", (3.2f, 0.9f, 0.8f, 8f) }, { "WatchmanGoby", (3.5f, 1f, 0.85f, 8f) },
+            { "CoralBeauty", (2.8f, 0.7f, 0.7f, 6f) }, { "ZebraLoach", (3.6f, 1.1f, 0.9f, 8f) }, { "ClownLoach", (2.8f, 1f, 0.85f, 8f) },
+            { "YellowTang", (2.2f, 0.7f, 0.65f, 6f) }, { "BlueTang", (2.2f, 0.75f, 0.7f, 6f) }, { "PicassoTrigger", (2f, 0.6f, 0.6f, 5f) },
         };
 
         /// <summary>Fish with their own atlases (folder, texture prefix, fish): the wild tetras in two Meshy sets, and the medium fish one per folder.</summary>
@@ -105,6 +125,18 @@ namespace FishBreeder
             ("Fish/Frontosa/", "Frontosa", new[] { "Frontosa" }),
             ("Fish/JackDempsey/", "JackDempsey", new[] { "JackDempsey" }),
             ("Fish/PeacockBass/", "PeacockBass", new[] { "PeacockBass" }),
+            ("Fish/BanggaiCardinal/", "BanggaiCardinal", new[] { "BanggaiCardinal" }),
+            ("Fish/CoralBeauty/", "CoralBeauty", new[] { "CoralBeauty" }),
+            ("Fish/ClownLoach/", "ClownLoach", new[] { "ClownLoach" }),
+            ("Fish/ClownTrigger/", "ClownTrigger", new[] { "ClownTrigger" }),
+            ("Fish/GiantTrevally/", "GiantTrevally", new[] { "GiantTrevally" }),
+            ("Fish/WatchmanGoby/", "WatchmanGoby", new[] { "WatchmanGoby" }),
+            ("Fish/NapoleonWrasse/", "NapoleonWrasse", new[] { "NapoleonWrasse" }),
+            ("Fish/BlueTang/", "BlueTang", new[] { "BlueTang" }),
+            ("Fish/PicassoTrigger/", "PicassoTrigger", new[] { "PicassoTrigger" }),
+            ("Fish/RoyalGramma/", "RoyalGramma", new[] { "RoyalGramma" }),
+            ("Fish/YellowTang/", "YellowTang", new[] { "YellowTang" }),
+            ("Fish/ZebraLoach/", "ZebraLoach", new[] { "ZebraLoach" }),
         };
 
         public Entry defaultModel = new Entry();
@@ -202,6 +234,11 @@ namespace FishBreeder
                         medium.mouthHeight = m.mouth;
                         medium.mouthCorner = m.corner;
                         medium.mouthHinge = m.hinge;
+                        continue;
+                    }
+                    if (OwnSwim.TryGetValue(id, out var own))
+                    {
+                        AddSetFish(library, tetras.folder, tAlbedo, tNormal, tSmoothness, id, own.beats, own.stroke, own.follow, own.twist);
                         continue;
                     }
                     bool big = id == "BucktoothTetra" || id == "CongoTetra";

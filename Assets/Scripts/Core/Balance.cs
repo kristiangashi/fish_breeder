@@ -330,6 +330,8 @@ namespace FishBreeder.Core
         public bool back;
         [Tooltip("Wall aquarium: Bigger (+) presses taken off the largest size the player can make it (0 = the store's limit).")]
         public int maxSizeStepsOff;
+        [Tooltip("Smallest tank it fits in, as an index into the tank sizes (0 = any tank, 1 = Large and up; the wall aquarium always fits).")]
+        public int minTankSize;
         [Tooltip("The 3D model (its name in Resources/Decor) when it isn't the id: pieces can share a model.")]
         public string model;
         [Tooltip("In a tank with algae eaters, it grows enough algae film to keep the algae from dropping below this (0 = none): enough to feed a tank of only algae eaters.")]
@@ -342,6 +344,21 @@ namespace FishBreeder.Core
 
         /// <summary>The XP track whose level unlocks it.</summary>
         public XpTrack UnlockTrack => fishkeepingUnlock ? XpTrack.Fishkeeping : XpTrack.Shopkeeping;
+
+        /// <summary>Whether it fits in a tank of this size (see <see cref="Tank.SizeIndex"/>; the wall aquarium's sizes are all bigger).</summary>
+        public bool FitsTankSize(int sizeIndex) => sizeIndex >= minTankSize;
+
+        /// <summary>"Large tanks and up, and the wall aquarium, only." for a piece too big for the smaller tanks, else empty.</summary>
+        public string SizeNote
+        {
+            get
+            {
+                if (minTankSize <= 0) return "";
+                var sizes = Balance.Data.store.tankSizes;
+                string name = sizes != null && minTankSize < sizes.Count ? sizes[minTankSize].name : "Large";
+                return $"{name} tanks and up, and the wall aquarium, only.";
+            }
+        }
     }
 
     /// <summary>A picture for the back glass of a tank. The id is the texture's name in Resources/Backgrounds.</summary>
@@ -531,6 +548,8 @@ namespace FishBreeder.Core
             new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2, algaeMaxBonus = 0.05f },
             new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f, maxSizeStepsOff = 2, algaeMaxBonus = 0.03f },
             new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true, maxSizeStepsOff = 2, algaeMaxBonus = 0.04f },
+            // A tall rock spire with caves to swim through, too big for the smaller tanks (see AddMissingDecorations).
+            new DecorationBalance { id = "Grotto", name = "Stone spire grotto", price = 650, unlockLevel = 25, height = 0.7f, back = true, minTankSize = 1, maxSizeStepsOff = 3 },
         };
         [Tooltip("Fishkeeping level needed for care products.")]
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
@@ -974,8 +993,9 @@ namespace FishBreeder.Core
         /// 17: the public aquarium's new rules: fish that only live there (eastWingOnly), most of a kind per tank (maxOfKind), and no ordinary tank over 80 small fish (the wall tanks were 200 to 390).
         /// 18: size groups set per species (Tiny tank fish, Small hybrids, Medium and Large public aquarium fish) instead of worked out from length and body class.
         /// 19: every tank size has four fish limits, one per size group (tiny, small, medium, large).
+        /// 22: twelve fish from the reef collages (ten reef fish, two loaches): relationships, cross pairs, egg boxes and dive finds.
         /// </summary>
-        public const int CurrentDataVersion = 21;
+        public const int CurrentDataVersion = 22;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1077,7 +1097,7 @@ namespace FishBreeder.Core
         static void AddMissingDecorations(List<DecorationBalance> decorations)
         {
             if (decorations == null) return;
-            var added = new HashSet<string> { "Crypt", "JungleVal", "AmazonSword", "Aponogeton", "JavaMoss" };
+            var added = new HashSet<string> { "Crypt", "JungleVal", "AmazonSword", "Aponogeton", "JavaMoss", "Grotto" };
             foreach (var d in new SupplierBalance().decorations)
                 if (added.Contains(d.id) && !decorations.Exists(x => x != null && x.id == d.id)) decorations.Add(d);
         }
@@ -1436,6 +1456,7 @@ namespace FishBreeder.Core
                     if (d != null && item.algaeMaxBonus <= 0f) item.algaeMaxBonus = d.algaeMaxBonus;
                 }
             }
+            if (fromVersion < 22) AddSpeciesRows(data, CollageFish);
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1529,6 +1550,50 @@ namespace FishBreeder.Core
 
         static readonly HashSet<string> BigFish = new HashSet<string> { "CrimsonJewelCichlid", "SilverFlamefin" };
         static readonly HashSet<string> MediumFish = new HashSet<string> { "Pumpkinseed", "ArcticGrayling", "TexasCichlid", "Frontosa", "JackDempsey", "PeacockBass" };
+        static readonly HashSet<string> CollageFish = new HashSet<string>
+        {
+            "BanggaiCardinal", "CoralBeauty", "ClownLoach", "ClownTrigger", "GiantTrevally", "WatchmanGoby",
+            "NapoleonWrasse", "BlueTang", "PicassoTrigger", "RoyalGramma", "YellowTang", "ZebraLoach",
+        };
+
+        /// <summary>
+        /// Fish added to the game (AddMissingSpecies adds the fish themselves): who they eat and get
+        /// on with, their cross-breeding partners, their places in the egg boxes and the dive finds,
+        /// as a fresh file would have them, keeping everything already in the file.
+        /// </summary>
+        static void AddSpeciesRows(BalanceData data, HashSet<string> fish)
+        {
+            if (data.relationships != null)
+            {
+                var known = new HashSet<string>();
+                foreach (var r in data.relationships) if (r != null) known.Add(r.a + ">" + r.b);
+                foreach (var r in Relationships.CreateDefaults())
+                    if ((fish.Contains(r.a) || fish.Contains(r.b)) && known.Add(r.a + ">" + r.b))
+                        data.relationships.Add(r);
+            }
+            if (data.crossBreeding != null && data.crossBreeding.pairs != null)
+                foreach (var pair in CrossBreeding.DefaultPairs())
+                    if ((fish.Contains(pair.a) || fish.Contains(pair.b))
+                        && !data.crossBreeding.pairs.Exists(x => x != null && ((x.a == pair.a && x.b == pair.b) || (x.a == pair.b && x.b == pair.a))))
+                        data.crossBreeding.pairs.Add(pair);
+            if (data.supplier != null && data.supplier.eggTiers != null)
+            {
+                var fresh = new SupplierBalance().eggTiers;
+                EggTierBalance.FillHatchTables(fresh, Species.CreateDefaults());
+                foreach (var tier in data.supplier.eggTiers)
+                {
+                    if (tier == null || tier.hatch == null || tier.hatch.Count == 0) continue;
+                    var def = fresh.Find(t => t.id == tier.id);
+                    if (def == null) continue;
+                    foreach (var h in def.hatch)
+                        if (fish.Contains(h.species) && !tier.hatch.Exists(x => x != null && x.species == h.species)) tier.hatch.Add(h);
+                }
+            }
+            var scuba = data.aquarium != null ? data.aquarium.scuba : null;
+            if (scuba != null && scuba.finds != null && scuba.finds.Count > 0)
+                foreach (var find in ScubaFindBalance.CreateDefaults())
+                    if (fish.Contains(find.species) && !scuba.finds.Exists(x => x != null && x.species == find.species)) scuba.finds.Add(find);
+        }
 
         static bool IsWildTetra(BalanceData data, string id)
         {

@@ -82,6 +82,15 @@ namespace FishBreeder.Genetics
             new CrossPair { a = "Frontosa", b = "GoldenMbuna" },
             new CrossPair { a = "PeacockBass", b = "Oscar" },
             new CrossPair { a = "Pumpkinseed", b = "ArcticGrayling" },
+            // The reef collage (2026-11-02): the two tangs, the two triggerfish, the loaches, small reef
+            // fish together, and the two big dive finds.
+            new CrossPair { a = "YellowTang", b = "BlueTang" },
+            new CrossPair { a = "PicassoTrigger", b = "ClownTrigger" },
+            new CrossPair { a = "ClownLoach", b = "ZebraLoach" },
+            new CrossPair { a = "BanggaiCardinal", b = "RoyalGramma" },
+            new CrossPair { a = "WatchmanGoby", b = "Clownfish" },
+            new CrossPair { a = "CoralBeauty", b = "YellowTang" },
+            new CrossPair { a = "GiantTrevally", b = "NapoleonWrasse" },
         };
 
         public static bool Compatible(Species a, Species b) => a != null && b != null && Compatible(a.id, b.id);

@@ -1251,7 +1251,8 @@ namespace FishBreeder.Core
                 any = true;
                 var item = TankDecor.Find(pair.Key);
                 string name = item != null ? item.name : pair.Key;
-                if (PickerRow(ItemPreviews.Decoration(pair.Key), 40f, $"{name}  <size=11>x{pair.Value}</size>{LikedBy(pair.Key)}", decor.IsFull ? "Full" : "Put in", can && !decor.IsFull)
+                bool fits = item == null || item.FitsTankSize(tank.SizeIndex);
+                if (PickerRow(ItemPreviews.Decoration(pair.Key), 40f, $"{name}  <size=11>x{pair.Value}</size>{LikedBy(pair.Key)}", !fits ? "Too big" : decor.IsFull ? "Full" : "Put in", can && fits && !decor.IsFull)
                     && Inventory.TakeDecoration(pair.Key))
                 {
                     if (decor.Add(pair.Key)) GameLog.Add($"Put a {name.ToLower()} in {storeTank.Title}.");

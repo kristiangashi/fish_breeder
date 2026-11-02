@@ -1582,7 +1582,7 @@ namespace FishBreeder.Store
             w.Label("Deliver to:");
             w.BeginRow("fb-row fb-wrap fb-grid3");
             foreach (var tank in tanks)
-                if (w.Button($"{tank.Title} ({FreeSpace(tank)} free)", tank == orderTarget ? "fb-button fb-tab fb-tab--on" : "fb-button fb-tab")) orderTarget = tank;
+                if (w.Button($"{tank.Title} ({FreeSpace(tank)} free{(tank.Tank.IsSaltwater ? ", salt" : "")})",tank == orderTarget ? "fb-button fb-tab fb-tab--on" : "fb-button fb-tab")) orderTarget = tank;
             w.Pop();
         }
 
@@ -1697,8 +1697,8 @@ namespace FishBreeder.Store
         void DrawEggOffers(bool fry)
         {
             w.Label(fry
-                ? "<i>Boxes of mixed fry, delivered right away. Any kind of fish can come as fry, but they're all tiny grey fish: you find out what each one is when it grows into a juvenile. Each extra rare fish in one box is harder to get than the last.</i>"
-                : "<i>Boxes of mixed eggs. They hatch at the next time step (when the shop closes, or overnight). Only egg-laying fish come as eggs: livebearers like guppies and mollies come as fry. Each extra rare fish in one box is harder to get than the last.</i>");
+                ? "<i>Boxes of mixed fry, delivered right away. Any kind of fish can come as fry, but they're all tiny grey fish: you find out what each one is when it grows into a juvenile. Each box hatches fish of its own rarity, and now and then one of the next rarity up; each extra one of those in a box is harder to get than the last.</i>"
+                :"<i>Boxes of mixed eggs. They hatch at the next time step (when the shop closes, or overnight). Only egg-laying fish come as eggs: livebearers like guppies and mollies come as fry. Each box hatches fish of its own rarity, and now and then one of the next rarity up; each extra one of those in a box is harder to get than the last.</i>");
             int free = orderTarget != null ? FreeSpace(orderTarget) : 0;
             int level = Progression.UnlockLevel(XpTrack.Fishkeeping);
             bool eggLayersOnly = !fry;
@@ -1710,6 +1710,8 @@ namespace FishBreeder.Store
             {
                 // Salt and fresh water fish are sold apart: only boxes for this tank's water.
                 if (tier.saltwater != salt) continue;
+                // A rarity with no fish of this water yet (no common reef fish, say) has no box.
+                if (!EggBoxes.EverHatches(tier, eggLayersOnly)) continue;
                 var normal = EggBoxes.Pool(tier, false, level, eggLayersOnly, tankSize);
                 var rare = EggBoxes.Pool(tier, true, level, eggLayersOnly, tankSize);
                 bool unlocked = Progression.IsUnlocked(XpTrack.Fishkeeping, tier.unlockLevel);
@@ -1724,7 +1726,7 @@ namespace FishBreeder.Store
                     var odds = EggBoxes.AtLeastRareOdds(tier, level, eggLayersOnly, tankSize);
                     var oddsText = new List<string>();
                     for (int k = 0; k < odds.Length && k < 3; k++) oddsText.Add($"{k + 1}+ {Percent(odds[k])}");
-                    details += $"\n{tier.eggs} {(fry ? "fry" : "eggs")}. Rare fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText)
+                    details += $"\n{tier.eggs} {(fry ? "fry" : "eggs")}. Rarer fish ({tier.rarePool}): " + (rare.Count > 0 ? string.Join(", ", oddsText)
                         : EggBoxes.Pool(tier, true, level, eggLayersOnly).Count > 0 ? "only for a bigger tank" : EggBoxes.RareUnlockText(tier, eggLayersOnly));
                 }
                 int price = Perks.Supplier(fry ? tier.fryPrice : tier.price);
@@ -1892,8 +1894,14 @@ namespace FishBreeder.Store
             w.Label("<b>Random mix</b>  <size=11>A free adult with the body, fins and tail of three random species, to see that any fins fit any body. Only compatible pairs can breed mixes in game.</size>", "fb-text fb-grow");
             if (w.Button("Random mix", "fb-button", free >= 1)) OrderRandomMix();
             w.Pop();
-            foreach (var species in Species.All)
+            string heading = null;
+            foreach (var species in Species.ByWaterSizeName())
             {
+                if (species.WaterSizeHeading != heading)
+                {
+                    heading = species.WaterSizeHeading;
+                    w.Label($"<b>{heading}</b>", "fb-text fb-gap-above");
+                }
                 string livebearer = species.reproduction == Reproduction.Livebearer ? ", livebearer" : "";
                 string details = $"{species.rarity}, {Category(species.category)}{livebearer}, {species.tempMin:0}-{species.tempMax:0} C, Fishkeeping {species.unlockLevel}";
                 if (OfferRow(ItemPreviews.Fish(species), species.displayName, details, XpTrack.Fishkeeping, 0, $"1 fry  {Economy.Format(species.fryPrice)}",

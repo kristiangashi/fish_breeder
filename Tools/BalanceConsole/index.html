@@ -2332,9 +2332,9 @@ const eggCheck = { level: 1, day: 30 };
 /** The game's rule for filling an empty hatch table from a tier's rarity settings (see EggTierBalance.FillHatchTables). */
 function fillHatch(tier) {
   const falloff = Math.max(0.001, tier.normalRarityFalloff);
-  // A box with its own fish ("Only in box" = its id) hatches only those; other boxes leave them out.
+  // A box with its own fish ("Only in box" = its id) hatches only those; other boxes leave them out; dive-only fish get no share.
   const own = data.species.some((s) => s.onlyInBox === tier.id);
-  const pool = data.species.filter((s) => (s.onlyInBox || "") === (own ? tier.id : "") && isSalt(s) === !!tier.saltwater);
+  const pool = data.species.filter((s) => !s.eastWingOnly && (s.onlyInBox || "") === (own ? tier.id : "") && isSalt(s) === !!tier.saltwater);
   const normals = pool.filter((s) => s.rarity >= tier.normalMin && s.rarity <= tier.normalMax);
   const rares = pool.filter((s) => !(s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) && s.rarity === tier.rarePool);
   const total = normals.reduce((n, s) => n + Math.pow(falloff, s.rarity - tier.normalMin), 0);

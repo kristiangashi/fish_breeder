@@ -752,7 +752,11 @@ namespace FishBreeder.Core
         {
             bool can = !ReadOnly;
             DrawUpgrade(can);
-            if (tank.Residents.Count == 0 && tank.Corpses.Count == 0)
+            // The water can only change in an empty tank: no fish, fry, eggs or dead fish.
+            int eggs = EggClutch.EggsIn(tank);
+            if (tank.Residents.Count > 0 || tank.Corpses.Count > 0 || eggs > 0)
+                ui.Label($"<i>Water: {(tank.IsSaltwater ? "salt" : "fresh")}. To change it, move every fish, fry and egg out of the tank first{(tank.Corpses.Count > 0 ? " and clear the dead fish" : "")}.</i>", "fb-small");
+            else
             {
                 var supplier = Balance.Data.supplier;
                 int salt = Perks.Supplier(supplier.marineSaltPrice);
@@ -846,8 +850,14 @@ namespace FishBreeder.Core
 
             if (ui.Button($"{(devShowFish ? "▾" : "▸")} <b>Add fish</b>  <size=11>tiny {tank.TinyCount} / {tank.Capacity}, small {tank.GroupCount(SizeGroup.Small)} / {tank.GroupCapacity(SizeGroup.Small)}, medium {tank.GroupCount(SizeGroup.Medium)} / {tank.GroupCapacity(SizeGroup.Medium)}, large {tank.GroupCount(SizeGroup.Large)} / {tank.GroupCapacity(SizeGroup.Large)}</size>", "fb-button fb-fold")) devShowFish = !devShowFish;
             if (!devShowFish) return;
-            foreach (var species in Species.All)
+            string heading = null;
+            foreach (var species in Species.ByWaterSizeName())
             {
+                if (species.WaterSizeHeading != heading)
+                {
+                    heading = species.WaterSizeHeading;
+                    ui.Label($"<b>{heading}</b>", "fb-small fb-gap-above");
+                }
                 ui.BeginRow();
                 ui.Label($"<size=11>{species.displayName}</size>", "fb-text fb-grow");
                 if (ui.Button("+1", "fb-button fb-button--tiny", true, "One adult")) DevSpawn(species, 1f, null);

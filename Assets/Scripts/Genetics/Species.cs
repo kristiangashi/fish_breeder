@@ -190,6 +190,22 @@ namespace FishBreeder.Genetics
 
         public static IReadOnlyList<Species> All => Balance.Data.species;
 
+        /// <summary>Every species for the dev lists: fresh water before salt water, then by size group (tiny first), then A-Z.</summary>
+        public static List<Species> ByWaterSizeName()
+        {
+            var list = new List<Species>(All);
+            list.Sort((a, b) =>
+            {
+                int c = a.IsSaltwater.CompareTo(b.IsSaltwater);
+                if (c == 0) c = a.sizeGroup.CompareTo(b.sizeGroup);
+                return c != 0 ? c : string.Compare(a.displayName, b.displayName, System.StringComparison.OrdinalIgnoreCase);
+            });
+            return list;
+        }
+
+        /// <summary>"Salt water, medium" for headings in the dev lists.</summary>
+        public string WaterSizeHeading => $"{(IsSaltwater ? "Salt water" : "Fresh water")}, {sizeGroup.ToString().ToLower()}";
+
         public static Species CometGoldfish => Get("CometGoldfish");
 
         /// <summary>The species with this id; the first species for unknown or empty ids (older saves).</summary>

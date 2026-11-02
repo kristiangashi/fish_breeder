@@ -207,17 +207,18 @@ namespace FishBreeder.Core
                 float normalTotal = 0f;
                 int rareCount = 0;
                 // A box that has its own fish (species marked "only in box" with its id) hatches only
-                // those; every other box leaves them out.
+                // those; every other box leaves them out. Fish that only live in the public aquarium
+                // come from the seller's dives, so they get no share.
                 bool ownFish = species.Exists(x => x != null && x.onlyInBox == tier.id);
                 foreach (var s in species)
                 {
-                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "") || !tier.SameWater(s)) continue;
+                    if (s == null || s.eastWingOnly || (s.onlyInBox ?? "") != (ownFish ? tier.id : "") || !tier.SameWater(s)) continue;
                     if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) normalTotal += Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin);
                     else if (s.rarity == tier.rarePool) rareCount++;
                 }
                 foreach (var s in species)
                 {
-                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "") || !tier.SameWater(s)) continue;
+                    if (s == null || s.eastWingOnly || (s.onlyInBox ?? "") != (ownFish ? tier.id : "") || !tier.SameWater(s)) continue;
                     float weight = 0f;
                     if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax && normalTotal > 0f)
                         weight = (1f - tier.rareChance) * Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin) / normalTotal;
@@ -491,34 +492,42 @@ namespace FishBreeder.Core
             new FoodBalance { type = FoodType.Bloodworms, name = "Frozen bloodworms", blurb = "Rich midge larvae, a treat for most fish. Frozen food carries a little more risk.", price = 40, feedings = 15, unlockLevel = 4,
                 nutrition = 0.6f, contamination = 1.4f, spoilChance = 0.05f, sinkSpeed = 0.1f, color = new Color(0.6f, 0.08f, 0.1f) },
         };
-        public List<EggTierBalance> eggTiers = new List<EggTierBalance>
+        public List<EggTierBalance> eggTiers = DefaultEggTiers();
+
+        /// <summary>
+        /// The egg and fry boxes, one per rarity for each water (version 24): a box hatches fish of
+        /// its own rarity, and now and then one of the next rarity up (its "rare" fish, rarer with
+        /// every one already in the box). Exotic fish sit between rare and legendary, so rare boxes
+        /// find them now and then and legendary boxes hatch them with the legendary fish. Wild tetra
+        /// eggs keep their own fish and goal.
+        /// </summary>
+        public static List<EggTierBalance> DefaultEggTiers()
         {
-            new EggTierBalance { id = "Simple", name = "Simple eggs", blurb = "Everyday fish, mostly common ones.", price = 30, fryPrice = 45, eggs = 5, unlockLevel = 1,
-                normalMin = SpeciesRarity.Common, normalMax = SpeciesRarity.Uncommon, normalRarityFalloff = 0.4f, rarePool = SpeciesRarity.Rare, rareChance = 0.05f, rareFalloff = 0.3f,
-                color = new Color(1f, 0.93f, 0.75f) },
-            new EggTierBalance { id = "Rare", name = "Rare eggs", blurb = "A mix of everyday and rare fish. Rare ones are much likelier than in simple eggs.", price = 120, fryPrice = 170, eggs = 5, unlockLevel = 5,
-                normalMin = SpeciesRarity.Common, normalMax = SpeciesRarity.Uncommon, normalRarityFalloff = 0.7f, rarePool = SpeciesRarity.Rare, rareChance = 0.6f, rareFalloff = 0.45f,
-                color = new Color(0.55f, 0.8f, 1f), speckled = true },
-            new EggTierBalance { id = Species.WildTetraBox, name = "Wild tetra eggs", blurb = "Caught in South American and African rivers: tetras you can't get anywhere else, some of them very rare.", price = 220, fryPrice = 300, eggs = 4, unlockLevel = 1,
-                normalMin = SpeciesRarity.Uncommon, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.55f, rarePool = SpeciesRarity.Exotic, rareChance = 0.15f, rareFalloff = 0.35f,
-                color = new Color(0.55f, 0.95f, 0.75f), speckled = true, raiseSpecies = "NeonTetra,TigerBarb", raiseCount = 50 },
-            new EggTierBalance { id = "UltraRare", name = "Ultra rare eggs", blurb = "Rare fish, with a chance of something exotic.", price = 400, fryPrice = 560, eggs = 4, unlockLevel = 15,
-                normalMin = SpeciesRarity.Uncommon, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.5f, rareFalloff = 0.4f,
-                color = new Color(0.75f, 0.55f, 1f), speckled = true },
-            new EggTierBalance { id = "Legendary", name = "Legendary eggs", blurb = "Coming later.", price = 1500, fryPrice = 2100, eggs = 3, unlockLevel = 30,
-                normalMin = SpeciesRarity.Rare, normalMax = SpeciesRarity.Exotic, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Legendary, rareChance = 0.45f, rareFalloff = 0.35f,
-                color = new Color(1f, 0.78f, 0.25f), speckled = true },
-            new EggTierBalance { id = "Ancient", name = "Ancient eggs", blurb = "Coming later.", price = 5000, fryPrice = 7000, eggs = 3, unlockLevel = 45,
-                normalMin = SpeciesRarity.Exotic, normalMax = SpeciesRarity.Legendary, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Ancient, rareChance = 0.4f, rareFalloff = 0.3f,
-                color = new Color(0.45f, 0.75f, 0.55f), speckled = true },
-            // Salt water boxes, sold only for salt water tanks (marine salt opens at Fishkeeping 10).
-            new EggTierBalance { id = "Reef", name = "Reef eggs", blurb = "Saltwater fish for a salt water tank: gobies and basslets, now and then something exotic.", price = 160, fryPrice = 230, eggs = 4, unlockLevel = 10,
-                normalMin = SpeciesRarity.Rare, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.15f, rareFalloff = 0.35f,
-                color = new Color(1f, 0.62f, 0.55f), saltwater = true },
-            new EggTierBalance { id = "RareReef", name = "Rare reef eggs", blurb = "Exotic reef fish much more often: tangs, dwarf angels, cardinals and triggerfish.", price = 520, fryPrice = 720, eggs = 4, unlockLevel = 18,
-                normalMin = SpeciesRarity.Rare, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.65f, rareFalloff = 0.45f,
-                color = new Color(0.4f, 0.85f, 0.95f), speckled = true, saltwater = true },
-        };
+            var c = SpeciesRarity.Common; var u = SpeciesRarity.Uncommon; var r = SpeciesRarity.Rare;
+            var x = SpeciesRarity.Exotic; var l = SpeciesRarity.Legendary; var a = SpeciesRarity.Ancient;
+            EggTierBalance Box(string id, string name, string blurb, int price, int fryPrice, int eggs, int level,
+                SpeciesRarity from, SpeciesRarity to, SpeciesRarity next, float nextChance, float falloff, Color color, bool speckled, bool salt) =>
+                new EggTierBalance { id = id, name = name, blurb = blurb, price = price, fryPrice = fryPrice, eggs = eggs, unlockLevel = level,
+                    normalMin = from, normalMax = to, normalRarityFalloff = 0.5f, rarePool = next, rareChance = nextChance, rareFalloff = falloff,
+                    color = color, speckled = speckled, saltwater = salt };
+            return new List<EggTierBalance>
+            {
+                Box("Common", "Common eggs", "Everyday fish, now and then an uncommon one.", 30, 45, 5, 1, c, c, u, 0.15f, 0.3f, new Color(1f, 0.93f, 0.75f), false, false),
+                Box("Uncommon", "Uncommon eggs", "Uncommon fish, now and then a rare one.", 70, 100, 5, 3, u, u, r, 0.15f, 0.35f, new Color(0.75f, 0.95f, 0.6f), false, false),
+                Box("Rare", "Rare eggs", "Rare fish, now and then something exotic.", 160, 230, 5, 8, r, r, x, 0.15f, 0.35f, new Color(0.55f, 0.8f, 1f), true, false),
+                new EggTierBalance { id = Species.WildTetraBox, name = "Wild tetra eggs", blurb = "Caught in South American and African rivers: tetras you can't get anywhere else, some of them very rare.", price = 220, fryPrice = 300, eggs = 4, unlockLevel = 1,
+                    normalMin = SpeciesRarity.Uncommon, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.55f, rarePool = SpeciesRarity.Exotic, rareChance = 0.15f, rareFalloff = 0.35f,
+                    color = new Color(0.55f, 0.95f, 0.75f), speckled = true, raiseSpecies = "NeonTetra,TigerBarb", raiseCount = 50 },
+                Box("Legendary", "Legendary eggs", "Exotic and legendary fish, now and then an ancient one.", 450, 630, 4, 15, x, l, a, 0.1f, 0.3f, new Color(1f, 0.78f, 0.25f), true, false),
+                Box("Ancient", "Ancient eggs", "Ancient fish, the rarest there are.", 5000, 7000, 3, 45, a, a, a, 0f, 0.3f, new Color(0.45f, 0.75f, 0.55f), true, false),
+                // Salt water boxes, sold only for salt water tanks (marine salt opens at Fishkeeping 10).
+                Box("ReefCommon", "Common reef eggs", "Everyday reef fish, now and then an uncommon one.", 60, 85, 4, 10, c, c, u, 0.15f, 0.3f, new Color(1f, 0.8f, 0.7f), false, true),
+                Box("ReefUncommon", "Uncommon reef eggs", "Uncommon reef fish, now and then a rare one.", 110, 160, 4, 10, u, u, r, 0.15f, 0.35f, new Color(1f, 0.62f, 0.55f), false, true),
+                Box("ReefRare", "Rare reef eggs", "Gobies and basslets, now and then an exotic tang, dwarf angel, cardinal or triggerfish.", 200, 280, 4, 10, r, r, x, 0.15f, 0.35f, new Color(0.4f, 0.85f, 0.95f), true, true),
+                Box("ReefLegendary", "Legendary reef eggs", "Exotic and legendary reef fish: tangs, dwarf angels, cardinals and triggerfish, now and then an ancient one.", 560, 780, 4, 18, x, l, a, 0.1f, 0.3f, new Color(1f, 0.85f, 0.35f), true, true),
+                Box("ReefAncient", "Ancient reef eggs", "Ancient reef fish, the rarest there are.", 6000, 8400, 3, 45, a, a, a, 0f, 0.3f, new Color(0.35f, 0.7f, 0.75f), true, true),
+            };
+        }
         public List<BackgroundBalance> backgrounds = WithWallAquariumBackgrounds(new List<BackgroundBalance>
         {
             new BackgroundBalance { id = "SandyShallows", name = "Sandy shallows", blurb = "Pale sand, dark rocks and a little seaweed in bright, shallow water.", price = 15, unlockLevel = 1 },
@@ -1008,7 +1017,7 @@ namespace FishBreeder.Core
         /// 22: twelve fish from the reef collages (ten reef fish, two loaches): relationships, cross pairs, egg boxes and dive finds.
         /// 23: salt and fresh water kept apart: reef egg boxes of their own, saltwater fish out of the freshwater boxes, no relationships or cross pairs across the two.
         /// </summary>
-        public const int CurrentDataVersion = 23;
+        public const int CurrentDataVersion = 24;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1471,6 +1480,7 @@ namespace FishBreeder.Core
             }
             if (fromVersion < 22) AddSpeciesRows(data, CollageFish);
             if (fromVersion < 23) SeparateWaters(data);
+            if (fromVersion < 24) RarityBoxes(data);
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1588,6 +1598,27 @@ namespace FishBreeder.Core
                     tier.hatch.RemoveAll(h => h != null && h.species != null && salt.TryGetValue(h.species, out var s) && s != tier.saltwater);
             foreach (var tier in new SupplierBalance().eggTiers)
                 if (tier.saltwater && !data.supplier.eggTiers.Exists(x => x != null && x.id == tier.id)) data.supplier.eggTiers.Add(tier);
+        }
+
+        /// <summary>
+        /// Version 24: the old boxes (simple, rare, ultra rare, legendary, ancient, reef, rare reef)
+        /// become one box per rarity for each water. Their hatch tables fill on load from the
+        /// rarities; the wild tetra box and any boxes of the file's own stay as they were.
+        /// </summary>
+        static void RarityBoxes(BalanceData data)
+        {
+            if (data.supplier == null) return;
+            var old = new HashSet<string> { "Simple", "Rare", "UltraRare", "Legendary", "Ancient", "Reef", "RareReef" };
+            var saved = data.supplier.eggTiers ?? new List<EggTierBalance>();
+            var tiers = new List<EggTierBalance>();
+            foreach (var tier in SupplierBalance.DefaultEggTiers())
+            {
+                var kept = saved.Find(t => t != null && t.id == tier.id && !old.Contains(t.id));
+                tiers.Add(kept ?? tier);
+            }
+            foreach (var tier in saved)
+                if (tier != null && !old.Contains(tier.id ?? "") && !tiers.Exists(t => t.id == tier.id)) tiers.Add(tier);
+            data.supplier.eggTiers = tiers;
         }
 
         /// <summary>

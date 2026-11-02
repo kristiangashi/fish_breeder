@@ -129,6 +129,22 @@ namespace FishBreeder.Store
             return list;
         }
 
+        /// <summary>
+        /// Whether the box could ever hatch a fish of its own rarity, at any level or day: false for a
+        /// rarity with no fish of this water in the game yet (no common reef fish, say), so the seller
+        /// doesn't show a box that is empty or holds only the next rarity's fish.
+        /// </summary>
+        public static bool EverHatches(EggTierBalance tier, bool eggLayersOnly)
+        {
+            if (tier == null || tier.hatch == null) return false;
+            foreach (var row in tier.hatch)
+            {
+                var species = row != null && row.weight > 0f ? Species.Find(row.species) : null;
+                if (species != null && !species.eastWingOnly && tier.SameWater(species) && species.rarity >= tier.normalMin && species.rarity <= tier.normalMax && (!eggLayersOnly || species.reproduction == Reproduction.EggLayer)) return true;
+            }
+            return false;
+        }
+
         /// <summary>The species in <see cref="Available"/>, the rare ones or the others.</summary>
         public static List<Species> Pool(EggTierBalance tier, bool rare, int fishkeepingLevel, bool eggLayersOnly, int tankSize = int.MaxValue)
         {

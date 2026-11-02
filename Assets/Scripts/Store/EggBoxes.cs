@@ -12,7 +12,8 @@ namespace FishBreeder.Store
     /// it can turn up. Each egg picks from the fish available right now by those chances; fish of
     /// the tier's rare rarity or rarer get less likely for every rare one already in the box
     /// (the tier's rare falloff), so each extra rare fish in a box is harder to get than the one
-    /// before. The seller only packs fish that will live in the tank the box is for.
+    /// before. The seller only packs fish that will live in the tank the box is for: freshwater
+    /// boxes hold only freshwater fish and are sold for freshwater tanks, reef boxes the same for salt water.
     /// </summary>
     public static partial class EggBoxes
     {
@@ -120,7 +121,7 @@ namespace FishBreeder.Store
                 if (row == null || row.weight <= 0f || row.fromLevel > fishkeepingLevel || row.fromDay > day) continue;
                 var species = Species.Find(row.species);
                 // Fish that only live in the public aquarium come from the seller's dives, never in boxes.
-                if (species == null || species.eastWingOnly || species.minTankSize > tankSize || (eggLayersOnly && species.reproduction != Reproduction.EggLayer)) continue;
+                if (species == null || species.eastWingOnly || !tier.SameWater(species) || species.minTankSize > tankSize || (eggLayersOnly && species.reproduction != Reproduction.EggLayer)) continue;
                 bool rare = IsRare(tier, species);
                 // The Lucky finds perk multiplies each rare fish's chance (5 becomes 5.5 at +10%).
                 list.Add(new Entry { species = species, weight = rare ? row.weight * Perks.More(PerkEffect.RareEggs) : row.weight, rare = rare });

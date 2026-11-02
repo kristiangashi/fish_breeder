@@ -185,6 +185,11 @@ namespace FishBreeder.Core
         public string raiseSpecies = "";
         [Tooltip("How many of the Raise species fish you must raise to adulthood before you can buy this box (0 = no goal).")]
         public int raiseCount;
+        [Tooltip("A box of saltwater (reef) fish, sold only for salt water tanks. Freshwater boxes hold only freshwater fish, and are sold only for freshwater tanks.")]
+        public bool saltwater;
+
+        /// <summary>Whether this box can hold this fish: salt water boxes hold only saltwater fish and freshwater boxes only freshwater ones.</summary>
+        public bool SameWater(Species species) => species != null && species.IsSaltwater == saltwater;
 
         /// <summary>
         /// Fills empty hatch tables from the rarity settings, so the defaults play like the old
@@ -206,13 +211,13 @@ namespace FishBreeder.Core
                 bool ownFish = species.Exists(x => x != null && x.onlyInBox == tier.id);
                 foreach (var s in species)
                 {
-                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "")) continue;
+                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "") || !tier.SameWater(s)) continue;
                     if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) normalTotal += Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin);
                     else if (s.rarity == tier.rarePool) rareCount++;
                 }
                 foreach (var s in species)
                 {
-                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "")) continue;
+                    if (s == null || (s.onlyInBox ?? "") != (ownFish ? tier.id : "") || !tier.SameWater(s)) continue;
                     float weight = 0f;
                     if (s.rarity >= tier.normalMin && s.rarity <= tier.normalMax && normalTotal > 0f)
                         weight = (1f - tier.rareChance) * Mathf.Pow(Mathf.Max(0.001f, tier.normalRarityFalloff), s.rarity - tier.normalMin) / normalTotal;
@@ -506,6 +511,13 @@ namespace FishBreeder.Core
             new EggTierBalance { id = "Ancient", name = "Ancient eggs", blurb = "Coming later.", price = 5000, fryPrice = 7000, eggs = 3, unlockLevel = 45,
                 normalMin = SpeciesRarity.Exotic, normalMax = SpeciesRarity.Legendary, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Ancient, rareChance = 0.4f, rareFalloff = 0.3f,
                 color = new Color(0.45f, 0.75f, 0.55f), speckled = true },
+            // Salt water boxes, sold only for salt water tanks (marine salt opens at Fishkeeping 10).
+            new EggTierBalance { id = "Reef", name = "Reef eggs", blurb = "Saltwater fish for a salt water tank: gobies and basslets, now and then something exotic.", price = 160, fryPrice = 230, eggs = 4, unlockLevel = 10,
+                normalMin = SpeciesRarity.Rare, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.15f, rareFalloff = 0.35f,
+                color = new Color(1f, 0.62f, 0.55f), saltwater = true },
+            new EggTierBalance { id = "RareReef", name = "Rare reef eggs", blurb = "Exotic reef fish much more often: tangs, dwarf angels, cardinals and triggerfish.", price = 520, fryPrice = 720, eggs = 4, unlockLevel = 18,
+                normalMin = SpeciesRarity.Rare, normalMax = SpeciesRarity.Rare, normalRarityFalloff = 0.8f, rarePool = SpeciesRarity.Exotic, rareChance = 0.65f, rareFalloff = 0.45f,
+                color = new Color(0.4f, 0.85f, 0.95f), speckled = true, saltwater = true },
         };
         public List<BackgroundBalance> backgrounds = WithWallAquariumBackgrounds(new List<BackgroundBalance>
         {
@@ -994,8 +1006,9 @@ namespace FishBreeder.Core
         /// 18: size groups set per species (Tiny tank fish, Small hybrids, Medium and Large public aquarium fish) instead of worked out from length and body class.
         /// 19: every tank size has four fish limits, one per size group (tiny, small, medium, large).
         /// 22: twelve fish from the reef collages (ten reef fish, two loaches): relationships, cross pairs, egg boxes and dive finds.
+        /// 23: salt and fresh water kept apart: reef egg boxes of their own, saltwater fish out of the freshwater boxes, no relationships or cross pairs across the two.
         /// </summary>
-        public const int CurrentDataVersion = 22;
+        public const int CurrentDataVersion = 23;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1457,6 +1470,7 @@ namespace FishBreeder.Core
                 }
             }
             if (fromVersion < 22) AddSpeciesRows(data, CollageFish);
+            if (fromVersion < 23) SeparateWaters(data);
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1555,6 +1569,26 @@ namespace FishBreeder.Core
             "BanggaiCardinal", "CoralBeauty", "ClownLoach", "ClownTrigger", "GiantTrevally", "WatchmanGoby",
             "NapoleonWrasse", "BlueTang", "PicassoTrigger", "RoyalGramma", "YellowTang", "ZebraLoach",
         };
+
+        /// <summary>
+        /// Version 23: salt and fresh water fish never meet. The reef egg boxes join the file (their
+        /// hatch tables fill on load), the freshwater boxes lose their saltwater fish, and
+        /// relationships and cross pairs between a freshwater and a saltwater kind go.
+        /// </summary>
+        static void SeparateWaters(BalanceData data)
+        {
+            var salt = new Dictionary<string, bool>();
+            if (data.species != null) foreach (var s in data.species) if (s != null && s.id != null) salt[s.id] = s.IsSaltwater;
+            bool Across(string a, string b) => a != null && b != null && salt.TryGetValue(a, out var sa) && salt.TryGetValue(b, out var sb) && sa != sb;
+            if (data.relationships != null) data.relationships.RemoveAll(r => r != null && Across(r.a, r.b));
+            if (data.crossBreeding != null && data.crossBreeding.pairs != null) data.crossBreeding.pairs.RemoveAll(p => p != null && Across(p.a, p.b));
+            if (data.supplier == null || data.supplier.eggTiers == null) return;
+            foreach (var tier in data.supplier.eggTiers)
+                if (tier != null && tier.hatch != null)
+                    tier.hatch.RemoveAll(h => h != null && h.species != null && salt.TryGetValue(h.species, out var s) && s != tier.saltwater);
+            foreach (var tier in new SupplierBalance().eggTiers)
+                if (tier.saltwater && !data.supplier.eggTiers.Exists(x => x != null && x.id == tier.id)) data.supplier.eggTiers.Add(tier);
+        }
 
         /// <summary>
         /// Fish added to the game (AddMissingSpecies adds the fish themselves): who they eat and get

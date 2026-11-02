@@ -1703,9 +1703,13 @@ namespace FishBreeder.Store
             int level = Progression.UnlockLevel(XpTrack.Fishkeeping);
             bool eggLayersOnly = !fry;
             int tankSize = orderTarget != null ? orderTarget.Tank.SizeIndex : 0;
+            bool salt = orderTarget != null && orderTarget.Tank.IsSaltwater;
+            w.Label(salt ? $"<color={UiTheme.AquaHex}>A salt water tank: only reef boxes.</color>" : "<color=#8fb3bd>Freshwater boxes for a freshwater tank. Reef boxes are sold for salt water tanks.</color>", "fb-small fb-small--bright");
             DrawBiggerTankFish(tankSize);
             foreach (var tier in EggBoxes.Tiers)
             {
+                // Salt and fresh water fish are sold apart: only boxes for this tank's water.
+                if (tier.saltwater != salt) continue;
                 var normal = EggBoxes.Pool(tier, false, level, eggLayersOnly, tankSize);
                 var rare = EggBoxes.Pool(tier, true, level, eggLayersOnly, tankSize);
                 bool unlocked = Progression.IsUnlocked(XpTrack.Fishkeeping, tier.unlockLevel);

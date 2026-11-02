@@ -75,6 +75,16 @@ namespace FishBreeder.Genetics
         /// </summary>
         public static List<RelationshipBalance> CreateDefaults()
         {
+            var list = Defaults();
+            // Salt and fresh water fish never share a tank, so they have no relationships either way.
+            var salt = new HashSet<string>();
+            foreach (var s in Species.CreateDefaults()) if (s.IsSaltwater) salt.Add(s.id);
+            list.RemoveAll(r => salt.Contains(r.a) != salt.Contains(r.b));
+            return list;
+        }
+
+        static List<RelationshipBalance> Defaults()
+        {
             var list = new List<RelationshipBalance>();
 
             // Predators: the left fish hunts the right one.

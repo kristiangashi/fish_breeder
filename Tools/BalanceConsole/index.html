@@ -147,6 +147,8 @@
   svg.tank .back { fill: none; stroke: var(--muted); stroke-width: 1; opacity: .55; }
   svg.tank .water { fill: var(--accent); opacity: .2; }
   svg.tank .water-top { fill: var(--accent); opacity: .34; }
+  .water-tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; }
+  .water-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   svg.tank .prev { fill: none; stroke: var(--warn); stroke-width: 1.3; stroke-dasharray: 5 4; }
   svg.tank .stand { fill: var(--muted); opacity: .3; }
   svg.tank .floor { stroke: var(--muted); stroke-width: 1; }
@@ -328,6 +330,7 @@ const META = {
   onlyInBox: ["Only in box", "Id of the only egg/fry box this fish comes in (e.g. WildTetra). Empty = any box whose rarity settings include it. A box with its own fish hatches nothing else."],
   raiseSpecies: ["Raise species", "Species ids, comma separated (e.g. NeonTetra,TigerBarb): the box opens once you've raised 'Raise count' of these fish to adulthood. Empty = no goal."],
   raiseCount: ["Raise count", "How many of the raise species you must raise to adulthood before the fish seller sells this box (0 = no goal)."],
+  saltwater: ["Salt water box", "On: a reef box of saltwater fish, sold only for salt water tanks. Off: freshwater fish, sold only for freshwater tanks. A box never holds fish of the other water."],
   rareFalloff: ["Rare falloff", "How much harder each extra rare fish in one box is. 0.3 means: once a box has one rare egg, every later egg is only 30% as likely to be rare; with two rares, 9%. 1 = no falloff, 0 = never more than one rare."],
   speckled: ["Speckled", ""],
   blurb: ["Blurb", "Shown in the supplier."],
@@ -529,6 +532,21 @@ const SPECIES_GROUPS = [
 
 let data = null;
 let tab = "species";
+// Fresh and salt water fish are kept apart: the fish tables show one or the other (remembered in this browser).
+let water = (() => { try { return localStorage.getItem("fishBreederWater") === "salt" ? "salt" : "fresh"; } catch (e) { return "fresh"; } })();
+const WATER_TABS = new Set(["species", "sizes", "compat", "cross", "swim", "eggs", "dives"]);
+const isSalt = (s) => !!s && (s.category === 2 || s.category === 3); // SaltwaterCold, SaltwaterTropical
+const inWater = (s) => isSalt(s) === (water === "salt");
+const waterSpecies = () => data.species.filter(inWater);
+const tierInWater = (t) => !!t.saltwater === (water === "salt");
+function waterTabs() {
+  const pick = (w) => { if (w === water) return; water = w; selectedSpecies = -1; try { localStorage.setItem("fishBreederWater", w); } catch (e) {} render(); };
+  const count = (salt) => data.species.filter((s) => isSalt(s) === salt).length;
+  return el("div", { class: "water-tabs" },
+    el("button", { class: water === "fresh" ? "active" : "", onclick: () => pick("fresh") }, `Freshwater fish (${count(false)})`),
+    el("button", { class: water === "salt" ? "active" : "", onclick: () => pick("salt") }, `Saltwater fish (${count(true)})`),
+    el("span", { class: "hint", style: "margin:0" }, "Salt and fresh water fish never share a tank, an egg box, a relationship or a cross."));
+}
 let selectedSpecies = -1; // -1 = the all-species table, otherwise that species' full form
 let selectedDisease = 0;
 let dirty = false;
@@ -824,7 +842,7 @@ function speciesTable() {
     title: [nice(key), help(key)].filter((t) => t).join(". "),
     onclick: () => setSort(key) }, text);
 
-  const order = species.map((s, i) => i);
+  const order = species.map((s, i) => i).filter((i) => inWater(species[i]));
   const { sortKey, sortDir } = speciesView;
   order.sort((a, b) => compareValues(speciesSortValue(species[a], sortKey), speciesSortValue(species[b], sortKey)) * sortDir
     || compareValues(species[a].displayName.toLowerCase(), species[b].displayName.toLowerCase()));
@@ -854,8 +872,8 @@ function speciesTable() {
 
   const count = el("span", { class: "hint", style: "margin:0" });
   const showCount = () => {
-    const shown = species.filter(matches).length;
-    count.textContent = `${shown === species.length ? species.length : `${shown} of ${species.length}`} species · ${columns.length} of ${columns.length + hidden.size} columns`;
+    const here = species.filter(inWater), shown = here.filter(matches).length;
+    count.textContent = `${shown === here.length ? here.length : `${shown} of ${here.length}`} species · ${columns.length} of ${columns.length + hidden.size} columns`;
   };
   showCount();
   const filter = el("input", { type: "search", placeholder: "Find a species…", value: speciesView.filter, style: "width:200px", oninput: (e) => {
@@ -892,7 +910,7 @@ function speciesTable() {
     }))) : null;
 
   return el("div", { class: "card" },
-    el("h2", {}, "All species"),
+    el("h2", {}, water === "salt" ? "All saltwater species" : "All freshwater species"),
     el("p", { class: "hint" }, "Click a column heading to sort by it (again to flip it). Edit values right in the table; click a species name for its full form with the favourite foods and decorations, Duplicate and Delete. Rows don't move while you type; click a heading to re-sort."),
     toolbar, picker,
     el("div", { class: "species-wrap" }, table));
@@ -904,12 +922,12 @@ function renderSpecies() {
   if (selectedSpecies < 0) return [speciesTable()];
 
   const back = el("div", { class: "row" },
-    el("button", { onclick: () => { selectedSpecies = -1; render(); } }, "← All species"),
+    el("button", { onclick: () => { selectedSpecies = -1; render(); } }, water === "salt" ? "← All saltwater species" : "← All freshwater species"),
     el("span", { class: "hint", style: "margin:0" }, `Full form for ${species[selectedSpecies].displayName}`));
 
-  const list = el("div", { class: "list" }, species.map((s, i) =>
+  const list = el("div", { class: "list" }, species.map((s, i) => inWater(s) ?
     el("button", { class: i === selectedSpecies ? "active" : "", onclick: () => { selectedSpecies = i; render(); } },
-      s.displayName, el("span", { class: "chip" }, ENUMS.rarity[s.rarity]))));
+      s.displayName, el("span", { class: "chip" }, ENUMS.rarity[s.rarity])) : null));
   const actions = el("div", { class: "row", style: "margin-top:10px" },
     el("button", { class: "small", onclick: () => {
       const copy = JSON.parse(JSON.stringify(species[selectedSpecies]));
@@ -947,7 +965,7 @@ function setRelation(a, b, relation) {
 }
 
 function renderCompat() {
-  const species = data.species;
+  const species = waterSpecies();
   data.relationships = data.relationships || [];
   const change = (a, b, relation) => {
     setRelation(a, b, relation);
@@ -1004,7 +1022,7 @@ function crossCombo(body, fins) {
 }
 
 function renderCross() {
-  const species = data.species;
+  const species = waterSpecies();
   const cross = crossData();
   const toggle = (a, b, on) => {
     cross.pairs = cross.pairs.filter((p) => !((p.a === a && p.b === b) || (p.a === b && p.b === a)));
@@ -1026,7 +1044,7 @@ function renderCross() {
     el("thead", {}, el("tr", {}, el("th", {}, "Can cross with →"), species.map((s) => el("th", { class: "rot" }, el("div", {}, s.displayName))))),
     el("tbody", {}, species.map((a) => el("tr", {}, el("th", {}, a.displayName), species.map((b) => cell(a, b))))));
 
-  const pairs = cross.pairs.filter((p) => p.a !== p.b && speciesById(p.a) && speciesById(p.b));
+  const pairs = cross.pairs.filter((p) => p.a !== p.b && speciesById(p.a) && speciesById(p.b) && inWater(speciesById(p.a)) && inWater(speciesById(p.b)));
   const rows = [];
   for (const pair of pairs) {
     const ways = [crossCombo(pair.a, pair.b), crossCombo(pair.b, pair.a)];
@@ -2316,7 +2334,7 @@ function fillHatch(tier) {
   const falloff = Math.max(0.001, tier.normalRarityFalloff);
   // A box with its own fish ("Only in box" = its id) hatches only those; other boxes leave them out.
   const own = data.species.some((s) => s.onlyInBox === tier.id);
-  const pool = data.species.filter((s) => (s.onlyInBox || "") === (own ? tier.id : ""));
+  const pool = data.species.filter((s) => (s.onlyInBox || "") === (own ? tier.id : "") && isSalt(s) === !!tier.saltwater);
   const normals = pool.filter((s) => s.rarity >= tier.normalMin && s.rarity <= tier.normalMax);
   const rares = pool.filter((s) => !(s.rarity >= tier.normalMin && s.rarity <= tier.normalMax) && s.rarity === tier.rarePool);
   const total = normals.reduce((n, s) => n + Math.pow(falloff, s.rarity - tier.normalMin), 0);
@@ -2344,10 +2362,13 @@ function hatchOdds(tier, eggsOnly) {
 const pct = (p) => (p === undefined ? "–" : p < 0.001 ? "<0.1%" : `${(p * 100).toFixed(p < 0.1 ? 1 : 0)}%`);
 
 function renderEggs() {
-  const tiers = data.supplier.eggTiers;
-  eggTier = Math.min(eggTier, tiers.length - 1);
-  tiers.forEach((t) => { if (!t.hatch || !t.hatch.length) fillHatch(t); });
-  const tier = tiers[eggTier];
+  const allTiers = data.supplier.eggTiers;
+  allTiers.forEach((t) => { if (!t.hatch || !t.hatch.length) fillHatch(t); });
+  const tiers = allTiers.filter(tierInWater);
+  if (!tiers.length) return [el("div", { class: "card" }, el("p", { class: "hint" }, `No ${water === "salt" ? "saltwater" : "freshwater"} egg boxes in this file. Load the defaults to get them.`))];
+  if (!tiers.includes(allTiers[eggTier])) eggTier = allTiers.indexOf(tiers[0]);
+  const tier = allTiers[eggTier];
+  const fish = waterSpecies();
 
   const check = el("div", { class: "row" },
     el("label", { class: "field", title: "Fishkeeping level the odds below are worked out for." }, el("span", {}, "Check odds at Fishkeeping level"),
@@ -2360,7 +2381,7 @@ function renderEggs() {
   const drawOverview = () => {
     const eggOdds = tiers.map((t) => hatchOdds(t, true));
     const fryOdds = tiers.map((t) => hatchOdds(t, false));
-    overviewBody.replaceChildren(...data.species.map((s) => el("tr", {},
+    overviewBody.replaceChildren(...fish.map((s) => el("tr", {},
       el("td", {}, s.displayName), el("td", {}, ENUMS.rarity[s.rarity]), el("td", {}, s.reproduction === 0 ? "Eggs" : "Fry only"),
       tiers.map((t, i) => el("td", { class: "pct readout", title: `${t.name}: eggs ${pct(eggOdds[i][s.id])}, fry boxes ${pct(fryOdds[i][s.id])}` },
         `${pct(eggOdds[i][s.id])} / ${pct(fryOdds[i][s.id])}`)))));
@@ -2373,13 +2394,13 @@ function renderEggs() {
       overviewBody)));
 
   // Editor for one tier: every species, with its weight and when it can turn up.
-  const tierButtons = el("div", { class: "list", style: "flex-direction:row;flex-wrap:wrap;display:flex;gap:6px" }, tiers.map((t, i) =>
-    el("button", { class: i === eggTier ? "active" : "", onclick: () => { eggTier = i; render(); } }, t.name)));
+  const tierButtons = el("div", { class: "list", style: "flex-direction:row;flex-wrap:wrap;display:flex;gap:6px" }, tiers.map((t) =>
+    el("button", { class: t === tier ? "active" : "", onclick: () => { eggTier = allTiers.indexOf(t); render(); } }, t.name)));
   const editBody = el("tbody");
   const entry = (s) => tier.hatch.find((h) => h.species === s.id);
   const readouts = [];
   // Rows are built once, so typing keeps its place; only the percentages update.
-  editBody.replaceChildren(...data.species.map((s) => {
+  editBody.replaceChildren(...fish.map((s) => {
     const h = entry(s) || { species: s.id, weight: 0, fromLevel: s.unlockLevel, fromDay: 0 };
     const num = (key, step) => el("input", { type: "number", step, value: h[key], oninput: (e) => {
       const n = parseFloat(e.target.value);
@@ -2572,7 +2593,7 @@ const swimCanvasHeight = (top, canvas) => {
 
 function renderSwim() {
   cancelAnimationFrame(swimAnimation);
-  const shown = data.species.filter((s) => !query || (s.displayName + " " + s.id).toLowerCase().includes(query.toLowerCase()));
+  const shown = data.species.filter((s) => inWater(s) && (!query || (s.displayName + " " + s.id).toLowerCase().includes(query.toLowerCase())));
   const animated = [];
   const cards = shown.map((s) => {
     if (typeof s.bendStart !== "number") s.bendStart = 0.2;
@@ -2954,7 +2975,7 @@ function renderSizes() {
 
   const groupCard = (g) => {
     const [title, size, blurb] = SIZE_GROUPS[g];
-    const fish = data.species.map((s, i) => [s, i]).filter(([s]) => (s.sizeGroup || 0) === g);
+    const fish = data.species.map((s, i) => [s, i]).filter(([s]) => (s.sizeGroup || 0) === g && inWater(s));
     const rows = fish.map(([s, i]) => {
       const where = el("td", { class: "readout" });
       const warn = el("td", { class: "size-warn" });
@@ -3125,8 +3146,9 @@ function renderDives() {
       columns.map((g) => el("th", { title: g === 0 ? "Before any gear upgrade." : `With ${scuba.gear[g - 1].name || "this gear"} (upgrade ${g}).` }, g === 0 ? "Rented gear" : `${g}. ${scuba.gear[g - 1].name || "Gear " + g}`)),
       el("th")));
     oddsBody.replaceChildren(...scuba.finds.map((f, i) => {
+      if (speciesById(f.species) && !inWater(speciesById(f.species))) return null;
       const species = el("select", { onchange: (e) => { f.species = e.target.value; markDirty(); drawOdds(); } },
-        data.species.map((s) => el("option", { value: s.id }, `${s.displayName}${s.eastWingOnly ? "" : " (not aquarium-only)"}`)));
+        waterSpecies().map((s) => el("option", { value: s.id }, `${s.displayName}${s.eastWingOnly ? "" : " (not aquarium-only)"}`)));
       species.value = f.species;
       const rarity = el("select", { onchange: (e) => { f.rarity = parseInt(e.target.value, 10); markDirty(); drawOdds(); } },
         ENUMS.rarity.map((name, r) => el("option", { value: r }, name)));
@@ -3134,11 +3156,11 @@ function renderDives() {
       return el("tr", {}, el("td", {}, species), el("td", {}, rarity),
         columns.map((g, c) => el("td", { class: "pct readout" }, pct(odds[c][i]))),
         el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { scuba.finds.splice(i, 1); markDirty(); drawOdds(); } }, "×")));
-    }));
+    }).filter(Boolean));
   };
   const addFind = el("button", { class: "small", style: "margin-top:6px", onclick: () => {
     const taken = new Set(scuba.finds.map((f) => f.species));
-    const next = data.species.find((s) => s.eastWingOnly && !taken.has(s.id)) || data.species[0];
+    const next = waterSpecies().find((s) => s.eastWingOnly && !taken.has(s.id)) || waterSpecies()[0] || data.species[0];
     scuba.finds.push({ species: next.id, rarity: next.rarity || 0 });
     markDirty(); drawOdds();
   } }, "+ Add a fish");
@@ -3212,6 +3234,7 @@ function render() {
     case "algae": content = renderAlgae(); break;
     default: content = renderSection(tab);
   }
+  if (WATER_TABS.has(tab)) content = [waterTabs(), ...content];
   $("#view").replaceChildren(...content);
   makeSortable($("#view"));
 }

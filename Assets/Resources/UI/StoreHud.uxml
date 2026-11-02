@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="store-hud" picking-mode="Ignore" class="fb-screen">
+        <ui:VisualElement name="world" picking-mode="Ignore" class="fb-screen fb-no-check" />
+        <ui:VisualElement name="hud-top" picking-mode="Ignore" class="fb-hud-top">
+            <ui:VisualElement name="top-bar" class="fb-strip fb-top-bar" />
+            <ui:VisualElement name="status-bar" class="fb-strip fb-status-bar" />
+            <ui:VisualElement name="under-bars" picking-mode="Ignore" class="fb-under-bars">
+                <ui:VisualElement picking-mode="Ignore" class="fb-spacer" />
+                <ui:VisualElement name="todo" class="fb-todo" />
+                <ui:VisualElement picking-mode="Ignore" class="fb-spacer" />
+                <ui:VisualElement name="milestones" class="fb-panel fb-milestones" />
+                <ui:VisualElement name="clock" class="fb-strip fb-clock" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="banners" picking-mode="Ignore" class="fb-banners" />
+        <ui:VisualElement name="log" picking-mode="Ignore" class="fb-strip fb-log" />
+        <ui:VisualElement name="watch" picking-mode="Ignore" class="fb-screen" />
+    </ui:VisualElement>
+</ui:UXML>

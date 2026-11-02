@@ -1,0 +1,31 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="FishBreeder.uss" />
+    <ui:VisualElement name="effects" picking-mode="Ignore" class="fb-screen">
+        <ui:VisualElement name="floaters" picking-mode="Ignore" class="fb-screen fb-no-check" />
+        <ui:VisualElement name="card" class="fb-panel fb-celebration">
+            <ui:VisualElement name="card-stripe" picking-mode="Ignore" class="fb-celebration__stripe" />
+            <ui:VisualElement name="card-icon" picking-mode="Ignore" class="fb-celebration__icon">
+                <ui:Image name="card-image" picking-mode="Ignore" class="fb-celebration__image" />
+                <ui:Label name="card-star" text="★" picking-mode="Ignore" class="fb-celebration__star" />
+            </ui:VisualElement>
+            <ui:VisualElement picking-mode="Ignore" class="fb-celebration__text">
+                <ui:Label name="card-kicker" text="MILESTONE REACHED" picking-mode="Ignore" class="fb-celebration__kicker" />
+                <ui:Label name="card-title" text="First fish" picking-mode="Ignore" class="fb-celebration__title" />
+                <ui:Label name="card-text" text="Get your first fish" picking-mode="Ignore" class="fb-text fb-celebration__line" />
+                <ui:Label name="card-reward" text="+$50" picking-mode="Ignore" class="fb-text fb-celebration__line" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Label name="stamp-shadow" text="OPEN!" picking-mode="Ignore" class="fb-stamp fb-stamp--shadow fb-no-check" />
+        <ui:Label name="stamp" text="OPEN!" picking-mode="Ignore" class="fb-stamp fb-no-check" />
+        <ui:VisualElement name="day" picking-mode="Ignore" class="fb-screen fb-day fb-no-check">
+            <ui:VisualElement name="sun-glow" picking-mode="Ignore" class="fb-day__glow" />
+            <ui:VisualElement name="sun" picking-mode="Ignore" class="fb-day__sun" />
+            <ui:VisualElement name="horizon" picking-mode="Ignore" class="fb-day__horizon" />
+            <ui:VisualElement name="day-bubbles" picking-mode="Ignore" class="fb-screen" />
+            <ui:Label name="day-title" text="Day 2" picking-mode="Ignore" class="fb-day__title" />
+            <ui:Label name="day-subtitle" text="A new day at the shop" picking-mode="Ignore" class="fb-day__subtitle" />
+        </ui:VisualElement>
+        <ui:Label name="saved" text="Game saved" picking-mode="Ignore" class="fb-saved-notice fb-no-check" />
+        <ui:VisualElement name="particles" picking-mode="Ignore" class="fb-screen fb-no-check" />
+    </ui:VisualElement>
+</ui:UXML>

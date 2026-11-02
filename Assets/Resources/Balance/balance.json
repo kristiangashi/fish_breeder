@@ -1,0 +1,7176 @@
+{
+  "dataVersion": 19,
+  "species": [
+    {
+      "id": "CometGoldfish",
+      "displayName": "Comet Goldfish",
+      "category": 0,
+      "reproduction": 0,
+      "rarity": 0,
+      "family": "Carps and minnows (Cyprinidae)",
+      "scientificName": "Carassius auratus",
+      "unlockLevel": 1,
+      "onlyInBox": "",
+      "baseValue": 20,
+      "fryPrice": 12,
+      "minLength": 0.1,
+      "maxLength": 0.2,
+      "speed": 1,
+      "depthMin": 0.15,
+      "depthMax": 0.85,
+      "style": 0,
+      "bendStart": 0.43,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0.3,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 15,
+      "tempMax": 22,
+      "phMin": 7,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 5,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "FancyGoldfish",
+      "displayName": "Fantail Goldfish",
+      "category": 0,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Carps and minnows (Cyprinidae)",
+      "scientificName": "Carassius auratus",
+      "unlockLevel": 5,
+      "onlyInBox": "",
+      "baseValue": 45,
+      "fryPrice": 25,
+      "minLength": 0.1,
+      "maxLength": 0.14,
+      "speed": 0.7,
+      "depthMin": 0.15,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.53,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0.2,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 18,
+      "tempMax": 23,
+      "phMin": 7,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        1,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Angelfish",
+      "displayName": "Angelfish",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Pterophyllum scalare",
+      "unlockLevel": 12,
+      "onlyInBox": "",
+      "baseValue": 70,
+      "fryPrice": 35,
+      "minLength": 0.12,
+      "maxLength": 0.15,
+      "speed": 0.6,
+      "depthMin": 0.35,
+      "depthMax": 0.85,
+      "style": 0,
+      "bendStart": 0.3,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 25,
+      "tempMax": 29,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        3,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "TallPlant",
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Betta",
+      "displayName": "Betta",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Gouramis (Osphronemidae)",
+      "scientificName": "Betta splendens",
+      "unlockLevel": 20,
+      "onlyInBox": "",
+      "baseValue": 55,
+      "fryPrice": 30,
+      "minLength": 0.08,
+      "maxLength": 0.1,
+      "speed": 0.6,
+      "depthMin": 0.45,
+      "depthMax": 0.95,
+      "style": 0,
+      "bendStart": 0.38,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 25,
+      "tempMax": 28,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        3,
+        1
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "FernRock"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Clownfish",
+      "displayName": "Clownfish",
+      "category": 3,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Damselfish (Pomacentridae)",
+      "scientificName": "Amphiprion ocellaris",
+      "unlockLevel": 35,
+      "onlyInBox": "",
+      "baseValue": 110,
+      "fryPrice": 55,
+      "minLength": 0.08,
+      "maxLength": 0.1,
+      "speed": 0.9,
+      "depthMin": 0.25,
+      "depthMax": 0.75,
+      "style": 0,
+      "bendStart": 0.35,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 8,
+      "phMax": 8.4,
+      "salinityMin": 32,
+      "salinityMax": 35,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        4,
+        1
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "Seaweed",
+        "Clam"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Guppy",
+      "displayName": "Guppy",
+      "category": 1,
+      "reproduction": 1,
+      "rarity": 0,
+      "family": "Livebearers (Poeciliidae)",
+      "scientificName": "Poecilia reticulata",
+      "unlockLevel": 1,
+      "onlyInBox": "",
+      "baseValue": 12,
+      "fryPrice": 8,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.1,
+      "depthMin": 0.45,
+      "depthMax": 0.95,
+      "style": 0,
+      "bendStart": 0.32,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 27,
+      "phMin": 7,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "TigerBarb",
+      "displayName": "Tiger Barb",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Carps and minnows (Cyprinidae)",
+      "scientificName": "Puntigrus tetrazona",
+      "unlockLevel": 3,
+      "onlyInBox": "",
+      "baseValue": 25,
+      "fryPrice": 14,
+      "minLength": 0.07,
+      "maxLength": 0.09,
+      "speed": 1.3,
+      "depthMin": 0.2,
+      "depthMax": 0.7,
+      "style": 0,
+      "bendStart": 0.57,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 27,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "NeonTetra",
+      "displayName": "Neon Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 0,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Paracheirodon innesi",
+      "unlockLevel": 1,
+      "onlyInBox": "",
+      "baseValue": 14,
+      "fryPrice": 10,
+      "minLength": 0.06,
+      "maxLength": 0.07,
+      "speed": 1.2,
+      "depthMin": 0.3,
+      "depthMax": 0.7,
+      "style": 0,
+      "bendStart": 0.41,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 21,
+      "tempMax": 25,
+      "phMin": 5.5,
+      "phMax": 7,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "TallPlant"
+      ],
+      "roams": false,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "ZebraDanio",
+      "displayName": "Zebra Danio",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 0,
+      "family": "Danios (Danionidae)",
+      "scientificName": "Danio rerio",
+      "unlockLevel": 3,
+      "onlyInBox": "",
+      "baseValue": 18,
+      "fryPrice": 8,
+      "minLength": 0.06,
+      "maxLength": 0.07,
+      "speed": 1.5,
+      "depthMin": 0.6,
+      "depthMax": 0.95,
+      "style": 0,
+      "bendStart": 0.54,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 18,
+      "tempMax": 25,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Corydoras",
+      "displayName": "Corydoras Catfish",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Armoured catfish (Callichthyidae)",
+      "scientificName": "Corydoras aeneus",
+      "unlockLevel": 10,
+      "onlyInBox": "",
+      "baseValue": 35,
+      "fryPrice": 20,
+      "minLength": 0.07,
+      "maxLength": 0.08,
+      "speed": 1,
+      "depthMin": 0,
+      "depthMax": 0.1,
+      "style": 1,
+      "bendStart": 0.65,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 26,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        2,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "RedTailShark",
+      "displayName": "Red-tailed Black Shark",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Carps and minnows (Cyprinidae)",
+      "scientificName": "Epalzeorhynchos bicolor",
+      "unlockLevel": 10,
+      "onlyInBox": "",
+      "baseValue": 40,
+      "fryPrice": 22,
+      "minLength": 0.1,
+      "maxLength": 0.12,
+      "speed": 1.1,
+      "depthMin": 0.05,
+      "depthMax": 0.45,
+      "style": 0,
+      "bendStart": 0.53,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 1,
+      "fullGrownLength": 0.15,
+      "eastWingOnly": false,
+      "maxOfKind": 1,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        2,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "Rock",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "SiameseAlgaeEater",
+      "displayName": "Siamese Algae Eater",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 0,
+      "family": "Carps and minnows (Cyprinidae)",
+      "scientificName": "Crossocheilus oblongus",
+      "unlockLevel": 5,
+      "onlyInBox": "",
+      "baseValue": 20,
+      "fryPrice": 9,
+      "minLength": 0.1,
+      "maxLength": 0.14,
+      "speed": 1.3,
+      "depthMin": 0.05,
+      "depthMax": 0.6,
+      "style": 0,
+      "bendStart": 0.38,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 1,
+      "fullGrownLength": 0.16,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        2
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Driftwood",
+        "Rock"
+      ],
+      "roams": false,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": true
+    },
+    {
+      "id": "SilverDollar",
+      "displayName": "Red Hook Silver Dollar",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Pacus and piranhas (Serrasalmidae)",
+      "scientificName": "Myloplus rubripinnis",
+      "unlockLevel": 20,
+      "onlyInBox": "",
+      "baseValue": 40,
+      "fryPrice": 18,
+      "minLength": 0.12,
+      "maxLength": 0.15,
+      "speed": 1,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.71,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 1,
+      "fullGrownLength": 0.25,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 28,
+      "phMin": 5.5,
+      "phMax": 7,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        2,
+        0
+      ],
+      "likesPlants": false,
+      "schoolSize": 4,
+      "minTankSize": 1,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BlackMolly",
+      "displayName": "Black Molly",
+      "category": 1,
+      "reproduction": 1,
+      "rarity": 0,
+      "family": "Livebearers (Poeciliidae)",
+      "scientificName": "Poecilia sphenops",
+      "unlockLevel": 3,
+      "onlyInBox": "",
+      "baseValue": 17,
+      "fryPrice": 9,
+      "minLength": 0.07,
+      "maxLength": 0.09,
+      "speed": 1,
+      "depthMin": 0.3,
+      "depthMax": 0.9,
+      "style": 0,
+      "bendStart": 0.54,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 28,
+      "phMin": 7.5,
+      "phMax": 8.5,
+      "salinityMin": 0,
+      "salinityMax": 10,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        2,
+        0
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 5,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Platy",
+      "displayName": "Tuxedo Platy",
+      "category": 1,
+      "reproduction": 1,
+      "rarity": 0,
+      "family": "Livebearers (Poeciliidae)",
+      "scientificName": "Xiphophorus maculatus",
+      "unlockLevel": 1,
+      "onlyInBox": "",
+      "baseValue": 12,
+      "fryPrice": 8,
+      "minLength": 0.05,
+      "maxLength": 0.07,
+      "speed": 1.1,
+      "depthMin": 0.3,
+      "depthMax": 0.9,
+      "style": 0,
+      "bendStart": 0.51,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 21,
+      "tempMax": 25,
+      "phMin": 7,
+      "phMax": 8.2,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        2
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "Seaweed"
+      ],
+      "roams": false,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Oscar",
+      "displayName": "Oscar",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Astronotus ocellatus",
+      "unlockLevel": 30,
+      "onlyInBox": "",
+      "baseValue": 90,
+      "fryPrice": 45,
+      "minLength": 0.16,
+      "maxLength": 0.2,
+      "speed": 0.8,
+      "depthMin": 0.2,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.23,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 1,
+      "fullGrownLength": 0.35,
+      "eastWingOnly": false,
+      "maxOfKind": 2,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 2,
+      "likedDecorations": [
+        "Rock"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "GreenTerror",
+      "displayName": "Green Terror",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Andinoacara rivulatus",
+      "unlockLevel": 40,
+      "onlyInBox": "",
+      "baseValue": 65,
+      "fryPrice": 35,
+      "minLength": 0.12,
+      "maxLength": 0.16,
+      "speed": 0.9,
+      "depthMin": 0.2,
+      "depthMax": 0.7,
+      "style": 0,
+      "bendStart": 0.26,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 1,
+      "fullGrownLength": 0.3,
+      "eastWingOnly": false,
+      "maxOfKind": 2,
+      "tempMin": 21,
+      "tempMax": 25,
+      "phMin": 6.5,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "Rock"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BlueAcara",
+      "displayName": "Electric Blue Acara",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Andinoacara pulcher",
+      "unlockLevel": 40,
+      "onlyInBox": "",
+      "baseValue": 60,
+      "fryPrice": 32,
+      "minLength": 0.1,
+      "maxLength": 0.13,
+      "speed": 0.9,
+      "depthMin": 0.2,
+      "depthMax": 0.7,
+      "style": 0,
+      "bendStart": 0.22,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 1,
+      "fullGrownLength": 0.17,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 27,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        3,
+        1
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "Rock",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "GoldenMbuna",
+      "displayName": "Golden Mbuna",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Melanochromis auratus",
+      "unlockLevel": 50,
+      "onlyInBox": "",
+      "baseValue": 30,
+      "fryPrice": 16,
+      "minLength": 0.08,
+      "maxLength": 0.1,
+      "speed": 1.2,
+      "depthMin": 0.1,
+      "depthMax": 0.6,
+      "style": 0,
+      "bendStart": 0.44,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 27,
+      "phMin": 7.7,
+      "phMax": 8.6,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        2,
+        0
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Rock",
+        "FernRock"
+      ],
+      "roams": false,
+      "daysToAdult": 4,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 5,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BloodfinTetra",
+      "displayName": "Bloodfin Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Aphyocharax anisitsi",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 32,
+      "fryPrice": 18,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.4,
+      "depthMin": 0.45,
+      "depthMax": 0.95,
+      "style": 0,
+      "bendStart": 0.63,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 18,
+      "tempMax": 28,
+      "phMin": 6,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "SerpaeTetra",
+      "displayName": "Serpae Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hyphessobrycon eques",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 30,
+      "fryPrice": 16,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.3,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.61,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 27,
+      "phMin": 5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "XRayTetra",
+      "displayName": "X-Ray Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Pristella maxillaris",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 35,
+      "fryPrice": 18,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.2,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.67,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 28,
+      "phMin": 6,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BlackSkirtTetra",
+      "displayName": "Black Skirt Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Gymnocorymbus ternetzi",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 30,
+      "fryPrice": 16,
+      "minLength": 0.07,
+      "maxLength": 0.09,
+      "speed": 1,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.65,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 20,
+      "tempMax": 26,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        0,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "TallPlant"
+      ],
+      "roams": false,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "RedeyeTetra",
+      "displayName": "Redeye Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Moenkhausia sanctaefilomenae",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 55,
+      "fryPrice": 28,
+      "minLength": 0.08,
+      "maxLength": 0.1,
+      "speed": 1.1,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.66,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 28,
+      "phMin": 5.5,
+      "phMax": 8.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        0,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "LemonTetra",
+      "displayName": "Lemon Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hyphessobrycon pulchripinnis",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 35,
+      "fryPrice": 18,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.1,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.67,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 28,
+      "phMin": 5.5,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "TallPlant",
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BleedingHeartTetra",
+      "displayName": "Bleeding Heart Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hyphessobrycon erythrostigma",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 70,
+      "fryPrice": 35,
+      "minLength": 0.08,
+      "maxLength": 0.1,
+      "speed": 0.9,
+      "depthMin": 0.3,
+      "depthMax": 0.75,
+      "style": 0,
+      "bendStart": 0.58,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 28,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        3,
+        0
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "TallPlant",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BuenosAiresTetra",
+      "displayName": "Buenos Aires Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Psalidodon anisitsi",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 30,
+      "fryPrice": 16,
+      "minLength": 0.08,
+      "maxLength": 0.1,
+      "speed": 1.3,
+      "depthMin": 0.3,
+      "depthMax": 0.85,
+      "style": 0,
+      "bendStart": 0.54,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 18,
+      "tempMax": 28,
+      "phMin": 5.8,
+      "phMax": 8.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        2,
+        0
+      ],
+      "likesPlants": false,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "EmperorTetra",
+      "displayName": "Emperor Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Nematobrycon palmeri",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 80,
+      "fryPrice": 40,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.59,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 27,
+      "phMin": 5,
+      "phMax": 7.8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        4,
+        0
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "FlameTetra",
+      "displayName": "Flame Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hyphessobrycon flammeus",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 60,
+      "fryPrice": 30,
+      "minLength": 0.05,
+      "maxLength": 0.06,
+      "speed": 1.2,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.61,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 28,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "CongoTetra",
+      "displayName": "Congo Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "African tetras (Alestidae)",
+      "scientificName": "Phenacogrammus interruptus",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 140,
+      "fryPrice": 70,
+      "minLength": 0.09,
+      "maxLength": 0.11,
+      "speed": 1,
+      "depthMin": 0.35,
+      "depthMax": 0.85,
+      "style": 0,
+      "bendStart": 0.55,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        0,
+        3
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "TallPlant"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "PenguinTetra",
+      "displayName": "Penguin Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Thayeria boehlkei",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 35,
+      "fryPrice": 18,
+      "minLength": 0.07,
+      "maxLength": 0.09,
+      "speed": 1.2,
+      "depthMin": 0.5,
+      "depthMax": 0.95,
+      "style": 0,
+      "bendStart": 0.58,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 28,
+      "phMin": 5.8,
+      "phMax": 8.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "TallPlant"
+      ],
+      "roams": false,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "GlowlightTetra",
+      "displayName": "Glowlight Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hemigrammus erythrozonus",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 38,
+      "fryPrice": 20,
+      "minLength": 0.05,
+      "maxLength": 0.06,
+      "speed": 1.2,
+      "depthMin": 0.3,
+      "depthMax": 0.75,
+      "style": 0,
+      "bendStart": 0.62,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 28,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "TallPlant"
+      ],
+      "roams": false,
+      "daysToAdult": 4.5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "BucktoothTetra",
+      "displayName": "Bucktooth Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Exodon paradoxus",
+      "unlockLevel": 10,
+      "onlyInBox": "WildTetra",
+      "baseValue": 150,
+      "fryPrice": 75,
+      "minLength": 0.12,
+      "maxLength": 0.15,
+      "speed": 1.5,
+      "depthMin": 0.3,
+      "depthMax": 0.85,
+      "style": 0,
+      "bendStart": 0.64,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 28,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3,
+      "favoriteFoods": [
+        3,
+        1
+      ],
+      "likesPlants": false,
+      "schoolSize": 8,
+      "minTankSize": 1,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "RubyTetra",
+      "displayName": "Ruby Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Axelrodia riesei",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 160,
+      "fryPrice": 80,
+      "minLength": 0.05,
+      "maxLength": 0.05,
+      "speed": 1.1,
+      "depthMin": 0.3,
+      "depthMax": 0.75,
+      "style": 0,
+      "bendStart": 0.56,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 23,
+      "tempMax": 27,
+      "phMin": 5,
+      "phMax": 6.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        4,
+        0
+      ],
+      "likesPlants": true,
+      "schoolSize": 8,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "FernRock"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "SilvertipTetra",
+      "displayName": "Silvertip Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hasemania nana",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 55,
+      "fryPrice": 28,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.4,
+      "depthMin": 0.3,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.62,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 28,
+      "phMin": 6,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 6,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "RummyNoseTetra",
+      "displayName": "Rummy Nose Tetra",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Tetras (Characidae)",
+      "scientificName": "Hemigrammus rhodostomus",
+      "unlockLevel": 15,
+      "onlyInBox": "WildTetra",
+      "baseValue": 70,
+      "fryPrice": 35,
+      "minLength": 0.06,
+      "maxLength": 0.08,
+      "speed": 1.3,
+      "depthMin": 0.3,
+      "depthMax": 0.75,
+      "style": 0,
+      "bendStart": 0.61,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 0,
+      "fullGrownLength": 0,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 5.5,
+      "phMax": 7,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 2,
+      "favoriteFoods": [
+        0,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 8,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 5,
+      "lifespanDays": 90,
+      "litterMin": 4,
+      "litterMax": 8,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "CrimsonJewelCichlid",
+      "displayName": "Crimson Jewel Cichlid",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Cichlid hybrid (flowerhorn type)",
+      "unlockLevel": 20,
+      "onlyInBox": "",
+      "baseValue": 600,
+      "fryPrice": 300,
+      "minLength": 0.9,
+      "maxLength": 1.05,
+      "speed": 0.5,
+      "depthMin": 0.2,
+      "depthMax": 0.75,
+      "style": 0,
+      "bendStart": 0.53,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 3,
+      "fullGrownLength": 0,
+      "eastWingOnly": true,
+      "maxOfKind": 2,
+      "tempMin": 26,
+      "tempMax": 30,
+      "phMin": 7,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 100,
+      "likedDecorations": [
+        "Rock",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 8,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "SilverFlamefin",
+      "displayName": "Silver Flamefin",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Carps and minnows (Cyprinidae)",
+      "scientificName": "Barbonymus schwanenfeldii",
+      "unlockLevel": 16,
+      "onlyInBox": "",
+      "baseValue": 450,
+      "fryPrice": 220,
+      "minLength": 0.85,
+      "maxLength": 1,
+      "speed": 0.6,
+      "depthMin": 0.2,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.47,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 3,
+      "fullGrownLength": 0,
+      "eastWingOnly": true,
+      "maxOfKind": 0,
+      "tempMin": 22,
+      "tempMax": 26,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        2,
+        0
+      ],
+      "likesPlants": true,
+      "schoolSize": 5,
+      "minTankSize": 100,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 8,
+      "lifespanDays": 90,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Pumpkinseed",
+      "displayName": "Pumpkinseed",
+      "category": 0,
+      "reproduction": 0,
+      "rarity": 1,
+      "family": "Sunfishes (Centrarchidae)",
+      "scientificName": "Lepomis gibbosus",
+      "unlockLevel": 4,
+      "onlyInBox": "",
+      "baseValue": 55,
+      "fryPrice": 28,
+      "minLength": 0.1,
+      "maxLength": 0.14,
+      "speed": 0.9,
+      "depthMin": 0.25,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.5,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 2,
+      "fullGrownLength": 0.22,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 15,
+      "tempMax": 24,
+      "phMin": 6.5,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 3.5,
+      "favoriteFoods": [
+        3,
+        4
+      ],
+      "likesPlants": true,
+      "schoolSize": 0,
+      "minTankSize": 0,
+      "likedDecorations": [
+        "Plant",
+        "TallPlant"
+      ],
+      "roams": false,
+      "daysToAdult": 6,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "ArcticGrayling",
+      "displayName": "Arctic Grayling",
+      "category": 0,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Salmon, trout and grayling (Salmonidae)",
+      "scientificName": "Thymallus arcticus",
+      "unlockLevel": 17,
+      "onlyInBox": "",
+      "baseValue": 280,
+      "fryPrice": 140,
+      "minLength": 0.22,
+      "maxLength": 0.3,
+      "speed": 1,
+      "depthMin": 0.3,
+      "depthMax": 0.9,
+      "style": 0,
+      "bendStart": 0.28,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 2,
+      "fullGrownLength": 0.45,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 12,
+      "tempMax": 20,
+      "phMin": 6.5,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        3,
+        0
+      ],
+      "likesPlants": false,
+      "schoolSize": 4,
+      "minTankSize": 2,
+      "likedDecorations": [],
+      "roams": true,
+      "daysToAdult": 7,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "TexasCichlid",
+      "displayName": "Texas Cichlid",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Herichthys cyanoguttatus",
+      "unlockLevel": 9,
+      "onlyInBox": "",
+      "baseValue": 120,
+      "fryPrice": 60,
+      "minLength": 0.13,
+      "maxLength": 0.17,
+      "speed": 0.8,
+      "depthMin": 0.15,
+      "depthMax": 0.7,
+      "style": 0,
+      "bendStart": 0.43,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 2,
+      "fullGrownLength": 0.3,
+      "eastWingOnly": false,
+      "maxOfKind": 2,
+      "tempMin": 21,
+      "tempMax": 27,
+      "phMin": 6.5,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 1,
+      "likedDecorations": [
+        "Rock",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 7,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "Frontosa",
+      "displayName": "Frontosa",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Cyphotilapia frontosa",
+      "unlockLevel": 15,
+      "onlyInBox": "",
+      "baseValue": 260,
+      "fryPrice": 130,
+      "minLength": 0.14,
+      "maxLength": 0.18,
+      "speed": 0.6,
+      "depthMin": 0.1,
+      "depthMax": 0.5,
+      "style": 0,
+      "bendStart": 0.45,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 2,
+      "fullGrownLength": 0.33,
+      "eastWingOnly": false,
+      "maxOfKind": 0,
+      "tempMin": 24,
+      "tempMax": 27,
+      "phMin": 7.8,
+      "phMax": 9,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        1,
+        4
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 2,
+      "likedDecorations": [
+        "Rock"
+      ],
+      "roams": false,
+      "daysToAdult": 9,
+      "lifespanDays": 150,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "JackDempsey",
+      "displayName": "Jack Dempsey",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 2,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Rocio octofasciata",
+      "unlockLevel": 7,
+      "onlyInBox": "",
+      "baseValue": 110,
+      "fryPrice": 55,
+      "minLength": 0.12,
+      "maxLength": 0.16,
+      "speed": 0.8,
+      "depthMin": 0.15,
+      "depthMax": 0.7,
+      "style": 0,
+      "bendStart": 0.43,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 2,
+      "fullGrownLength": 0.25,
+      "eastWingOnly": false,
+      "maxOfKind": 3,
+      "tempMin": 22,
+      "tempMax": 29,
+      "phMin": 6.5,
+      "phMax": 8,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 2,
+      "likedDecorations": [
+        "Rock",
+        "Driftwood"
+      ],
+      "roams": false,
+      "daysToAdult": 7,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    },
+    {
+      "id": "PeacockBass",
+      "displayName": "Peacock Bass",
+      "category": 1,
+      "reproduction": 0,
+      "rarity": 3,
+      "family": "Cichlids (Cichlidae)",
+      "scientificName": "Cichla ocellaris",
+      "unlockLevel": 18,
+      "onlyInBox": "",
+      "baseValue": 380,
+      "fryPrice": 190,
+      "minLength": 0.28,
+      "maxLength": 0.36,
+      "speed": 0.8,
+      "depthMin": 0.2,
+      "depthMax": 0.8,
+      "style": 0,
+      "bendStart": 0.38,
+      "sizeSmall": 0.85,
+      "sizeMedium": 1,
+      "sizeLarge": 1.18,
+      "sizeGroup": 2,
+      "fullGrownLength": 0.6,
+      "eastWingOnly": false,
+      "maxOfKind": 2,
+      "tempMin": 24,
+      "tempMax": 29,
+      "phMin": 6,
+      "phMax": 7.5,
+      "salinityMin": 0,
+      "salinityMax": 2,
+      "hungerToleranceDays": 4,
+      "favoriteFoods": [
+        1,
+        3
+      ],
+      "likesPlants": false,
+      "schoolSize": 0,
+      "minTankSize": 2,
+      "likedDecorations": [
+        "Driftwood"
+      ],
+      "roams": true,
+      "daysToAdult": 8,
+      "lifespanDays": 120,
+      "litterMin": 3,
+      "litterMax": 6,
+      "gestationSteps": 4,
+      "eggHatchSteps": 2,
+      "eatsAlgae": false
+    }
+  ],
+  "relationships": [
+    {
+      "a": "Oscar",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "BlackMolly",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "Betta",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "TigerBarb",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "Corydoras",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "BlackMolly",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "Betta",
+      "relation": 1
+    },
+    {
+      "a": "BlueAcara",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "BlueAcara",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "Angelfish",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "Angelfish",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "CometGoldfish",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "CometGoldfish",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "FancyGoldfish",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "TigerBarb",
+      "b": "Angelfish",
+      "relation": 2
+    },
+    {
+      "a": "Angelfish",
+      "b": "TigerBarb",
+      "relation": 2
+    },
+    {
+      "a": "TigerBarb",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "TigerBarb",
+      "relation": 2
+    },
+    {
+      "a": "TigerBarb",
+      "b": "FancyGoldfish",
+      "relation": 2
+    },
+    {
+      "a": "FancyGoldfish",
+      "b": "TigerBarb",
+      "relation": 2
+    },
+    {
+      "a": "TigerBarb",
+      "b": "Guppy",
+      "relation": 2
+    },
+    {
+      "a": "Guppy",
+      "b": "TigerBarb",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "Guppy",
+      "relation": 2
+    },
+    {
+      "a": "Guppy",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "RedTailShark",
+      "b": "RedTailShark",
+      "relation": 2
+    },
+    {
+      "a": "RedTailShark",
+      "b": "SiameseAlgaeEater",
+      "relation": 2
+    },
+    {
+      "a": "SiameseAlgaeEater",
+      "b": "RedTailShark",
+      "relation": 2
+    },
+    {
+      "a": "RedTailShark",
+      "b": "Corydoras",
+      "relation": 2
+    },
+    {
+      "a": "Corydoras",
+      "b": "RedTailShark",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "Angelfish",
+      "relation": 2
+    },
+    {
+      "a": "Angelfish",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "Guppy",
+      "relation": 2
+    },
+    {
+      "a": "Guppy",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "BlueAcara",
+      "relation": 2
+    },
+    {
+      "a": "BlueAcara",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "Oscar",
+      "relation": 2
+    },
+    {
+      "a": "Oscar",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "BlueAcara",
+      "relation": 2
+    },
+    {
+      "a": "BlueAcara",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "Oscar",
+      "relation": 2
+    },
+    {
+      "a": "Oscar",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "CometGoldfish",
+      "b": "FancyGoldfish",
+      "relation": 2
+    },
+    {
+      "a": "FancyGoldfish",
+      "b": "CometGoldfish",
+      "relation": 2
+    },
+    {
+      "a": "NeonTetra",
+      "b": "NeonTetra",
+      "relation": 3
+    },
+    {
+      "a": "NeonTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "NeonTetra",
+      "relation": 3
+    },
+    {
+      "a": "ZebraDanio",
+      "b": "ZebraDanio",
+      "relation": 3
+    },
+    {
+      "a": "ZebraDanio",
+      "b": "FancyGoldfish",
+      "relation": 3
+    },
+    {
+      "a": "FancyGoldfish",
+      "b": "ZebraDanio",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "Angelfish",
+      "relation": 3
+    },
+    {
+      "a": "Angelfish",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "SilverDollar",
+      "b": "SilverDollar",
+      "relation": 3
+    },
+    {
+      "a": "SilverDollar",
+      "b": "BlueAcara",
+      "relation": 3
+    },
+    {
+      "a": "BlueAcara",
+      "b": "SilverDollar",
+      "relation": 3
+    },
+    {
+      "a": "TigerBarb",
+      "b": "TigerBarb",
+      "relation": 3
+    },
+    {
+      "a": "Clownfish",
+      "b": "Clownfish",
+      "relation": 3
+    },
+    {
+      "a": "CometGoldfish",
+      "b": "CometGoldfish",
+      "relation": 3
+    },
+    {
+      "a": "FancyGoldfish",
+      "b": "FancyGoldfish",
+      "relation": 3
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "EmperorTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "LemonTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "XRayTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "BloodfinTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "SerpaeTetra",
+      "relation": 1
+    },
+    {
+      "a": "Oscar",
+      "b": "PenguinTetra",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "GreenTerror",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "Angelfish",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "Angelfish",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "Angelfish",
+      "relation": 2
+    },
+    {
+      "a": "Angelfish",
+      "b": "SerpaeTetra",
+      "relation": 2
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "SerpaeTetra",
+      "relation": 2
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "FancyGoldfish",
+      "relation": 2
+    },
+    {
+      "a": "FancyGoldfish",
+      "b": "SerpaeTetra",
+      "relation": 2
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "Guppy",
+      "relation": 2
+    },
+    {
+      "a": "Guppy",
+      "b": "SerpaeTetra",
+      "relation": 2
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "CongoTetra",
+      "relation": 2
+    },
+    {
+      "a": "CongoTetra",
+      "b": "SerpaeTetra",
+      "relation": 2
+    },
+    {
+      "a": "BlackSkirtTetra",
+      "b": "Angelfish",
+      "relation": 2
+    },
+    {
+      "a": "Angelfish",
+      "b": "BlackSkirtTetra",
+      "relation": 2
+    },
+    {
+      "a": "BlackSkirtTetra",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "BlackSkirtTetra",
+      "relation": 2
+    },
+    {
+      "a": "BlackSkirtTetra",
+      "b": "Guppy",
+      "relation": 2
+    },
+    {
+      "a": "Guppy",
+      "b": "BlackSkirtTetra",
+      "relation": 2
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "Angelfish",
+      "relation": 2
+    },
+    {
+      "a": "Angelfish",
+      "b": "BucktoothTetra",
+      "relation": 2
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "Betta",
+      "relation": 2
+    },
+    {
+      "a": "Betta",
+      "b": "BucktoothTetra",
+      "relation": 2
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "CongoTetra",
+      "relation": 2
+    },
+    {
+      "a": "CongoTetra",
+      "b": "BucktoothTetra",
+      "relation": 2
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "BleedingHeartTetra",
+      "relation": 2
+    },
+    {
+      "a": "BleedingHeartTetra",
+      "b": "BucktoothTetra",
+      "relation": 2
+    },
+    {
+      "a": "BloodfinTetra",
+      "b": "BloodfinTetra",
+      "relation": 3
+    },
+    {
+      "a": "BloodfinTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "BloodfinTetra",
+      "relation": 3
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "SerpaeTetra",
+      "relation": 3
+    },
+    {
+      "a": "SerpaeTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "SerpaeTetra",
+      "relation": 3
+    },
+    {
+      "a": "XRayTetra",
+      "b": "XRayTetra",
+      "relation": 3
+    },
+    {
+      "a": "XRayTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "XRayTetra",
+      "relation": 3
+    },
+    {
+      "a": "BlackSkirtTetra",
+      "b": "BlackSkirtTetra",
+      "relation": 3
+    },
+    {
+      "a": "BlackSkirtTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "BlackSkirtTetra",
+      "relation": 3
+    },
+    {
+      "a": "RedeyeTetra",
+      "b": "RedeyeTetra",
+      "relation": 3
+    },
+    {
+      "a": "RedeyeTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "RedeyeTetra",
+      "relation": 3
+    },
+    {
+      "a": "LemonTetra",
+      "b": "LemonTetra",
+      "relation": 3
+    },
+    {
+      "a": "LemonTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "LemonTetra",
+      "relation": 3
+    },
+    {
+      "a": "BleedingHeartTetra",
+      "b": "BleedingHeartTetra",
+      "relation": 3
+    },
+    {
+      "a": "BleedingHeartTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "BleedingHeartTetra",
+      "relation": 3
+    },
+    {
+      "a": "BuenosAiresTetra",
+      "b": "BuenosAiresTetra",
+      "relation": 3
+    },
+    {
+      "a": "BuenosAiresTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "BuenosAiresTetra",
+      "relation": 3
+    },
+    {
+      "a": "EmperorTetra",
+      "b": "EmperorTetra",
+      "relation": 3
+    },
+    {
+      "a": "EmperorTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "EmperorTetra",
+      "relation": 3
+    },
+    {
+      "a": "FlameTetra",
+      "b": "FlameTetra",
+      "relation": 3
+    },
+    {
+      "a": "FlameTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "FlameTetra",
+      "relation": 3
+    },
+    {
+      "a": "CongoTetra",
+      "b": "CongoTetra",
+      "relation": 3
+    },
+    {
+      "a": "CongoTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "CongoTetra",
+      "relation": 3
+    },
+    {
+      "a": "PenguinTetra",
+      "b": "PenguinTetra",
+      "relation": 3
+    },
+    {
+      "a": "PenguinTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "PenguinTetra",
+      "relation": 3
+    },
+    {
+      "a": "GlowlightTetra",
+      "b": "GlowlightTetra",
+      "relation": 3
+    },
+    {
+      "a": "GlowlightTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "GlowlightTetra",
+      "relation": 3
+    },
+    {
+      "a": "RubyTetra",
+      "b": "RubyTetra",
+      "relation": 3
+    },
+    {
+      "a": "RubyTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "RubyTetra",
+      "relation": 3
+    },
+    {
+      "a": "SilvertipTetra",
+      "b": "SilvertipTetra",
+      "relation": 3
+    },
+    {
+      "a": "SilvertipTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "SilvertipTetra",
+      "relation": 3
+    },
+    {
+      "a": "RummyNoseTetra",
+      "b": "RummyNoseTetra",
+      "relation": 3
+    },
+    {
+      "a": "RummyNoseTetra",
+      "b": "Corydoras",
+      "relation": 3
+    },
+    {
+      "a": "Corydoras",
+      "b": "RummyNoseTetra",
+      "relation": 3
+    },
+    {
+      "a": "BucktoothTetra",
+      "b": "BucktoothTetra",
+      "relation": 3
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "BlackMolly",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "Betta",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "TigerBarb",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "Corydoras",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "Angelfish",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "GoldenMbuna",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "SiameseAlgaeEater",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "EmperorTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "LemonTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "XRayTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "BloodfinTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "SerpaeTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "PenguinTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "BlackSkirtTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "RedeyeTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "BleedingHeartTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "BuenosAiresTetra",
+      "relation": 1
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "Oscar",
+      "relation": 2
+    },
+    {
+      "a": "Oscar",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "BlueAcara",
+      "relation": 2
+    },
+    {
+      "a": "BlueAcara",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "RedTailShark",
+      "relation": 2
+    },
+    {
+      "a": "RedTailShark",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "SilverFlamefin",
+      "relation": 3
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "TigerBarb",
+      "relation": 3
+    },
+    {
+      "a": "TigerBarb",
+      "b": "SilverFlamefin",
+      "relation": 3
+    },
+    {
+      "a": "SilverFlamefin",
+      "b": "SilverDollar",
+      "relation": 3
+    },
+    {
+      "a": "SilverDollar",
+      "b": "SilverFlamefin",
+      "relation": 3
+    },
+    {
+      "a": "PeacockBass",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "BlackMolly",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Betta",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "TigerBarb",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Corydoras",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Angelfish",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "GoldenMbuna",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "SiameseAlgaeEater",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Clownfish",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "FancyGoldfish",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "EmperorTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "LemonTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "XRayTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "BloodfinTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "SerpaeTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "PenguinTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "BlackSkirtTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "RedeyeTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "BleedingHeartTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "BuenosAiresTetra",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Pumpkinseed",
+      "relation": 1
+    },
+    {
+      "a": "PeacockBass",
+      "b": "Oscar",
+      "relation": 2
+    },
+    {
+      "a": "Oscar",
+      "b": "PeacockBass",
+      "relation": 2
+    },
+    {
+      "a": "PeacockBass",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "PeacockBass",
+      "relation": 2
+    },
+    {
+      "a": "PeacockBass",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "PeacockBass",
+      "relation": 2
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "BlackMolly",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "Betta",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "Platy",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "BlackMolly",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "Betta",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "SilvertipTetra",
+      "relation": 1
+    },
+    {
+      "a": "JackDempsey",
+      "b": "RummyNoseTetra",
+      "relation": 1
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "TexasCichlid",
+      "relation": 2
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "JackDempsey",
+      "relation": 2
+    },
+    {
+      "a": "JackDempsey",
+      "b": "TexasCichlid",
+      "relation": 2
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "TexasCichlid",
+      "relation": 2
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "Oscar",
+      "relation": 2
+    },
+    {
+      "a": "Oscar",
+      "b": "TexasCichlid",
+      "relation": 2
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "BlueAcara",
+      "relation": 2
+    },
+    {
+      "a": "BlueAcara",
+      "b": "TexasCichlid",
+      "relation": 2
+    },
+    {
+      "a": "TexasCichlid",
+      "b": "Frontosa",
+      "relation": 2
+    },
+    {
+      "a": "Frontosa",
+      "b": "TexasCichlid",
+      "relation": 2
+    },
+    {
+      "a": "JackDempsey",
+      "b": "JackDempsey",
+      "relation": 2
+    },
+    {
+      "a": "JackDempsey",
+      "b": "GreenTerror",
+      "relation": 2
+    },
+    {
+      "a": "GreenTerror",
+      "b": "JackDempsey",
+      "relation": 2
+    },
+    {
+      "a": "JackDempsey",
+      "b": "Oscar",
+      "relation": 2
+    },
+    {
+      "a": "Oscar",
+      "b": "JackDempsey",
+      "relation": 2
+    },
+    {
+      "a": "JackDempsey",
+      "b": "BlueAcara",
+      "relation": 2
+    },
+    {
+      "a": "BlueAcara",
+      "b": "JackDempsey",
+      "relation": 2
+    },
+    {
+      "a": "JackDempsey",
+      "b": "CrimsonJewelCichlid",
+      "relation": 2
+    },
+    {
+      "a": "CrimsonJewelCichlid",
+      "b": "JackDempsey",
+      "relation": 2
+    },
+    {
+      "a": "Frontosa",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "Frontosa",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "Frontosa",
+      "b": "ZebraDanio",
+      "relation": 1
+    },
+    {
+      "a": "Frontosa",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "Frontosa",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "Frontosa",
+      "b": "FlameTetra",
+      "relation": 1
+    },
+    {
+      "a": "Frontosa",
+      "b": "GoldenMbuna",
+      "relation": 2
+    },
+    {
+      "a": "GoldenMbuna",
+      "b": "Frontosa",
+      "relation": 2
+    },
+    {
+      "a": "Frontosa",
+      "b": "Frontosa",
+      "relation": 3
+    },
+    {
+      "a": "Pumpkinseed",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "Pumpkinseed",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "Pumpkinseed",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "Pumpkinseed",
+      "b": "Pumpkinseed",
+      "relation": 2
+    },
+    {
+      "a": "ArcticGrayling",
+      "b": "NeonTetra",
+      "relation": 1
+    },
+    {
+      "a": "ArcticGrayling",
+      "b": "Guppy",
+      "relation": 1
+    },
+    {
+      "a": "ArcticGrayling",
+      "b": "RubyTetra",
+      "relation": 1
+    },
+    {
+      "a": "ArcticGrayling",
+      "b": "GlowlightTetra",
+      "relation": 1
+    },
+    {
+      "a": "ArcticGrayling",
+      "b": "ArcticGrayling",
+      "relation": 3
+    },
+    {
+      "a": "ArcticGrayling",
+      "b": "CometGoldfish",
+      "relation": 3
+    },
+    {
+      "a": "CometGoldfish",
+      "b": "ArcticGrayling",
+      "relation": 3
+    }
+  ],
+  "diseases": [
+    {
+      "id": "aqua_flu",
+      "displayName": "Aqua Flu",
+      "description": "A fast virus that spreads to tank mates.",
+      "weight": 1,
+      "progressionPerStep": 0.3,
+      "lethality": 0.9,
+      "recoveryChancePerStep": 0.08,
+      "contagionChancePerStep": 0.25,
+      "swimSpeedMultiplier": 0.6,
+      "symptomTint": {
+        "r": 0.75,
+        "g": 0.85,
+        "b": 1,
+        "a": 1
+      },
+      "cure": 1,
+      "look": 0
+    },
+    {
+      "id": "fin_rot",
+      "displayName": "Fin Rot",
+      "description": "Bacteria from spoiled food and dirty water eat away at the fins.",
+      "weight": 1.5,
+      "progressionPerStep": 0.2,
+      "lethality": 0.7,
+      "recoveryChancePerStep": 0.1,
+      "contagionChancePerStep": 0,
+      "swimSpeedMultiplier": 0.8,
+      "symptomTint": {
+        "r": 0.8,
+        "g": 0.7,
+        "b": 0.55,
+        "a": 1
+      },
+      "cure": 2,
+      "look": 0
+    },
+    {
+      "id": "ich",
+      "displayName": "White Spot",
+      "description": "A parasite that slowly hops between fish.",
+      "weight": 1.2,
+      "progressionPerStep": 0.25,
+      "lethality": 0.8,
+      "recoveryChancePerStep": 0.05,
+      "contagionChancePerStep": 0.15,
+      "swimSpeedMultiplier": 0.75,
+      "symptomTint": {
+        "r": 0.95,
+        "g": 0.95,
+        "b": 0.9,
+        "a": 1
+      },
+      "cure": 3,
+      "look": 0
+    },
+    {
+      "id": "swim_bladder",
+      "displayName": "Swim Bladder",
+      "description": "Overeating trouble. Rarely deadly and usually passes on its own.",
+      "weight": 0.8,
+      "progressionPerStep": 0.15,
+      "lethality": 0.3,
+      "recoveryChancePerStep": 0.4,
+      "contagionChancePerStep": 0,
+      "swimSpeedMultiplier": 0.4,
+      "symptomTint": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "cure": 0,
+      "look": 0
+    }
+  ],
+  "rules": {
+    "starvingThreshold": 0.8,
+    "baseInfectionChancePerMeal": 0.01,
+    "hardinessProtection": 0.6,
+    "starvingInfectionMultiplier": 1.5,
+    "dirtyWaterInfectionMultiplier": 3,
+    "pelletRotSeconds": 20,
+    "waterQualityLossPerRottenPellet": 0.01,
+    "roomTemperature": 22,
+    "startingPh": 7.2,
+    "fishPerTankWithoutBubbler": 8,
+    "breedingCooldownSteps": 2,
+    "mutationChance": 0.05,
+    "mutationStrength": 0.15
+  },
+  "timeStep": {
+    "pregnancyChanceBreederTank": 0.6,
+    "pregnancyChanceOtherTank": 0.04,
+    "maxStressToBreed": 0.2,
+    "eggLossInFilthyWater": 0.5,
+    "algaeEatenPerGrazer": 0.03,
+    "diseaseChance": 0.01,
+    "algaePerStep": 0.02,
+    "algaePerDecoration": 0.01,
+    "waterQualityLossPerStep": 0.04,
+    "wasteQualityLossPerFish": 0.01,
+    "corpseQualityLoss": 0.05,
+    "phDriftPerStep": 0.15,
+    "pestChance": 0.08,
+    "deathHealthThreshold": 0.5,
+    "deathChanceAtZeroHealth": 0.8,
+    "wipesPerSession": 2,
+    "extraWipeEveryFishkeepingLevels": 8,
+    "overcrowdedWastePerFish": 0.02,
+    "overcrowdedIllnessPerFish": 0.1,
+    "wipeAlgaeRemoved": 0.35,
+    "wipeQualityRestored": 0.25
+  },
+  "health": {
+    "hungerWeight": 0.6,
+    "illnessWeight": 0.7,
+    "comfortWeight": 0.35,
+    "environmentWeight": 0.6,
+    "tempPenaltyPerDegree": 0.2,
+    "phPenaltyPerUnit": 0.5,
+    "saltPenaltyPerPpt": 0.08,
+    "oldAgeWeight": 0.5,
+    "perDeadTankmate": 0.08,
+    "tooFewSchoolmates": 0.2,
+    "plantsBonus": 0.15,
+    "idealDecorMin": 3,
+    "idealDecorMax": 10,
+    "pestsComfortLoss": 0.25,
+    "overcrowdedHealthPerFish": 0.05,
+    "overcrowdedMaxPenalty": 0.6,
+    "healthChangePerStep": 0.35,
+    "favouriteFoodNutrition": 1.4,
+    "favouriteFoodComfort": 0.1,
+    "crampedComfortLoss": 0.35,
+    "lowLevelComfortLoss": 0.1,
+    "lowLevelLossPerPoint": 0.01,
+    "lowLevelMaxLoss": 0.5,
+    "likedDecorComfort": 0.08
+  },
+  "shop": {
+    "setupDays": 10,
+    "dayLengthSeconds": 3600,
+    "customersPerHour": 40,
+    "trafficPerDisplayTank": 0.2,
+    "trafficPerOtherTank": 0.1,
+    "trafficPerDecoration": 0.03,
+    "maxCustomersInStore": 8,
+    "minTankVisits": 2,
+    "maxTankVisits": 5,
+    "minLookSeconds": 4,
+    "maxLookSeconds": 9,
+    "walkSpeed": 1.2,
+    "purchaseChance": 0.1,
+    "minPriceTolerance": 0.95,
+    "maxPriceTolerance": 1.35,
+    "grossWaterQuality": 0.45,
+    "grossAlgae": 0.6,
+    "sadChancePerDeadFish": 0.3,
+    "maxSadChance": 0.9,
+    "deadFishPurchaseMultiplier": 0.6,
+    "fightingUpsetChance": 0.6,
+    "fightingPurchaseMultiplier": 0.5,
+    "fewFishBelow": 3,
+    "fewFishComplaintChance": 0.5,
+    "sickChancePerFish": 0.2,
+    "maxSickChance": 0.75,
+    "sickFishPurchaseMultiplier": 0.6,
+    "plainFishPurchase": 0.6,
+    "stunningFishPurchase": 1.5,
+    "attentionPower": 2,
+    "attractivenessTraffic": 0.2,
+    "startingReputation": 0.1
+  },
+  "store": {
+    "startingMoney": 1000,
+    "grandmaGift": 100,
+    "brokeBelow": 10,
+    "starterFlakeFeedings": 10,
+    "breederTankPrice": 350,
+    "forSaleTankPrice": 250,
+    "displayTankPrice": 500,
+    "quarantineTankPrice": 200,
+    "maxBreederTanks": 3,
+    "maxForSaleTanks": 6,
+    "maxDisplayTanks": 6,
+    "maxQuarantineTanks": 1,
+    "forSaleTankLevel": 1,
+    "displayTankLevel": 2,
+    "breederTankLevel": 4,
+    "quarantineTankLevel": 3,
+    "sections": [
+      {
+        "name": "Main floor",
+        "price": 0,
+        "unlockLevel": 1,
+        "starsNeeded": 0
+      },
+      {
+        "name": "East wing",
+        "price": 2500,
+        "unlockLevel": 1,
+        "starsNeeded": 1.5
+      },
+      {
+        "name": "Garden room",
+        "price": 5000,
+        "unlockLevel": 1,
+        "starsNeeded": 2
+      },
+      {
+        "name": "Coral lounge",
+        "price": 9000,
+        "unlockLevel": 1,
+        "starsNeeded": 2.5
+      },
+      {
+        "name": "Lagoon hall",
+        "price": 15000,
+        "unlockLevel": 1,
+        "starsNeeded": 3
+      },
+      {
+        "name": "Grand hall",
+        "price": 25000,
+        "unlockLevel": 1,
+        "starsNeeded": 3.5
+      }
+    ],
+    "tankSizes": [
+      {
+        "name": "Standard",
+        "width": 1.6,
+        "height": 0.9,
+        "depth": 0.7,
+        "capacity": 20,
+        "smallCapacity": 0,
+        "mediumCapacity": 0,
+        "largeCapacity": 0,
+        "upgradePrice": 0,
+        "unlockLevel": 1,
+        "decorationSlots": 12,
+        "qualityNeeded": 0
+      },
+      {
+        "name": "Large",
+        "width": 2.3,
+        "height": 1,
+        "depth": 0.85,
+        "capacity": 28,
+        "smallCapacity": 9,
+        "mediumCapacity": 4,
+        "largeCapacity": 0,
+        "upgradePrice": 600,
+        "unlockLevel": 1,
+        "decorationSlots": 16,
+        "qualityNeeded": 30
+      },
+      {
+        "name": "Grand",
+        "width": 3,
+        "height": 1.1,
+        "depth": 1,
+        "capacity": 34,
+        "smallCapacity": 12,
+        "mediumCapacity": 2,
+        "largeCapacity": 1,
+        "upgradePrice": 1500,
+        "unlockLevel": 1,
+        "decorationSlots": 20,
+        "qualityNeeded": 75
+      }
+    ],
+    "wallAquarium": {
+      "name": "Wall aquarium",
+      "width": 8.5,
+      "height": 1.97,
+      "depth": 5,
+      "capacity": 60,
+      "smallCapacity": 16,
+      "mediumCapacity": 5,
+      "largeCapacity": 2,
+      "upgradePrice": 0,
+      "unlockLevel": 1,
+      "decorationSlots": 48,
+      "qualityNeeded": 0
+    },
+    "wallAquariumHeights": [
+      {
+        "name": "Tall wall aquarium",
+        "width": 8.5,
+        "height": 2.4,
+        "depth": 5,
+        "capacity": 65,
+        "smallCapacity": 18,
+        "mediumCapacity": 5,
+        "largeCapacity": 2,
+        "upgradePrice": 4000,
+        "unlockLevel": 12,
+        "decorationSlots": 52,
+        "qualityNeeded": 0
+      },
+      {
+        "name": "Grand wall aquarium",
+        "width": 8.5,
+        "height": 2.85,
+        "depth": 5,
+        "capacity": 70,
+        "smallCapacity": 20,
+        "mediumCapacity": 5,
+        "largeCapacity": 3,
+        "upgradePrice": 6500,
+        "unlockLevel": 18,
+        "decorationSlots": 56,
+        "qualityNeeded": 0
+      },
+      {
+        "name": "Towering wall aquarium",
+        "width": 8.5,
+        "height": 3.3,
+        "depth": 5,
+        "capacity": 75,
+        "smallCapacity": 22,
+        "mediumCapacity": 6,
+        "largeCapacity": 3,
+        "upgradePrice": 9500,
+        "unlockLevel": 26,
+        "decorationSlots": 60,
+        "qualityNeeded": 0
+      },
+      {
+        "name": "Showpiece wall aquarium",
+        "width": 8.5,
+        "height": 3.8,
+        "depth": 5,
+        "capacity": 80,
+        "smallCapacity": 24,
+        "mediumCapacity": 6,
+        "largeCapacity": 4,
+        "upgradePrice": 14000,
+        "unlockLevel": 35,
+        "decorationSlots": 64,
+        "qualityNeeded": 0
+      }
+    ],
+    "wallDecorationSize": 2.19,
+    "wallDecorationMinSize": 0.4,
+    "wallDecorationMaxSize": 4,
+    "wallAquariumPrice": 12000,
+    "wallAquariumLevel": 8,
+    "wallBreederPrice": 15000,
+    "changeTankTypePrice": 100,
+    "starterDecorations": [],
+    "tankHardLimitMultiplier": 1.5,
+    "maxFishPerTank": 80
+  },
+  "supplier": {
+    "food": [
+      {
+        "type": 0,
+        "name": "Flakes",
+        "blurb": "Cheap everyday food. Now and then a spoiled flake makes a fish sick.",
+        "price": 15,
+        "feedings": 20,
+        "unlockLevel": 1,
+        "nutrition": 0.35,
+        "contamination": 1,
+        "spoilChance": 0.1,
+        "sinkSpeed": 0.06,
+        "color": {
+          "r": 0.62,
+          "g": 0.45,
+          "b": 0.25,
+          "a": 1
+        }
+      },
+      {
+        "type": 2,
+        "name": "Algae wafers",
+        "blurb": "Sinking wafers of algae and greens, for grazers and bottom feeders.",
+        "price": 30,
+        "feedings": 20,
+        "unlockLevel": 2,
+        "nutrition": 0.45,
+        "contamination": 0.5,
+        "spoilChance": 0.03,
+        "sinkSpeed": 0.22,
+        "color": {
+          "r": 0.3,
+          "g": 0.48,
+          "b": 0.2,
+          "a": 1
+        }
+      },
+      {
+        "type": 1,
+        "name": "Premium pellets",
+        "blurb": "Filling and much less likely to cause illness.",
+        "price": 45,
+        "feedings": 20,
+        "unlockLevel": 3,
+        "nutrition": 0.5,
+        "contamination": 0.25,
+        "spoilChance": 0,
+        "sinkSpeed": 0.09,
+        "color": {
+          "r": 0.9,
+          "g": 0.45,
+          "b": 0.2,
+          "a": 1
+        }
+      },
+      {
+        "type": 4,
+        "name": "Frozen brine shrimp",
+        "blurb": "Tiny shrimp that drift slowly down. Small fish go mad for them.",
+        "price": 35,
+        "feedings": 15,
+        "unlockLevel": 3,
+        "nutrition": 0.45,
+        "contamination": 0.6,
+        "spoilChance": 0.03,
+        "sinkSpeed": 0.05,
+        "color": {
+          "r": 0.95,
+          "g": 0.55,
+          "b": 0.5,
+          "a": 1
+        }
+      },
+      {
+        "type": 3,
+        "name": "Frozen bloodworms",
+        "blurb": "Rich midge larvae, a treat for most fish. Frozen food carries a little more risk.",
+        "price": 40,
+        "feedings": 15,
+        "unlockLevel": 4,
+        "nutrition": 0.6,
+        "contamination": 1.4,
+        "spoilChance": 0.05,
+        "sinkSpeed": 0.1,
+        "color": {
+          "r": 0.6,
+          "g": 0.08,
+          "b": 0.1,
+          "a": 1
+        }
+      }
+    ],
+    "eggTiers": [
+      {
+        "id": "Simple",
+        "name": "Simple eggs",
+        "blurb": "Everyday fish, mostly common ones.",
+        "price": 30,
+        "eggs": 5,
+        "unlockLevel": 1,
+        "normalMin": 0,
+        "normalMax": 0,
+        "normalRarityFalloff": 0.4,
+        "rarePool": 1,
+        "rareChance": 0.05,
+        "rareFalloff": 0.3,
+        "color": {
+          "r": 1,
+          "g": 0.93,
+          "b": 0.75,
+          "a": 1
+        },
+        "speckled": false,
+        "fryPrice": 45,
+        "hatch": [
+          {
+            "species": "CometGoldfish",
+            "weight": 13.6,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "FancyGoldfish",
+            "weight": 3,
+            "fromLevel": 5,
+            "fromDay": 0
+          },
+          {
+            "species": "Guppy",
+            "weight": 13.6,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "TigerBarb",
+            "weight": 6,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "NeonTetra",
+            "weight": 13.6,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "ZebraDanio",
+            "weight": 13.6,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "Corydoras",
+            "weight": 5,
+            "fromLevel": 10,
+            "fromDay": 0
+          },
+          {
+            "species": "RedTailShark",
+            "weight": 3,
+            "fromLevel": 10,
+            "fromDay": 0
+          },
+          {
+            "species": "SiameseAlgaeEater",
+            "weight": 13.6,
+            "fromLevel": 5,
+            "fromDay": 0
+          },
+          {
+            "species": "SilverDollar",
+            "weight": 3,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "BlackMolly",
+            "weight": 13.6,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "Platy",
+            "weight": 13.6,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "GoldenMbuna",
+            "weight": 0.8,
+            "fromLevel": 50,
+            "fromDay": 0
+          },
+          {
+            "species": "Pumpkinseed",
+            "weight": 3.9,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "TexasCichlid",
+            "weight": 0.7,
+            "fromLevel": 25,
+            "fromDay": 0
+          },
+          {
+            "species": "JackDempsey",
+            "weight": 0.7,
+            "fromLevel": 22,
+            "fromDay": 0
+          }
+        ],
+        "raiseSpecies": "",
+        "raiseCount": 0
+      },
+      {
+        "id": "Rare",
+        "name": "Rare eggs",
+        "blurb": "A mix of everyday and rare fish. Rare ones are much likelier than in simple eggs.",
+        "price": 120,
+        "eggs": 4,
+        "unlockLevel": 8,
+        "normalMin": 0,
+        "normalMax": 1,
+        "normalRarityFalloff": 0.7,
+        "rarePool": 2,
+        "rareChance": 0.3,
+        "rareFalloff": 0.45,
+        "color": {
+          "r": 0.55,
+          "g": 0.8,
+          "b": 1,
+          "a": 1
+        },
+        "speckled": true,
+        "fryPrice": 170,
+        "hatch": [
+          {
+            "species": "CometGoldfish",
+            "weight": 6.2,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "FancyGoldfish",
+            "weight": 4.4,
+            "fromLevel": 5,
+            "fromDay": 0
+          },
+          {
+            "species": "Angelfish",
+            "weight": 6,
+            "fromLevel": 12,
+            "fromDay": 0
+          },
+          {
+            "species": "Betta",
+            "weight": 6,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "Guppy",
+            "weight": 6.2,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "TigerBarb",
+            "weight": 4.4,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "NeonTetra",
+            "weight": 6.2,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "ZebraDanio",
+            "weight": 6.2,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "Corydoras",
+            "weight": 4.4,
+            "fromLevel": 10,
+            "fromDay": 0
+          },
+          {
+            "species": "RedTailShark",
+            "weight": 4.4,
+            "fromLevel": 10,
+            "fromDay": 0
+          },
+          {
+            "species": "SiameseAlgaeEater",
+            "weight": 6.2,
+            "fromLevel": 5,
+            "fromDay": 0
+          },
+          {
+            "species": "SilverDollar",
+            "weight": 4.4,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "BlackMolly",
+            "weight": 6.2,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "Platy",
+            "weight": 6.2,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "Oscar",
+            "weight": 6,
+            "fromLevel": 30,
+            "fromDay": 0
+          },
+          {
+            "species": "GreenTerror",
+            "weight": 6,
+            "fromLevel": 40,
+            "fromDay": 0
+          },
+          {
+            "species": "BlueAcara",
+            "weight": 6,
+            "fromLevel": 40,
+            "fromDay": 0
+          },
+          {
+            "species": "GoldenMbuna",
+            "weight": 4.4,
+            "fromLevel": 50,
+            "fromDay": 0
+          },
+          {
+            "species": "Pumpkinseed",
+            "weight": 2.4,
+            "fromLevel": 4,
+            "fromDay": 0
+          },
+          {
+            "species": "TexasCichlid",
+            "weight": 8.6,
+            "fromLevel": 9,
+            "fromDay": 0
+          },
+          {
+            "species": "JackDempsey",
+            "weight": 8.6,
+            "fromLevel": 7,
+            "fromDay": 0
+          }
+        ],
+        "raiseSpecies": "",
+        "raiseCount": 0
+      },
+      {
+        "id": "WildTetra",
+        "name": "Wild tetra eggs",
+        "blurb": "Caught in South American and African rivers: tetras you can't get anywhere else, some of them very rare.",
+        "price": 220,
+        "eggs": 4,
+        "unlockLevel": 1,
+        "normalMin": 1,
+        "normalMax": 2,
+        "normalRarityFalloff": 0.55,
+        "rarePool": 3,
+        "rareChance": 0.15,
+        "rareFalloff": 0.35,
+        "color": {
+          "r": 0.55,
+          "g": 0.95,
+          "b": 0.75,
+          "a": 1
+        },
+        "speckled": true,
+        "fryPrice": 300,
+        "hatch": [
+          {
+            "species": "BloodfinTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "SerpaeTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "XRayTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "BlackSkirtTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "RedeyeTetra",
+            "weight": 4.1,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "LemonTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "BleedingHeartTetra",
+            "weight": 4.1,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "BuenosAiresTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "EmperorTetra",
+            "weight": 4.1,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "FlameTetra",
+            "weight": 4.1,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "CongoTetra",
+            "weight": 5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "PenguinTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "GlowlightTetra",
+            "weight": 7.5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "BucktoothTetra",
+            "weight": 5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "RubyTetra",
+            "weight": 5,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "SilvertipTetra",
+            "weight": 4.1,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "RummyNoseTetra",
+            "weight": 4.1,
+            "fromLevel": 1,
+            "fromDay": 0
+          },
+          {
+            "species": "CrimsonJewelCichlid",
+            "weight": 2,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "SilverFlamefin",
+            "weight": 2,
+            "fromLevel": 16,
+            "fromDay": 0
+          }
+        ],
+        "raiseSpecies": "NeonTetra,TigerBarb",
+        "raiseCount": 50
+      },
+      {
+        "id": "UltraRare",
+        "name": "Ultra rare eggs",
+        "blurb": "Rare fish, with a chance of something exotic.",
+        "price": 400,
+        "eggs": 4,
+        "unlockLevel": 15,
+        "normalMin": 1,
+        "normalMax": 2,
+        "normalRarityFalloff": 0.8,
+        "rarePool": 3,
+        "rareChance": 0.5,
+        "rareFalloff": 0.4,
+        "color": {
+          "r": 0.75,
+          "g": 0.55,
+          "b": 1,
+          "a": 1
+        },
+        "speckled": true,
+        "fryPrice": 560,
+        "hatch": [
+          {
+            "species": "FancyGoldfish",
+            "weight": 5,
+            "fromLevel": 5,
+            "fromDay": 0
+          },
+          {
+            "species": "Angelfish",
+            "weight": 4,
+            "fromLevel": 12,
+            "fromDay": 0
+          },
+          {
+            "species": "Betta",
+            "weight": 4,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "Clownfish",
+            "weight": 50,
+            "fromLevel": 35,
+            "fromDay": 0
+          },
+          {
+            "species": "TigerBarb",
+            "weight": 5,
+            "fromLevel": 3,
+            "fromDay": 0
+          },
+          {
+            "species": "Corydoras",
+            "weight": 5,
+            "fromLevel": 10,
+            "fromDay": 0
+          },
+          {
+            "species": "RedTailShark",
+            "weight": 5,
+            "fromLevel": 10,
+            "fromDay": 0
+          },
+          {
+            "species": "SilverDollar",
+            "weight": 5,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "Oscar",
+            "weight": 4,
+            "fromLevel": 30,
+            "fromDay": 0
+          },
+          {
+            "species": "GreenTerror",
+            "weight": 4,
+            "fromLevel": 40,
+            "fromDay": 0
+          },
+          {
+            "species": "BlueAcara",
+            "weight": 4,
+            "fromLevel": 40,
+            "fromDay": 0
+          },
+          {
+            "species": "GoldenMbuna",
+            "weight": 5,
+            "fromLevel": 50,
+            "fromDay": 0
+          },
+          {
+            "species": "CrimsonJewelCichlid",
+            "weight": 2,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "SilverFlamefin",
+            "weight": 2,
+            "fromLevel": 16,
+            "fromDay": 0
+          },
+          {
+            "species": "Pumpkinseed",
+            "weight": 4,
+            "fromLevel": 4,
+            "fromDay": 0
+          },
+          {
+            "species": "ArcticGrayling",
+            "weight": 8.3,
+            "fromLevel": 17,
+            "fromDay": 0
+          },
+          {
+            "species": "TexasCichlid",
+            "weight": 3.2,
+            "fromLevel": 9,
+            "fromDay": 0
+          },
+          {
+            "species": "Frontosa",
+            "weight": 8.3,
+            "fromLevel": 15,
+            "fromDay": 0
+          },
+          {
+            "species": "JackDempsey",
+            "weight": 3.2,
+            "fromLevel": 7,
+            "fromDay": 0
+          },
+          {
+            "species": "PeacockBass",
+            "weight": 8.3,
+            "fromLevel": 18,
+            "fromDay": 0
+          }
+        ],
+        "raiseSpecies": "",
+        "raiseCount": 0
+      },
+      {
+        "id": "Legendary",
+        "name": "Legendary eggs",
+        "blurb": "Coming later.",
+        "price": 1500,
+        "eggs": 3,
+        "unlockLevel": 30,
+        "normalMin": 2,
+        "normalMax": 3,
+        "normalRarityFalloff": 0.8,
+        "rarePool": 4,
+        "rareChance": 0.45,
+        "rareFalloff": 0.35,
+        "color": {
+          "r": 1,
+          "g": 0.78,
+          "b": 0.25,
+          "a": 1
+        },
+        "speckled": true,
+        "fryPrice": 2100,
+        "hatch": [
+          {
+            "species": "Angelfish",
+            "weight": 9.5,
+            "fromLevel": 12,
+            "fromDay": 0
+          },
+          {
+            "species": "Betta",
+            "weight": 9.5,
+            "fromLevel": 20,
+            "fromDay": 0
+          },
+          {
+            "species": "Clownfish",
+            "weight": 7.6,
+            "fromLevel": 35,
+            "fromDay": 0
+          },
+          {
+            "species": "Oscar",
+            "weight": 9.5,
+            "fromLevel": 30,
+            "fromDay": 0
+          },
+          {
+            "species": "GreenTerror",
+            "weight": 9.5,
+            "fromLevel": 40,
+            "fromDay": 0
+          },
+          {
+            "species": "BlueAcara",
+            "weight": 9.5,
+            "fromLevel": 40,
+            "fromDay": 0
+          },
+          {
+            "species": "ArcticGrayling",
+            "weight": 3.7,
+            "fromLevel": 17,
+            "fromDay": 0
+          },
+          {
+            "species": "TexasCichlid",
+            "weight": 4.7,
+            "fromLevel": 9,
+            "fromDay": 0
+          },
+          {
+            "species": "Frontosa",
+            "weight": 3.7,
+            "fromLevel": 15,
+            "fromDay": 0
+          },
+          {
+            "species": "JackDempsey",
+            "weight": 4.7,
+            "fromLevel": 7,
+            "fromDay": 0
+          },
+          {
+            "species": "PeacockBass",
+            "weight": 3.7,
+            "fromLevel": 18,
+            "fromDay": 0
+          }
+        ],
+        "raiseSpecies": "",
+        "raiseCount": 0
+      },
+      {
+        "id": "Ancient",
+        "name": "Ancient eggs",
+        "blurb": "Coming later.",
+        "price": 5000,
+        "eggs": 3,
+        "unlockLevel": 45,
+        "normalMin": 3,
+        "normalMax": 4,
+        "normalRarityFalloff": 0.8,
+        "rarePool": 5,
+        "rareChance": 0.4,
+        "rareFalloff": 0.3,
+        "color": {
+          "r": 0.45,
+          "g": 0.75,
+          "b": 0.55,
+          "a": 1
+        },
+        "speckled": true,
+        "fryPrice": 7000,
+        "hatch": [
+          {
+            "species": "Clownfish",
+            "weight": 60,
+            "fromLevel": 35,
+            "fromDay": 0
+          },
+          {
+            "species": "ArcticGrayling",
+            "weight": 10,
+            "fromLevel": 17,
+            "fromDay": 0
+          },
+          {
+            "species": "Frontosa",
+            "weight": 10,
+            "fromLevel": 15,
+            "fromDay": 0
+          },
+          {
+            "species": "PeacockBass",
+            "weight": 10,
+            "fromLevel": 18,
+            "fromDay": 0
+          }
+        ],
+        "raiseSpecies": "",
+        "raiseCount": 0
+      }
+    ],
+    "backgrounds": [
+      {
+        "id": "SandyShallows",
+        "name": "Sandy shallows",
+        "blurb": "Pale sand, dark rocks and a little seaweed in bright, shallow water.",
+        "price": 15,
+        "unlockLevel": 1,
+        "wallAquariumOnly": false
+      },
+      {
+        "id": "OpenOcean",
+        "name": "Open ocean",
+        "blurb": "Deep blue water with sunbeams from far above.",
+        "price": 15,
+        "unlockLevel": 1,
+        "wallAquariumOnly": false
+      },
+      {
+        "id": "PlantedStream",
+        "name": "Planted stream",
+        "blurb": "Lush green and red stem plants over smooth river stones.",
+        "price": 20,
+        "unlockLevel": 2,
+        "wallAquariumOnly": false
+      },
+      {
+        "id": "DriftwoodForest",
+        "name": "Driftwood forest",
+        "blurb": "Tangled roots and fallen leaves in tea-coloured blackwater, like a tetra's home river.",
+        "price": 20,
+        "unlockLevel": 2,
+        "wallAquariumOnly": false
+      },
+      {
+        "id": "CoralReef",
+        "name": "Coral reef",
+        "blurb": "A sunlit reef bursting with colourful corals.",
+        "price": 25,
+        "unlockLevel": 3,
+        "wallAquariumOnly": false
+      },
+      {
+        "id": "Shipwreck",
+        "name": "Shipwreck",
+        "blurb": "An old wooden wreck on the sea floor, overgrown with coral.",
+        "price": 30,
+        "unlockLevel": 4,
+        "wallAquariumOnly": false
+      },
+      {
+        "id": "ReefArch",
+        "name": "Reef arch",
+        "blurb": "A great rock arch over white sand, kelp and a shoal of fish under sunbeams.",
+        "price": 60,
+        "unlockLevel": 1,
+        "wallAquariumOnly": true
+      },
+      {
+        "id": "BassLilyPads",
+        "name": "Bass pond",
+        "blurb": "Bass cruising between reeds and a sunken log under a ceiling of lily pads.",
+        "price": 60,
+        "unlockLevel": 1,
+        "wallAquariumOnly": true
+      },
+      {
+        "id": "LilyPadReeds",
+        "name": "Lily pad shallows",
+        "blurb": "Green light through lily pads over a mossy lake bed lined with reeds.",
+        "price": 60,
+        "unlockLevel": 1,
+        "wallAquariumOnly": true
+      }
+    ],
+    "decorations": [
+      {
+        "id": "Rock",
+        "name": "Rock",
+        "price": 15,
+        "unlockLevel": 1,
+        "fishkeepingUnlock": false,
+        "plant": false,
+        "passable": false,
+        "height": 0.2,
+        "back": false,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "Plant",
+        "name": "Leafy plant",
+        "price": 20,
+        "unlockLevel": 1,
+        "fishkeepingUnlock": false,
+        "plant": true,
+        "passable": true,
+        "height": 0.5,
+        "back": true,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "Seaweed",
+        "name": "Seaweed",
+        "price": 20,
+        "unlockLevel": 1,
+        "fishkeepingUnlock": false,
+        "plant": true,
+        "passable": true,
+        "height": 0.4,
+        "back": false,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "Driftwood",
+        "name": "Driftwood",
+        "price": 35,
+        "unlockLevel": 5,
+        "fishkeepingUnlock": false,
+        "plant": false,
+        "passable": false,
+        "height": 0.3,
+        "back": true,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "TallPlant",
+        "name": "Tall plant",
+        "price": 30,
+        "unlockLevel": 10,
+        "fishkeepingUnlock": false,
+        "plant": true,
+        "passable": true,
+        "height": 0.55,
+        "back": true,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "FernRock",
+        "name": "Fern on a rock",
+        "price": 40,
+        "unlockLevel": 15,
+        "fishkeepingUnlock": false,
+        "plant": true,
+        "passable": false,
+        "height": 0.16,
+        "back": false,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "Clam",
+        "name": "Clam shell",
+        "price": 45,
+        "unlockLevel": 20,
+        "fishkeepingUnlock": false,
+        "plant": false,
+        "passable": false,
+        "height": 0.06,
+        "back": false,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "TreasureChest",
+        "name": "Treasure chest",
+        "price": 80,
+        "unlockLevel": 25,
+        "fishkeepingUnlock": false,
+        "plant": false,
+        "passable": false,
+        "height": 0.14,
+        "back": false,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "Diver",
+        "name": "Deep-sea diver",
+        "price": 120,
+        "unlockLevel": 30,
+        "fishkeepingUnlock": false,
+        "plant": false,
+        "passable": false,
+        "height": 0.32,
+        "back": false,
+        "maxSizeStepsOff": 0
+      },
+      {
+        "id": "Crypt",
+        "name": "Cryptocoryne",
+        "price": 150,
+        "unlockLevel": 25,
+        "fishkeepingUnlock": true,
+        "plant": true,
+        "passable": true,
+        "height": 0.28,
+        "back": false,
+        "maxSizeStepsOff": 2
+      },
+      {
+        "id": "JungleVal",
+        "name": "Jungle vallisneria",
+        "price": 170,
+        "unlockLevel": 25,
+        "fishkeepingUnlock": true,
+        "plant": true,
+        "passable": true,
+        "height": 0.6,
+        "back": true,
+        "maxSizeStepsOff": 2
+      },
+      {
+        "id": "AmazonSword",
+        "name": "Amazon sword",
+        "price": 190,
+        "unlockLevel": 25,
+        "fishkeepingUnlock": true,
+        "plant": true,
+        "passable": true,
+        "height": 0.4,
+        "back": false,
+        "maxSizeStepsOff": 2
+      },
+      {
+        "id": "Aponogeton",
+        "name": "Aponogeton",
+        "price": 210,
+        "unlockLevel": 25,
+        "fishkeepingUnlock": true,
+        "plant": true,
+        "passable": true,
+        "height": 0.48,
+        "back": true,
+        "maxSizeStepsOff": 2
+      }
+    ],
+    "waterConditionerLevel": 1,
+    "medicineLevel": 1,
+    "marineSaltLevel": 10,
+    "filters": [
+      {
+        "name": "Sponge filter",
+        "blurb": "Cheap and basic.",
+        "price": 150,
+        "unlockLevel": 2,
+        "effect": 0.45,
+        "breakChance": 0.02,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.3,
+        "repairCost": 12,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Hang-on-back filter",
+        "blurb": "Cleaner water, and it lasts longer.",
+        "price": 350,
+        "unlockLevel": 7,
+        "effect": 0.32,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.22,
+        "repairCost": 30,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Canister filter",
+        "blurb": "Much cleaner water, rarely breaks.",
+        "price": 800,
+        "unlockLevel": 16,
+        "effect": 0.2,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.14,
+        "repairCost": 75,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Sump system",
+        "blurb": "The best there is.",
+        "price": 1800,
+        "unlockLevel": 28,
+        "effect": 0.1,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.07,
+        "repairCost": 170,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Plant-room sump",
+        "blurb": "A big sump in the room behind the wall, pumping the whole wall aquarium through its filter media.",
+        "price": 3500,
+        "unlockLevel": 8,
+        "effect": 0.18,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.12,
+        "repairCost": 220,
+        "wallAquariumOnly": true
+      },
+      {
+        "name": "Drum filter and UV system",
+        "blurb": "Public aquarium filtration: a self-cleaning drum filter with a UV steriliser.",
+        "price": 9000,
+        "unlockLevel": 20,
+        "effect": 0.07,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.05,
+        "repairCost": 450,
+        "wallAquariumOnly": true
+      }
+    ],
+    "heaters": [
+      {
+        "name": "Basic heater",
+        "blurb": "The water drifts a little either side of the setting.",
+        "price": 120,
+        "unlockLevel": 1,
+        "effect": 1.5,
+        "breakChance": 0.03,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.3,
+        "repairCost": 15,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Adjustable heater",
+        "blurb": "Steadier, and it lasts longer.",
+        "price": 280,
+        "unlockLevel": 6,
+        "effect": 1,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.22,
+        "repairCost": 35,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Titanium heater",
+        "blurb": "Very steady, rarely breaks.",
+        "price": 650,
+        "unlockLevel": 14,
+        "effect": 0.5,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.14,
+        "repairCost": 85,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Smart heater controller",
+        "blurb": "Holds the exact temperature.",
+        "price": 1500,
+        "unlockLevel": 26,
+        "effect": 0,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.07,
+        "repairCost": 200,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Twin inline heaters",
+        "blurb": "Two heaters on the sump's return line, for a tank too big for any one heater.",
+        "price": 1400,
+        "unlockLevel": 8,
+        "effect": 0.8,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.14,
+        "repairCost": 160,
+        "wallAquariumOnly": true
+      },
+      {
+        "name": "Heat exchanger with controller",
+        "blurb": "A titanium heat exchanger run by a controller: holds the exact temperature in all that water.",
+        "price": 4200,
+        "unlockLevel": 18,
+        "effect": 0,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.06,
+        "repairCost": 380,
+        "wallAquariumOnly": true
+      }
+    ],
+    "bubblers": [
+      {
+        "name": "Air stone",
+        "blurb": "Enough air for a small group.",
+        "price": 80,
+        "unlockLevel": 1,
+        "effect": 14,
+        "breakChance": 0.02,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.3,
+        "repairCost": 8,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Twin-outlet air pump",
+        "blurb": "Air for a busy tank.",
+        "price": 220,
+        "unlockLevel": 5,
+        "effect": 22,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.22,
+        "repairCost": 20,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Silent air pump",
+        "blurb": "Air for a crowded tank, rarely breaks.",
+        "price": 520,
+        "unlockLevel": 12,
+        "effect": 34,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.14,
+        "repairCost": 55,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Oxygen reactor",
+        "blurb": "Air for any tank.",
+        "price": 1300,
+        "unlockLevel": 24,
+        "effect": 60,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.07,
+        "repairCost": 130,
+        "wallAquariumOnly": false
+      },
+      {
+        "name": "Air blower and manifold",
+        "blurb": "A blower feeding air lines all along the wall aquarium.",
+        "price": 1100,
+        "unlockLevel": 8,
+        "effect": 120,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.14,
+        "repairCost": 120,
+        "wallAquariumOnly": true
+      },
+      {
+        "name": "Oxygen injection system",
+        "blurb": "Pure oxygen dissolved into the return line: air for every fish the wall aquarium can hold.",
+        "price": 3200,
+        "unlockLevel": 18,
+        "effect": 240,
+        "breakChance": 0.01,
+        "breakChancePerStep": 0.01,
+        "maxBreakChance": 0.06,
+        "repairCost": 300,
+        "wallAquariumOnly": true
+      }
+    ],
+    "repairWearRemoved": 0.25,
+    "repairPriceSpread": 0.15,
+    "faults": [
+      {
+        "equipment": 0,
+        "text": "The sponge needed replacing",
+        "cost": 0.6,
+        "weight": 1.5
+      },
+      {
+        "equipment": 0,
+        "text": "Gunk jammed the impeller",
+        "cost": 1,
+        "weight": 1
+      },
+      {
+        "equipment": 0,
+        "text": "Snail shells clogged the intake",
+        "cost": 0.5,
+        "weight": 1
+      },
+      {
+        "equipment": 0,
+        "text": "The intake tube cracked",
+        "cost": 0.8,
+        "weight": 1
+      },
+      {
+        "equipment": 0,
+        "text": "A seal started leaking",
+        "cost": 1.1,
+        "weight": 1
+      },
+      {
+        "equipment": 0,
+        "text": "The motor burned out",
+        "cost": 1.7,
+        "weight": 0.5
+      },
+      {
+        "equipment": 1,
+        "text": "The circuit got wet",
+        "cost": 1.4,
+        "weight": 1
+      },
+      {
+        "equipment": 1,
+        "text": "The thermostat stuck",
+        "cost": 1,
+        "weight": 1.5
+      },
+      {
+        "equipment": 1,
+        "text": "The glass tube cracked",
+        "cost": 1.2,
+        "weight": 1
+      },
+      {
+        "equipment": 1,
+        "text": "The power cord frayed",
+        "cost": 0.7,
+        "weight": 1
+      },
+      {
+        "equipment": 1,
+        "text": "Loose wiring in the plug",
+        "cost": 0.5,
+        "weight": 1
+      },
+      {
+        "equipment": 1,
+        "text": "The heating element burned out",
+        "cost": 1.7,
+        "weight": 0.5
+      },
+      {
+        "equipment": 2,
+        "text": "The air stone clogged up",
+        "cost": 0.5,
+        "weight": 1.5
+      },
+      {
+        "equipment": 2,
+        "text": "The air line split",
+        "cost": 0.4,
+        "weight": 1
+      },
+      {
+        "equipment": 2,
+        "text": "The check valve stuck",
+        "cost": 0.6,
+        "weight": 1
+      },
+      {
+        "equipment": 2,
+        "text": "The pump diaphragm tore",
+        "cost": 1,
+        "weight": 1
+      },
+      {
+        "equipment": 2,
+        "text": "The power switch broke",
+        "cost": 0.8,
+        "weight": 1
+      },
+      {
+        "equipment": 2,
+        "text": "The motor started rattling apart",
+        "cost": 1.4,
+        "weight": 0.5
+      }
+    ],
+    "unknownFryValue": 4,
+    "waterTreatmentPrice": 5,
+    "marineSaltPrice": 40,
+    "medicinePrice": 15
+  },
+  "progression": {
+    "maxLevel": 60,
+    "xpForLevel2": 100,
+    "xpGrowthPerLevel": 1.08,
+    "xpFeedTank": 2,
+    "xpWipeTank": 1,
+    "xpTreatWater": 2,
+    "xpRepairEquipment": 2,
+    "xpRemoveDeadFish": 1,
+    "xpCureFish": 10,
+    "xpEggHatched": 3,
+    "xpBreedingStarted": 10,
+    "xpFryBorn": 4,
+    "xpRarityMultiplier": 0.75,
+    "xpUncommonLooks": 3,
+    "xpRareLooks": 8,
+    "xpExoticLooks": 20,
+    "xpSaleBase": 6,
+    "xpPerSaleDollar": 0.2,
+    "xpHappyCustomer": 1,
+    "xpPerReviewStar": 4,
+    "xpBuyTank": 20,
+    "xpTankUpgrade": 30,
+    "xpUnlockSection": 60,
+    "xpBuyDecoration": 4,
+    "xpBuyEquipment": 6,
+    "dailyGoalXp": 100,
+    "dailyGoalXpPerLevel": 12,
+    "goalTargetGrowthPerLevel": 0.08,
+    "dailyGoals": [
+      {
+        "kind": 0,
+        "track": 0,
+        "text": "Breed {0} fish",
+        "baseTarget": 5
+      },
+      {
+        "kind": 1,
+        "track": 0,
+        "text": "Hatch {0} eggs",
+        "baseTarget": 5
+      },
+      {
+        "kind": 2,
+        "track": 0,
+        "text": "Feed {0} tanks",
+        "baseTarget": 4
+      },
+      {
+        "kind": 3,
+        "track": 0,
+        "text": "Wipe tanks {0} times",
+        "baseTarget": 4
+      },
+      {
+        "kind": 4,
+        "track": 1,
+        "text": "Sell {0} fish",
+        "baseTarget": 5
+      },
+      {
+        "kind": 5,
+        "track": 1,
+        "text": "Make {0} customers happy",
+        "baseTarget": 12
+      },
+      {
+        "kind": 6,
+        "track": 1,
+        "text": "Earn ${0} from sales",
+        "baseTarget": 150
+      },
+      {
+        "kind": 7,
+        "track": 1,
+        "text": "Buy {0} decorations",
+        "baseTarget": 2
+      }
+    ],
+    "wipeBonusPerFishkeepingLevel": 0.02
+  },
+  "notifications": {
+    "startAutomatically": true,
+    "autoAdvanceSeconds": 1.2,
+    "dirtyWaterBelow": 0.6,
+    "algaeAbove": 0.45,
+    "grimyAbove": 0.1,
+    "hungryAbove": 0.35
+  },
+  "tankMates": {
+    "eatChance": 0.35,
+    "preyMaxSizeRatio": 0.6,
+    "biteChance": 0.5,
+    "biteInjury": 0.3,
+    "predatorFear": 0.2,
+    "competitiveStress": 0.12,
+    "crowdedAbove": 0.7,
+    "nipChance": 0.35,
+    "nipInjury": 0.15,
+    "preferredComfort": 0.1,
+    "preferredHealth": 0.04,
+    "fightRange": 0.45,
+    "huntRange": 0.7,
+    "fullAggressionShare": 0.3,
+    "calmShare": 0.06,
+    "injuryHealPerStep": 0.1,
+    "injuryWeight": 0.8,
+    "rivalInjury": 0.13,
+    "bigFishInjury": 0.35
+  },
+  "medicine": {
+    "stressPerDose": 0.3,
+    "stressRecoveryPerStep": 0.15,
+    "loadPerDose": 1,
+    "loadPerNeededDose": 0.5,
+    "loadClearedPerStep": 0.35,
+    "overdoseLoad": 3,
+    "damageHealth": 0.08,
+    "damageValue": 0.2,
+    "maxDamage": 3,
+    "infertileAtDamage": 2
+  },
+  "swimming": {
+    "maxBendFlexible": 70,
+    "maxBendStiff": 35,
+    "sharpestBend": 24,
+    "frontBend": 0.15,
+    "maxPitchBend": 8,
+    "bankTwist": 0.1,
+    "otherSchoolDistance": 0.35
+  },
+  "growth": {
+    "fullSizeVolume": 30,
+    "fullSizeTimeMultiplier": 3,
+    "valuePerExtraLength": 1.5,
+    "looksPerExtraLength": 0.1
+  },
+  "research": {
+    "basePointsPerDay": 10,
+    "pointsPerDollar": 0.2,
+    "maxDailyBudget": 500,
+    "budgetStep": 10,
+    "speedPerLevel": 0.2,
+    "xpPerSpeciesPerStep": 2,
+    "queueSize": 3,
+    "projects": [
+      {
+        "id": "health_checkup",
+        "name": "Health check-ups",
+        "teaches": "The arrows by a fish's health and comfort open up to show why they're rising or falling, and by how much.",
+        "unlock": 0,
+        "bounty": 4,
+        "target": 40,
+        "points": 30,
+        "level": 1,
+        "requires": "",
+        "xpBounty": 20,
+        "xpResearch": 40
+      },
+      {
+        "id": "temperature",
+        "name": "Temperature preferences",
+        "teaches": "Learn the temperature range every fish you've discovered likes. The heater offers the best setting for a tank.",
+        "unlock": 1,
+        "bounty": 1,
+        "target": 12,
+        "points": 30,
+        "level": 1,
+        "requires": "",
+        "xpBounty": 20,
+        "xpResearch": 40
+      },
+      {
+        "id": "tank_mates",
+        "name": "Tank mate behaviour",
+        "teaches": "Health notes say exactly who a fish is afraid of, fights with or likes, and the journal lists how every kind you've discovered gets on.",
+        "unlock": 2,
+        "bounty": 2,
+        "target": 5,
+        "points": 45,
+        "level": 1,
+        "requires": "",
+        "xpBounty": 20,
+        "xpResearch": 40
+      },
+      {
+        "id": "water_testing",
+        "name": "Water testing kit",
+        "teaches": "Measure the pH of every tank: how acidic (below 7) or alkaline (above 7) the water is.",
+        "unlock": 3,
+        "bounty": 5,
+        "target": 30,
+        "points": 45,
+        "level": 2,
+        "requires": "",
+        "xpBounty": 25,
+        "xpResearch": 50
+      },
+      {
+        "id": "feeding",
+        "name": "Feeding study",
+        "teaches": "A fish shows it loves a food the first time it eats one of its favourites, and favourites you've seen already are written up.",
+        "unlock": 4,
+        "bounty": 6,
+        "target": 40,
+        "points": 35,
+        "level": 2,
+        "requires": "",
+        "xpBounty": 25,
+        "xpResearch": 50
+      },
+      {
+        "id": "breeding",
+        "name": "Breeding biology",
+        "teaches": "The breeding tab explains why each fish isn't ready to breed, and you learn which kinds lay eggs and which give birth.",
+        "unlock": 5,
+        "bounty": 7,
+        "target": 30,
+        "points": 50,
+        "level": 2,
+        "requires": "",
+        "xpBounty": 25,
+        "xpResearch": 50
+      },
+      {
+        "id": "shoaling",
+        "name": "Shoaling behaviour",
+        "teaches": "Learn how many of its own kind each fish wants around it.",
+        "unlock": 6,
+        "bounty": 3,
+        "target": 15,
+        "points": 35,
+        "level": 2,
+        "requires": "",
+        "xpBounty": 25,
+        "xpResearch": 50
+      },
+      {
+        "id": "pathology",
+        "name": "Fish pathology",
+        "teaches": "Sick fish show how far along their illness is and which medicine cures it.",
+        "unlock": 7,
+        "bounty": 16,
+        "target": 8,
+        "points": 60,
+        "level": 3,
+        "requires": "",
+        "xpBounty": 30,
+        "xpResearch": 60
+      },
+      {
+        "id": "plants",
+        "name": "Plant preferences",
+        "teaches": "Learn which fish love plants in their tank.",
+        "unlock": 8,
+        "bounty": 10,
+        "target": 12,
+        "points": 40,
+        "level": 3,
+        "requires": "",
+        "xpBounty": 30,
+        "xpResearch": 60
+      },
+      {
+        "id": "ph",
+        "name": "pH preferences",
+        "teaches": "Learn the pH range every fish you've discovered likes.",
+        "unlock": 9,
+        "bounty": 1,
+        "target": 30,
+        "points": 80,
+        "level": 3,
+        "requires": "water_testing",
+        "xpBounty": 30,
+        "xpResearch": 60
+      },
+      {
+        "id": "lifespan",
+        "name": "Ageing study",
+        "teaches": "Learn how long each kind of fish lives before it starts to slow down.",
+        "unlock": 10,
+        "bounty": 3,
+        "target": 50,
+        "points": 100,
+        "level": 4,
+        "requires": "",
+        "xpBounty": 40,
+        "xpResearch": 80
+      }
+    ]
+  },
+  "reputation": {
+    "memory": 0.6,
+    "reviewsKept": 12,
+    "gainPerDay": 0.02,
+    "gainFalloff": 1.5,
+    "lossPerDay": 0.04,
+    "neutralScore": 0.6,
+    "fullDayVisitors": 15,
+    "trafficAtNoStars": 0.75,
+    "trafficAtFiveStars": 1.75,
+    "wishesPerDay": 1,
+    "complaints": [
+      {
+        "complaint": 0,
+        "label": "Dead fish in the tanks",
+        "sales": false,
+        "perShare": 1,
+        "maxPenalty": 0.25
+      },
+      {
+        "complaint": 1,
+        "label": "Dirty water and algae",
+        "sales": false,
+        "perShare": 0.8,
+        "maxPenalty": 0.2
+      },
+      {
+        "complaint": 2,
+        "label": "Sick-looking fish",
+        "sales": true,
+        "perShare": 0.8,
+        "maxPenalty": 0.2
+      },
+      {
+        "complaint": 3,
+        "label": "Prices too high",
+        "sales": true,
+        "perShare": 0.6,
+        "maxPenalty": 0.2
+      },
+      {
+        "complaint": 4,
+        "label": "Not enough fish for sale",
+        "sales": false,
+        "perShare": 0.6,
+        "maxPenalty": 0.15
+      },
+      {
+        "complaint": 5,
+        "label": "Fish fighting in the tanks",
+        "sales": true,
+        "perShare": 0.8,
+        "maxPenalty": 0.2
+      }
+    ]
+  },
+  "aquarium": {
+    "roomName": "Public aquarium",
+    "exhibitPrice": 12000,
+    "exhibitLevel": 8,
+    "visitorsPerHour": 30,
+    "appealTrafficAtZero": 0.15,
+    "appealTrafficAtFull": 2.5,
+    "trafficAtNoStars": 0.3,
+    "trafficAtFiveStars": 2,
+    "startingRating": 0.5,
+    "ratingMemory": 0.7,
+    "fullDayVisitors": 20,
+    "minFairPrice": 3,
+    "maxFairPrice": 40,
+    "fairPriceAtNoStars": 0.85,
+    "fairPriceAtFiveStars": 1.2,
+    "minWillingness": 0.75,
+    "maxWillingness": 1.35,
+    "startingTicketPrice": 5,
+    "maxTicketPrice": 200,
+    "maxVisitorsInside": 10,
+    "estimatorError": [
+      0.25,
+      0.15,
+      0.07,
+      0
+    ],
+    "boothUpgrades": [
+      {
+        "name": "Price board",
+        "blurb": "A chalk board of what other aquariums charge, so you can see where your price sits.",
+        "price": 1500,
+        "level": 6,
+        "extraVisitors": 2
+      },
+      {
+        "name": "Visitor counter",
+        "blurb": "A turnstile that counts everyone coming and going, and how many walked off at the booth.",
+        "price": 4000,
+        "level": 12,
+        "extraVisitors": 2
+      },
+      {
+        "name": "Computerised ticketing",
+        "blurb": "A ticketing system that knows exactly what visitors will pay. The estimate is spot on.",
+        "price": 9000,
+        "level": 20,
+        "extraVisitors": 3
+      }
+    ],
+    "minLooks": 2,
+    "maxLooks": 4,
+    "minLookSeconds": 5,
+    "maxLookSeconds": 11,
+    "serveSeconds": 1.2,
+    "happyScore": 0.65,
+    "unhappyScore": 0.4,
+    "sightShare": 0.6,
+    "xpPerTicket": 1,
+    "xpHappyVisitor": 1,
+    "reviewsKept": 12,
+    "smallPerExhibit": [
+      20,
+      30,
+      40
+    ],
+    "mediumPerExhibit": [
+      5,
+      10,
+      15
+    ],
+    "largePerExhibit": [
+      1,
+      3,
+      5
+    ],
+    "smallBreeding": 0.35,
+    "mediumBreeding": 0.15,
+    "largeBreeding": 0.05,
+    "fullnessPoints": 20,
+    "varietyPoints": 35,
+    "looksPoints": 20,
+    "qualityPoints": 15,
+    "cleanPoints": 5,
+    "fullVarietyKinds": 8,
+    "sameyShare": 0.4,
+    "sameyPenalty": 20,
+    "kindsBeforeBonus": 5,
+    "kindBonus": 2,
+    "maxKindBonus": 16,
+    "marketShare": 0.75,
+    "xpMarketSale": 3,
+    "scuba": {
+      "unlockLevel": 10,
+      "diveFee": 250,
+      "eggChance": 0.5,
+      "rarityWeights": [
+        100,
+        40,
+        15,
+        5,
+        1.5,
+        0.5
+      ],
+      "gear": [
+        {
+          "name": "His own wetsuit and tank",
+          "blurb": "No more rented gear: he can stay down longer and look further.",
+          "price": 2500,
+          "level": 14,
+          "rareBoost": 0.6
+        },
+        {
+          "name": "Dive computer and torch",
+          "blurb": "Deeper dives, and a light for the caves where shy fish hide.",
+          "price": 6000,
+          "level": 20,
+          "rareBoost": 1.2
+        },
+        {
+          "name": "Underwater scooter",
+          "blurb": "He covers a whole reef in one dive.",
+          "price": 12000,
+          "level": 28,
+          "rareBoost": 2
+        },
+        {
+          "name": "Rebreather",
+          "blurb": "No bubbles to scare the fish: the rarest come right up to him.",
+          "price": 22000,
+          "level": 36,
+          "rareBoost": 3
+        }
+      ],
+      "finds": [
+        {
+          "species": "SilverFlamefin",
+          "rarity": 0
+        },
+        {
+          "species": "CrimsonJewelCichlid",
+          "rarity": 4
+        }
+      ],
+      "holdingTankPrice": 900,
+      "holdingFishPerSize": [
+        1,
+        2,
+        3
+      ],
+      "xpFind": 15,
+      "xpRelease": 5
+    }
+  },
+  "finances": {
+    "spendingLevel": 2,
+    "incomeAfterSales": 1,
+    "historyLevel": 3,
+    "historyDays": 7,
+    "perTankAfterEarning": 1000
+  },
+  "quality": {
+    "equipmentPoints": 5,
+    "pointsPerEquipmentTier": 5,
+    "brokenEquipmentShare": 0.5,
+    "decorationPoints": 3,
+    "plantPoints": 2,
+    "varietyPoints": 1,
+    "backgroundPoints": 4
+  },
+  "milestones": [
+    {
+      "title": "First fish",
+      "text": "Get your first fish",
+      "goal": 0,
+      "target": 1,
+      "reward": 50,
+      "xp": 10,
+      "track": 0
+    },
+    {
+      "title": "Dinner time",
+      "text": "Feed a tank",
+      "goal": 4,
+      "target": 1,
+      "reward": 25,
+      "xp": 5,
+      "track": 0
+    },
+    {
+      "title": "Squeaky clean",
+      "text": "Wipe a tank",
+      "goal": 5,
+      "target": 1,
+      "reward": 25,
+      "xp": 5,
+      "track": 0
+    },
+    {
+      "title": "All grown up",
+      "text": "Raise a fish to adulthood",
+      "goal": 3,
+      "target": 1,
+      "reward": 75,
+      "xp": 15,
+      "track": 0
+    },
+    {
+      "title": "Gearing up",
+      "text": "Install a filter, heater or bubbler",
+      "goal": 9,
+      "target": 1,
+      "reward": 50,
+      "xp": 10,
+      "track": 0
+    },
+    {
+      "title": "Bright idea",
+      "text": "Learn something new about a fish",
+      "goal": 8,
+      "target": 1,
+      "reward": 40,
+      "xp": 10,
+      "track": 2
+    },
+    {
+      "title": "Hatchlings",
+      "text": "Hatch some eggs",
+      "goal": 6,
+      "target": 1,
+      "reward": 60,
+      "xp": 10,
+      "track": 0
+    },
+    {
+      "title": "Collector",
+      "text": "Discover {0} kinds of fish",
+      "goal": 2,
+      "target": 3,
+      "reward": 100,
+      "xp": 20,
+      "track": 2
+    },
+    {
+      "title": "A full house",
+      "text": "Keep {0} fish at once",
+      "goal": 1,
+      "target": 10,
+      "reward": 100,
+      "xp": 20,
+      "track": 0
+    },
+    {
+      "title": "Proud parent",
+      "text": "Breed your own fry",
+      "goal": 7,
+      "target": 1,
+      "reward": 150,
+      "xp": 25,
+      "track": 0
+    },
+    {
+      "title": "Fishkeeper",
+      "text": "Reach Fishkeeping level {0}",
+      "goal": 15,
+      "target": 3,
+      "reward": 100,
+      "xp": 0,
+      "track": 0
+    },
+    {
+      "title": "Grand opening",
+      "text": "Open the shop for the first time",
+      "goal": 11,
+      "target": 1,
+      "reward": 100,
+      "xp": 20,
+      "track": 1
+    },
+    {
+      "title": "First sale",
+      "text": "Sell a fish",
+      "goal": 12,
+      "target": 1,
+      "reward": 75,
+      "xp": 15,
+      "track": 1
+    },
+    {
+      "title": "Service with a smile",
+      "text": "Make {0} customers happy",
+      "goal": 14,
+      "target": 10,
+      "reward": 75,
+      "xp": 15,
+      "track": 1
+    },
+    {
+      "title": "Pretty tanks",
+      "text": "Buy {0} decorations",
+      "goal": 10,
+      "target": 3,
+      "reward": 60,
+      "xp": 10,
+      "track": 1
+    },
+    {
+      "title": "Money maker",
+      "text": "Earn {0} dollars from sales",
+      "goal": 13,
+      "target": 500,
+      "reward": 200,
+      "xp": 30,
+      "track": 1
+    },
+    {
+      "title": "Naturalist",
+      "text": "Discover {0} kinds of fish",
+      "goal": 2,
+      "target": 6,
+      "reward": 250,
+      "xp": 40,
+      "track": 2
+    }
+  ],
+  "crossBreeding": {
+    "crossChanceMultiplier": 0.5,
+    "tailWithFins": 0.75,
+    "pairs": [
+      {
+        "a": "CometGoldfish",
+        "b": "FancyGoldfish"
+      },
+      {
+        "a": "Guppy",
+        "b": "BlackMolly"
+      },
+      {
+        "a": "GreenTerror",
+        "b": "BlueAcara"
+      },
+      {
+        "a": "Angelfish",
+        "b": "Betta"
+      },
+      {
+        "a": "Angelfish",
+        "b": "TigerBarb"
+      },
+      {
+        "a": "TigerBarb",
+        "b": "NeonTetra"
+      },
+      {
+        "a": "Corydoras",
+        "b": "RedTailShark"
+      },
+      {
+        "a": "RedTailShark",
+        "b": "SiameseAlgaeEater"
+      },
+      {
+        "a": "Corydoras",
+        "b": "SiameseAlgaeEater"
+      },
+      {
+        "a": "Platy",
+        "b": "Oscar"
+      },
+      {
+        "a": "Oscar",
+        "b": "GreenTerror"
+      },
+      {
+        "a": "CrimsonJewelCichlid",
+        "b": "Oscar"
+      },
+      {
+        "a": "SilverFlamefin",
+        "b": "TigerBarb"
+      },
+      {
+        "a": "TexasCichlid",
+        "b": "JackDempsey"
+      },
+      {
+        "a": "Frontosa",
+        "b": "GoldenMbuna"
+      },
+      {
+        "a": "PeacockBass",
+        "b": "Oscar"
+      },
+      {
+        "a": "Pumpkinseed",
+        "b": "ArcticGrayling"
+      }
+    ],
+    "combos": [
+      {
+        "body": "CometGoldfish",
+        "fins": "FancyGoldfish",
+        "name": "",
+        "chance": 1,
+        "value": 98
+      },
+      {
+        "body": "FancyGoldfish",
+        "fins": "CometGoldfish",
+        "name": "",
+        "chance": 1,
+        "value": 98
+      },
+      {
+        "body": "Guppy",
+        "fins": "BlackMolly",
+        "name": "",
+        "chance": 1,
+        "value": 39
+      },
+      {
+        "body": "BlackMolly",
+        "fins": "Guppy",
+        "name": "",
+        "chance": 1,
+        "value": 39
+      },
+      {
+        "body": "GreenTerror",
+        "fins": "BlueAcara",
+        "name": "",
+        "chance": 1,
+        "value": 188
+      },
+      {
+        "body": "BlueAcara",
+        "fins": "GreenTerror",
+        "name": "",
+        "chance": 1,
+        "value": 188
+      },
+      {
+        "body": "Angelfish",
+        "fins": "Betta",
+        "name": "",
+        "chance": 1,
+        "value": 188
+      },
+      {
+        "body": "Betta",
+        "fins": "Angelfish",
+        "name": "",
+        "chance": 1,
+        "value": 188
+      },
+      {
+        "body": "Angelfish",
+        "fins": "TigerBarb",
+        "name": "",
+        "chance": 1,
+        "value": 143
+      },
+      {
+        "body": "TigerBarb",
+        "fins": "Angelfish",
+        "name": "",
+        "chance": 1,
+        "value": 143
+      },
+      {
+        "body": "TigerBarb",
+        "fins": "NeonTetra",
+        "name": "",
+        "chance": 1,
+        "value": 59
+      },
+      {
+        "body": "NeonTetra",
+        "fins": "TigerBarb",
+        "name": "",
+        "chance": 1,
+        "value": 59
+      },
+      {
+        "body": "Corydoras",
+        "fins": "RedTailShark",
+        "name": "",
+        "chance": 1,
+        "value": 113
+      },
+      {
+        "body": "RedTailShark",
+        "fins": "Corydoras",
+        "name": "",
+        "chance": 1,
+        "value": 113
+      },
+      {
+        "body": "RedTailShark",
+        "fins": "SiameseAlgaeEater",
+        "name": "",
+        "chance": 1,
+        "value": 83
+      },
+      {
+        "body": "SiameseAlgaeEater",
+        "fins": "RedTailShark",
+        "name": "",
+        "chance": 1,
+        "value": 83
+      },
+      {
+        "body": "Corydoras",
+        "fins": "SiameseAlgaeEater",
+        "name": "",
+        "chance": 1,
+        "value": 75
+      },
+      {
+        "body": "SiameseAlgaeEater",
+        "fins": "Corydoras",
+        "name": "",
+        "chance": 1,
+        "value": 75
+      },
+      {
+        "body": "Platy",
+        "fins": "BlackMolly",
+        "name": "",
+        "chance": 1,
+        "value": 39
+      },
+      {
+        "body": "BlackMolly",
+        "fins": "Platy",
+        "name": "",
+        "chance": 1,
+        "value": 39
+      },
+      {
+        "body": "Platy",
+        "fins": "Oscar",
+        "name": "",
+        "chance": 1,
+        "value": 153
+      },
+      {
+        "body": "Oscar",
+        "fins": "Platy",
+        "name": "",
+        "chance": 1,
+        "value": 153
+      },
+      {
+        "body": "Oscar",
+        "fins": "GreenTerror",
+        "name": "",
+        "chance": 1,
+        "value": 233
+      },
+      {
+        "body": "GreenTerror",
+        "fins": "Oscar",
+        "name": "",
+        "chance": 1,
+        "value": 233
+      },
+      {
+        "body": "CrimsonJewelCichlid",
+        "fins": "Oscar",
+        "name": "",
+        "chance": 1,
+        "value": 1035
+      },
+      {
+        "body": "Oscar",
+        "fins": "CrimsonJewelCichlid",
+        "name": "",
+        "chance": 1,
+        "value": 1035
+      },
+      {
+        "body": "SilverFlamefin",
+        "fins": "TigerBarb",
+        "name": "",
+        "chance": 1,
+        "value": 712
+      },
+      {
+        "body": "TigerBarb",
+        "fins": "SilverFlamefin",
+        "name": "",
+        "chance": 1,
+        "value": 712
+      },
+      {
+        "body": "TexasCichlid",
+        "fins": "JackDempsey",
+        "name": "",
+        "chance": 1,
+        "value": 345
+      },
+      {
+        "body": "JackDempsey",
+        "fins": "TexasCichlid",
+        "name": "",
+        "chance": 1,
+        "value": 345
+      },
+      {
+        "body": "Frontosa",
+        "fins": "GoldenMbuna",
+        "name": "",
+        "chance": 1,
+        "value": 435
+      },
+      {
+        "body": "GoldenMbuna",
+        "fins": "Frontosa",
+        "name": "",
+        "chance": 1,
+        "value": 435
+      },
+      {
+        "body": "PeacockBass",
+        "fins": "Oscar",
+        "name": "",
+        "chance": 1,
+        "value": 705
+      },
+      {
+        "body": "Oscar",
+        "fins": "PeacockBass",
+        "name": "",
+        "chance": 1,
+        "value": 705
+      },
+      {
+        "body": "Pumpkinseed",
+        "fins": "ArcticGrayling",
+        "name": "",
+        "chance": 1,
+        "value": 502
+      },
+      {
+        "body": "ArcticGrayling",
+        "fins": "Pumpkinseed",
+        "name": "",
+        "chance": 1,
+        "value": 502
+      }
+    ]
+  },
+  "perkSettings": {
+    "pointsPerLevel": 1,
+    "pointsPerTier": 5,
+    "tiers": 4,
+    "maxInterestPerNight": 150
+  },
+  "perks": [
+    {
+      "id": "clean_freak",
+      "tree": 0,
+      "tier": 1,
+      "name": "Clean freak",
+      "text": "Water gets dirty {0} slower",
+      "maxRank": 5,
+      "perRank": 0.06,
+      "percent": true,
+      "effect": 0
+    },
+    {
+      "id": "elbow_grease",
+      "tree": 0,
+      "tier": 1,
+      "name": "Elbow grease",
+      "text": "Wipes clean {0} more",
+      "maxRank": 3,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 1
+    },
+    {
+      "id": "algae_control",
+      "tree": 0,
+      "tier": 2,
+      "name": "Algae control",
+      "text": "Algae grows {0} slower",
+      "maxRank": 5,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 2
+    },
+    {
+      "id": "aquascaper",
+      "tree": 0,
+      "tier": 2,
+      "name": "Aquascaper",
+      "text": "{0} more decoration spots in every tank",
+      "maxRank": 3,
+      "perRank": 2,
+      "percent": false,
+      "effect": 3
+    },
+    {
+      "id": "tinkerer",
+      "tree": 0,
+      "tier": 3,
+      "name": "Tinkerer",
+      "text": "Equipment breaks down {0} less often",
+      "maxRank": 5,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 4
+    },
+    {
+      "id": "handyman",
+      "tree": 0,
+      "tier": 3,
+      "name": "Handyman",
+      "text": "Repairs cost {0} less",
+      "maxRank": 3,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 5
+    },
+    {
+      "id": "roomy_tanks",
+      "tree": 0,
+      "tier": 4,
+      "name": "Roomy tanks",
+      "text": "Tanks hold {0} more fish",
+      "maxRank": 3,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 6
+    },
+    {
+      "id": "tireless",
+      "tree": 0,
+      "tier": 4,
+      "name": "Tireless",
+      "text": "{0} extra wipe for every tank each session",
+      "maxRank": 1,
+      "perRank": 1,
+      "percent": false,
+      "effect": 7
+    },
+    {
+      "id": "immunity",
+      "tree": 1,
+      "tier": 1,
+      "name": "Strong immunity",
+      "text": "Fish catch illnesses {0} less often",
+      "maxRank": 5,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 8
+    },
+    {
+      "id": "slow_metabolism",
+      "tree": 1,
+      "tier": 1,
+      "name": "Slow metabolism",
+      "text": "Fish get hungry {0} slower",
+      "maxRank": 3,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 9
+    },
+    {
+      "id": "comfort_zone",
+      "tree": 1,
+      "tier": 2,
+      "name": "Comfort zone",
+      "text": "Wrong temperature, pH and salt hurt fish {0} less",
+      "maxRank": 5,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 10
+    },
+    {
+      "id": "gentle_dosing",
+      "tree": 1,
+      "tier": 2,
+      "name": "Gentle dosing",
+      "text": "Medicine stresses fish {0} less and takes {0} more to overdose",
+      "maxRank": 3,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 11
+    },
+    {
+      "id": "growth_formula",
+      "tree": 1,
+      "tier": 3,
+      "name": "Growth formula",
+      "text": "Fish grow up {0} faster",
+      "maxRank": 5,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 12
+    },
+    {
+      "id": "nutritionist",
+      "tree": 1,
+      "tier": 3,
+      "name": "Nutritionist",
+      "text": "Every feeding fills fish {0} more",
+      "maxRank": 3,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 13
+    },
+    {
+      "id": "longevity",
+      "tree": 1,
+      "tier": 4,
+      "name": "Longevity",
+      "text": "Fish live {0} longer before old age sets in",
+      "maxRank": 3,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 14
+    },
+    {
+      "id": "naturalist",
+      "tree": 1,
+      "tier": 4,
+      "name": "Naturalist",
+      "text": "Research goes {0} faster",
+      "maxRank": 1,
+      "perRank": 0.25,
+      "percent": true,
+      "effect": 15
+    },
+    {
+      "id": "matchmaker",
+      "tree": 2,
+      "tier": 1,
+      "name": "Matchmaker",
+      "text": "Fish are {0} more likely to breed",
+      "maxRank": 5,
+      "perRank": 0.06,
+      "percent": true,
+      "effect": 16
+    },
+    {
+      "id": "quick_recovery",
+      "tree": 2,
+      "tier": 1,
+      "name": "Quick recovery",
+      "text": "Parents rest {0} fewer time step between broods",
+      "maxRank": 1,
+      "perRank": 1,
+      "percent": false,
+      "effect": 17
+    },
+    {
+      "id": "big_families",
+      "tree": 2,
+      "tier": 2,
+      "name": "Big families",
+      "text": "Litters and clutches are {0} bigger",
+      "maxRank": 5,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 18
+    },
+    {
+      "id": "hardy_eggs",
+      "tree": 2,
+      "tier": 2,
+      "name": "Hardy eggs",
+      "text": "Eggs are {0} less likely to die in dirty water",
+      "maxRank": 3,
+      "perRank": 0.25,
+      "percent": true,
+      "effect": 19
+    },
+    {
+      "id": "due_early",
+      "tree": 2,
+      "tier": 3,
+      "name": "Due early",
+      "text": "Pregnancies and eggs take {0} fewer time steps",
+      "maxRank": 2,
+      "perRank": 1,
+      "percent": false,
+      "effect": 20
+    },
+    {
+      "id": "wild_genes",
+      "tree": 2,
+      "tier": 3,
+      "name": "Wild genes",
+      "text": "Mutations are {0} more likely, for surprise looks",
+      "maxRank": 5,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 21
+    },
+    {
+      "id": "hybrid_expert",
+      "tree": 2,
+      "tier": 4,
+      "name": "Hybrid expert",
+      "text": "Different species cross-breed {0} more often",
+      "maxRank": 3,
+      "perRank": 0.25,
+      "percent": true,
+      "effect": 22
+    },
+    {
+      "id": "pedigree",
+      "tree": 2,
+      "tier": 4,
+      "name": "Pedigree",
+      "text": "Fish bred in your shop are worth {0} more",
+      "maxRank": 1,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 23
+    },
+    {
+      "id": "bargain_hunter",
+      "tree": 3,
+      "tier": 1,
+      "name": "Bargain hunter",
+      "text": "Supplier prices are {0} lower",
+      "maxRank": 5,
+      "perRank": 0.03,
+      "percent": true,
+      "effect": 24
+    },
+    {
+      "id": "sweet_talker",
+      "tree": 3,
+      "tier": 1,
+      "name": "Sweet talker",
+      "text": "Customers pay up to {0} more before a price puts them off",
+      "maxRank": 3,
+      "perRank": 0.04,
+      "percent": true,
+      "effect": 25
+    },
+    {
+      "id": "tip_jar",
+      "tree": 3,
+      "tier": 2,
+      "name": "Tip jar",
+      "text": "Every sale brings a {0} tip on top",
+      "maxRank": 5,
+      "perRank": 0.03,
+      "percent": true,
+      "effect": 26
+    },
+    {
+      "id": "safety_net",
+      "tree": 3,
+      "tier": 2,
+      "name": "Safety net",
+      "text": "The daily allowance is ${0} higher",
+      "maxRank": 3,
+      "perRank": 50,
+      "percent": false,
+      "effect": 27
+    },
+    {
+      "id": "closer",
+      "tree": 3,
+      "tier": 3,
+      "name": "Closer",
+      "text": "Customers are {0} more likely to buy",
+      "maxRank": 5,
+      "perRank": 0.05,
+      "percent": true,
+      "effect": 28
+    },
+    {
+      "id": "savings",
+      "tree": 3,
+      "tier": 3,
+      "name": "Savings account",
+      "text": "Your money earns {0} interest every night",
+      "maxRank": 3,
+      "perRank": 0.01,
+      "percent": true,
+      "effect": 29
+    },
+    {
+      "id": "premium_brand",
+      "tree": 3,
+      "tier": 4,
+      "name": "Premium brand",
+      "text": "Customers pay up to {0} more before a price puts them off",
+      "maxRank": 3,
+      "perRank": 0.05,
+      "percent": true,
+      "effect": 25
+    },
+    {
+      "id": "wholesale",
+      "tree": 3,
+      "tier": 4,
+      "name": "Wholesale account",
+      "text": "Supplier prices are {0} lower",
+      "maxRank": 1,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 24
+    },
+    {
+      "id": "builders_discount",
+      "tree": 4,
+      "tier": 1,
+      "name": "Builder's discount",
+      "text": "Tanks, tank upgrades and new rooms cost {0} less",
+      "maxRank": 5,
+      "perRank": 0.04,
+      "percent": true,
+      "effect": 30
+    },
+    {
+      "id": "interior_design",
+      "tree": 4,
+      "tier": 1,
+      "name": "Interior design",
+      "text": "Decorations cost {0} less",
+      "maxRank": 3,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 31
+    },
+    {
+      "id": "floor_space",
+      "tree": 4,
+      "tier": 2,
+      "name": "More floor space",
+      "text": "Room for {0} more for sale and {0} more display tank",
+      "maxRank": 2,
+      "perRank": 1,
+      "percent": false,
+      "effect": 32
+    },
+    {
+      "id": "showroom",
+      "tree": 4,
+      "tier": 2,
+      "name": "Showroom",
+      "text": "Tanks bring in {0} more customers",
+      "maxRank": 3,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 33
+    },
+    {
+      "id": "feature_walls",
+      "tree": 4,
+      "tier": 3,
+      "name": "Feature walls",
+      "text": "Decorations bring in {0} more customers",
+      "maxRank": 5,
+      "perRank": 0.2,
+      "percent": true,
+      "effect": 34
+    },
+    {
+      "id": "glass_supplier",
+      "tree": 4,
+      "tier": 3,
+      "name": "Glass supplier",
+      "text": "Tank upgrades cost {0} less",
+      "maxRank": 3,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 35
+    },
+    {
+      "id": "wide_aisles",
+      "tree": 4,
+      "tier": 4,
+      "name": "Wide aisles",
+      "text": "{0} more customers fit in the store at once",
+      "maxRank": 3,
+      "perRank": 2,
+      "percent": false,
+      "effect": 36
+    },
+    {
+      "id": "master_builder",
+      "tree": 4,
+      "tier": 4,
+      "name": "Master builder",
+      "text": "Tanks, tank upgrades and new rooms cost {0} less",
+      "maxRank": 1,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 30
+    },
+    {
+      "id": "word_of_mouth",
+      "tree": 5,
+      "tier": 1,
+      "name": "Word of mouth",
+      "text": "{0} more customers come in",
+      "maxRank": 5,
+      "perRank": 0.05,
+      "percent": true,
+      "effect": 37
+    },
+    {
+      "id": "friendly_service",
+      "tree": 5,
+      "tier": 1,
+      "name": "Friendly service",
+      "text": "Good days raise your reputation {0} more",
+      "maxRank": 3,
+      "perRank": 0.15,
+      "percent": true,
+      "effect": 38
+    },
+    {
+      "id": "thick_skin",
+      "tree": 5,
+      "tier": 2,
+      "name": "Thick skin",
+      "text": "Bad days lower your reputation {0} less",
+      "maxRank": 3,
+      "perRank": 0.2,
+      "percent": true,
+      "effect": 39
+    },
+    {
+      "id": "spotless_image",
+      "tree": 5,
+      "tier": 2,
+      "name": "Spotless image",
+      "text": "Customers put up with {0} dirtier tanks",
+      "maxRank": 5,
+      "perRank": 0.06,
+      "percent": true,
+      "effect": 40
+    },
+    {
+      "id": "damage_control",
+      "tree": 5,
+      "tier": 3,
+      "name": "Damage control",
+      "text": "Dead fish upset customers {0} less",
+      "maxRank": 3,
+      "perRank": 0.25,
+      "percent": true,
+      "effect": 41
+    },
+    {
+      "id": "window_shoppers",
+      "tree": 5,
+      "tier": 3,
+      "name": "Window shoppers",
+      "text": "Customers look at {0} more tank each",
+      "maxRank": 2,
+      "perRank": 1,
+      "percent": false,
+      "effect": 42
+    },
+    {
+      "id": "loyal_regulars",
+      "tree": 5,
+      "tier": 4,
+      "name": "Loyal regulars",
+      "text": "{0} more customers come in",
+      "maxRank": 3,
+      "perRank": 0.08,
+      "percent": true,
+      "effect": 37
+    },
+    {
+      "id": "local_celebrity",
+      "tree": 5,
+      "tier": 4,
+      "name": "Local celebrity",
+      "text": "Your reputation climbs {0} every night on its own",
+      "maxRank": 1,
+      "perRank": 0.01,
+      "percent": true,
+      "effect": 43
+    },
+    {
+      "id": "stock_book",
+      "tree": 2,
+      "tier": 1,
+      "name": "Stock book",
+      "text": "The Breeding tab lists every fish in the tank by kind, sex and age, and you can pick fish from the list",
+      "maxRank": 1,
+      "perRank": 1,
+      "percent": false,
+      "effect": 45
+    },
+    {
+      "id": "bookkeeper",
+      "tree": 3,
+      "tier": 2,
+      "name": "Bookkeeper",
+      "text": "The finances screen (F) shows your best-selling fish and what each kind earns",
+      "maxRank": 1,
+      "perRank": 1,
+      "percent": false,
+      "effect": 44
+    },
+    {
+      "id": "lucky_finds",
+      "tree": 2,
+      "tier": 2,
+      "name": "Lucky finds",
+      "text": "Rare fish are {0} more likely in egg boxes from the supplier",
+      "maxRank": 5,
+      "perRank": 0.1,
+      "percent": true,
+      "effect": 46
+    }
+  ]
+}

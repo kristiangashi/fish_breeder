@@ -334,6 +334,8 @@ namespace FishBreeder.Core
         public string model;
         [Tooltip("In a tank with algae eaters, it grows enough algae film to keep the algae from dropping below this (0 = none): enough to feed a tank of only algae eaters.")]
         [Range(0f, 1f)] public float algaeFloor;
+        [Tooltip("Plants: each one in a tank raises its algae maximum this much (0.03 = 3%), before the algae eaters take their share off. Fast growers shed more.")]
+        [Range(0f, 1f)] public float algaeMaxBonus;
 
         /// <summary>The model's name in Resources/Decor.</summary>
         public string Model => string.IsNullOrEmpty(model) ? id : model;
@@ -514,21 +516,21 @@ namespace FishBreeder.Core
         public List<DecorationBalance> decorations = new List<DecorationBalance>
         {
             new DecorationBalance { id = "Rock", name = "Rock", price = 15, unlockLevel = 1, height = 0.2f },
-            new DecorationBalance { id = "Plant", name = "Leafy plant", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.5f, back = true },
-            new DecorationBalance { id = "Seaweed", name = "Seaweed", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.4f },
+            new DecorationBalance { id = "Plant", name = "Leafy plant", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.5f, back = true, algaeMaxBonus = 0.03f },
+            new DecorationBalance { id = "Seaweed", name = "Seaweed", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.4f, algaeMaxBonus = 0.04f },
             new DecorationBalance { id = "Driftwood", name = "Driftwood", price = 35, unlockLevel = 2, height = 0.3f, back = true },
-            new DecorationBalance { id = "TallPlant", name = "Tall plant", price = 30, unlockLevel = 3, plant = true, passable = true, height = 0.55f, back = true },
-            new DecorationBalance { id = "FernRock", name = "Fern on a rock", price = 40, unlockLevel = 4, plant = true, height = 0.16f },
+            new DecorationBalance { id = "TallPlant", name = "Tall plant", price = 30, unlockLevel = 3, plant = true, passable = true, height = 0.55f, back = true, algaeMaxBonus = 0.04f },
+            new DecorationBalance { id = "FernRock", name = "Fern on a rock", price = 40, unlockLevel = 4, plant = true, height = 0.16f, algaeMaxBonus = 0.01f },
             new DecorationBalance { id = "Clam", name = "Clam shell", price = 45, unlockLevel = 5, height = 0.06f },
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
             new DecorationBalance { id = "Diver", name = "Deep-sea diver", price = 120, unlockLevel = 9, height = 0.32f },
             // Grows a film of algae for grazers: breeding algae eaters on their own (see AddMissingDecorations).
-            new DecorationBalance { id = "JavaMoss", name = "Java moss rock", price = 90, unlockLevel = 20, fishkeepingUnlock = true, plant = true, height = 0.18f, model = "FernRock", algaeFloor = 0.18f },
+            new DecorationBalance { id = "JavaMoss", name = "Java moss rock", price = 90, unlockLevel = 20, fishkeepingUnlock = true, plant = true, height = 0.18f, model = "FernRock", algaeFloor = 0.18f, algaeMaxBonus = 0.02f },
             // Rarer plants for skilled fishkeepers (see AddMissingDecorations).
-            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.28f, maxSizeStepsOff = 2 },
-            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2 },
-            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f, maxSizeStepsOff = 2 },
-            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true, maxSizeStepsOff = 2 },
+            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.28f, maxSizeStepsOff = 2, algaeMaxBonus = 0.02f },
+            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2, algaeMaxBonus = 0.05f },
+            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f, maxSizeStepsOff = 2, algaeMaxBonus = 0.03f },
+            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true, maxSizeStepsOff = 2, algaeMaxBonus = 0.04f },
         };
         [Tooltip("Fishkeeping level needed for care products.")]
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
@@ -812,8 +814,10 @@ namespace FishBreeder.Core
         [Tooltip("A tank is 'dirty' below this water health (0..1).")]
         [Range(0f, 1f)] public float dirtyWaterBelow = 0.6f;
         [Range(0f, 1f)] public float algaeAbove = 0.4f;
-        [Tooltip("Last on the list: a tank this dirty or more (0.1 = 10% dirty, from its water health) gets a 'give it a wipe' suggestion.")]
-        [Range(0f, 1f)] public float grimyAbove = 0.1f;
+        [Tooltip("Last on the list: a tank is only told to have a clean once its algae is over this much...")]
+        [Range(0f, 1f)] public float cleanAlgaeAbove = 0.4f;
+        [Tooltip("...or its water quality is under this.")]
+        [Range(0f, 1f)] public float cleanQualityBelow = 0.75f;
         [Tooltip("Fish are 'hungry' at this hunger (0..1).")]
         [Range(0f, 1f)] public float hungryAbove = 0.35f;
     }
@@ -971,7 +975,7 @@ namespace FishBreeder.Core
         /// 18: size groups set per species (Tiny tank fish, Small hybrids, Medium and Large public aquarium fish) instead of worked out from length and body class.
         /// 19: every tank size has four fish limits, one per size group (tiny, small, medium, large).
         /// </summary>
-        public const int CurrentDataVersion = 20;
+        public const int CurrentDataVersion = 21;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1422,6 +1426,16 @@ namespace FishBreeder.Core
                 CopyGroupCapacity(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
             }
             if (fromVersion < 20) UpgradeAlgae(data);
+            if (fromVersion < 21 && data.supplier != null && data.supplier.decorations != null)
+            {
+                // Plants raise the algae maximum, each its own amount (by id; plants added since get nothing).
+                var defaults = new SupplierBalance().decorations;
+                foreach (var item in data.supplier.decorations)
+                {
+                    var d = item != null ? defaults.Find(x => x.id == item.id) : null;
+                    if (d != null && item.algaeMaxBonus <= 0f) item.algaeMaxBonus = d.algaeMaxBonus;
+                }
+            }
             data.dataVersion = CurrentDataVersion;
         }
 

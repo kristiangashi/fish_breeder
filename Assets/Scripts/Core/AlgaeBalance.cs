@@ -24,6 +24,8 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float eaterReduction = 0.3333f;
         [Tooltip("More algae eaters than the tank needs keep taking a share off, up to this.")]
         [Range(0f, 1f)] public float maxEaterReduction = 0.6f;
+        [Tooltip("Each feeding adds this much algae (leftover food feeds it). Whatever it puts above the tank's maximum is gone at the next time step. Algae wafers add their own amount instead.")]
+        public float feedAlgae = 0.02f;
 
         [Header("How fast it gets there")]
         [Tooltip("Each time step algae climbs this share of the way to its maximum (so it takes a few days to get there).")]

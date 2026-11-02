@@ -14,6 +14,8 @@ namespace FishBreeder
     {
         bool bloom;
         float algaeAtStep = -1f;
+        /// <summary>Algae added by feeding since the last time step: whatever of it is over the maximum goes at the next one.</summary>
+        float algaeFromFeeding;
 
         static AlgaeBalance AlgaeRules => Balance.Data.algae;
 
@@ -107,10 +109,26 @@ namespace FishBreeder
             }
         }
 
+        /// <summary>What the plants add to the algae maximum (each plant its own amount).</summary>
+        public float PlantAlgaeBonus
+        {
+            get
+            {
+                if (decor == null) return 0f;
+                float bonus = 0f;
+                foreach (var id in decor.Ids)
+                {
+                    var item = TankDecor.Find(id);
+                    if (item != null) bonus += Mathf.Max(0f, item.algaeMaxBonus);
+                }
+                return bonus;
+            }
+        }
+
         /// <summary>
         /// How high algae can get here: the fish for the tank's size, held at the filter's steady
-        /// level for the fish it's made for (each one more pushes it up), less the algae eaters'
-        /// share, and never below what a moss rock keeps for the eaters.
+        /// level for the fish it's made for (each one more pushes it up), plus what the plants
+        /// add, less the algae eaters' share, and never below what a moss rock keeps for the eaters.
         /// </summary>
         public float AlgaeMax
         {
@@ -126,7 +144,7 @@ namespace FishBreeder
                     max = Mathf.Min(handled * perFish, filter.Info.algaeHold) + (load - handled) * perFish;
                 }
                 else max = load * perFish;
-                max *= 1f - EaterShare;
+                max = (max + PlantAlgaeBonus) * (1f - EaterShare);
                 return Mathf.Clamp01(Mathf.Max(max, AlgaeFloor));
             }
         }
@@ -194,6 +212,8 @@ namespace FishBreeder
         {
             var a = AlgaeRules;
             algaeAtStep = algae;
+            float fedExtra = algaeFromFeeding;
+            algaeFromFeeding = 0f;
             if (bloom)
             {
                 // A bloom feeds on itself until it's deep cleaned.
@@ -201,6 +221,8 @@ namespace FishBreeder
                 return;
             }
             float max = AlgaeMax;
+            // Algae from feeding that took the tank over its maximum is gone at once.
+            if (algae > max && fedExtra > 0f) algae = Mathf.Max(max, algae - fedExtra);
             if (algae < max)
             {
                 float rise = Mathf.Clamp((max - algae) * a.riseShare, a.minRise, Mathf.Max(a.minRise, a.maxRise)) * (1f + DecorCount * a.risePerDecoration) * Perks.Less(PerkEffect.SlowerAlgae);
@@ -318,6 +340,15 @@ namespace FishBreeder
             float before = algae;
             algae = Mathf.Clamp01(algae + amount);
             if (AlgaeEaterCount > 0) GameLog.Add($"Algae wafers in {Title}: algae {before * 100f:0}% to {algae * 100f:0}% for the algae eaters.");
+        }
+
+        /// <summary>Feeding: leftover food feeds a little algae. Whatever goes over the maximum is gone at the next time step.</summary>
+        public void AddFeedingAlgae(float amount)
+        {
+            if (amount <= 0f) return;
+            float before = algae;
+            algae = Mathf.Clamp01(algae + amount);
+            algaeFromFeeding += algae - before;
         }
 
         /// <summary>Developer: sets the algae (a bloom starts at once with <paramref name="startBloom"/>).</summary>

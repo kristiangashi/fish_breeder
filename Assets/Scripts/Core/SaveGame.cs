@@ -475,6 +475,8 @@ namespace FishBreeder.Core
         public int wipesLeft;
         public int deepCleansLeft = -1;
         public bool bloom;
+        /// <summary>Algae added by feeding since the last time step (what's over the maximum goes at the next one).</summary>
+        public float algaeFromFeeding;
         public bool hasFilter, hasHeater, hasBubbler;
         public InstalledEquipment filter, heater, bubbler;
         public string background, sideBackground;
@@ -959,7 +961,7 @@ namespace FishBreeder
             {
                 size = sizeIndex,
                 waterQuality = waterQuality, algae = algae, temperature = temperature, ph = ph, salinity = salinity,
-                heaterSetting = heaterSetting, pests = pests, fed = FedSinceTimeStep, wipesLeft = CleansLeft, deepCleansLeft = DeepCleansLeft, bloom = bloom,
+                heaterSetting = heaterSetting, pests = pests, fed = FedSinceTimeStep, wipesLeft = CleansLeft, deepCleansLeft = DeepCleansLeft, bloom = bloom, algaeFromFeeding = algaeFromFeeding,
                 hasFilter = filter != null, hasHeater = heater != null, hasBubbler = bubbler != null,
                 filter = filter, heater = heater, bubbler = bubbler,
                 background = backgroundId, sideBackground = sideBackgroundId,
@@ -985,6 +987,7 @@ namespace FishBreeder
             CleansLeft = Mathf.Max(0, s.wipesLeft);
             if (s.deepCleansLeft >= 0) DeepCleansLeft = s.deepCleansLeft;
             bloom = s.bloom;
+            algaeFromFeeding = Mathf.Max(0f, s.algaeFromFeeding);
             // JsonUtility writes empty objects for missing equipment, hence the flags.
             filter = s.hasFilter ? Kind(s.filter, EquipmentKind.Filter) : null;
             heater = s.hasHeater ? Kind(s.heater, EquipmentKind.Heater) : null;

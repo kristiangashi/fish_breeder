@@ -288,6 +288,8 @@ const META = {
   deepCleanMinInjuryChance: ["Least chance of getting hurt", ""],
   deepCleanInjuries: ["Deep clean injuries", "What can happen to a fish in a deep clean, picked by weight."],
   amount: ["How much it hurts (0..1)", "Wounds heal a little every time step."],
+  feedAlgae: ["Algae per feeding", "Every feeding (except algae wafers, which add their own) adds this much algae. Whatever it puts over the tank's algae maximum is gone at the next time step."],
+  algaeMaxBonus: ["Algae max bonus (plants)", "Plants: each one in a tank raises its algae maximum this much (0.03 = 3%), before the algae eaters take their share off."],
   waferAlgae: ["Algae per wafer feeding", "Algae wafers add this much algae for the algae eaters to graze."],
   eaterMinFrom: ["Eaters' least algae from", "Algae eaters with 0 for their own numbers get a least algae between this and the next (picked from the species' name)."], eaterMinTo: ["...to", ""],
   eaterMaxFrom: ["Eaters' most algae from", "...and get sick above an algae level between this and the next."], eaterMaxTo: ["...to", ""],
@@ -459,7 +461,8 @@ const META = {
   trafficAtNoStars: ["Traffic at 0 stars (x)", ""], trafficAtFiveStars: ["Traffic at 5 stars (x)", ""],
   wishesPerDay: ["Wishes in reviews", "How many \"Wish they had more ...\" lines (the most wanted kinds nobody could buy) a day's reviews carry."],
   queueSize: ["Research queue", "Ready projects that can wait in line behind the one at the bench."],
-  grimyAbove: ["Clean suggestion above (dirt)", "Last item on the evening list: tanks at least this dirty (0.1 = 10%) get a clean suggestion."],
+  cleanAlgaeAbove: ["Clean suggestion above (algae)", "Last item on the evening list: a tank is only told to have a clean when its algae is over this (0.4 = 40%)..."],
+  cleanQualityBelow: ["...or water quality below", "...or its water quality is under this (0.75 = 75%)."],
   tree: ["Tree", "Aquariums, Biology and Breeding spend Fishkeeping points; Finances, Construction and Public Relations spend Shopkeeping points."],
   tier: ["Tier", "1 is open from the start. Each later tier opens once enough points (Points per tier) are spent in the tiers above it in the same tree."],
   text: ["Text", "What the perk does ({0} is replaced by its value at the current rank), or for a fault, what broke."],
@@ -1498,6 +1501,9 @@ function simulate(setup, B, seed) {
   const infectionMultiplier = (t) => lerp(rules.dirtyWaterInfectionMultiplier, 1, t.wq) * (t.pests ? 1.3 : 1) * (1 + overLimit(t) * ts.overcrowdedIllnessPerFish);
   const eggsIn = (t) => t.clutches.reduce((n, c) => n + c.genes.length, 0);
   const hasPlants = (t) => t.cfg.plants && t.decor > 0;
+  // A tank with plants has one, adding the plants' average algae bonus to its maximum.
+  const plantList = (B.supplier.decorations || []).filter((d) => d.plant);
+  const plantAlgae = plantList.length ? plantList.reduce((n, d) => n + (d.algaeMaxBonus || 0), 0) / plantList.length : 0;
   // Fish only fight or hunt when they meet: in a big tank they spend less time within range.
   const strength = (t, hunting) => {
     const r = hunting ? mates.huntRange ?? 0.7 : mates.fightRange ?? 0.45;
@@ -1686,6 +1692,12 @@ function simulate(setup, B, seed) {
     const mult = infectionMultiplier(t);
     // Algae eaters never eat food; algae wafers add algae for them instead.
     if (ENUMS.type[type] === "AlgaeWafers") t.algae = clamp01(t.algae + alg.waferAlgae);
+    else {
+      // Any other food feeds a little algae; what's over the maximum goes at the next time step.
+      const before = t.algae;
+      t.algae = clamp01(t.algae + (alg.feedAlgae || 0));
+      t.fedAlgae = (t.fedAlgae || 0) + t.algae - before;
+    }
     let hungry = shuffle(t.residents.filter((f) => f.hunger > 0.25 && !f.s.eatsAlgae));
     while (pellets > 0 && hungry.length) {
       for (const f of hungry) {
@@ -1809,9 +1821,13 @@ function simulate(setup, B, seed) {
       const loads = [alg.tinyFishLoad, alg.smallFishLoad, alg.mediumFishLoad, alg.largeFishLoad];
       const load = t.residents.filter((f) => !f.s.eatsAlgae).reduce((n, f) => n + (loads[f.s.sizeGroup || 0] ?? 1), 0);
       const grazers = t.residents.filter((f) => f.s.eatsAlgae).length;
+      const fed = t.fedAlgae || 0;
+      t.fedAlgae = 0;
       if (t.bloom) t.algae = Math.min(1, t.algae + Math.max(alg.minRise, (1 - t.algae) * alg.riseShare));
       else {
-        t.algae = algaeStep(alg, t.algae, algaeMaxFor(B, t.size, load, t.filter && !t.filter.broken ? t.filter.info : null, grazers), t.decor);
+        const max = algaeMaxFor(B, t.size, load, t.filter && !t.filter.broken ? t.filter.info : null, grazers, 0, hasPlants(t) ? plantAlgae : 0);
+        if (t.algae > max && fed > 0) t.algae = Math.max(max, t.algae - fed);
+        t.algae = algaeStep(alg, t.algae, max, t.decor);
         if (t.algae >= alg.bloomAbove && chance(alg.bloomChance + alg.bloomChancePer10 * (t.algae - alg.bloomAbove) / 0.1)) {
           t.bloom = true;
           t.algae = Math.min(1, t.algae + alg.bloomJump);
@@ -3006,8 +3022,8 @@ function diveOdds(scuba, gearLevel) {
 
 // ---------------------------------------------------------------- algae
 
-/** Algae maximum, as the game works it out (Tank.AlgaeMax): fish for the tank's size, the filter's steady level for its fish, less the eaters' share. */
-function algaeMaxFor(B, size, load, filter, eaters, floor = 0) {
+/** Algae maximum, as the game works it out (Tank.AlgaeMax): fish for the tank's size, the filter's steady level for its fish, plus the plants, less the eaters' share. */
+function algaeMaxFor(B, size, load, filter, eaters, floor = 0, plants = 0) {
   const a = B.algae, sizes = B.store.tankSizes || [];
   const standard = Math.max(1, (sizes[0] || size).capacity);
   const per = a.algaePerFish * standard / Math.max(1, size.capacity);
@@ -3017,7 +3033,7 @@ function algaeMaxFor(B, size, load, filter, eaters, floor = 0) {
     max = Math.min(handled * per, filter.algaeHold) + (load - handled) * per;
   } else max = load * per;
   const share = eaters > 0 ? Math.min(a.maxEaterReduction, a.eaterReduction * eaters / Math.max(1, size.algaeEaters || 1)) : 0;
-  return clamp01(Math.max(max * (1 - share), eaters > 0 ? floor : 0));
+  return clamp01(Math.max((max + plants) * (1 - share), eaters > 0 ? floor : 0));
 }
 
 /** One time step of algae towards its maximum (no bloom), as Tank.UpdateAlgae does it. */
@@ -3027,7 +3043,7 @@ function algaeStep(a, algae, max, decor = 0) {
   return algae;
 }
 
-const algaeCalc = { size: 0, filter: 0, fish: 20, eaters: 2, decor: 4 };
+const algaeCalc = { size: 0, filter: 0, fish: 20, eaters: 2, decor: 4, plants: 0 };
 
 function renderAlgae() {
   const a = data.algae;
@@ -3057,7 +3073,7 @@ function renderAlgae() {
   const drawCalc = () => {
     const c = algaeCalc, size = sizes[Math.min(c.size, sizes.length - 1)] || { capacity: 24, algaeEaters: 2 };
     const filter = c.filter >= 0 ? (data.supplier.filters || [])[c.filter] : null;
-    const max = algaeMaxFor(data, size, c.fish, filter, c.eaters);
+    const max = algaeMaxFor(data, size, c.fish, filter, c.eaters, 0, c.plants / 100);
     const green = a.greenStart + (a.greenStartWithEaters - a.greenStart) * Math.min(1, c.eaters / Math.max(1, size.algaeEaters || 1));
     const climb = [];
     let v = 0;
@@ -3074,13 +3090,14 @@ function renderAlgae() {
   const calcForm = el("div", { class: "grid" },
     choose("size", "Tank", sizes.map((s, i) => [i, `${s.name} (${s.capacity} fish)`])),
     choose("filter", "Filter", [[-1, "None"], ...(data.supplier.filters || []).map((f, i) => [i, `${f.name} (${f.fishCapacity} fish)`])]),
-    num("fish", "Fish (as tiny fish, eaters not counted)"), num("eaters", "Algae eaters"), num("decor", "Decorations"));
+    num("fish", "Fish (as tiny fish, eaters not counted)"), num("eaters", "Algae eaters"), num("decor", "Decorations"),
+    num("plants", "Plants' algae bonus (%, add up each plant's)"));
   drawPreview();
   drawCalc();
   const redraw = () => { drawPreview(); drawCalc(); };
   if (!a.deepCleanInjuries) a.deepCleanInjuries = [];
   return [
-    el("p", { class: "hint" }, "The fish in a tank set how high its algae can get (its maximum), and algae climbs there a bit at every time step. A filter holds algae at its steady level for as many fish as it handles (Equipment & repairs tab); each fish more pushes it up. Algae eaters (Species tab) take a share off; each tank size needs its own number of them (Aquariums tab). The Algae control perk only slows the climb. From the bloom level a tank can burst into an algal bloom that only a deep clean clears. Algae eaters live on the algae: algae wafers add some, and the Java moss rock (Eggs, decor & quality tab) keeps enough for them."),
+    el("p", { class: "hint" }, "The fish in a tank set how high its algae can get (its maximum), and algae climbs there a bit at every time step. A filter holds algae at its steady level for as many fish as it handles (Equipment & repairs tab); each fish more pushes it up. Plants raise the maximum, each by its own Algae max bonus (Eggs, decor & quality tab). Algae eaters (Species tab) take a share off; each tank size needs its own number of them (Aquariums tab). Every feeding adds a little algae; whatever that puts over the maximum is gone at the next time step. The Algae control perk only slows the climb. From the bloom level a tank can burst into an algal bloom that only a deep clean clears. Algae eaters live on the algae: algae wafers add some, and the Java moss rock (Eggs, decor & quality tab) keeps enough for them."),
     el("div", { class: "card" }, el("h2", {}, "Every tank size, full of tiny fish"),
       el("p", { class: "hint" }, "With the filter in the same place in the filter list and the algae eaters the size needs. The goal is 20% in the Full + filter + eaters column."), preview),
     el("div", { class: "card" }, el("h2", {}, "Try a tank"), calcForm, calc),

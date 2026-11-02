@@ -618,7 +618,7 @@ namespace FishBreeder.Core
         void DrawAlgae()
         {
             float max = tank.AlgaeMax;
-            Bar("Algae", tank.Algae, false, "The fish set how high algae can get. A filter holds it steady for the fish it's made for, and algae eaters take a share off.");
+            Bar("Algae", tank.Algae, false, "The fish set how high algae can get, and plants raise it a little. A filter holds it steady for the fish it's made for, and algae eaters take a share off. Feeding adds a little algae; whatever that puts over the maximum is gone by the next time step.");
             var parts = new List<string>();
             if (tank.InBloom) parts.Add($"<color={UiTheme.CoralHex}>algal bloom</color>");
             else if (Mathf.Abs(tank.Algae - max) < 0.005f) parts.Add($"steady at {max * 100f:0}%");
@@ -633,6 +633,8 @@ namespace FishBreeder.Core
             }
             int eaters = tank.AlgaeEaterCount, needed = tank.AlgaeEatersNeeded;
             parts.Add($"{eaters} of {needed} algae eaters");
+            float plants = tank.PlantAlgaeBonus;
+            if (plants > 0.0005f) parts.Add($"plants +{plants * 100f:0}%");
             ui.Label(string.Join(" · ", parts), "fb-small");
         }
 

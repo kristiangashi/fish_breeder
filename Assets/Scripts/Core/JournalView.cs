@@ -274,6 +274,17 @@ namespace FishBreeder.Core
             if (Research.Knows(species, ResearchFact.Lifespan)) Line($"Starts to slow down with age after about {species.lifespanDays:0} days.");
             else Unknown();
 
+            if (species.eatsAlgae)
+            {
+                // How algae eaters work: they're told apart from the start, no research needed.
+                var algae = Balance.Data.algae;
+                Section("Algae eater");
+                Line("Lives on the algae in its tank and never eats flakes or any other food.");
+                Line($"Needs at least {species.AlgaeMin * 100f:0}% algae to graze, or it goes hungry: algae wafers add {algae.waferAlgae * 100f:0}% for it. A Java moss rock keeps some algae for it too.");
+                Line($"Falls sick above {species.AlgaeMax * 100f:0}% algae: too much is as bad for it as too little.");
+                Line($"Each one keeps the tank's algae lower and the water clear for longer. A tank's full set of them (more in bigger tanks) takes {algae.eaterReduction * 100f:0}% off how high the algae can climb; extras take off more, up to {algae.maxEaterReduction * 100f:0}%.");
+            }
+
             Section("Favourite foods");
             int foundFoods = 0;
             foreach (var food in species.favoriteFoods)

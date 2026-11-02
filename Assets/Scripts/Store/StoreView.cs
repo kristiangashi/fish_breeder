@@ -1172,20 +1172,50 @@ namespace FishBreeder.Store
             DrawMoneyPopups();
         }
 
+        /// <summary>
+        /// "12/20 tiny, 0/6 small, 1/4 medium": a tank's fish against each limit it has (an exhibit's
+        /// size classes, a holding tank's one limit, an ordinary tank's size groups), in red where
+        /// it's over. Sizes the tank has no room for are left out unless some got in anyway
+        /// ("2 small (no room)").
+        /// <paramref name="tooMany"/> is the warning for the label, or null.
+        /// </summary>
+        static string FishCounts(Tank t, out string tooMany)
+        {
+            tooMany = null;
+            var parts = new List<string>();
+            var over = new List<string>();
+            void Add(int have, int limit, string name, bool always = false)
+            {
+                if (limit <= 0 && have <= 0 && !always) return;
+                string part = limit > 0 ? $"{have}/{limit} {name}" : $"{have} {name} (no room)";
+                if (have > limit) { part = $"<color=#ff8080>{part}</color>"; over.Add(name); }
+                parts.Add(part);
+            }
+            if (t.IsExhibit)
+                foreach (var size in new[] { AquariumSize.Small, AquariumSize.Medium, AquariumSize.Large })
+                    Add(PublicAquarium.CountOfSize(t, size), PublicAquarium.ExhibitLimit(t, size), PublicAquarium.SizeName(size).ToLower());
+            else if (t.IsHolding)
+                Add(t.Residents.Count, t.Capacity, "fish", true);
+            else
+                foreach (SizeGroup g in System.Enum.GetValues(typeof(SizeGroup)))
+                    Add(t.GroupCount(g), t.GroupCapacity(g), g.ToString().ToLower(), g == SizeGroup.Tiny);
+            // Tiny fish past their (soft) limit crowd the tank; any other size over its limit just doesn't fit.
+            if (!t.IsExhibit && !t.IsHolding && t.IsOvercrowded) tooMany = "overcrowded!";
+            else if (over.Count > 0) tooMany = t.IsHolding ? "too many fish!" : $"too many {string.Join(" and ", over)} fish!";
+            return string.Join(", ", parts);
+        }
+
         void DrawWorldLabels()
         {
             foreach (var tank in store.Tanks)
             {
                 var t = tank.Tank;
                 int eggs = EggClutch.EggsIn(t);
-                string count = $"{t.TinyCount}/{t.Capacity} fish";
-                foreach (var g in new[] { SizeGroup.Small, SizeGroup.Medium, SizeGroup.Large })
-                    if (t.GroupCount(g) > 0) count += $", {t.GroupCount(g)}/{t.GroupCapacity(g)} {g.ToString().ToLower()}";
-                string contents = (t.IsOvercrowded ? $"<color=#ff8080>{count}</color>" : count) + (eggs > 0 ? $", {eggs} eggs" : "");
+                string contents = FishCounts(t, out string tooMany) + (eggs > 0 ? $", {eggs} eggs" : "");
                 int sick = 0;
                 foreach (var fish in t.Residents) if (!fish.IsDead && fish.Health.IsSick) sick++;
                 string sickLine = sick > 0 ? $"\n<color=#ff6b6b><b>+ {sick} sick</b></color>" : "";
-                string warning = sickLine + (t.IsOvercrowded ? "\n<color=#ff8080>overcrowded!</color>" : t.Corpses.Count > 0 ? "\n<color=#ff8080>dead fish!</color>" : t.WaterHealth < Balance.Data.shop.grossWaterQuality ? "\n<color=#ffd27f>dirty water</color>" : "");
+                string warning = sickLine + (tooMany != null ? $"\n<color=#ff8080>{tooMany}</color>" : t.Corpses.Count > 0 ? "\n<color=#ff8080>dead fish!</color>" : t.WaterHealth < Balance.Data.shop.grossWaterQuality ? "\n<color=#ffd27f>dirty water</color>" : "");
                 WorldLabel(t.InnerBounds.center + Vector3.up * 0.65f, $"<b>{tank.Title}</b>\n{contents}{warning}");
             }
             WorldLabel(store.RegisterPoint, "<b>Register</b>");

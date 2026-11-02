@@ -23,6 +23,8 @@ namespace FishBreeder.Feeding
                 Progression.Count(GoalKind.FeedTanks);
             }
             tank.FedSinceTimeStep = true;
+            // Algae wafers feed the tank's algae eaters by adding algae for them to graze.
+            if (type == FoodType.AlgaeWafers) tank.AddAlgae(Balance.Data.algae.waferAlgae);
             var bounds = tank.InnerBounds;
             var material = MaterialFactory.Create(FoodPellet.Info(type).color, type == FoodType.Bloodworms || type == FoodType.BrineShrimp ? 0.5f : 0.1f);
 

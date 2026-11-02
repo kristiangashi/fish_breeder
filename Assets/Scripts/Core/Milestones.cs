@@ -32,7 +32,7 @@ namespace FishBreeder.Core
         {
             Make("First fish", "Get your first fish", MilestoneKind.GetFish, 1, 50, 10, XpTrack.Fishkeeping),
             Make("Dinner time", "Feed a tank", MilestoneKind.FeedFish, 1, 25, 5, XpTrack.Fishkeeping),
-            Make("Squeaky clean", "Wipe a tank", MilestoneKind.CleanTank, 1, 25, 5, XpTrack.Fishkeeping),
+            Make("Squeaky clean", "Clean a tank", MilestoneKind.CleanTank, 1, 25, 5, XpTrack.Fishkeeping),
             Make("All grown up", "Raise a fish to adulthood", MilestoneKind.GrowUp, 1, 75, 15, XpTrack.Fishkeeping),
             Make("Gearing up", "Install a filter, heater or bubbler", MilestoneKind.BuyEquipment, 1, 50, 10, XpTrack.Fishkeeping),
             Make("Bright idea", "Learn something new about a fish", MilestoneKind.LearnFact, 1, 40, 10, XpTrack.Research),

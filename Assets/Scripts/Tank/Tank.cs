@@ -156,7 +156,6 @@ namespace FishBreeder
             }
         }
         public float HeaterSetting => heaterSetting;
-        public int WipesLeft { get; private set; }
         public TankDecor Decor => decor;
         public int DecorCount => decor != null ? decor.Count : 0;
         public bool HasPlants => decor != null && decor.HasPlants;
@@ -259,8 +258,8 @@ namespace FishBreeder
             }
         }
 
-        /// <summary>One number for how the water looks to a customer: 1 sparkling, 0 a swamp.</summary>
-        public float WaterHealth => Mathf.Clamp01(Mathf.Min(waterQuality, 1f - algae * 0.8f) - (pests ? 0.15f : 0f));
+        /// <summary>One number for how the water looks to a customer: 1 sparkling, 0 a swamp. Algae only counts once customers start minding it (see <see cref="AlgaeNuisance"/>).</summary>
+        public float WaterHealth => Mathf.Clamp01(Mathf.Min(waterQuality, 1f - AlgaeNuisance) - (pests ? 0.15f : 0f));
 
         /// <summary>The water, in world space. Tanks only ever turn in quarter turns, so this stays exact when one faces a side wall.</summary>
         public Bounds InnerBounds
@@ -366,22 +365,11 @@ namespace FishBreeder
         public float InfectionMultiplier => Mathf.Lerp(GameConfig.Active.dirtyWaterInfectionMultiplier, 1f, waterQuality) * (pests ? 1.3f : 1f)
                                             * (1f + OverLimit * Balance.Data.timeStep.overcrowdedIllnessPerFish);
 
-        /// <summary>Wipes every tank gets per closed-shop session: one, and more as your Fishkeeping level grows.</summary>
-        public static int WipesPerSession
-        {
-            get
-            {
-                var balance = Balance.Data.timeStep;
-                int every = balance.extraWipeEveryFishkeepingLevels;
-                return Mathf.Max(1, balance.wipesPerSession + (every > 0 ? (Progression.Fishkeeping - 1) / every : 0) + Perks.Count(PerkEffect.ExtraWipes));
-            }
-        }
-
         void Awake()
         {
             temperature = GameConfig.Active.roomTemperature;
             ph = GameConfig.Active.startingPh;
-            WipesLeft = WipesPerSession;
+            ResetCleans();
             Perks.Changed += OnPerksChanged;
             Balance.Changed += OnBalanceChanged;
         }
@@ -426,28 +414,6 @@ namespace FishBreeder
 
         public void Pollute(float amount) => waterQuality = Mathf.Clamp01(waterQuality - amount);
 
-        /// <summary>One wipe: scrubs algae and freshens the water. Limited per closed-shop session.</summary>
-        public bool Clean()
-        {
-            if (WipesLeft <= 0)
-            {
-                GameLog.Add("This tank has had its wipe. It gets another at the next time step (more per tank as your Fishkeeping level grows).");
-                return false;
-            }
-            var balance = Balance.Data.timeStep;
-            WipesLeft--;
-            // Experienced fishkeepers get more out of every wipe.
-            float skill = (1f + Balance.Data.progression.wipeBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
-            algae = Mathf.Clamp01(algae - balance.wipeAlgaeRemoved * skill);
-            waterQuality = Mathf.Clamp01(waterQuality + balance.wipeQualityRestored * skill);
-            Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpWipeTank);
-            Progression.Count(GoalKind.CleanTanks);
-            Fx.Sparkle(InnerBounds);
-            Fx.Text(InnerBounds.center + Vector3.up * innerSize.y * 0.3f, "Sparkling!", UiTheme.Aqua, 20f);
-            GameLog.Add($"You wiped the tank. Water {waterQuality * 100f:0}%, algae {algae * 100f:0}%." + (WipesLeft > 0 ? $" {WipesLeft} more wipes here this time." : " That's this tank's wipe until the next time step."));
-            return true;
-        }
-
         /// <summary>Water conditioner: resets pH for the water type, kills pests, freshens a little.</summary>
         public void TreatWater()
         {
@@ -480,6 +446,7 @@ namespace FishBreeder
         {
             waterQuality = 1f;
             algae = 0f;
+            bloom = false;
             pests = false;
         }
 
@@ -554,10 +521,7 @@ namespace FishBreeder
                 - residents.Count * balance.wasteQualityLossPerFish * waste
                 - corpses.Count * balance.corpseQualityLoss
                 - OverLimit * balance.overcrowdedWastePerFish);
-            float algaeGrowth = (balance.algaePerStep + DecorCount * balance.algaePerDecoration) * Perks.Less(PerkEffect.SlowerAlgae);
-            int grazers = 0;
-            foreach (var fish in residents) if (!fish.IsDead && fish.Species.eatsAlgae) grazers++;
-            algae = Mathf.Clamp01(algae + algaeGrowth * (1.5f - waterQuality) - grazers * balance.algaeEatenPerGrazer);
+            UpdateAlgae();
             float neutral = IsSaltwater ? 8.1f : 7f;
             ph = Mathf.MoveTowards(ph, neutral - 1.2f, balance.phDriftPerStep * (1f - waterQuality) * 2f);
             if (!pests && waterQuality < 0.5f && GameRandom.Chance(balance.pestChance * (1.5f - waterQuality)))
@@ -573,7 +537,7 @@ namespace FishBreeder
                 temperature = Mathf.Round((heaterSetting + GameRandom.Range(-drift, drift)) * 10f) / 10f;
             }
             else temperature = GameConfig.Active.roomTemperature;
-            WipesLeft = WipesPerSession;
+            ResetCleans();
             FedSinceTimeStep = false;
         }
 
@@ -625,7 +589,7 @@ namespace FishBreeder
             get
             {
                 var color = Color.Lerp(MurkyWater, ClearWater, waterQuality);
-                return Color.Lerp(color, AlgaeWater, algae * 0.7f);
+                return Color.Lerp(color, AlgaeWater, AlgaeGreen * 0.7f);
             }
         }
 
@@ -638,7 +602,7 @@ namespace FishBreeder
             if (backgroundMaterial != null) backgroundMaterial.color = tint;
             foreach (var side in sideMaterials) side.color = tint;
             // Dirty water shows only inside the glass, through the water volume's murk.
-            if (water != null) water.SetLook(color, waterQuality, algae);
+            if (water != null) water.SetLook(color, waterQuality, AlgaeGreen);
         }
 
         /// <summary>Puts in new equipment of this model, replacing any old one of the same kind.</summary>

@@ -1812,7 +1812,7 @@ namespace FishBreeder.Store
             {
                 int have = Inventory.Decorations(item.id), placed = PlacedCount(item.id);
                 float points = quality.decorationPoints + (item.plant ? quality.plantPoints : 0f);
-                string details = (item.plant ? "Plant. " : "") + (item.back ? "Goes along the back." : "Goes near the front.") + $"  Quality +{points:0} (+{quality.varietyPoints:0} if it's a new kind for the tank)."
+                string details = (item.plant ? "Plant. " : "") + (item.algaeFloor > 0f ? $"Grows a film of algae that keeps at least {item.algaeFloor * 100f:0}% for algae eaters to graze. " : "") + (item.back ? "Goes along the back." : "Goes near the front.") + $"  Quality +{points:0} (+{quality.varietyPoints:0} if it's a new kind for the tank)."
                                  + $"\nYou have <b>{have}</b> in stock" + (placed > 0 ? $", {placed} in aquariums." : ".");
                 int price = Perks.Decoration(item.price);
                 if (OfferRow(ItemPreviews.Decoration(item.id), item.name, details, item.UnlockTrack, item.unlockLevel, $"Buy  {Economy.Format(price)}", Economy.CanAfford(price))

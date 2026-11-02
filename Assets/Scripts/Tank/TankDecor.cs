@@ -406,7 +406,7 @@ namespace FishBreeder
         {
             // Its own size, whatever the tank's: upgrading a tank never grows what's in it.
             float height = Mathf.Min(item.height * (WallAquarium ? Mathf.Max(0.1f, Balance.Data.store.wallDecorationSize) * size : 1f), MaxHeight);
-            var prefab = Resources.Load<GameObject>(Folder + item.id);
+            var prefab = Resources.Load<GameObject>(Folder + item.Model);
             GameObject piece;
             if (prefab == null)
             {

@@ -53,13 +53,13 @@ namespace FishBreeder.Core
         {
             // Aquariums: keeping tanks clean, roomy and running.
             Make("clean_freak", PerkTree.Aquariums, 1, "Clean freak", "Water gets dirty {0} slower", 5, 0.06f, PerkEffect.CleanerWater),
-            Make("elbow_grease", PerkTree.Aquariums, 1, "Elbow grease", "Wipes clean {0} more", 3, 0.15f, PerkEffect.StrongerWipes),
-            Make("algae_control", PerkTree.Aquariums, 2, "Algae control", "Algae grows {0} slower", 5, 0.08f, PerkEffect.SlowerAlgae),
+            Make("elbow_grease", PerkTree.Aquariums, 1, "Elbow grease", "Clean tank takes off {0} more algae", 3, 0.15f, PerkEffect.StrongerWipes),
+            Make("algae_control", PerkTree.Aquariums, 2, "Algae control", "Algae climbs {0} slower (its maximum stays the same)", 5, 0.08f, PerkEffect.SlowerAlgae),
             Make("aquascaper", PerkTree.Aquariums, 2, "Aquascaper", "{0} more decoration spots in every tank", 3, 2f, PerkEffect.DecorationSpots, false),
             Make("tinkerer", PerkTree.Aquariums, 3, "Tinkerer", "Equipment breaks down {0} less often", 5, 0.08f, PerkEffect.SturdierEquipment),
             Make("handyman", PerkTree.Aquariums, 3, "Handyman", "Repairs cost {0} less", 3, 0.15f, PerkEffect.BetterRepairs),
             Make("roomy_tanks", PerkTree.Aquariums, 4, "Roomy tanks", "Tanks hold {0} more fish", 3, 0.1f, PerkEffect.RoomierTanks),
-            Make("tireless", PerkTree.Aquariums, 4, "Tireless", "{0} extra wipe for every tank each session", 1, 1f, PerkEffect.ExtraWipes, false),
+            Make("tireless", PerkTree.Aquariums, 4, "Tireless", "{0} extra clean for every tank each session", 1, 1f, PerkEffect.ExtraWipes, false),
 
             // Biology: healthy, well-fed, long-lived fish.
             Make("immunity", PerkTree.Biology, 1, "Strong immunity", "Fish catch illnesses {0} less often", 5, 0.08f, PerkEffect.FewerIllnesses),

@@ -35,7 +35,8 @@ namespace FishBreeder.Core
         {
             return Photo("decor:" + id, false, () =>
             {
-                var prefab = Resources.Load<GameObject>("Decor/" + id);
+                var item = TankDecor.Find(id);
+                var prefab = Resources.Load<GameObject>("Decor/" + (item != null ? item.Model : id));
                 if (prefab == null) return null;
                 var piece = UnityEngine.Object.Instantiate(prefab);
                 piece.transform.rotation = Quaternion.Euler(0f, 160f, 0f);

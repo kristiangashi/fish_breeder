@@ -8,7 +8,7 @@ namespace FishBreeder.Shop
     /// <summary>One problem waiting after closing: a tank (and maybe a fish) that needs seeing to.</summary>
     public class ToDo
     {
-        /// <summary>In the order the list goes through them: feeding first, then sickness, then cleanliness, then repairs, then tanks that could do with a wipe.</summary>
+        /// <summary>In the order the list goes through them: feeding first, then sickness, then cleanliness, then repairs, then tanks that could do with a clean.</summary>
         public enum Kind { HungryFish, SickFish, DeadFish, DirtyWater, BrokenEquipment, GrimyTank }
 
         public Kind kind;
@@ -29,12 +29,12 @@ namespace FishBreeder.Shop
                     case Kind.DeadFish: return t.Corpses.Count == 0;
                     case Kind.SickFish: return fish == null || fish.IsDead || !fish.Health.IsSick;
                     case Kind.DirtyWater:
-                        bool clean = t.WaterHealth >= settings.dirtyWaterBelow && t.Algae <= settings.algaeAbove && !t.HasPests;
-                        // Out of wipes (and nothing left to treat pests with) is as far as it can go today.
-                        bool doneAllYouCan = t.WipesLeft == 0 && (!t.HasPests || !Economy.CanAfford(Core.FishTankHUD.WaterTreatmentPrice));
+                        bool clean = t.WaterHealth >= settings.dirtyWaterBelow && t.Algae <= settings.algaeAbove && !t.HasPests && !t.InBloom;
+                        // Out of cleans (and nothing left to treat pests with) is as far as it can go today; a bloom needs its deep clean.
+                        bool doneAllYouCan = (t.InBloom ? t.DeepCleansLeft == 0 : t.CleansLeft == 0) && (!t.HasPests || !Economy.CanAfford(Core.FishTankHUD.WaterTreatmentPrice));
                         return clean || doneAllYouCan;
                     case Kind.BrokenEquipment: return t.BrokenEquipment.Count == 0;
-                    case Kind.GrimyTank: return 1f - t.WaterHealth <= settings.grimyAbove || t.WipesLeft == 0;
+                    case Kind.GrimyTank: return 1f - t.WaterHealth <= settings.grimyAbove || t.CleansLeft == 0;
                     default: return t.FedSinceTimeStep || t.Residents.Count == 0;
                 }
             }
@@ -44,7 +44,7 @@ namespace FishBreeder.Shop
     /// <summary>
     /// The list of problems to sort through after closing the shop: always feeding first, then sick
     /// fish, then cleanliness (dead fish, dirty water), then broken equipment, and last any tank
-    /// more than a little dirty (10% by default) that could use a wipe; tank by tank within
+    /// more than a little dirty (10% by default) that could use a clean; tank by tank within
     /// each. The store view takes the player to each one in turn and moves on by itself once it's
     /// dealt with.
     /// </summary>
@@ -80,11 +80,19 @@ namespace FishBreeder.Shop
             foreach (var storeTank in tanks)
             {
                 var tank = storeTank.Tank;
-                bool hungry = false;
+                bool hungry = false, grazers = false;
                 foreach (var fish in tank.Residents)
-                    if (fish.Hunger >= settings.hungryAbove) hungry = true;
+                    if (fish.Hunger >= settings.hungryAbove)
+                    {
+                        if (fish.Species.eatsAlgae) grazers = true;
+                        else hungry = true;
+                    }
                 if (hungry)
-                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The fish in {storeTank.Title} are hungry.", "Feed them: any food works, and each kind has favourites.");
+                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The fish in {storeTank.Title} are hungry.",
+                        "Feed them: any food works, and each kind has favourites." + (grazers ? " The algae eaters only graze algae: algae wafers add some for them." : ""));
+                else if (grazers)
+                    Add(ToDo.Kind.HungryFish, storeTank, null, $"The algae eaters in {storeTank.Title} are going hungry.",
+                        $"There isn't enough algae for them to graze ({tank.Algae * 100f:0}%). Feed algae wafers: each adds {Balance.Data.algae.waferAlgae * 100f:0}% algae.");
             }
 
             foreach (var storeTank in tanks)
@@ -105,10 +113,19 @@ namespace FishBreeder.Shop
             foreach (var storeTank in tanks)
             {
                 var tank = storeTank.Tank;
+                if (tank.InBloom)
+                {
+                    Add(ToDo.Kind.DirtyWater, storeTank, null, $"{storeTank.Title} has an algal bloom!",
+                        "Only a deep clean clears it, and it may hurt some fish. Then a filter and algae eaters keep the algae down.");
+                    continue;
+                }
                 bool dirty = tank.WaterHealth < settings.dirtyWaterBelow || tank.Algae > settings.algaeAbove || tank.HasPests;
-                if (dirty && (tank.Residents.Count > 0 || tank.Algae > settings.algaeAbove))
+                bool algae = tank.Algae > settings.algaeAbove;
+                if (dirty && (tank.Residents.Count > 0 || algae))
                     Add(ToDo.Kind.DirtyWater, storeTank, null, $"{storeTank.Title} is dirty" + (tank.HasPests ? " and has pests." : "."),
-                        tank.HasPests ? "Treat the water to get rid of the pests, then wipe the tank." : "Wipe the tank (and treat the water if the pH is off).");
+                        tank.HasPests ? "Treat the water to get rid of the pests, then clean the tank."
+                        : algae ? $"Algae is at {tank.Algae * 100f:0}% (it can reach {tank.AlgaeMax * 100f:0}% here). Clean the tank; a filter for this many fish and algae eaters keep it down for good."
+                        : "Clean the tank (and treat the water if the pH is off).");
             }
 
             foreach (var storeTank in tanks)
@@ -126,11 +143,11 @@ namespace FishBreeder.Shop
             {
                 var tank = storeTank.Tank;
                 float dirt = 1f - tank.WaterHealth;
-                if (dirt <= settings.grimyAbove || tank.WipesLeft == 0) continue;
+                if (dirt <= settings.grimyAbove || tank.CleansLeft == 0) continue;
                 bool listed = false;
                 foreach (var item in items) if (item.kind == ToDo.Kind.DirtyWater && item.tank == storeTank) listed = true;
                 if (!listed)
-                    Add(ToDo.Kind.GrimyTank, storeTank, null, $"{storeTank.Title} is {dirt * 100f:0}% dirty.", "Give it a wipe before it gets worse and customers notice.");
+                    Add(ToDo.Kind.GrimyTank, storeTank, null, $"{storeTank.Title} is {dirt * 100f:0}% dirty.", "Give it a clean before it gets worse and customers notice.");
             }
             return items.Count;
         }

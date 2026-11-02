@@ -553,7 +553,7 @@ namespace FishBreeder.Core
         {
             bool can = !ReadOnly;
             DrawFeedButtons(can);
-            if (ui.Button($"Wipe tank ({tank.WipesLeft} left)", "fb-button", can)) tank.Clean();
+            DrawCleaning(can);
             DrawTreatWater(can);
             if (tank.Corpses.Count > 0 && ui.Button($"Remove dead fish ({tank.Corpses.Count})", "fb-button", can))
             {
@@ -588,11 +588,52 @@ namespace FishBreeder.Core
             if (eggs > 0 || pregnant > 0)
                 ui.Label($"<color=#ffe9a8>{(eggs > 0 ? $"{eggs} eggs" : "")}{(eggs > 0 && pregnant > 0 ? ", " : "")}{(pregnant > 0 ? $"{pregnant} pregnant" : "")} (see Breeding)</color>");
             Bar("Water quality", tank.WaterQuality, true);
-            Bar("Algae", tank.Algae, false);
+            DrawAlgae();
             Bar("Oxygen", tank.Oxygen, true);
             if (!tank.HasHeater) DrawTemperature();
             ui.Label($"Water: {(tank.IsSaltwater ? "salt" : "fresh")} ({tank.Salinity:0} ppt)");
             if (tank.HasPests) ui.Label("<color=#ff8080>Pests! Treat the water (above).</color>");
+        }
+
+        /// <summary>Clean tank (a little algae, a few times a session) and deep clean (nearly all of it, a bloom too, but fish can get hurt).</summary>
+        void DrawCleaning(bool can)
+        {
+            var rules = Balance.Data.algae;
+            float removed = rules.cleanAlgaeRemoved * (1f + rules.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
+            int price = rules.deepCleanPrice;
+            float risk = Tank.DeepCleanInjuryChance;
+            ui.BeginRow("fb-row fb-pair");
+            if (ui.Button($"Clean tank ({tank.CleansLeft} left)", "fb-button fb-grow", can && !tank.InBloom && tank.CleansLeft > 0,
+                    tank.InBloom ? "No use against an algal bloom: it needs a deep clean" : $"Scrubs off {removed * 100f:0.#}% algae and freshens the water"))
+                tank.Clean();
+            if (ui.Button($"Deep clean ({tank.DeepCleansLeft} left)" + (price > 0 ? $"  {Economy.Format(price)}" : ""), "fb-button fb-grow",
+                    can && tank.DeepCleansLeft > 0 && Economy.CanAfford(price), $"Nets the fish out and scrubs the tank down: clears nearly all the algae (and a bloom), but each fish has a {risk * 100f:0}% chance of getting hurt"))
+                Confirm(tank.Residents.Count > 0 ? $"Each fish has a {risk * 100f:0}% chance of getting hurt in a deep clean (torn fins, lost scales, shock and worse). It clears nearly all the algae{(tank.InBloom ? " and the bloom" : "")}." : null,
+                    () => tank.DeepClean());
+            ui.Pop();
+            if (tank.InBloom) ui.Label($"<color={UiTheme.CoralHex}><b>Algal bloom!</b> It chokes every fish and keeps spreading. Only a deep clean clears it.</color>", "fb-small");
+        }
+
+        /// <summary>The algae bar and what's driving it: where it's heading, the filter's fish limit and the algae eaters.</summary>
+        void DrawAlgae()
+        {
+            float max = tank.AlgaeMax;
+            Bar("Algae", tank.Algae, false, "The fish set how high algae can get. A filter holds it steady for the fish it's made for, and algae eaters take a share off.");
+            var parts = new List<string>();
+            if (tank.InBloom) parts.Add($"<color={UiTheme.CoralHex}>algal bloom</color>");
+            else if (Mathf.Abs(tank.Algae - max) < 0.005f) parts.Add($"steady at {max * 100f:0}%");
+            else parts.Add(tank.Algae < max ? $"climbing to {max * 100f:0}%" : $"falling to {max * 100f:0}%");
+            int load = Mathf.RoundToInt(tank.FishLoad);
+            if (!tank.HasFilter) parts.Add($"no filter ({load} fish' worth)");
+            else if (!tank.FilterWorking) parts.Add($"<color={UiTheme.CoralHex}>filter broken</color>");
+            else
+            {
+                int cap = tank.FilterFishCapacity;
+                parts.Add(load > cap ? $"<color={UiTheme.CoralHex}>filter for {cap} fish, {load} here</color>" : $"filter for {cap} fish, {load} here");
+            }
+            int eaters = tank.AlgaeEaterCount, needed = tank.AlgaeEatersNeeded;
+            parts.Add($"{eaters} of {needed} algae eaters");
+            ui.Label(string.Join(" · ", parts), "fb-small");
         }
 
         void DrawTemperature()
@@ -740,6 +781,10 @@ namespace FishBreeder.Core
             ui.BeginRow("fb-row fb-pair");
             if (ui.Button("Clean water", "fb-button fb-grow")) tank.DevMakeClean();
             if (ui.Button("Dirty water", "fb-button fb-grow")) tank.DevMakeDirty();
+            ui.Pop();
+            ui.BeginRow("fb-row fb-wrap fb-pair");
+            if (ui.Button("Algae 45%", "fb-button fb-button--small")) tank.DevSetAlgae(0.45f, false);
+            if (ui.Button("Algal bloom", "fb-button fb-button--small")) tank.DevSetAlgae(0.55f, true);
             ui.Pop();
             ui.BeginRow("fb-row fb-wrap fb-pair");
             if (ui.Button("Grow all up", "fb-button fb-button--small"))
@@ -955,7 +1000,7 @@ namespace FishBreeder.Core
             switch (kind)
             {
                 case EquipmentKind.Filter:
-                    return "Without a filter, fish waste builds up fast: the water gets dirty, algae grows and fish fall ill.";
+                    return "Without a filter, fish waste builds up fast: the water gets dirty, algae climbs with every fish and fish fall ill.";
                 case EquipmentKind.Heater:
                     bool tropical = false;
                     foreach (var fish in tank.Residents)
@@ -971,7 +1016,7 @@ namespace FishBreeder.Core
             if (info == null) return "";
             switch (kind)
             {
-                case EquipmentKind.Filter: return $"Leaves {info.effect * 100f:0}% of the waste";
+                case EquipmentKind.Filter: return $"Leaves {info.effect * 100f:0}% of the waste and keeps algae at {info.algaeHold * 100f:0}% for up to {info.fishCapacity} fish";
                 case EquipmentKind.Heater: return info.effect > 0.05f ? $"Holds the setting within {info.effect:0.#} C" : "Holds the exact setting";
                 default: return $"Air for {info.effect:0} fish";
             }

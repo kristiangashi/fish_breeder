@@ -471,7 +471,10 @@ namespace FishBreeder.Core
         public int size;
         public float waterQuality, algae, temperature, ph, salinity, heaterSetting;
         public bool pests, fed;
+        /// <summary>Cleans left this session (the old name for them was wipes).</summary>
         public int wipesLeft;
+        public int deepCleansLeft = -1;
+        public bool bloom;
         public bool hasFilter, hasHeater, hasBubbler;
         public InstalledEquipment filter, heater, bubbler;
         public string background, sideBackground;
@@ -956,7 +959,7 @@ namespace FishBreeder
             {
                 size = sizeIndex,
                 waterQuality = waterQuality, algae = algae, temperature = temperature, ph = ph, salinity = salinity,
-                heaterSetting = heaterSetting, pests = pests, fed = FedSinceTimeStep, wipesLeft = WipesLeft,
+                heaterSetting = heaterSetting, pests = pests, fed = FedSinceTimeStep, wipesLeft = CleansLeft, deepCleansLeft = DeepCleansLeft, bloom = bloom,
                 hasFilter = filter != null, hasHeater = heater != null, hasBubbler = bubbler != null,
                 filter = filter, heater = heater, bubbler = bubbler,
                 background = backgroundId, sideBackground = sideBackgroundId,
@@ -979,7 +982,9 @@ namespace FishBreeder
             heaterSetting = s.heaterSetting;
             pests = s.pests;
             FedSinceTimeStep = s.fed;
-            WipesLeft = Mathf.Max(0, s.wipesLeft);
+            CleansLeft = Mathf.Max(0, s.wipesLeft);
+            if (s.deepCleansLeft >= 0) DeepCleansLeft = s.deepCleansLeft;
+            bloom = s.bloom;
             // JsonUtility writes empty objects for missing equipment, hence the flags.
             filter = s.hasFilter ? Kind(s.filter, EquipmentKind.Filter) : null;
             heater = s.hasHeater ? Kind(s.heater, EquipmentKind.Heater) : null;

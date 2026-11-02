@@ -254,7 +254,51 @@ const META = {
   litterMin: ["Litter / clutch min", ""], litterMax: ["Litter / clutch max", ""],
   gestationSteps: ["Pregnancy length (time steps)", "Livebearers: half days from getting pregnant to giving birth."],
   eggHatchSteps: ["Eggs hatch after (time steps)", "Egg-layers: half days from laying to hatching."],
-  eatsAlgae: ["Eats algae", "Grazes algae down at every time step."],
+  eatsAlgae: ["Eats algae", "An algae eater: lives on the tank's algae and never eats flakes or other food. Fed at every time step the tank has at least its least algae, sick above its most. Each one takes a share off the tank's algae maximum (Algae & cleaning tab)."],
+  algaeMin: ["Least algae (0..1)", "Algae eaters: below this much algae in the tank it starves (algae wafers add some). 0 = picked from its name in the range on the Algae & cleaning tab."],
+  algaeMax: ["Most algae (0..1)", "Algae eaters: above this much algae it gets sick (more illness, water stress). 0 = picked from its name."],
+  algaePerFish: ["Algae per fish (standard tank)", "Algae maximum each tiny fish adds in the standard tank with no filter and no eaters: 0.04 makes 5 fish reach 20%. Bigger tanks get less per fish, by their fish limit."],
+  tinyFishLoad: ["Tiny fish count as", "For algae, in tiny fish."], smallFishLoad: ["Small fish count as", "For algae and filters, in tiny fish."],
+  mediumFishLoad: ["Medium fish count as", "For algae and filters, in tiny fish."], largeFishLoad: ["Large fish count as", "For algae and filters, in tiny fish. Exhibits and holding tanks count every fish as one."],
+  eaterReduction: ["Eaters' share off", "Share of the algae maximum a tank's full set of algae eaters (Algae eaters on the Aquariums tab) takes off. 1/3 turns a filter's 30% into 20%."],
+  maxEaterReduction: ["Most eaters can take off", "Extra algae eaters keep taking a share off, up to this."],
+  riseShare: ["Climb per step (share of the gap)", "Each time step algae climbs this share of the way to its maximum."],
+  minRise: ["Least climb per step", ""], maxRise: ["Most climb per step", "So even a crowded tank takes a few days to go bad."],
+  risePerDecoration: ["Faster climb per decoration", "0.02 = each decoration makes algae climb 2% faster (never higher)."],
+  fallShare: ["Fall per step (share of the gap)", "Above its maximum (after wafers, or a new filter or eaters) algae falls back this share of the way."],
+  minFall: ["Least fall per step", ""],
+  greenStart: ["Water turns green at", ""], greenMore: ["Much greener from", ""],
+  greenStartWithEaters: ["Green from, with all its eaters", "With the tank's full set of algae eaters the water stays clear until this (much greener 15% later)."],
+  bothersAbove: ["Customers mind algae from", ""], bothersMoreAbove: ["Customers mind it a lot from", ""],
+  bothersChance: ["Put off by algae (chance)", "Chance a customer looking at the tank complains about the algae, between the two levels."],
+  bothersMoreChance: ["Put off by lots of algae (chance)", "Past the second level, and in a bloom."],
+  bloomAbove: ["Bloom risk from", "At this much algae a tank may bloom at each time step."],
+  bloomChance: ["Bloom chance at that level", ""], bloomChancePer10: ["More bloom chance per 10%", ""],
+  bloomJump: ["Algae a bloom adds", "Added at once when it starts. A bloom keeps climbing until a deep clean."],
+  bloomDeathChance: ["Die when it blooms (chance)", "Each fish, right away."], bloomIllnessChance: ["Fall ill when it blooms (chance)", "Each surviving fish."],
+  bloomStress: ["Bloom stress", "Water stress on every fish while the bloom lasts (0..1)."],
+  cleansPerSession: ["Cleans per tank", "Clean tank presses each tank gets per closed session (the Tireless perk adds more)."],
+  extraCleanEveryFishkeepingLevels: ["+1 clean every N Fishkeeping levels", "0 = never."],
+  cleanAlgaeRemoved: ["Algae one clean takes off", "At level 1; the Elbow grease perk adds more."],
+  cleanBonusPerFishkeepingLevel: ["Clean bonus per level", "0.02 = each Fishkeeping level makes a clean 2% stronger."],
+  cleanQualityRestored: ["Water quality a clean gives back", ""],
+  deepCleansPerSession: ["Deep cleans per tank", "Per closed session."], deepCleanPrice: ["Deep clean price ($)", "0 = free."],
+  deepCleanAlgaeLeft: ["Algae left after a deep clean", "It also ends a bloom."], deepCleanQualityRestored: ["Water quality a deep clean gives back", ""],
+  deepCleanInjuryChance: ["Hurt in a deep clean (chance)", "Each fish, at Fishkeeping level 1."], deepCleanInjuryLessPerLevel: ["Less per level", ""],
+  deepCleanMinInjuryChance: ["Least chance of getting hurt", ""],
+  deepCleanInjuries: ["Deep clean injuries", "What can happen to a fish in a deep clean, picked by weight."],
+  amount: ["How much it hurts (0..1)", "Wounds heal a little every time step."],
+  waferAlgae: ["Algae per wafer feeding", "Algae wafers add this much algae for the algae eaters to graze."],
+  eaterMinFrom: ["Eaters' least algae from", "Algae eaters with 0 for their own numbers get a least algae between this and the next (picked from the species' name)."], eaterMinTo: ["...to", ""],
+  eaterMaxFrom: ["Eaters' most algae from", "...and get sick above an algae level between this and the next."], eaterMaxTo: ["...to", ""],
+  eaterOverIllness: ["Illness x over their most", "Algae eaters with too much algae fall ill this many times as easily."],
+  eaterOverStressPer10: ["Stress per 10% over", "Water stress an algae eater gets for each 10% of algae over its most."],
+  fishCapacity: ["Fish it handles (filters)", "Filters: fish it keeps algae steady for, counted as tiny fish. More fish push the algae maximum up."],
+  algaeHold: ["Steady algae (filters)", "Filters: the algae level it holds a tank at while it has no more fish than it handles."],
+  algaeEaters: ["Algae eaters", "Algae eaters this size needs for the full share off its algae maximum (and clear water to 30%)."],
+  algaeFloor: ["Algae it keeps (eaters)", "A plant that grows algae film: in a tank with algae eaters, algae never falls below this. Enough to feed a tank of only algae eaters."],
+  model: ["3D model", "Its model's name in Resources/Decor when that isn't the id (pieces can share a model). Empty = the id."],
+  xpCleanTank: ["XP per clean", ""], xpDeepClean: ["XP per deep clean", ""],
   progressionPerStep: ["Worsens per step", "Severity gained each time step (0..1)."],
   lethality: ["Lethality", "Share of the illness health weight taken at full severity."],
   recoveryChancePerStep: ["Heals on its own (chance per step)", ""],
@@ -383,8 +427,6 @@ const META = {
   sadChancePerDeadFish: ["Sad chance per dead fish", "Chance a customer turns sad per corpse in view."],
   maxSadChance: ["Highest sad chance", ""],
   deadFishPurchaseMultiplier: ["Buying with dead fish around (x)", "Purchase chance multiplier while corpses are in the shop."],
-  wipesPerSession: ["Wipes per tank", "Glass wipes each tank gets per closed session."],
-  extraWipeEveryFishkeepingLevels: ["+1 wipe every N Fishkeeping levels", "0 = never."],
   overcrowdedWastePerFish: ["Extra dirt per fish over", "Water quality lost per time step for each fish over capacity."],
   overcrowdedIllnessPerFish: ["Extra illness per fish over", "Infection chance multiplier per fish over capacity."],
   overcrowdedHealthPerFish: ["Health lost per fish over", ""], overcrowdedMaxPenalty: ["Highest overcrowding penalty", ""],
@@ -417,7 +459,7 @@ const META = {
   trafficAtNoStars: ["Traffic at 0 stars (x)", ""], trafficAtFiveStars: ["Traffic at 5 stars (x)", ""],
   wishesPerDay: ["Wishes in reviews", "How many \"Wish they had more ...\" lines (the most wanted kinds nobody could buy) a day's reviews carry."],
   queueSize: ["Research queue", "Ready projects that can wait in line behind the one at the bench."],
-  grimyAbove: ["Wipe suggestion above (dirt)", "Last item on the evening list: tanks at least this dirty (0.1 = 10%) get a wipe suggestion."],
+  grimyAbove: ["Clean suggestion above (dirt)", "Last item on the evening list: tanks at least this dirty (0.1 = 10%) get a clean suggestion."],
   tree: ["Tree", "Aquariums, Biology and Breeding spend Fishkeeping points; Finances, Construction and Public Relations spend Shopkeeping points."],
   tier: ["Tier", "1 is open from the start. Each later tier opens once enough points (Points per tier) are spent in the tiers above it in the same tree."],
   text: ["Text", "What the perk does ({0} is replaced by its value at the current rank), or for a fault, what broke."],
@@ -453,6 +495,7 @@ const TABS = [
   ["diseases", "Diseases"],
   ["shop", "Shop & customers"],
   ["timeStep", "Time steps"],
+  ["algae", "Algae & cleaning"],
   ["health", "Health"],
   ["store", "Store & supplier"],
   ["stock", "Eggs, decor & quality"],
@@ -475,7 +518,7 @@ const SPECIES_GROUPS = [
   ["Size and where it lives", ["sizeGroup", "eastWingOnly", "minTankSize", "maxOfKind"]],
   ["Needs", ["tempMin", "tempMax", "phMin", "phMax", "salinityMin", "salinityMax", "likesPlants", "schoolSize"]],
   ["Habits", ["likedDecorations", "roams"]],
-  ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae"]],
+  ["Diet", ["hungerToleranceDays", "favoriteFoods", "eatsAlgae", "algaeMin", "algaeMax"]],
   ["Life and breeding", ["daysToAdult", "lifespanDays", "litterMin", "litterMax", "gestationSteps", "eggHatchSteps"]],
   ["Body and swimming", ["minLength", "maxLength", "fullGrownLength", "sizeSmall", "sizeMedium", "sizeLarge", "speed", "depthMin", "depthMax", "style", "bendStart"]],
 ];
@@ -717,7 +760,7 @@ const SPECIES_SHORT = {
   sizeGroup: "Size group", eastWingOnly: "Aquarium only", minTankSize: "Smallest tank", maxOfKind: "Most of kind",
   tempMin: "Temp min", tempMax: "Temp max", phMin: "pH min", phMax: "pH max", salinityMin: "Salt min", salinityMax: "Salt max",
   likesPlants: "Likes plants", schoolSize: "School", likedDecorations: "Favourite decor", roams: "Roams",
-  hungerToleranceDays: "Starves after (days)", favoriteFoods: "Favourite foods", eatsAlgae: "Eats algae",
+  hungerToleranceDays: "Starves after (days)", favoriteFoods: "Favourite foods", eatsAlgae: "Eats algae", algaeMin: "Least algae", algaeMax: "Most algae",
   daysToAdult: "Days to adult", lifespanDays: "Lifespan", litterMin: "Litter min", litterMax: "Litter max",
   gestationSteps: "Pregnancy (steps)", eggHatchSteps: "Eggs hatch (steps)",
   minLength: "Length min", maxLength: "Length max", fullGrownLength: "Full-grown length", sizeSmall: "Small x", sizeMedium: "Medium x",
@@ -1291,7 +1334,7 @@ function simDefaultTank() {
   return {
     role: 0, size: 0, salt: false, decorations: 4, plants: false,
     filter: -1, heater: -1, bubbler: -1, heaterTemp: 0,
-    feedings: 1, food: 0, wipes: 2,
+    feedings: 1, food: 0, wipes: 2, deepClean: true,
     removeDead: true, treatSick: true, treatWater: true, repair: true, breeding: true, sellAbove: 0,
     fish: [{ species: first, count: 5, stage: 2 }],
   };
@@ -1350,9 +1393,11 @@ function simulate(setup, B, seed) {
   const foods = sup.food || [];
   const foodInfo = (type) => foods.find((f) => f.type === type) || { type, name: ENUMS.type[type], price: 0, feedings: 1, nutrition: 0.35, contamination: 1, spoilChance: 0 };
   const diseases = (B.diseases || []).filter((d) => d);
-  const every = ts.extraWipeEveryFishkeepingLevels;
-  const wipesPerSession = Math.max(1, ts.wipesPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
-  const wipeSkill = 1 + B.progression.wipeBonusPerFishkeepingLevel * (setup.level - 1);
+  const alg = B.algae;
+  const every = alg.extraCleanEveryFishkeepingLevels;
+  const wipesPerSession = Math.max(0, alg.cleansPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
+  const wipeSkill = 1 + alg.cleanBonusPerFishkeepingLevel * (setup.level - 1);
+  const eaterMin = (sp) => (sp.algaeMin > 0 ? sp.algaeMin : alg.eaterMinFrom);
 
   const out = {
     alive: [], money: [], sick: [], tankAlive: setup.tanks.map(() => []), tankWater: setup.tanks.map(() => []),
@@ -1415,7 +1460,7 @@ function simulate(setup, B, seed) {
     const capacity = Math.max(1, Math.round(size.capacity));
     const eq = (list, tier, kind) => (tier >= 0 && list && list[tier] ? { info: list[tier], kind, wear: 0, broken: false } : null);
     const t = {
-      cfg, index, capacity, volume: Math.max(0.01, (size.width || 1.6) * (size.height || 0.9) * (size.depth || 0.7)), hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
+      cfg, index, capacity, size, volume: Math.max(0.01, (size.width || 1.6) * (size.height || 0.9) * (size.depth || 0.7)), hardCap: Math.max(capacity, Math.floor(capacity * store.tankHardLimitMultiplier)),
       wq: 1, algae: 0, temp: rules.roomTemperature, ph: cfg.salt ? 8.1 : rules.startingPh, salinity: cfg.salt ? 35 : 0, pests: false,
       filter: eq(sup.filters, cfg.filter, 0), heater: eq(sup.heaters, cfg.heater, 1), bubbler: eq(sup.bubblers, cfg.bubbler, 2),
       residents: [], corpses: 0, clutches: [], wipesLeft: wipesPerSession, decor: Math.max(0, Math.min(cfg.decorations, size.decorationSlots || 99)),
@@ -1639,7 +1684,9 @@ function simulate(setup, B, seed) {
     stock.food[type]--;
     let pellets = Math.max(8, alive(t) + 2);
     const mult = infectionMultiplier(t);
-    let hungry = shuffle(t.residents.filter((f) => f.hunger > 0.25));
+    // Algae eaters never eat food; algae wafers add algae for them instead.
+    if (ENUMS.type[type] === "AlgaeWafers") t.algae = clamp01(t.algae + alg.waferAlgae);
+    let hungry = shuffle(t.residents.filter((f) => f.hunger > 0.25 && !f.s.eatsAlgae));
     while (pellets > 0 && hungry.length) {
       for (const f of hungry) {
         if (pellets <= 0) break;
@@ -1699,10 +1746,18 @@ function simulate(setup, B, seed) {
         for (const f of [...t.residents]) receiveMedicine(f, cure);
       }
     }
-    for (let i = 0; i < cfg.wipes && t.wipesLeft > 0; i++) {
+    if (t.bloom && cfg.deepClean) {
+      t.bloom = false;
+      t.algae = Math.min(t.algae, alg.deepCleanAlgaeLeft);
+      t.wq = clamp01(t.wq + alg.deepCleanQualityRestored);
+      const risk = Math.max(alg.deepCleanMinInjuryChance, alg.deepCleanInjuryChance - alg.deepCleanInjuryLessPerLevel * (setup.level - 1));
+      const injuries = (alg.deepCleanInjuries || []).filter((x) => x.weight > 0);
+      for (const f of t.residents) if (injuries.length && chance(risk)) f.injury = clamp01(f.injury + pick(injuries).amount);
+    }
+    for (let i = 0; i < cfg.wipes && t.wipesLeft > 0 && !t.bloom; i++) {
       t.wipesLeft--;
-      t.algae = clamp01(t.algae - ts.wipeAlgaeRemoved * wipeSkill);
-      t.wq = clamp01(t.wq + ts.wipeQualityRestored * wipeSkill);
+      t.algae = clamp01(t.algae - alg.cleanAlgaeRemoved * wipeSkill);
+      t.wq = clamp01(t.wq + alg.cleanQualityRestored * wipeSkill);
     }
     for (let i = 0; i < cfg.feedings; i++) feed(t);
     if (cfg.heaterTemp <= 0) {
@@ -1749,9 +1804,23 @@ function simulate(setup, B, seed) {
       const waste = t.filter && !t.filter.broken ? t.filter.info.effect : 1;
       t.wq = clamp01(t.wq - ts.waterQualityLossPerStep * waste - alive(t) * ts.wasteQualityLossPerFish * waste
         - t.corpses * ts.corpseQualityLoss - overLimit(t) * ts.overcrowdedWastePerFish);
-      const growth = ts.algaePerStep + t.decor * ts.algaePerDecoration;
+      // Algae: towards the maximum the fish, filter and eaters set (Algae & cleaning tab); past the bloom level it may bloom.
+      t.algaeAtStep = t.algae;
+      const loads = [alg.tinyFishLoad, alg.smallFishLoad, alg.mediumFishLoad, alg.largeFishLoad];
+      const load = t.residents.filter((f) => !f.s.eatsAlgae).reduce((n, f) => n + (loads[f.s.sizeGroup || 0] ?? 1), 0);
       const grazers = t.residents.filter((f) => f.s.eatsAlgae).length;
-      t.algae = clamp01(t.algae + growth * (1.5 - t.wq) - grazers * ts.algaeEatenPerGrazer);
+      if (t.bloom) t.algae = Math.min(1, t.algae + Math.max(alg.minRise, (1 - t.algae) * alg.riseShare));
+      else {
+        t.algae = algaeStep(alg, t.algae, algaeMaxFor(B, t.size, load, t.filter && !t.filter.broken ? t.filter.info : null, grazers), t.decor);
+        if (t.algae >= alg.bloomAbove && chance(alg.bloomChance + alg.bloomChancePer10 * (t.algae - alg.bloomAbove) / 0.1)) {
+          t.bloom = true;
+          t.algae = Math.min(1, t.algae + alg.bloomJump);
+          for (const f of [...t.residents]) {
+            if (chance(alg.bloomDeathChance)) killFish(t, f, "an algal bloom", true);
+            else if (!f.disease && chance(alg.bloomIllnessChance)) infect(f, pickDisease());
+          }
+        }
+      }
       t.ph = moveTowards(t.ph, (t.salinity > 15 ? 8.1 : 7) - 1.2, ts.phDriftPerStep * (1 - t.wq) * 2);
       if (!t.pests && t.wq < 0.5 && chance(ts.pestChance * (1.5 - t.wq))) t.pests = true;
       for (const item of [t.filter, t.heater, t.bubbler]) {
@@ -1768,6 +1837,8 @@ function simulate(setup, B, seed) {
     for (const t of tanks) for (const f of t.residents) {
       f.age += 0.5;
       f.hunger = clamp01(f.hunger + 0.5 / Math.max(0.5, f.s.hungerToleranceDays) * rules.starvingThreshold);
+      // Algae eaters graze: fed whenever the tank has enough algae.
+      if (f.s.eatsAlgae && (t.algaeAtStep ?? t.algae) >= eaterMin(f.s)) f.hunger = 0;
       if (f.growth < 1 && !starving(f)) f.growth = Math.min(1, f.growth + 0.5 / Math.max(0.5, f.s.daysToAdult));
       if (f.cooldown > 0) f.cooldown--;
       if (f.sinceFav < 99) f.sinceFav++;
@@ -1955,8 +2026,9 @@ function simTankCard(cfg, index, setup) {
     el("td", {}, simInput(row, "stage", { label: "", options: SIM_STAGES.map((s, j) => [j, s]) })),
     el("td", { class: "readout" }, (() => { const s = sp.find((x) => x.id === row.species); return s ? `${s.tempMin}-${s.tempMax} C, pH ${s.phMin}-${s.phMax}${s.schoolSize > 0 ? `, school ${s.schoolSize}+` : ""}` : ""; })()),
     el("td", {}, el("button", { class: "small", title: "Remove", onclick: () => { cfg.fish.splice(i, 1); saveSimSetup(); render(); } }, "×"))));
-  const every = data.timeStep.extraWipeEveryFishkeepingLevels;
-  const wipeLimit = Math.max(1, data.timeStep.wipesPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
+  const alg = data.algae || { cleansPerSession: 2, extraCleanEveryFishkeepingLevels: 0 };
+  const every = alg.extraCleanEveryFishkeepingLevels;
+  const wipeLimit = Math.max(0, alg.cleansPerSession + (every > 0 ? Math.floor((setup.level - 1) / every) : 0));
   return el("div", { class: "card sim-tank" },
     el("div", { class: "row" },
       el("h2", { style: "margin:0;flex:1" }, `Tank ${index + 1}: ${SIM_ROLES[cfg.role]}`),
@@ -1967,7 +2039,7 @@ function simTankCard(cfg, index, setup) {
       simInput(cfg, "role", { label: "Kind", options: SIM_ROLES.map((r, i) => [i, r]), rerender: true, help: "Breeder tanks use the breeder pregnancy chance; the rest use the other-tank chance." }),
       simInput(cfg, "size", { label: "Size", options: (data.store.tankSizes || []).map((s, i) => [i, `${s.name} (${s.capacity} fish)`]) }),
       simInput(cfg, "salt", { label: "Salt water" }),
-      simInput(cfg, "decorations", { label: "Decorations", help: `Fish like ${data.health.idealDecorMin}-${data.health.idealDecorMax}. Each one also adds algae.` }),
+      simInput(cfg, "decorations", { label: "Decorations", help: `Fish like ${data.health.idealDecorMin}-${data.health.idealDecorMax}. Each one also makes algae climb faster.` }),
       simInput(cfg, "plants", { label: "Some decorations are plants", help: "Fish that like plants get a comfort bonus." })),
     el("h3", {}, "Equipment"),
     el("div", { class: "grid" },
@@ -1979,7 +2051,8 @@ function simTankCard(cfg, index, setup) {
     el("div", { class: "grid" },
       simInput(cfg, "feedings", { label: "Feedings per day" }),
       simInput(cfg, "food", { label: "Food", options: (data.supplier.food || []).map((f) => [f.type, `${f.name} ($${f.price} for ${f.feedings})`]) }),
-      simInput(cfg, "wipes", { label: `Wipes per day (the game allows ${wipeLimit})`, help: "Capped at the game's limit for your Fishkeeping level." }),
+      simInput(cfg, "wipes", { label: `Cleans per session (the game allows ${wipeLimit})`, help: "Clean tank presses, capped at the game's limit. Each takes a little algae off and freshens the water." }),
+      simInput(cfg, "deepClean", { label: "Deep clean when it blooms", help: "Clears an algal bloom; each fish may get hurt." }),
       simInput(cfg, "sellAbove", { label: "Sell grown fish above (0 = never)", help: "Sells the oldest juveniles and adults at their appraised value until the tank is down to this many." }),
       simInput(cfg, "removeDead", { label: "Remove dead fish" }),
       simInput(cfg, "treatSick", { label: "Dose sick fish with the right medicine" }),
@@ -2003,7 +2076,7 @@ function renderSim() {
       simInput(setup, "days", { label: "Days to simulate", min: 1 }),
       simInput(setup, "runs", { label: "Runs to average", min: 1, help: "More runs smooth out luck (up to 500)." }),
       simInput(setup, "money", { label: "Starting money ($)" }),
-      simInput(setup, "level", { label: "Fishkeeping level", min: 1, rerender: true, help: "More wipes per day and stronger wipes at higher levels." }),
+      simInput(setup, "level", { label: "Fishkeeping level", min: 1, rerender: true, help: "Stronger cleans and safer deep cleans at higher levels." }),
       simInput(setup, "seed", { label: "Luck seed", help: "The same seed gives the same results; change it to see other luck." }),
       simInput(setup, "payUpfront", { label: "Pay for the starting fish, tanks and equipment", help: "Fish cost their fry price. The first For sale tank is free, like in the game." }),
       simInput(setup, "allowance", { label: "Grandma bails you out", help: `After the grand opening Grandma sends $${data.store.grandmaGift} whenever you go to sleep with under $${data.store.brokeBelow}. Untick to see when you'd really go broke.` })),
@@ -2931,6 +3004,92 @@ function diveOdds(scuba, gearLevel) {
   return weights.map((w) => (total > 0 ? w / total : 0));
 }
 
+// ---------------------------------------------------------------- algae
+
+/** Algae maximum, as the game works it out (Tank.AlgaeMax): fish for the tank's size, the filter's steady level for its fish, less the eaters' share. */
+function algaeMaxFor(B, size, load, filter, eaters, floor = 0) {
+  const a = B.algae, sizes = B.store.tankSizes || [];
+  const standard = Math.max(1, (sizes[0] || size).capacity);
+  const per = a.algaePerFish * standard / Math.max(1, size.capacity);
+  let max;
+  if (filter) {
+    const handled = Math.min(load, filter.fishCapacity || 0);
+    max = Math.min(handled * per, filter.algaeHold) + (load - handled) * per;
+  } else max = load * per;
+  const share = eaters > 0 ? Math.min(a.maxEaterReduction, a.eaterReduction * eaters / Math.max(1, size.algaeEaters || 1)) : 0;
+  return clamp01(Math.max(max * (1 - share), eaters > 0 ? floor : 0));
+}
+
+/** One time step of algae towards its maximum (no bloom), as Tank.UpdateAlgae does it. */
+function algaeStep(a, algae, max, decor = 0) {
+  if (algae < max) return Math.min(max, algae + Math.min(Math.max(a.minRise, a.maxRise), Math.max(a.minRise, (max - algae) * a.riseShare)) * (1 + decor * a.risePerDecoration));
+  if (algae > max) return Math.max(max, algae - Math.max(a.minFall, (algae - max) * a.fallShare));
+  return algae;
+}
+
+const algaeCalc = { size: 0, filter: 0, fish: 20, eaters: 2, decor: 4 };
+
+function renderAlgae() {
+  const a = data.algae;
+  if (!a) return [el("div", { class: "card" }, el("p", { class: "hint" }, "This balance file has no algae settings yet: run the game once to upgrade it."))];
+  const sizes = data.store.tankSizes || [], filters = (data.supplier.filters || []).filter((f) => !f.wallAquariumOnly);
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  // Each tank size full of tiny fish, with the filter at the same place in the list and the eaters it needs.
+  const preview = el("div");
+  const drawPreview = () => {
+    const rows = sizes.map((size, i) => {
+      const filter = filters[Math.min(i, filters.length - 1)];
+      const full = size.capacity, need = size.algaeEaters || 1;
+      const max = algaeMaxFor(data, size, full, filter, need);
+      let v = 0, steps = 0;
+      while (v < max - 0.005 && steps < 99) { v = algaeStep(a, v, max); steps++; }
+      return el("tr", {}, el("td", {}, size.name), el("td", {}, String(full)), el("td", {}, filter ? `${filter.name} (${filter.fishCapacity})` : "none"), el("td", {}, String(need)),
+        el("td", {}, pct(algaeMaxFor(data, size, 5, null, 0))), el("td", {}, pct(algaeMaxFor(data, size, full, null, 0))),
+        el("td", {}, pct(algaeMaxFor(data, size, full, filter, 0))), el("td", { class: "readout" }, pct(max)),
+        el("td", {}, `${steps} (${(steps / 2).toFixed(1)} days)`));
+    });
+    preview.replaceChildren(el("div", { class: "scroll" }, el("table", {},
+      el("thead", {}, el("tr", {}, ["Tank", "Fish limit", "Its filter (fish)", "Eaters it needs", "5 fish, nothing else", "Full, nothing else", "Full + filter", "Full + filter + eaters", "Steps to get there"].map((h) => el("th", {}, h)))),
+      el("tbody", {}, rows))));
+  };
+  // Try any tank: its algae maximum, where the water turns green, and the climb step by step.
+  const calc = el("div");
+  const drawCalc = () => {
+    const c = algaeCalc, size = sizes[Math.min(c.size, sizes.length - 1)] || { capacity: 24, algaeEaters: 2 };
+    const filter = c.filter >= 0 ? (data.supplier.filters || [])[c.filter] : null;
+    const max = algaeMaxFor(data, size, c.fish, filter, c.eaters);
+    const green = a.greenStart + (a.greenStartWithEaters - a.greenStart) * Math.min(1, c.eaters / Math.max(1, size.algaeEaters || 1));
+    const climb = [];
+    let v = 0;
+    for (let i = 0; i < 12; i++) { v = algaeStep(a, v, max, c.decor); climb.push(pct(v)); }
+    const warn = max >= a.bloomAbove ? ` From ${pct(a.bloomAbove)} it risks an algal bloom.` : max >= a.bothersAbove ? ` Customers start minding it at ${pct(a.bothersAbove)}.` : "";
+    calc.replaceChildren(el("p", {}, el("b", {}, `Algae maximum ${pct(max)}. `), `The water turns green from ${pct(green)}.${warn}`),
+      el("p", { class: "hint" }, `From clean, time step by time step: ${climb.join(", ")}`));
+  };
+  const num = (key, label) => el("label", { class: "field" }, el("span", {}, label),
+    el("input", { type: "number", min: 0, value: algaeCalc[key], oninput: (e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) { algaeCalc[key] = n; drawCalc(); } } }));
+  const choose = (key, label, options) => el("label", { class: "field" }, el("span", {}, label),
+    el("select", { onchange: (e) => { algaeCalc[key] = parseInt(e.target.value, 10); drawCalc(); } },
+      options.map(([v, t]) => { const o = el("option", { value: v }, t); if (v === algaeCalc[key]) o.selected = true; return o; })));
+  const calcForm = el("div", { class: "grid" },
+    choose("size", "Tank", sizes.map((s, i) => [i, `${s.name} (${s.capacity} fish)`])),
+    choose("filter", "Filter", [[-1, "None"], ...(data.supplier.filters || []).map((f, i) => [i, `${f.name} (${f.fishCapacity} fish)`])]),
+    num("fish", "Fish (as tiny fish, eaters not counted)"), num("eaters", "Algae eaters"), num("decor", "Decorations"));
+  drawPreview();
+  drawCalc();
+  const redraw = () => { drawPreview(); drawCalc(); };
+  if (!a.deepCleanInjuries) a.deepCleanInjuries = [];
+  return [
+    el("p", { class: "hint" }, "The fish in a tank set how high its algae can get (its maximum), and algae climbs there a bit at every time step. A filter holds algae at its steady level for as many fish as it handles (Equipment & repairs tab); each fish more pushes it up. Algae eaters (Species tab) take a share off; each tank size needs its own number of them (Aquariums tab). The Algae control perk only slows the climb. From the bloom level a tank can burst into an algal bloom that only a deep clean clears. Algae eaters live on the algae: algae wafers add some, and the Java moss rock (Eggs, decor & quality tab) keeps enough for them."),
+    el("div", { class: "card" }, el("h2", {}, "Every tank size, full of tiny fish"),
+      el("p", { class: "hint" }, "With the filter in the same place in the filter list and the algae eaters the size needs. The goal is 20% in the Full + filter + eaters column."), preview),
+    el("div", { class: "card" }, el("h2", {}, "Try a tank"), calcForm, calc),
+    el("div", { class: "card", oninput: redraw }, el("h2", {}, "Algae settings"), objectForm(a, ["deepCleanInjuries"])),
+    el("div", { class: "card" }, el("p", { class: "hint" }, "A deep clean nets the fish out: each fish may get one of these, picked by weight. Wounds heal a little every time step; bad ones can kill a weak fish."),
+      listTable("Deep clean injuries", a.deepCleanInjuries)),
+  ];
+}
+
 function renderDives() {
   const aquarium = data.aquarium = data.aquarium || {};
   const scuba = aquarium.scuba = aquarium.scuba || {};
@@ -3032,6 +3191,7 @@ function render() {
     case "tanks": content = renderAquariums(); break;
     case "dives": content = renderDives(); break;
     case "sizes": content = renderSizes(); break;
+    case "algae": content = renderAlgae(); break;
     default: content = renderSection(tab);
   }
   $("#view").replaceChildren(...content);

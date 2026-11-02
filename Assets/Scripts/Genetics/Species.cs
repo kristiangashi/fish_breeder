@@ -131,8 +131,46 @@ namespace FishBreeder.Genetics
         public int gestationSteps = 4;
         /// <summary>Egg-layers: time steps (half days) from laying to hatching.</summary>
         public int eggHatchSteps = 2;
-        /// <summary>Grazes algae off the glass and decorations at every time step.</summary>
+        /// <summary>
+        /// An algae eater: it lives on the tank's algae and never eats flakes or other food. It
+        /// grazes all the time, so it's fed at every time step the tank has at least
+        /// <see cref="algaeMin"/> algae, starves below that and gets sick above <see cref="algaeMax"/>.
+        /// Each one also takes a share off the tank's algae maximum (see <see cref="Core.AlgaeBalance"/>).
+        /// </summary>
         public bool eatsAlgae;
+        /// <summary>Algae eaters: the least algae (0..1) it can live on, and the most before it gets sick (0 = its own default, see <see cref="AlgaeMin"/>).</summary>
+        public float algaeMin, algaeMax;
+
+        /// <summary>The least algae it can live on: its own number, or one picked from its name in the console's range.</summary>
+        public float AlgaeMin => algaeMin > 0f ? algaeMin : DefaultAlgaeMin(Core.Balance.Data.algae);
+
+        /// <summary>The most algae it can take before it gets sick: its own number, or one picked from its name.</summary>
+        public float AlgaeMax => UnityEngine.Mathf.Max(algaeMax > 0f ? algaeMax : DefaultAlgaeMax(Core.Balance.Data.algae), AlgaeMin + 0.05f);
+
+        public float DefaultAlgaeMin(Core.AlgaeBalance a) => UnityEngine.Mathf.Round(UnityEngine.Mathf.Lerp(a.eaterMinFrom, a.eaterMinTo, NameRoll(1)) * 100f) / 100f;
+        public float DefaultAlgaeMax(Core.AlgaeBalance a) => UnityEngine.Mathf.Round(UnityEngine.Mathf.Lerp(a.eaterMaxFrom, a.eaterMaxTo, NameRoll(2)) * 100f) / 100f;
+
+        /// <summary>An algae eater without its own algae needs gets its default ones written in, so the console shows them.</summary>
+        public void FillAlgaeNeeds(Core.AlgaeBalance a)
+        {
+            if (!eatsAlgae || a == null) return;
+            if (algaeMin <= 0f) algaeMin = DefaultAlgaeMin(a);
+            if (algaeMax <= 0f) algaeMax = DefaultAlgaeMax(a);
+        }
+
+        /// <summary>A number 0..1 that's always the same for this species (so each algae eater gets its own needs).</summary>
+        float NameRoll(int salt)
+        {
+            unchecked
+            {
+                int h = 17 + salt * 31;
+                foreach (char c in id ?? "") h = h * 31 + c;
+                h ^= h >> 15;
+                h *= 0x2c1b3c6d;
+                h ^= h >> 12;
+                return (h & 0xffff) / 65535f;
+            }
+        }
 
         /// <summary>Counts against an ordinary tank's medium-fish limit rather than its main one: the Medium and Large groups.</summary>
         public bool IsMedium => sizeGroup >= SizeGroup.Medium;

@@ -144,6 +144,8 @@ namespace FishBreeder.Core
         public int decorationSlots = 12;
         [Tooltip("Aquarium quality (from equipment and decorations) a tank needs before it can be upgraded to this size.")]
         public int qualityNeeded;
+        [Tooltip("Algae eaters this size needs to take the full share off its algae maximum (Algae tab) and keep the water clear until 30% algae.")]
+        public int algaeEaters = 2;
 
         public Vector3 Size => new Vector3(width, height, depth);
     }
@@ -263,6 +265,10 @@ namespace FishBreeder.Core
         public int repairCost = 15;
         [Tooltip("Made for the wall aquarium: only it can take this model, and it can only take these (ordinary models are too small for it).")]
         public bool wallAquariumOnly;
+        [Tooltip("Filters: fish it keeps algae steady for (counted as tiny fish, see the Algae tab). Each fish more pushes the algae maximum up.")]
+        public int fishCapacity;
+        [Tooltip("Filters: the steady algae level it holds a tank at while it has no more fish than it's made for.")]
+        [Range(0f, 1f)] public float algaeHold = 0.3f;
     }
 
     /// <summary>Something that can go wrong with a filter, heater or bubbler, and how dear it is to fix.</summary>
@@ -324,6 +330,13 @@ namespace FishBreeder.Core
         public bool back;
         [Tooltip("Wall aquarium: Bigger (+) presses taken off the largest size the player can make it (0 = the store's limit).")]
         public int maxSizeStepsOff;
+        [Tooltip("The 3D model (its name in Resources/Decor) when it isn't the id: pieces can share a model.")]
+        public string model;
+        [Tooltip("In a tank with algae eaters, it grows enough algae film to keep the algae from dropping below this (0 = none): enough to feed a tank of only algae eaters.")]
+        [Range(0f, 1f)] public float algaeFloor;
+
+        /// <summary>The model's name in Resources/Decor.</summary>
+        public string Model => string.IsNullOrEmpty(model) ? id : model;
 
         /// <summary>The XP track whose level unlocks it.</summary>
         public XpTrack UnlockTrack => fishkeepingUnlock ? XpTrack.Fishkeeping : XpTrack.Shopkeeping;
@@ -386,12 +399,12 @@ namespace FishBreeder.Core
         public List<SectionBalance> sections = SectionBalance.CreateDefaults();
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, smallCapacity = 6, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12 },
-            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, smallCapacity = 9, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25 },
-            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, smallCapacity = 12, mediumCapacity = 5, largeCapacity = 1, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55 },
+            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, smallCapacity = 6, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12, algaeEaters = 2 },
+            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, smallCapacity = 9, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25, algaeEaters = 3 },
+            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, smallCapacity = 12, mediumCapacity = 5, largeCapacity = 1, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55, algaeEaters = 4 },
         };
         [Tooltip("The wall aquarium (the public aquarium's two exhibits): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, smallCapacity = 16, mediumCapacity = 5, largeCapacity = 2, unlockLevel = 1, decorationSlots = 48 };
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, smallCapacity = 16, mediumCapacity = 5, largeCapacity = 2, unlockLevel = 1, decorationSlots = 48, algaeEaters = 6 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
         [Tooltip("How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). Raising the aquarium never changes it.")]
@@ -415,10 +428,10 @@ namespace FishBreeder.Core
 
         public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, smallCapacity = 18, mediumCapacity = 5, largeCapacity = 2, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52 },
-            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, smallCapacity = 20, mediumCapacity = 5, largeCapacity = 3, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56 },
-            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, smallCapacity = 22, mediumCapacity = 6, largeCapacity = 3, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60 },
-            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, smallCapacity = 24, mediumCapacity = 6, largeCapacity = 4, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64 },
+            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, smallCapacity = 18, mediumCapacity = 5, largeCapacity = 2, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52, algaeEaters = 7 },
+            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, smallCapacity = 20, mediumCapacity = 5, largeCapacity = 3, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56, algaeEaters = 7 },
+            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, smallCapacity = 22, mediumCapacity = 6, largeCapacity = 3, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60, algaeEaters = 8 },
+            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, smallCapacity = 24, mediumCapacity = 6, largeCapacity = 4, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64, algaeEaters = 8 },
         };
 
         /// <summary>
@@ -440,11 +453,12 @@ namespace FishBreeder.Core
     [Serializable]
     public class SupplierBalance
     {
+        public const string WaferBlurb = "Each feeding adds algae to the tank for algae eaters to graze (they eat nothing else). Bottom feeders eat the wafers too.";
         public List<FoodBalance> food = new List<FoodBalance>
         {
             new FoodBalance { type = FoodType.Flakes, name = "Flakes", blurb = "Cheap everyday food. Now and then a spoiled flake makes a fish sick.", price = 15, feedings = 20,
                 nutrition = 0.35f, contamination = 1f, spoilChance = 0.1f, sinkSpeed = 0.06f, color = new Color(0.62f, 0.45f, 0.25f) },
-            new FoodBalance { type = FoodType.AlgaeWafers, name = "Algae wafers", blurb = "Sinking wafers of algae and greens, for grazers and bottom feeders.", price = 30, feedings = 20, unlockLevel = 2,
+            new FoodBalance { type = FoodType.AlgaeWafers, name = "Algae wafers", blurb = WaferBlurb, price = 30, feedings = 20, unlockLevel = 2,
                 nutrition = 0.45f, contamination = 0.5f, spoilChance = 0.03f, sinkSpeed = 0.22f, color = new Color(0.3f, 0.48f, 0.2f) },
             new FoodBalance { type = FoodType.Premium, name = "Premium pellets", blurb = "Filling and much less likely to cause illness.", price = 45, feedings = 20, unlockLevel = 3,
                 nutrition = 0.5f, contamination = 0.25f, spoilChance = 0f, sinkSpeed = 0.09f, color = new Color(0.9f, 0.45f, 0.2f) },
@@ -508,6 +522,8 @@ namespace FishBreeder.Core
             new DecorationBalance { id = "Clam", name = "Clam shell", price = 45, unlockLevel = 5, height = 0.06f },
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
             new DecorationBalance { id = "Diver", name = "Deep-sea diver", price = 120, unlockLevel = 9, height = 0.32f },
+            // Grows a film of algae for grazers: breeding algae eaters on their own (see AddMissingDecorations).
+            new DecorationBalance { id = "JavaMoss", name = "Java moss rock", price = 90, unlockLevel = 20, fishkeepingUnlock = true, plant = true, height = 0.18f, model = "FernRock", algaeFloor = 0.18f },
             // Rarer plants for skilled fishkeepers (see AddMissingDecorations).
             new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.28f, maxSizeStepsOff = 2 },
             new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2 },
@@ -518,13 +534,13 @@ namespace FishBreeder.Core
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
         public List<EquipmentTierBalance> filters = new List<EquipmentTierBalance>
         {
-            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 12 },
-            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 30 },
-            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 75 },
-            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 170 },
+            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 12, fishCapacity = 24 },
+            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 30, fishCapacity = 36 },
+            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 75, fishCapacity = 50 },
+            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 170, fishCapacity = 80 },
             // The wall aquarium is too big for any of the above: it needs plant-room systems of its own.
-            new EquipmentTierBalance { name = "Plant-room sump", blurb = "A big sump in the room behind the wall, pumping the whole wall aquarium through its filter media.", price = 3500, unlockLevel = 8, effect = 0.18f, breakChance = 0.006f, breakChancePerStep = 0.0015f, maxBreakChance = 0.12f, repairCost = 220, wallAquariumOnly = true },
-            new EquipmentTierBalance { name = "Drum filter and UV system", blurb = "Public aquarium filtration: a self-cleaning drum filter with a UV steriliser.", price = 9000, unlockLevel = 20, effect = 0.07f, breakChance = 0.002f, breakChancePerStep = 0.0008f, maxBreakChance = 0.05f, repairCost = 450, wallAquariumOnly = true },
+            new EquipmentTierBalance { name = "Plant-room sump", blurb = "A big sump in the room behind the wall, pumping the whole wall aquarium through its filter media.", price = 3500, unlockLevel = 8, effect = 0.18f, breakChance = 0.006f, breakChancePerStep = 0.0015f, maxBreakChance = 0.12f, repairCost = 220, wallAquariumOnly = true, fishCapacity = 70 },
+            new EquipmentTierBalance { name = "Drum filter and UV system", blurb = "Public aquarium filtration: a self-cleaning drum filter with a UV steriliser.", price = 9000, unlockLevel = 20, effect = 0.07f, breakChance = 0.002f, breakChancePerStep = 0.0008f, maxBreakChance = 0.05f, repairCost = 450, wallAquariumOnly = true, fishCapacity = 120 },
         };
         public List<EquipmentTierBalance> heaters = new List<EquipmentTierBalance>
         {
@@ -582,7 +598,6 @@ namespace FishBreeder.Core
         public float minPriceTolerance = 0.95f, maxPriceTolerance = 1.35f;
         [Tooltip("Water quality below this grosses shoppers out.")]
         [Range(0f, 1f)] public float grossWaterQuality = 0.45f;
-        [Range(0f, 1f)] public float grossAlgae = 0.6f;
         [Tooltip("Chance a shopper is put off by a tank, for each dead fish in it (up to the max).")]
         [Range(0f, 1f)] public float sadChancePerDeadFish = 0.3f;
         [Range(0f, 1f)] public float maxSadChance = 0.9f;
@@ -621,13 +636,8 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float maxStressToBreed = 0.35f;
         [Tooltip("Chance per egg per time step of dying in filthy water; falls to nothing at half water quality.")]
         [Range(0f, 1f)] public float eggLossInFilthyWater = 0.5f;
-        [Tooltip("Algae each algae eater grazes off per time step.")]
-        public float algaeEatenPerGrazer = 0.03f;
         [Tooltip("Chance per fish of catching something, before water, stress and hardiness.")]
         [Range(0f, 1f)] public float diseaseChance = 0.03f;
-        public float algaePerStep = 0.06f;
-        [Tooltip("Extra algae growth per decoration piece (too many decorations speed algae).")]
-        public float algaePerDecoration = 0.01f;
         public float waterQualityLossPerStep = 0.04f;
         public float wasteQualityLossPerFish = 0.01f;
         public float corpseQualityLoss = 0.05f;
@@ -637,16 +647,10 @@ namespace FishBreeder.Core
         [Tooltip("No death roll while health is at or above this.")]
         [Range(0f, 1f)] public float deathHealthThreshold = 0.5f;
         [Range(0f, 1f)] public float deathChanceAtZeroHealth = 0.7f;
-        [Tooltip("Wipes each tank gets per closed-shop session at Fishkeeping level 1.")]
-        public int wipesPerSession = 1;
-        [Tooltip("Each tank gets one more wipe per session every this many Fishkeeping levels (0 = never).")]
-        public int extraWipeEveryFishkeepingLevels = 8;
         [Tooltip("Extra water quality lost per time step for each fish over the tank's limit.")]
         public float overcrowdedWastePerFish = 0.02f;
         [Tooltip("Illness chances go up by this share for each fish over the tank's limit.")]
         public float overcrowdedIllnessPerFish = 0.1f;
-        public float wipeAlgaeRemoved = 0.35f;
-        public float wipeQualityRestored = 0.25f;
     }
 
     /// <summary>How much each factor can take off a fish's health (1 = all of it).</summary>
@@ -738,7 +742,8 @@ namespace FishBreeder.Core
 
         [Header("Fishkeeping XP")]
         public int xpFeedTank = 2;
-        public int xpWipeTank = 1;
+        public int xpCleanTank = 1;
+        public int xpDeepClean = 3;
         public int xpTreatWater = 2;
         public int xpRepairEquipment = 2;
         public int xpRemoveDeadFish = 1;
@@ -776,15 +781,12 @@ namespace FishBreeder.Core
             new DailyGoalBalance { kind = GoalKind.BreedFish, track = XpTrack.Fishkeeping, text = "Breed {0} fish", baseTarget = 5 },
             new DailyGoalBalance { kind = GoalKind.HatchEggs, track = XpTrack.Fishkeeping, text = "Hatch {0} eggs", baseTarget = 5 },
             new DailyGoalBalance { kind = GoalKind.FeedTanks, track = XpTrack.Fishkeeping, text = "Feed {0} tanks", baseTarget = 4 },
-            new DailyGoalBalance { kind = GoalKind.CleanTanks, track = XpTrack.Fishkeeping, text = "Wipe tanks {0} times", baseTarget = 4 },
+            new DailyGoalBalance { kind = GoalKind.CleanTanks, track = XpTrack.Fishkeeping, text = "Clean tanks {0} times", baseTarget = 2, weight = 0.35f },
             new DailyGoalBalance { kind = GoalKind.SellFish, track = XpTrack.Shopkeeping, text = "Sell {0} fish", baseTarget = 5 },
             new DailyGoalBalance { kind = GoalKind.HappyCustomers, track = XpTrack.Shopkeeping, text = "Make {0} customers happy", baseTarget = 12 },
             new DailyGoalBalance { kind = GoalKind.EarnMoney, track = XpTrack.Shopkeeping, text = "Earn ${0} from sales", baseTarget = 150 },
             new DailyGoalBalance { kind = GoalKind.BuyDecorations, track = XpTrack.Shopkeeping, text = "Buy {0} decorations", baseTarget = 2 },
         };
-
-        [Tooltip("Each Fishkeeping level makes a tank wipe this much more effective (0.02 = +2%).")]
-        public float wipeBonusPerFishkeepingLevel = 0.02f;
     }
 
     [Serializable]
@@ -795,6 +797,8 @@ namespace FishBreeder.Core
         [Tooltip("{0} is replaced by the target.")]
         public string text;
         public int baseTarget = 5;
+        [Tooltip("How often it comes up compared with the track's other goals (1 = as often as any).")]
+        public float weight = 1f;
     }
 
     /// <summary>The to-do list you go through after closing the shop.</summary>
@@ -807,7 +811,7 @@ namespace FishBreeder.Core
         public float autoAdvanceSeconds = 1.2f;
         [Tooltip("A tank is 'dirty' below this water health (0..1).")]
         [Range(0f, 1f)] public float dirtyWaterBelow = 0.6f;
-        [Range(0f, 1f)] public float algaeAbove = 0.45f;
+        [Range(0f, 1f)] public float algaeAbove = 0.4f;
         [Tooltip("Last on the list: a tank this dirty or more (0.1 = 10% dirty, from its water health) gets a 'give it a wipe' suggestion.")]
         [Range(0f, 1f)] public float grimyAbove = 0.1f;
         [Tooltip("Fish are 'hungry' at this hunger (0..1).")]
@@ -925,6 +929,7 @@ namespace FishBreeder.Core
         public NotificationBalance notifications = new NotificationBalance();
         public TankMateBalance tankMates = new TankMateBalance();
         public MedicineBalance medicine = new MedicineBalance();
+        public AlgaeBalance algae = new AlgaeBalance();
         public SwimBalance swimming = new SwimBalance();
         public GrowthBalance growth = new GrowthBalance();
         public ResearchBalance research = new ResearchBalance();
@@ -966,7 +971,7 @@ namespace FishBreeder.Core
         /// 18: size groups set per species (Tiny tank fish, Small hybrids, Medium and Large public aquarium fish) instead of worked out from length and body class.
         /// 19: every tank size has four fish limits, one per size group (tiny, small, medium, large).
         /// </summary>
-        public const int CurrentDataVersion = 19;
+        public const int CurrentDataVersion = 20;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -999,7 +1004,10 @@ namespace FishBreeder.Core
                 if (parsed == null) return null;
                 if (parsed.species == null) parsed.species = new List<Species>();
                 AddMissingSpecies(parsed.species);
+                if (parsed.algae == null) parsed.algae = new AlgaeBalance();
+                if (parsed.algae.deepCleanInjuries == null || parsed.algae.deepCleanInjuries.Count == 0) parsed.algae.deepCleanInjuries = InjuryBalance.DeepCleanDefaults();
                 Upgrade(parsed, ReadDataVersion(json));
+                foreach (var s in parsed.species) if (s != null) s.FillAlgaeNeeds(parsed.algae);
                 if (parsed.crossBreeding == null) parsed.crossBreeding = new CrossBreedingBalance();
                 if (parsed.swimming == null) parsed.swimming = new SwimBalance();
                 if (parsed.growth == null) parsed.growth = new GrowthBalance();
@@ -1061,11 +1069,11 @@ namespace FishBreeder.Core
                 if (!known.Contains(p.id)) projects.Add(p);
         }
 
-        /// <summary>The level 25 plants join a file saved before them, with their defaults, like species.</summary>
+        /// <summary>The level 25 plants and the Java moss rock join a file saved before them, with their defaults, like species.</summary>
         static void AddMissingDecorations(List<DecorationBalance> decorations)
         {
             if (decorations == null) return;
-            var added = new HashSet<string> { "Crypt", "JungleVal", "AmazonSword", "Aponogeton" };
+            var added = new HashSet<string> { "Crypt", "JungleVal", "AmazonSword", "Aponogeton", "JavaMoss" };
             foreach (var d in new SupplierBalance().decorations)
                 if (added.Contains(d.id) && !decorations.Exists(x => x != null && x.id == d.id)) decorations.Add(d);
         }
@@ -1151,7 +1159,6 @@ namespace FishBreeder.Core
                     data.supplier.food = food;
                 }
                 if (data.store != null) data.store.starterDecorations = new List<string>();
-                if (data.timeStep != null) data.timeStep.wipesPerSession = 1;
             }
             if (fromVersion < 4)
             {
@@ -1414,7 +1421,68 @@ namespace FishBreeder.Core
                 if (data.store.wallAquarium != null) { data.store.wallAquarium.smallCapacity = fresh.wallAquarium.smallCapacity; data.store.wallAquarium.largeCapacity = fresh.wallAquarium.largeCapacity; }
                 CopyGroupCapacity(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
             }
+            if (fromVersion < 20) UpgradeAlgae(data);
             data.dataVersion = CurrentDataVersion;
+        }
+
+        /// <summary>
+        /// Version 20, the algae rework: algae eaters for every tank size, fish limits and steady
+        /// algae levels for the filters (by name, else by place in the list), the cleaning goal
+        /// comes up less and asks for less, and the to-do list minds algae when customers start to.
+        /// </summary>
+        static void UpgradeAlgae(BalanceData data)
+        {
+            var fresh = new StoreBalance();
+            if (data.store != null)
+            {
+                CopyAlgaeEaters(data.store.tankSizes, fresh.tankSizes);
+                if (data.store.wallAquarium != null) data.store.wallAquarium.algaeEaters = fresh.wallAquarium.algaeEaters;
+                CopyAlgaeEaters(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
+            }
+            if (data.supplier != null && data.supplier.filters != null)
+            {
+                var defaults = new SupplierBalance().filters;
+                for (int i = 0; i < data.supplier.filters.Count; i++)
+                {
+                    var filter = data.supplier.filters[i];
+                    if (filter == null) continue;
+                    var d = defaults.Find(x => x.name == filter.name) ?? defaults[Mathf.Min(i, defaults.Count - 1)];
+                    filter.fishCapacity = d.fishCapacity;
+                    filter.algaeHold = d.algaeHold;
+                }
+            }
+            if (data.progression != null && data.progression.dailyGoals != null)
+                foreach (var goal in data.progression.dailyGoals)
+                {
+                    if (goal == null) continue;
+                    goal.weight = 1f;
+                    if (goal.kind != GoalKind.CleanTanks) continue;
+                    goal.text = "Clean tanks {0} times";
+                    goal.baseTarget = Mathf.Min(goal.baseTarget, 2);
+                    goal.weight = 0.35f;
+                }
+            if (data.notifications != null && Mathf.Approximately(data.notifications.algaeAbove, 0.45f)) data.notifications.algaeAbove = 0.4f;
+            if (data.supplier != null && data.supplier.food != null)
+                foreach (var food in data.supplier.food)
+                    if (food != null && food.type == FoodType.AlgaeWafers && food.blurb == "Sinking wafers of algae and greens, for grazers and bottom feeders.") food.blurb = SupplierBalance.WaferBlurb;
+            if (data.milestones != null)
+                foreach (var m in data.milestones)
+                    if (m != null && m.text == "Wipe a tank") m.text = "Clean a tank";
+            if (data.perks != null)
+                foreach (var perk in data.perks)
+                {
+                    if (perk == null) continue;
+                    if (perk.effect == PerkEffect.StrongerWipes && perk.text == "Wipes clean {0} more") perk.text = "Clean tank takes off {0} more algae";
+                    if (perk.effect == PerkEffect.ExtraWipes && perk.text == "{0} extra wipe for every tank each session") perk.text = "{0} extra clean for every tank each session";
+                    if (perk.effect == PerkEffect.SlowerAlgae && perk.text == "Algae grows {0} slower") perk.text = "Algae climbs {0} slower (its maximum stays the same)";
+                }
+        }
+
+        static void CopyAlgaeEaters(List<TankSizeBalance> saved, List<TankSizeBalance> defaults)
+        {
+            if (saved == null || defaults == null || defaults.Count == 0) return;
+            for (int i = 0; i < saved.Count; i++)
+                if (saved[i] != null) saved[i].algaeEaters = defaults[Mathf.Min(i, defaults.Count - 1)].algaeEaters;
         }
 
         /// <summary>The small and large fish limits from the defaults, size by size (the last default carries on).</summary>
@@ -1489,6 +1557,7 @@ namespace FishBreeder.Core
         static BalanceData Defaults()
         {
             var defaults = new BalanceData();
+            foreach (var s in defaults.species) s.FillAlgaeNeeds(defaults.algae);
             CrossBreeding.FillCombos(defaults.crossBreeding, defaults.species);
             EggTierBalance.FillHatchTables(defaults.supplier.eggTiers, defaults.species);
             return defaults;

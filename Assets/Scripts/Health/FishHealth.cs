@@ -244,6 +244,8 @@ namespace FishBreeder.Health
             float stress = 1f + (1f - current);
             float chance = Balance.Data.timeStep.diseaseChance * stress * (1f - hardiness * config.hardinessProtection) * Perks.Less(PerkEffect.FewerIllnesses);
             if (Owner.Tank != null) chance *= Owner.Tank.InfectionMultiplier;
+            // An algae eater gorging on far too much algae falls ill easily.
+            if (Owner.TooMuchAlgae) chance *= Mathf.Max(1f, Balance.Data.algae.eaterOverIllness);
             if (!GameRandom.Chance(chance)) return false;
             return Infect(DiseaseDefinition.PickWeighted(Balance.Data.diseases, GameRandom.Value), Owner.Tank != null && Owner.Tank.WaterQuality < 0.5f ? "the dirty water" : "a passing bug");
         }
@@ -410,8 +412,18 @@ namespace FishBreeder.Health
             float salt = OutsideBy(tank.Salinity, species.salinityMin, species.salinityMax) * weights.saltPenaltyPerPpt;
             float mismatch = (temp + ph + salt) * Perks.Less(PerkEffect.WiderTolerance)
                              + (1f - tank.WaterQuality) * 0.5f
-                             + (1f - tank.Oxygen) * 0.4f;
+                             + (1f - tank.Oxygen) * 0.4f
+                             + AlgaeStress(species, tank);
             return Mathf.Clamp01(mismatch);
+        }
+
+        /// <summary>An algal bloom chokes every fish; an algae eater also suffers from more algae than is good for it.</summary>
+        static float AlgaeStress(Genetics.Species species, Tank tank)
+        {
+            var a = Balance.Data.algae;
+            float stress = tank.InBloom ? a.bloomStress : 0f;
+            if (species.eatsAlgae && tank.Algae > species.AlgaeMax) stress += (tank.Algae - species.AlgaeMax) / 0.1f * a.eaterOverStressPer10;
+            return stress;
         }
 
         /// <summary>
@@ -437,6 +449,12 @@ namespace FishBreeder.Health
             else if (tank.Salinity > species.salinityMax) notes.Add(species.salinityMax > 5f ? "Too salty" : "Needs fresh water");
             if (tank.WaterQuality < 0.9f) notes.Add($"Dirty water ({tank.WaterQuality * 100f:0}% clean)");
             if (tank.Oxygen < 0.9f) notes.Add($"Short of oxygen ({tank.Oxygen * 100f:0}%): more air needed");
+            if (tank.InBloom) notes.Add("Choking in an algal bloom: it needs a deep clean");
+            if (species.eatsAlgae)
+            {
+                if (tank.Algae > species.AlgaeMax) notes.Add($"Too much algae ({tank.Algae * 100f:0}%): it gets sick above {species.AlgaeMax * 100f:0}%");
+                else if (tank.AlgaeForGrazing < species.AlgaeMin) notes.Add($"Not enough algae to graze ({tank.AlgaeForGrazing * 100f:0}%, needs {species.AlgaeMin * 100f:0}%): add algae wafers");
+            }
             return notes;
         }
 

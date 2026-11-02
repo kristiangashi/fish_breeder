@@ -169,7 +169,7 @@ namespace FishBreeder.Core
                 case MilestoneKind.DiscoverSpecies: return $"Discover {n} kind{s} of fish";
                 case MilestoneKind.GrowUp: return $"Raise {n} fish to adulthood";
                 case MilestoneKind.FeedFish: return $"Feed a tank {n} time{s}";
-                case MilestoneKind.CleanTank: return $"Wipe a tank {n} time{s}";
+                case MilestoneKind.CleanTank: return $"Clean a tank {n} time{s}";
                 case MilestoneKind.HatchEggs: return $"Hatch {n} egg{s}";
                 case MilestoneKind.BreedFish: return $"Breed {n} fry of your own";
                 case MilestoneKind.LearnFact: return $"Finish {n} research project{s}";

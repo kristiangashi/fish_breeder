@@ -142,7 +142,18 @@ namespace FishBreeder.Core
                 if (goal != null && goal.track == track && (Economy.CanOpenShop || !NeedsCustomers(goal.kind))) options.Add(goal);
             if (options.Count > 1 && last.HasValue) options.RemoveAll(g => g.kind == last.Value);
             if (options.Count == 0) return null;
+            // Picked by weight: some goals (like cleaning) come up less often than the rest.
+            float total = 0f;
+            foreach (var goal in options) total += Mathf.Max(0f, goal.weight);
             var pick = options[GameRandom.Range(0, options.Count)];
+            float roll = GameRandom.Value * total;
+            foreach (var goal in options)
+            {
+                roll -= Mathf.Max(0f, goal.weight);
+                if (roll > 0f) continue;
+                pick = goal;
+                break;
+            }
             int lvl = Level(track);
             return new DailyGoal
             {

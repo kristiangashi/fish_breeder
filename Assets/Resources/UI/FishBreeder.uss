@@ -1,12 +1,3 @@
-/*
- * The game's look for UI Toolkit screens, matching UiTheme's IMGUI colours: deep lagoon windows
- * with a bright aqua rim, turquoise buttons, coral for the main action, sunny yellow titles and
- * warm sand text. Every UXML screen links this sheet, so UI Builder previews it too.
- *
- * Sizes are in UI units: the panel scales so the screen is always 900 units tall (see UiPanels).
- * Nothing here sets a fixed height on text; boxes grow to fit what's in them.
- */
-
 :root {
     --abyss: rgb(5, 28, 43);
     --deep: rgb(8, 51, 74);
@@ -20,14 +11,10 @@
     --faint: rgb(111, 143, 153);
     --danger: rgb(255, 176, 160);
     --leaf: rgb(143, 240, 160);
-
     font-size: 13px;
     color: var(--sand);
 }
 
-/* ------------------------------------------------------------ screens and windows */
-
-/* Fills the whole screen. */
 .fb-screen {
     position: absolute;
     left: 0;
@@ -36,7 +23,6 @@
     bottom: 0;
 }
 
-/* Puts its child (a window) in the middle of the screen. */
 .fb-center {
     align-items: center;
     justify-content: center;
@@ -54,13 +40,10 @@
     border-radius: 12px;
     padding: 12px 16px 14px 16px;
     max-width: 100%;
-    /* Gets shorter on a short screen: its scrolling body gives up the room. */
     flex-shrink: 1;
     min-height: 0;
 }
 
-/* A window that comes from a template (Load Game, Settings): the template's own box spans the
-   screen's width and lets the window inside shrink. */
 .fb-page {
     align-self: stretch;
     align-items: center;
@@ -84,14 +67,12 @@
     width: 640px;
 }
 
-/* The part of a window that scrolls when the screen is too short for all of it. */
 .fb-window__body {
     flex-grow: 1;
     flex-shrink: 1;
     min-height: 60px;
 }
 
-/* A row of buttons at the bottom of a window, kept on the right. */
 .fb-window__footer {
     flex-direction: row;
     justify-content: flex-end;
@@ -99,10 +80,31 @@
     margin-top: 10px;
 }
 
-/* ------------------------------------------------------------ text */
+.fb-title {
+    flex-shrink: 0;
+}
 
-/* Text and buttons never squash below their own height when a window gets short. */
-.fb-title, .fb-heading, .fb-text, .fb-small, .fb-game-title, .fb-subtitle, .unity-button.fb-button {
+.fb-heading {
+    flex-shrink: 0;
+}
+
+.fb-text {
+    flex-shrink: 0;
+}
+
+.fb-small {
+    flex-shrink: 0;
+}
+
+.fb-game-title {
+    flex-shrink: 0;
+}
+
+.fb-subtitle {
+    flex-shrink: 0;
+}
+
+.unity-button.fb-button {
     flex-shrink: 0;
 }
 
@@ -145,8 +147,6 @@
 .fb-warning {
     color: var(--danger);
 }
-
-/* ------------------------------------------------------------ buttons */
 
 .unity-button.fb-button {
     background-color: rgb(24, 140, 148);
@@ -204,12 +204,10 @@
     margin: 4px 0;
 }
 
-/* Buttons side by side get a little room between them. */
 .fb-window__footer > .unity-button.fb-button {
     margin-left: 6px;
 }
 
-/* A small square button holding a drawn arrow (see .fb-chevron). */
 .unity-button.fb-button--icon {
     width: 34px;
     min-width: 34px;
@@ -218,7 +216,6 @@
     justify-content: center;
 }
 
-/* An arrow head drawn from two borders, so it never depends on the font. */
 .fb-chevron {
     width: 9px;
     height: 9px;
@@ -237,8 +234,6 @@
     margin-right: 4px;
 }
 
-/* ------------------------------------------------------------ layout helpers */
-
 .fb-row {
     flex-direction: row;
     align-items: center;
@@ -252,8 +247,6 @@
     flex-direction: column;
     align-items: stretch;
 }
-
-/* ------------------------------------------------------------ cards and lists */
 
 .fb-card {
     flex-direction: row;
@@ -276,7 +269,6 @@
     border-color: var(--sun);
 }
 
-/* The text part of a card takes the room the buttons leave and wraps inside it. */
 .fb-card__text {
     flex-grow: 1;
     flex-shrink: 1;
@@ -322,14 +314,14 @@
     border-radius: 5px;
 }
 
-.fb-scroll .unity-scroller__low-button,
+.fb-scroll .unity-scroller__low-button {
+    display: none;
+}
+
 .fb-scroll .unity-scroller__high-button {
     display: none;
 }
 
-/* ------------------------------------------------------------ settings rows */
-
-/* A setting: its name, then the value between back and forward arrows. */
 .fb-choice {
     flex-direction: row;
     align-items: center;
@@ -357,8 +349,6 @@
     opacity: 0.45;
 }
 
-/* ------------------------------------------------------------ main menu */
-
 .fb-backdrop {
     position: absolute;
     left: 0;
@@ -374,7 +364,6 @@
     background-color: rgba(178, 242, 255, 0.18);
 }
 
-/* The title and whichever page is showing, down the middle of the screen. */
 .fb-menu-column {
     position: absolute;
     left: 0;
@@ -420,8 +409,6 @@
     white-space: normal;
 }
 
-/* ------------------------------------------------------------ game windows (Window.uxml) */
-
 .fb-window__header {
     flex-direction: row;
     align-items: center;
@@ -433,7 +420,6 @@
     margin-right: 14px;
 }
 
-/* Tabs and buttons a window puts beside its title. */
 .fb-window__header-content {
     flex-direction: row;
     align-items: center;
@@ -452,7 +438,6 @@
     min-height: 0;
 }
 
-/* A line under a window that shows what the pointer is over. */
 .fb-tooltip-line {
     font-size: 11px;
     color: var(--muted);
@@ -462,8 +447,6 @@
     margin: 4px 0 0 0;
     flex-shrink: 0;
 }
-
-/* ------------------------------------------------------------ pieces UiFrame makes */
 
 .fb-tabs {
     flex-direction: row;
@@ -596,8 +579,6 @@
     padding: 3px 6px;
 }
 
-/* ------------------------------------------------------------ gauges (temperature, pH) */
-
 .fb-gauge {
     height: 40px;
     margin: 2px 2px;
@@ -655,14 +636,12 @@
     margin: 0;
 }
 
-/* ------------------------------------------------------------ shared helpers for game windows */
-
 .fb-grow {
     flex-grow: 1;
     flex-shrink: 1;
+    font-size: 10px;
 }
 
-/* Something locked or out of reach: still readable, clearly not available. */
 .fb-faded {
     opacity: 0.5;
 }
@@ -675,7 +654,6 @@
     font-size: 10px;
 }
 
-/* Columns side by side that share the width equally (the perk trees, journal pages). */
 .fb-columns {
     flex-direction: row;
     align-items: flex-start;
@@ -693,15 +671,12 @@
     margin-top: 8px;
 }
 
-/* ------------------------------------------------------------ window sizes */
-
 #perks-window {
     width: 1020px;
     height: 720px;
     max-height: 100%;
 }
 
-/* Two scrolling halves side by side (reputation, finances, aquarium). */
 .fb-halves {
     flex-direction: row;
     flex-grow: 1;
@@ -720,7 +695,6 @@
     margin-right: 16px;
 }
 
-/* A sunny section heading inside a window. */
 .fb-section {
     -unity-font-style: bold;
     color: var(--sun);
@@ -730,7 +704,6 @@
     flex-shrink: 0;
 }
 
-/* A line with words on the left and a number kept to the right. */
 .fb-line {
     flex-direction: row;
     align-items: flex-start;
@@ -751,7 +724,6 @@
     flex-shrink: 0;
 }
 
-/* Small step buttons (-, +, -5) and the number between them. */
 .unity-button.fb-step {
     min-width: 30px;
     min-height: 28px;
@@ -767,7 +739,6 @@
     margin: 0 2px;
 }
 
-/* The finances day-by-day chart: a bar up for profit, down for a loss. */
 .fb-chart {
     flex-direction: row;
     height: 130px;
@@ -808,7 +779,19 @@
     flex-shrink: 0;
 }
 
-#reputation-window, #finances-window, #aquarium-window {
+#reputation-window {
+    width: 980px;
+    height: 700px;
+    max-height: 100%;
+}
+
+#finances-window {
+    width: 980px;
+    height: 700px;
+    max-height: 100%;
+}
+
+#aquarium-window {
     width: 980px;
     height: 700px;
     max-height: 100%;
@@ -848,8 +831,6 @@
     margin: 4px 0 0 0;
 }
 
-/* ------------------------------------------------------------ research */
-
 #research-window {
     width: 980px;
     height: 700px;
@@ -875,8 +856,6 @@
     min-width: 48px;
 }
 
-/* ------------------------------------------------------------ journal */
-
 #journal-window {
     width: 900px;
     height: 640px;
@@ -892,7 +871,6 @@
     align-items: flex-start;
 }
 
-/* One fish in the index: its picture (or a dark silhouette), name and rarity. */
 .unity-button.fb-journal-card {
     width: 120px;
     height: 150px;
@@ -1019,9 +997,6 @@
     margin-top: 6px;
 }
 
-/* ------------------------------------------------------------ store screen (StoreHud.uxml) */
-
-/* The bars across the top and the row under them (to-do bar, milestones, shop clock). */
 .fb-hud-top {
     position: absolute;
     left: 10px;
@@ -1029,7 +1004,6 @@
     top: 8px;
 }
 
-/* A thin rounded strip: the top and status bars, the shop clock, the log. */
 .fb-strip {
     flex-direction: row;
     flex-wrap: wrap;
@@ -1056,7 +1030,6 @@
     min-height: 30px;
 }
 
-/* Money and stars look like words and light up under the pointer. */
 .unity-button.fb-flat {
     background-color: rgba(0, 0, 0, 0);
     border-color: rgba(0, 0, 0, 0);
@@ -1080,7 +1053,6 @@
     margin: 3px 0 3px 4px;
 }
 
-/* A level, its XP bar and the numbers. */
 .fb-meter {
     margin-right: 16px;
     flex-shrink: 0;
@@ -1116,7 +1088,6 @@
     margin-top: 8px;
 }
 
-/* A box on its own on the screen (the to-do bar, milestones). */
 .fb-panel {
     background-color: rgba(8, 64, 84, 0.97);
     border-width: 2px;
@@ -1131,7 +1102,6 @@
     min-width: 0;
 }
 
-/* In a tank the to-do bar stays clear of the tank menu on the left. */
 .fb-todo--tank {
     margin-left: 310px;
 }
@@ -1153,7 +1123,6 @@
     align-items: center;
 }
 
-/* Level-ups and all caught up: a bright box across the middle. */
 .fb-banners {
     position: absolute;
     left: 20px;
@@ -1202,7 +1171,6 @@
     flex-shrink: 0;
 }
 
-/* Labels over the store: their bottom middle sits on the point they belong to. */
 .fb-world-label {
     position: absolute;
     translate: -50% -100%;
@@ -1253,7 +1221,6 @@
     top: 12px;
 }
 
-/* A shopper's thought bubble with the face for their mood. */
 .fb-mood {
     position: absolute;
     translate: -50% -100%;
@@ -1285,8 +1252,6 @@
     padding: 0;
     margin: 0;
 }
-
-/* ------------------------------------------------------------ store windows */
 
 #register-window {
     width: 500px;
@@ -1330,7 +1295,6 @@
     white-space: normal;
 }
 
-/* Buttons three to a row (the supplier's Deliver to). */
 .fb-grid3 > .unity-button {
     width: 32%;
     white-space: normal;
@@ -1361,7 +1325,6 @@
     background-color: rgba(115, 89, 38, 0.9);
 }
 
-/* Something for sale: picture, name and details, and the buy button on the right. */
 .fb-offer {
     align-items: center;
 }
@@ -1415,9 +1378,6 @@
     margin-left: 80px;
 }
 
-/* ------------------------------------------------------------ tank screen (TankHud.uxml) */
-
-/* The tank menu down the left: title, tabs, the tab's contents (scrolling) and the buttons under them. */
 .fb-tank-panel {
     position: absolute;
     left: 10px;
@@ -1457,7 +1417,6 @@
     -unity-text-align: middle-center;
 }
 
-/* The level details, popping out beside the "?". */
 .fb-level-popup {
     position: absolute;
     width: 250px;
@@ -1482,10 +1441,10 @@
     margin: 0 2px 0 0;
 }
 
-/* Buttons sharing a row: a gap between them, and the last one still reaches the right edge. */
 .fb-pair {
     flex-shrink: 0;
     margin-right: -4px;
+    font-size: 10px;
 }
 
 .fb-pair > .unity-button {
@@ -1527,7 +1486,6 @@
     flex-shrink: 0;
 }
 
-/* A label, a bar and the percentage on one line (water quality, health, comfort). */
 .fb-stat {
     flex-grow: 1;
     align-items: center;
@@ -1573,7 +1531,6 @@
     align-items: flex-start;
 }
 
-/* The picker beside the tank menu (decorations, backgrounds). */
 .fb-picker {
     position: absolute;
     left: 318px;
@@ -1597,7 +1554,6 @@
     white-space: normal;
 }
 
-/* The fish window, beside the picked fish (placed by code). */
 .fb-fish-window {
     position: absolute;
     width: 320px;
@@ -1628,7 +1584,6 @@
     flex-shrink: 0;
 }
 
-/* Two to a row, one at each side. */
 .fb-move-buttons {
     flex-shrink: 0;
     justify-content: space-between;
@@ -1640,7 +1595,6 @@
     margin: 2px 0;
 }
 
-/* The previous-tank, top-view and next-tank buttons along the bottom. */
 .fb-tank-bar {
     position: absolute;
     height: 40px;
@@ -1657,7 +1611,6 @@
     max-height: 140px;
 }
 
-/* Marks over the water. */
 .unity-button.fb-step-arrow {
     position: absolute;
     width: 34px;
@@ -1707,8 +1660,6 @@
     border-color: var(--sun);
 }
 
-/* ------------------------------------------------------------ effects (FxOverlay.uxml) */
-
 .fb-particle {
     position: absolute;
     -unity-background-scale-mode: stretch-to-fill;
@@ -1724,7 +1675,6 @@
     margin: 0;
 }
 
-/* A celebration card that drops in at the top (milestones, new fish, research). */
 .fb-celebration {
     position: absolute;
     left: 50%;
@@ -1792,7 +1742,6 @@
     margin: 0 0 2px 0;
 }
 
-/* The OPEN! stamp, big and tilted in the middle of the screen. */
 .fb-stamp {
     position: absolute;
     left: 50%;
@@ -1870,16 +1819,12 @@
     text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6);
 }
 
-/* ------------------------------------------------------------ click-only details, the message history */
-
-/* A line that explains the last thing clicked keeps two lines of room, so nothing under it moves. */
 .fb-tooltip-line {
     height: 30px;
     min-height: 30px;
     overflow: hidden;
 }
 
-/* The aquarium level circle by the tank title: click it for what makes it up. */
 .unity-button.fb-level-badge {
     width: 22px;
     height: 22px;
@@ -1894,7 +1839,6 @@
     -unity-text-align: middle-center;
 }
 
-/* The log in the corner opens the message history when clicked. */
 .fb-log--clickable:hover {
     border-color: var(--sun);
 }

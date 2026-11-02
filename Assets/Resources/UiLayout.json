@@ -1,3 +1,661 @@
 {
-    "entries": []
+    "entries": [
+        {
+            "id": "Fish seller / Boxes of mixed eggs They hatch at the ne",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": true
+        },
+        {
+            "id": "Fish seller / Boxes of mixed fry delivered right away A",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": true
+        },
+        {
+            "id": "Fish seller / Food and decorations are on the supplier",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": true
+        },
+        {
+            "id": "Fish seller / Keep diving he goes again after each div",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 6.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Fish seller / Some fish need more room than a standard",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": true
+        },
+        {
+            "id": "Status bar",
+            "x": 0.0,
+            "y": -1.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar / Today Breed fish Buy decorations",
+            "x": 0.0,
+            "y": -4.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar / Today Feed tanks Buy decorations",
+            "x": 0.0,
+            "y": -3.0,
+            "width": 0.0,
+            "height": -2.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar / Today Hatch eggs Buy decorations",
+            "x": 0.0,
+            "y": -4.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar / ★ perk points!",
+            "x": 0.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": -5.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar: Fishkeeping XP bar",
+            "x": 0.0,
+            "y": 2.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar: Research XP",
+            "x": -16.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar: Research XP bar",
+            "x": -22.0,
+            "y": 2.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar: Research level",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -25.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Status bar: Shopkeeping XP bar",
+            "x": 0.0,
+            "y": 2.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ?",
+            "x": 1.0,
+            "y": -4.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Air for fish chance of breaking per time",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Background none",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Change to fresh water ()",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -12.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Change to salt water ()",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Clean water",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -99.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Decorations",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -8.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Dirty the water (dev)",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -5.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Dirty water",
+            "x": -99.0,
+            "y": 0.0,
+            "width": -83.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Display tanks aren't for sale they're th",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -5.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Equipment wears out the longer it runs t",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -32.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Grand tank fish decorations",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -7.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Grow as big as the tank allows",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -62.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Grow every fish up (dev)",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -5.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Holds the exact setting chance of breaki",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Leaves of the waste chance of breaking p",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Make it a breeder tank",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -3.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Make it a display tank",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -7.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Make it a for sale tank",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Make it a quarantine tank",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -9.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Move",
+            "x": -6.0,
+            "y": 0.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Needs aquarium level (quality it's )",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Raise to m",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -8.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Sick fish get better apart in quarantine",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -5.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Sides none",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -8.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Tank type Breeder",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Tank type Display",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -5.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / The wall aquarium is far too big for ord",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / The wall aquarium is far too big for ord #2",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / The wall aquarium is far too big for ord #3",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Tooltip line",
+            "x": 0.0,
+            "y": 2.0,
+            "width": -180.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Without a bubbler there's only enough ai",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Without a filter fish waste builds up fa",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / Without a heater the water sits at room t",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Bubbler No bubbler",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Bubbler Oxygen injection system",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -25.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Decorations",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -180.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Filter Drum filter and UV system",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -25.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Filter No filter",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Heater Heat exchanger with controller",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -25.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▸ Heater No heater",
+            "x": 0.0,
+            "y": 1.0,
+            "width": -6.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▾ Add fish medium",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -180.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▾ Bubbler Oxygen injection system",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▾ Filter Drum filter and UV system",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Tank panel / ▾ Heater Heat exchanger with controller",
+            "x": 0.0,
+            "y": 0.0,
+            "width": -26.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / DEV MODE",
+            "x": -2.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Day",
+            "x": -6.0,
+            "y": 5.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Food feedings",
+            "x": -6.0,
+            "y": 5.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Journal (J)",
+            "x": -27.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Let the day pass",
+            "x": 3.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / MORNING opening in days",
+            "x": 0.0,
+            "y": 5.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Perks (P)",
+            "x": -13.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Perks (P) ●",
+            "x": -9.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Research (R)",
+            "x": -19.0,
+            "y": 2.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Research (R) ●",
+            "x": -15.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Supplier (B)",
+            "x": -35.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / Watch (V)",
+            "x": -5.0,
+            "y": 3.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        },
+        {
+            "id": "Top bar / ★★★★★",
+            "x": -10.0,
+            "y": 5.0,
+            "width": 0.0,
+            "height": 0.0,
+            "text": "",
+            "hidden": false
+        }
+    ]
 }

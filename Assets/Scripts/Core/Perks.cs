@@ -26,6 +26,8 @@ namespace FishBreeder.Core
         Bookkeeping,
         // Breeding (added later)
         StockBook, RareEggs,
+        // Aquariums (added later)
+        WiderFilterWindow,
     }
 
     /// <summary>One perk in a skill tree. Each rank bought adds <see cref="perRank"/> to its effect.</summary>
@@ -49,7 +51,7 @@ namespace FishBreeder.Core
 
         public string Describe(int rank) => string.Format(text ?? "", FormatValue(perRank * Mathf.Max(1, rank)));
 
-        public const string SlowerAlgaeText = "Algae climbs {0} slower (its soft cap stays the same)";
+        public const string SlowerAlgaeText = "Algae grows {0} slower";
 
         public static List<PerkBalance> CreateDefaults() => new List<PerkBalance>
         {
@@ -58,6 +60,7 @@ namespace FishBreeder.Core
             Make("elbow_grease", PerkTree.Aquariums, 1, "Elbow grease", "Clean tank takes off {0} more algae", 3, 0.15f, PerkEffect.StrongerWipes),
             Make("algae_control", PerkTree.Aquariums, 2, "Algae control", SlowerAlgaeText, 5, 0.08f, PerkEffect.SlowerAlgae),
             Make("aquascaper", PerkTree.Aquariums, 2, "Aquascaper", "{0} more decoration spots in every tank", 3, 2f, PerkEffect.DecorationSpots, false),
+            Make("steady_filters", PerkTree.Aquariums, 3, "Steady filters", "Filters keep algae steady through {0}% more growth either way", 3, 1f, PerkEffect.WiderFilterWindow, false),
             Make("tinkerer", PerkTree.Aquariums, 3, "Tinkerer", "Equipment breaks down {0} less often", 5, 0.08f, PerkEffect.SturdierEquipment),
             Make("handyman", PerkTree.Aquariums, 3, "Handyman", "Repairs cost {0} less", 3, 0.15f, PerkEffect.BetterRepairs),
             Make("roomy_tanks", PerkTree.Aquariums, 4, "Roomy tanks", "Tanks hold {0} more fish", 3, 0.1f, PerkEffect.RoomierTanks),

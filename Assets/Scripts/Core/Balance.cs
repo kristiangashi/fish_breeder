@@ -146,8 +146,6 @@ namespace FishBreeder.Core
         public int qualityNeeded;
         [Tooltip("Algae eaters this size needs to keep the water clear until 30% algae (Algae tab).")]
         public int algaeEaters = 2;
-        [Tooltip("Fish (as tiny fish) each algae eater covers here, on top of the filter's: while every fish is covered algae stays at its soft cap (Algae tab).")]
-        public int algaeEaterFish = 2;
 
         public Vector3 Size => new Vector3(width, height, depth);
     }
@@ -273,10 +271,8 @@ namespace FishBreeder.Core
         public int repairCost = 15;
         [Tooltip("Made for the wall aquarium: only it can take this model, and it can only take these (ordinary models are too small for it).")]
         public bool wallAquariumOnly;
-        [Tooltip("Filters: fish it keeps algae at its soft cap for (counted as tiny fish, see the Algae tab), with the algae eaters covering a few more. One fish more and algae creeps on past the soft cap.")]
-        public int fishCapacity;
-        [Tooltip("Filters: the highest a tank's algae soft cap gets while this filter works, however many fish (it stays there while the filter and algae eaters cover every fish).")]
-        [Range(0f, 1f)] public float algaeHold = 0.3f;
+        [Tooltip("Filters: its stable window (3 = 3%). While a tank's net algae growth per time step is within this either way, the algae stays put; only what's past it moves the algae (Algae tab). The Steady filters perk widens it.")]
+        public float stableWindow;
     }
 
     /// <summary>Something that can go wrong with a filter, heater or bubbler, and how dear it is to fix.</summary>
@@ -344,8 +340,8 @@ namespace FishBreeder.Core
         public string model;
         [Tooltip("In a tank with algae eaters, it grows enough algae film to keep the algae from dropping below this (0 = none): enough to feed a tank of only algae eaters.")]
         [Range(0f, 1f)] public float algaeFloor;
-        [Tooltip("Plants: each one in a tank raises its algae soft cap this much (0.03 = 3%). Fast growers shed more.")]
-        [Range(0f, 1f)] public float algaeMaxBonus;
+        [Tooltip("Plants: algae each one in a tank grows per time step (1 = 1%). Fast growers shed more.")]
+        public float algaeGrowth;
 
         /// <summary>The model's name in Resources/Decor.</summary>
         public string Model => string.IsNullOrEmpty(model) ? id : model;
@@ -426,12 +422,12 @@ namespace FishBreeder.Core
         public List<SectionBalance> sections = SectionBalance.CreateDefaults();
         public List<TankSizeBalance> tankSizes = new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, smallCapacity = 6, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12, algaeEaters = 2, algaeEaterFish = 2 },
-            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, smallCapacity = 9, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25, algaeEaters = 3, algaeEaterFish = 3 },
-            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, smallCapacity = 12, mediumCapacity = 5, largeCapacity = 1, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55, algaeEaters = 4, algaeEaterFish = 5 },
+            new TankSizeBalance { name = "Standard", width = 1.6f, height = 0.9f, depth = 0.7f, capacity = 24, smallCapacity = 6, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 0, unlockLevel = 1, decorationSlots = 12, algaeEaters = 2 },
+            new TankSizeBalance { name = "Large", width = 2.3f, height = 1f, depth = 0.85f, capacity = 36, smallCapacity = 9, mediumCapacity = 4, largeCapacity = 0, upgradePrice = 600, unlockLevel = 1, decorationSlots = 16, qualityNeeded = 25, algaeEaters = 3 },
+            new TankSizeBalance { name = "Grand", width = 3f, height = 1.1f, depth = 1f, capacity = 50, smallCapacity = 12, mediumCapacity = 5, largeCapacity = 1, upgradePrice = 1500, unlockLevel = 1, decorationSlots = 20, qualityNeeded = 55, algaeEaters = 4 },
         };
         [Tooltip("The wall aquarium (the public aquarium's two exhibits): it fills most of a wall, set into it and reaching out behind it. Never an upgrade from another size.")]
-        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, smallCapacity = 16, mediumCapacity = 5, largeCapacity = 2, unlockLevel = 1, decorationSlots = 48, algaeEaters = 6, algaeEaterFish = 5 };
+        public TankSizeBalance wallAquarium = new TankSizeBalance { name = "Wall aquarium", width = 9.23f, height = 1.95f, depth = 1.733f, capacity = 60, smallCapacity = 16, mediumCapacity = 5, largeCapacity = 2, unlockLevel = 1, decorationSlots = 48, algaeEaters = 6 };
         [Tooltip("The wall aquarium's upgrades, each taller than the last (same length and depth as the wall aquarium; level is Shopkeeping). The tallest sit lower so they still fit under the roof.")]
         public List<TankSizeBalance> wallAquariumHeights = DefaultWallHeights();
         [Tooltip("How big decorations come out in the wall aquarium, as a share of their own size (the size they are in every other tank). Raising the aquarium never changes it.")]
@@ -455,10 +451,10 @@ namespace FishBreeder.Core
 
         public static List<TankSizeBalance> DefaultWallHeights() => new List<TankSizeBalance>
         {
-            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, smallCapacity = 18, mediumCapacity = 5, largeCapacity = 2, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52, algaeEaters = 7, algaeEaterFish = 5 },
-            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, smallCapacity = 20, mediumCapacity = 5, largeCapacity = 3, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56, algaeEaters = 7, algaeEaterFish = 5 },
-            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, smallCapacity = 22, mediumCapacity = 6, largeCapacity = 3, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60, algaeEaters = 8, algaeEaterFish = 5 },
-            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, smallCapacity = 24, mediumCapacity = 6, largeCapacity = 4, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64, algaeEaters = 8, algaeEaterFish = 5 },
+            new TankSizeBalance { name = "Tall wall aquarium", width = 9.23f, height = 2.4f, depth = 1.733f, capacity = 65, smallCapacity = 18, mediumCapacity = 5, largeCapacity = 2, upgradePrice = 4000, unlockLevel = 12, decorationSlots = 52, algaeEaters = 7 },
+            new TankSizeBalance { name = "Grand wall aquarium", width = 9.23f, height = 2.85f, depth = 1.733f, capacity = 70, smallCapacity = 20, mediumCapacity = 5, largeCapacity = 3, upgradePrice = 6500, unlockLevel = 18, decorationSlots = 56, algaeEaters = 7 },
+            new TankSizeBalance { name = "Towering wall aquarium", width = 9.23f, height = 3.3f, depth = 1.733f, capacity = 75, smallCapacity = 22, mediumCapacity = 6, largeCapacity = 3, upgradePrice = 9500, unlockLevel = 26, decorationSlots = 60, algaeEaters = 8 },
+            new TankSizeBalance { name = "Showpiece wall aquarium", width = 9.23f, height = 3.8f, depth = 1.733f, capacity = 80, smallCapacity = 24, mediumCapacity = 6, largeCapacity = 4, upgradePrice = 14000, unlockLevel = 35, decorationSlots = 64, algaeEaters = 8 },
         };
 
         /// <summary>
@@ -556,21 +552,21 @@ namespace FishBreeder.Core
         public List<DecorationBalance> decorations = new List<DecorationBalance>
         {
             new DecorationBalance { id = "Rock", name = "Rock", price = 15, unlockLevel = 1, height = 0.2f },
-            new DecorationBalance { id = "Plant", name = "Leafy plant", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.5f, back = true, algaeMaxBonus = 0.03f },
-            new DecorationBalance { id = "Seaweed", name = "Seaweed", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.4f, algaeMaxBonus = 0.04f },
+            new DecorationBalance { id = "Plant", name = "Leafy plant", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.5f, back = true, algaeGrowth = 1f },
+            new DecorationBalance { id = "Seaweed", name = "Seaweed", price = 20, unlockLevel = 1, plant = true, passable = true, height = 0.4f, algaeGrowth = 1.2f },
             new DecorationBalance { id = "Driftwood", name = "Driftwood", price = 35, unlockLevel = 2, height = 0.3f, back = true },
-            new DecorationBalance { id = "TallPlant", name = "Tall plant", price = 30, unlockLevel = 3, plant = true, passable = true, height = 0.55f, back = true, algaeMaxBonus = 0.04f },
-            new DecorationBalance { id = "FernRock", name = "Fern on a rock", price = 40, unlockLevel = 4, plant = true, height = 0.16f, algaeMaxBonus = 0.01f },
+            new DecorationBalance { id = "TallPlant", name = "Tall plant", price = 30, unlockLevel = 3, plant = true, passable = true, height = 0.55f, back = true, algaeGrowth = 1.2f },
+            new DecorationBalance { id = "FernRock", name = "Fern on a rock", price = 40, unlockLevel = 4, plant = true, height = 0.16f, algaeGrowth = 0.3f },
             new DecorationBalance { id = "Clam", name = "Clam shell", price = 45, unlockLevel = 5, height = 0.06f },
             new DecorationBalance { id = "TreasureChest", name = "Treasure chest", price = 80, unlockLevel = 7, height = 0.14f },
             new DecorationBalance { id = "Diver", name = "Deep-sea diver", price = 120, unlockLevel = 9, height = 0.32f },
             // Grows a film of algae for grazers: breeding algae eaters on their own (see AddMissingDecorations).
-            new DecorationBalance { id = "JavaMoss", name = "Java moss rock", price = 90, unlockLevel = 20, fishkeepingUnlock = true, plant = true, height = 0.18f, model = "FernRock", algaeFloor = 0.18f, algaeMaxBonus = 0.02f },
+            new DecorationBalance { id = "JavaMoss", name = "Java moss rock", price = 90, unlockLevel = 20, fishkeepingUnlock = true, plant = true, height = 0.18f, model = "FernRock", algaeFloor = 0.18f, algaeGrowth = 0.6f },
             // Rarer plants for skilled fishkeepers (see AddMissingDecorations).
-            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.28f, maxSizeStepsOff = 2, algaeMaxBonus = 0.02f },
-            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2, algaeMaxBonus = 0.05f },
-            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f, maxSizeStepsOff = 2, algaeMaxBonus = 0.03f },
-            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true, maxSizeStepsOff = 2, algaeMaxBonus = 0.04f },
+            new DecorationBalance { id = "Crypt", name = "Cryptocoryne", price = 150, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.28f, maxSizeStepsOff = 2, algaeGrowth = 0.6f },
+            new DecorationBalance { id = "JungleVal", name = "Jungle vallisneria", price = 170, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.6f, back = true, maxSizeStepsOff = 2, algaeGrowth = 1.5f },
+            new DecorationBalance { id = "AmazonSword", name = "Amazon sword", price = 190, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.4f, maxSizeStepsOff = 2, algaeGrowth = 1f },
+            new DecorationBalance { id = "Aponogeton", name = "Aponogeton", price = 210, unlockLevel = 25, fishkeepingUnlock = true, plant = true, passable = true, height = 0.48f, back = true, maxSizeStepsOff = 2, algaeGrowth = 1.2f },
             // A tall rock spire with caves to swim through, too big for the smaller tanks (see AddMissingDecorations).
             new DecorationBalance { id = "Grotto", name = "Stone spire grotto", price = 650, unlockLevel = 25, height = 0.7f, back = true, minTankSize = 1, maxSizeStepsOff = 3 },
         };
@@ -578,13 +574,13 @@ namespace FishBreeder.Core
         public int waterConditionerLevel = 1, medicineLevel = 1, marineSaltLevel = 10;
         public List<EquipmentTierBalance> filters = new List<EquipmentTierBalance>
         {
-            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 12, fishCapacity = 24 },
-            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 30, fishCapacity = 36 },
-            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 75, fishCapacity = 50 },
-            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 170, fishCapacity = 80 },
+            new EquipmentTierBalance { name = "Sponge filter", blurb = "Cheap and basic.", price = 150, unlockLevel = 2, effect = 0.45f, breakChance = 0.02f, breakChancePerStep = 0.004f, maxBreakChance = 0.3f, repairCost = 12, stableWindow = 3f },
+            new EquipmentTierBalance { name = "Hang-on-back filter", blurb = "Cleaner water, and it lasts longer.", price = 350, unlockLevel = 7, effect = 0.32f, breakChance = 0.012f, breakChancePerStep = 0.003f, maxBreakChance = 0.22f, repairCost = 30, stableWindow = 5f },
+            new EquipmentTierBalance { name = "Canister filter", blurb = "Much cleaner water, rarely breaks.", price = 800, unlockLevel = 16, effect = 0.2f, breakChance = 0.007f, breakChancePerStep = 0.002f, maxBreakChance = 0.14f, repairCost = 75, stableWindow = 7f },
+            new EquipmentTierBalance { name = "Sump system", blurb = "The best there is.", price = 1800, unlockLevel = 28, effect = 0.1f, breakChance = 0.003f, breakChancePerStep = 0.001f, maxBreakChance = 0.07f, repairCost = 170, stableWindow = 9f },
             // The wall aquarium is too big for any of the above: it needs plant-room systems of its own.
-            new EquipmentTierBalance { name = "Plant-room sump", blurb = "A big sump in the room behind the wall, pumping the whole wall aquarium through its filter media.", price = 3500, unlockLevel = 8, effect = 0.18f, breakChance = 0.006f, breakChancePerStep = 0.0015f, maxBreakChance = 0.12f, repairCost = 220, wallAquariumOnly = true, fishCapacity = 70 },
-            new EquipmentTierBalance { name = "Drum filter and UV system", blurb = "Public aquarium filtration: a self-cleaning drum filter with a UV steriliser.", price = 9000, unlockLevel = 20, effect = 0.07f, breakChance = 0.002f, breakChancePerStep = 0.0008f, maxBreakChance = 0.05f, repairCost = 450, wallAquariumOnly = true, fishCapacity = 120 },
+            new EquipmentTierBalance { name = "Plant-room sump", blurb = "A big sump in the room behind the wall, pumping the whole wall aquarium through its filter media.", price = 3500, unlockLevel = 8, effect = 0.18f, breakChance = 0.006f, breakChancePerStep = 0.0015f, maxBreakChance = 0.12f, repairCost = 220, wallAquariumOnly = true, stableWindow = 9f },
+            new EquipmentTierBalance { name = "Drum filter and UV system", blurb = "Public aquarium filtration: a self-cleaning drum filter with a UV steriliser.", price = 9000, unlockLevel = 20, effect = 0.07f, breakChance = 0.002f, breakChancePerStep = 0.0008f, maxBreakChance = 0.05f, repairCost = 450, wallAquariumOnly = true, stableWindow = 12f },
         };
         public List<EquipmentTierBalance> heaters = new List<EquipmentTierBalance>
         {
@@ -1019,7 +1015,7 @@ namespace FishBreeder.Core
         /// 22: twelve fish from the reef collages (ten reef fish, two loaches): relationships, cross pairs, egg boxes and dive finds.
         /// 23: salt and fresh water kept apart: reef egg boxes of their own, saltwater fish out of the freshwater boxes, no relationships or cross pairs across the two.
         /// </summary>
-        public const int CurrentDataVersion = 25;
+        public const int CurrentDataVersion = 26;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1472,18 +1468,18 @@ namespace FishBreeder.Core
             if (fromVersion < 20) UpgradeAlgae(data);
             if (fromVersion < 21 && data.supplier != null && data.supplier.decorations != null)
             {
-                // Plants raise the algae maximum, each its own amount (by id; plants added since get nothing).
+                // Plants grow algae, each its own amount (by id; plants added since get nothing).
                 var defaults = new SupplierBalance().decorations;
                 foreach (var item in data.supplier.decorations)
                 {
                     var d = item != null ? defaults.Find(x => x.id == item.id) : null;
-                    if (d != null && item.algaeMaxBonus <= 0f) item.algaeMaxBonus = d.algaeMaxBonus;
+                    if (d != null && item.algaeGrowth <= 0f) item.algaeGrowth = d.algaeGrowth;
                 }
             }
             if (fromVersion < 22) AddSpeciesRows(data, CollageFish);
             if (fromVersion < 23) SeparateWaters(data);
             if (fromVersion < 24) RarityBoxes(data);
-            if (fromVersion < 25) UpgradeAlgaeSoftCap(data);
+            if (fromVersion < 26) UpgradeAlgaeRates(data);
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1500,18 +1496,6 @@ namespace FishBreeder.Core
                 CopyAlgaeEaters(data.store.tankSizes, fresh.tankSizes);
                 if (data.store.wallAquarium != null) data.store.wallAquarium.algaeEaters = fresh.wallAquarium.algaeEaters;
                 CopyAlgaeEaters(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
-            }
-            if (data.supplier != null && data.supplier.filters != null)
-            {
-                var defaults = new SupplierBalance().filters;
-                for (int i = 0; i < data.supplier.filters.Count; i++)
-                {
-                    var filter = data.supplier.filters[i];
-                    if (filter == null) continue;
-                    var d = defaults.Find(x => x.name == filter.name) ?? defaults[Mathf.Min(i, defaults.Count - 1)];
-                    filter.fishCapacity = d.fishCapacity;
-                    filter.algaeHold = d.algaeHold;
-                }
             }
             if (data.progression != null && data.progression.dailyGoals != null)
                 foreach (var goal in data.progression.dailyGoals)
@@ -1541,28 +1525,37 @@ namespace FishBreeder.Core
         }
 
         /// <summary>
-        /// Version 25, the algae soft cap: algae creeps on past its soft cap unless the filter and
-        /// algae eaters cover every fish, so each tank size gets the fish one algae eater covers.
+        /// Version 26 (25 was a soft cap, replaced before it shipped), algae as a growth rate: every
+        /// filter gets its stable window and every plant its algae growth (by name or id, else by
+        /// place in the list), and the Algae control perk says it slows growth.
         /// </summary>
-        static void UpgradeAlgaeSoftCap(BalanceData data)
+        static void UpgradeAlgaeRates(BalanceData data)
         {
-            var fresh = new StoreBalance();
-            if (data.store != null)
+            if (data.supplier != null && data.supplier.filters != null)
             {
-                CopyAlgaeEaterFish(data.store.tankSizes, fresh.tankSizes);
-                if (data.store.wallAquarium != null) data.store.wallAquarium.algaeEaterFish = fresh.wallAquarium.algaeEaterFish;
-                CopyAlgaeEaterFish(data.store.wallAquariumHeights, fresh.wallAquariumHeights);
+                var defaults = new SupplierBalance().filters;
+                for (int i = 0; i < data.supplier.filters.Count; i++)
+                {
+                    var filter = data.supplier.filters[i];
+                    if (filter == null) continue;
+                    filter.stableWindow = (defaults.Find(x => x.name == filter.name) ?? defaults[Mathf.Min(i, defaults.Count - 1)]).stableWindow;
+                }
             }
+            if (data.supplier != null && data.supplier.decorations != null)
+            {
+                var defaults = new SupplierBalance().decorations;
+                foreach (var item in data.supplier.decorations)
+                {
+                    var d = item != null ? defaults.Find(x => x.id == item.id) : null;
+                    if (d != null) item.algaeGrowth = d.algaeGrowth;
+                }
+            }
+            // The growth numbers are new; feeding's used to be algae added at once.
+            var fresh = new AlgaeBalance();
+            if (data.algae != null) data.algae.feedAlgae = fresh.feedAlgae;
             if (data.perks != null)
                 foreach (var perk in data.perks)
-                    if (perk != null && perk.effect == PerkEffect.SlowerAlgae && perk.text == "Algae climbs {0} slower (its maximum stays the same)") perk.text = PerkBalance.SlowerAlgaeText;
-        }
-
-        static void CopyAlgaeEaterFish(List<TankSizeBalance> saved, List<TankSizeBalance> defaults)
-        {
-            if (saved == null || defaults == null || defaults.Count == 0) return;
-            for (int i = 0; i < saved.Count; i++)
-                if (saved[i] != null) saved[i].algaeEaterFish = defaults[Mathf.Min(i, defaults.Count - 1)].algaeEaterFish;
+                    if (perk != null && perk.effect == PerkEffect.SlowerAlgae && perk.text.StartsWith("Algae climbs {0} slower")) perk.text = PerkBalance.SlowerAlgaeText;
         }
 
         static void CopyAlgaeEaters(List<TankSizeBalance> saved, List<TankSizeBalance> defaults)

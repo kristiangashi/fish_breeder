@@ -614,27 +614,29 @@ namespace FishBreeder.Core
             if (tank.InBloom) ui.Label($"<color={UiTheme.CoralHex}><b>Algal bloom!</b> It chokes every fish and keeps spreading. Only a deep clean clears it.</color>", "fb-small");
         }
 
-        /// <summary>The algae bar and what's driving it: where it's heading, the filter's fish limit and the algae eaters.</summary>
+        /// <summary>The algae bar and what's driving it: which way it's going, what grows it, what eats it, and the filter's window.</summary>
         void DrawAlgae()
         {
-            float cap = tank.AlgaeSoftCap;
-            bool held = tank.AlgaeHeld;
-            Bar("Algae", tank.Algae, false, "The fish set the algae's soft cap, and plants raise it a little; algae climbs there quickly. Past it algae keeps creeping up, unless the filter and the algae eaters cover every fish (each eater covers a few). Feeding adds a little algae; whatever that puts over the soft cap is gone by the next time step.");
+            Bar("Algae", tank.Algae, false, "Every time step algae moves by its net growth. It always grows a little on its own, and fish, feeding, plants and decorations grow it more; algae eaters eat it. A filter keeps it steady while the net is within its window either way. Cleaning takes some off at once but doesn't change the growth.");
+            float change = tank.AlgaeChange, net = tank.NetAlgaeGrowth;
+            string Pct(float v) => $"{v * 100f:0.#}%";
             var parts = new List<string>();
             if (tank.InBloom) parts.Add($"<color={UiTheme.CoralHex}>algal bloom</color>");
-            else if (tank.Algae < cap - 0.005f) parts.Add($"climbing to {cap * 100f:0}%");
-            else if (held) parts.Add(tank.Algae > cap + 0.005f ? $"falling to {cap * 100f:0}%" : $"steady at {cap * 100f:0}%");
-            else parts.Add($"<color={UiTheme.CoralHex}>past its {cap * 100f:0}% soft cap, " + (tank.Algae >= Balance.Data.algae.bloomAbove ? "climbing fast" : "creeping up") + "</color>");
-            int load = Mathf.RoundToInt(tank.FishLoad), covered = tank.FishCovered;
-            parts.Add(load > covered ? $"<color={UiTheme.CoralHex}>{load} fish, {covered} covered</color>" : $"{load} fish, {covered} covered");
+            else if (change > 0.0005f) parts.Add($"<color={UiTheme.CoralHex}>rising {Pct(change)} a step</color>");
+            else if (change < -0.0005f) parts.Add(tank.Algae <= 0.0005f ? "none to eat" : $"falling {Pct(-change)} a step");
+            else parts.Add("steady");
+            parts.Add($"grows {Pct(tank.AlgaeGrowth)}" + (tank.AlgaeEaterCount > 0 ? $", eaters eat {Pct(tank.AlgaeEaten)}" : "") + $" (net {(net >= 0f ? "+" : "-")}{Pct(Mathf.Abs(net))})");
             if (!tank.HasFilter) parts.Add("no filter");
             else if (!tank.FilterWorking) parts.Add($"<color={UiTheme.CoralHex}>filter broken</color>");
-            else parts.Add($"filter for {tank.FilterFishCapacity}");
-            int eaters = tank.AlgaeEaterCount, needed = tank.AlgaeEatersNeeded;
-            parts.Add($"{eaters} of {needed} algae eaters" + (eaters > 0 ? $" (cover {tank.EaterFishCovered})" : ""));
-            float plants = tank.PlantAlgaeBonus;
-            if (plants > 0.0005f) parts.Add($"plants +{plants * 100f:0}%");
+            else parts.Add($"filter steadies ±{Pct(tank.FilterWindow)}");
             ui.Label(string.Join(" · ", parts), "fb-small");
+            var growth = new List<string> { $"{Pct(Balance.Data.algae.baseGrowth * 0.01f)} on its own" };
+            if (tank.FishAlgaeGrowth > 0.0005f) growth.Add($"fish {Pct(tank.FishAlgaeGrowth)}");
+            if (tank.FeedingAlgaeGrowth > 0.0005f) growth.Add($"feeding {Pct(tank.FeedingAlgaeGrowth)}");
+            if (tank.PlantAlgaeGrowth > 0.0005f) growth.Add($"plants {Pct(tank.PlantAlgaeGrowth)}");
+            if (tank.DecorationAlgaeGrowth > 0.0005f) growth.Add($"decorations {Pct(tank.DecorationAlgaeGrowth)}");
+            int eaters = tank.AlgaeEaterCount;
+            ui.Label("Grows: " + string.Join(", ", growth) + $" · {eaters} of {tank.AlgaeEatersNeeded} algae eaters", "fb-small");
         }
 
         void DrawTemperature()
@@ -1027,7 +1029,7 @@ namespace FishBreeder.Core
             if (info == null) return "";
             switch (kind)
             {
-                case EquipmentKind.Filter: return $"Leaves {info.effect * 100f:0}% of the waste and keeps algae at {info.algaeHold * 100f:0}% for up to {info.fishCapacity} fish";
+                case EquipmentKind.Filter: return $"Leaves {info.effect * 100f:0}% of the waste and keeps algae steady while its growth is within ±{info.stableWindow:0.#}% a step";
                 case EquipmentKind.Heater: return info.effect > 0.05f ? $"Holds the setting within {info.effect:0.#} C" : "Holds the exact setting";
                 default: return $"Air for {info.effect:0} fish";
             }

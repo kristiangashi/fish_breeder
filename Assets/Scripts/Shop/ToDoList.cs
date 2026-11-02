@@ -128,7 +128,7 @@ namespace FishBreeder.Shop
                 if (dirty && (tank.Residents.Count > 0 || algae))
                     Add(ToDo.Kind.DirtyWater, storeTank, null, $"{storeTank.Title} is dirty" + (tank.HasPests ? " and has pests." : "."),
                         tank.HasPests ? "Treat the water to get rid of the pests, then clean the tank."
-                        : algae ? $"Algae is at {tank.Algae * 100f:0}% (it can reach {tank.AlgaeMax * 100f:0}% here). Clean the tank; a filter for this many fish and algae eaters keep it down for good."
+                        : algae ? $"Algae is at {tank.Algae * 100f:0}% (soft cap {tank.AlgaeSoftCap * 100f:0}% here" + (tank.AlgaeHeld ? ")" : ", and it keeps creeping up: more fish than the filter and algae eaters cover)") + ". Clean the tank; a filter for this many fish and algae eaters keep it down for good."
                         : "Clean the tank (and treat the water if the pH is off).");
             }
 

@@ -49,12 +49,14 @@ namespace FishBreeder.Core
 
         public string Describe(int rank) => string.Format(text ?? "", FormatValue(perRank * Mathf.Max(1, rank)));
 
+        public const string SlowerAlgaeText = "Algae climbs {0} slower (its soft cap stays the same)";
+
         public static List<PerkBalance> CreateDefaults() => new List<PerkBalance>
         {
             // Aquariums: keeping tanks clean, roomy and running.
             Make("clean_freak", PerkTree.Aquariums, 1, "Clean freak", "Water gets dirty {0} slower", 5, 0.06f, PerkEffect.CleanerWater),
             Make("elbow_grease", PerkTree.Aquariums, 1, "Elbow grease", "Clean tank takes off {0} more algae", 3, 0.15f, PerkEffect.StrongerWipes),
-            Make("algae_control", PerkTree.Aquariums, 2, "Algae control", "Algae climbs {0} slower (its maximum stays the same)", 5, 0.08f, PerkEffect.SlowerAlgae),
+            Make("algae_control", PerkTree.Aquariums, 2, "Algae control", SlowerAlgaeText, 5, 0.08f, PerkEffect.SlowerAlgae),
             Make("aquascaper", PerkTree.Aquariums, 2, "Aquascaper", "{0} more decoration spots in every tank", 3, 2f, PerkEffect.DecorationSpots, false),
             Make("tinkerer", PerkTree.Aquariums, 3, "Tinkerer", "Equipment breaks down {0} less often", 5, 0.08f, PerkEffect.SturdierEquipment),
             Make("handyman", PerkTree.Aquariums, 3, "Handyman", "Repairs cost {0} less", 3, 0.15f, PerkEffect.BetterRepairs),

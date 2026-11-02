@@ -282,7 +282,10 @@ namespace FishBreeder.Core
                 Line("Lives on the algae in its tank and never eats flakes or any other food.");
                 Line($"Needs at least {species.AlgaeMin * 100f:0}% algae to graze, or it goes hungry: algae wafers add {algae.waferAlgae * 100f:0}% for it. A Java moss rock keeps some algae for it too.");
                 Line($"Falls sick above {species.AlgaeMax * 100f:0}% algae: too much is as bad for it as too little.");
-                Line($"Each one keeps the tank's algae lower and the water clear for longer. A tank's full set of them (more in bigger tanks) takes {algae.eaterReduction * 100f:0}% off how high the algae can climb; extras take off more, up to {algae.maxEaterReduction * 100f:0}%.");
+                var covers = new List<string>();
+                foreach (var size in Balance.Data.store.tankSizes)
+                    if (size != null) covers.Add($"{size.algaeEaterFish} in a {size.name.ToLowerInvariant()} tank");
+                Line($"Each one covers a few fish' worth of algae on top of the filter ({string.Join(", ", covers)}), and keeps the water clear for longer. While the filter and algae eaters cover every fish, algae stays at its soft cap instead of creeping past it.");
             }
 
             Section("Favourite foods");

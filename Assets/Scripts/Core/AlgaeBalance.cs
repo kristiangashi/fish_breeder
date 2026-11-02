@@ -5,36 +5,35 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// How algae works. The fish in a tank set how much algae it can reach (its algae maximum):
-    /// more fish for the tank's size, more algae. Algae climbs towards that maximum a little at
-    /// every time step rather than all at once. A filter holds it at a steady level, but only for
-    /// as many fish as it's made for; algae eaters take a share off the maximum. Past the bloom
-    /// level a tank can burst into an algal bloom that only a deep clean clears. Algae eaters
-    /// live on the algae: they need a little of it and get sick on too much.
+    /// How algae works. The fish in a tank set its soft cap: more fish for the tank's size, more
+    /// algae. Algae climbs quickly up to the soft cap, then only creeps up past it, and from the
+    /// bloom level it climbs quickly again. A filter keeps algae at the soft cap (no higher than its
+    /// steady level) for as many fish as it's made for; each algae eater covers a few fish more
+    /// (more in bigger tanks). While every fish is covered algae stays at the soft cap; one fish too
+    /// many and it creeps on. Past the bloom level a tank can burst into an algal bloom that only a
+    /// deep clean clears. Algae eaters live on the algae: they need a little of it and get sick on too much.
     /// </summary>
     [Serializable]
     public class AlgaeBalance
     {
-        [Header("How much algae a tank can reach")]
-        [Tooltip("Algae maximum each tiny fish adds in the standard tank with no filter and no algae eaters: 0.04 makes 5 fish reach 20%. A tank with a bigger fish limit gets less per fish, in proportion.")]
+        [Header("The soft cap")]
+        [Tooltip("Soft cap each tiny fish adds in the standard tank with no filter and no algae eaters: 0.04 makes 5 fish quickly reach 20%. A tank with a bigger fish limit gets less per fish, in proportion.")]
         public float algaePerFish = 0.04f;
         [Tooltip("How many tiny fish each fish of a size group counts as for algae (tiny, small, medium, large). Algae eaters never count. In the public aquarium's exhibits and holding tanks every fish counts as one.")]
         public float tinyFishLoad = 1f, smallFishLoad = 2f, mediumFishLoad = 3f, largeFishLoad = 6f;
-        [Tooltip("Share of the algae maximum a tank's full set of algae eaters takes off (the number each tank size needs is on the Aquariums tab). 1/3 turns a filter's 30% into 20%.")]
-        [Range(0f, 1f)] public float eaterReduction = 0.3333f;
-        [Tooltip("More algae eaters than the tank needs keep taking a share off, up to this.")]
-        [Range(0f, 1f)] public float maxEaterReduction = 0.6f;
-        [Tooltip("Each feeding adds this much algae (leftover food feeds it). Whatever it puts above the tank's maximum is gone at the next time step. Algae wafers add their own amount instead.")]
+        [Tooltip("Each feeding adds this much algae (leftover food feeds it). Whatever it puts above the soft cap is gone at the next time step. Algae wafers add their own amount instead.")]
         public float feedAlgae = 0.02f;
 
-        [Header("How fast it gets there")]
-        [Tooltip("Each time step algae climbs this share of the way to its maximum (so it takes a few days to get there).")]
+        [Header("How fast it grows")]
+        [Tooltip("Below the soft cap, each time step algae climbs this share of the way to it (so it takes a few days to get there).")]
         [Range(0f, 1f)] public float riseShare = 0.3f;
         [Tooltip("...but always at least this much while it's below the maximum, and never more than the second number (so even a crowded tank takes a few days to get bad).")]
         public float minRise = 0.02f, maxRise = 0.1f;
         [Tooltip("Each decoration makes algae climb this much faster (0.02 = 2%). Too many decorations speed algae.")]
         public float risePerDecoration = 0.02f;
-        [Tooltip("Above its maximum (after algae wafers, or a new filter or eaters), algae falls this share of the way back each time step.")]
+        [Tooltip("Past the soft cap, with more fish than the filter and algae eaters cover, algae creeps up this much each time step (much slower than below it). From the bloom level it climbs at the fast rate again.")]
+        public float overCapRise = 0.01f;
+        [Tooltip("Above the soft cap with every fish covered (after algae wafers, or a new filter or eaters), algae falls this share of the way back each time step.")]
         [Range(0f, 1f)] public float fallShare = 0.4f;
         public float minFall = 0.02f;
 

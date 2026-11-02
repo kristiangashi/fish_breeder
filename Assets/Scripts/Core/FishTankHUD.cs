@@ -617,22 +617,21 @@ namespace FishBreeder.Core
         /// <summary>The algae bar and what's driving it: where it's heading, the filter's fish limit and the algae eaters.</summary>
         void DrawAlgae()
         {
-            float max = tank.AlgaeMax;
-            Bar("Algae", tank.Algae, false, "The fish set how high algae can get, and plants raise it a little. A filter holds it steady for the fish it's made for, and algae eaters take a share off. Feeding adds a little algae; whatever that puts over the maximum is gone by the next time step.");
+            float cap = tank.AlgaeSoftCap;
+            bool held = tank.AlgaeHeld;
+            Bar("Algae", tank.Algae, false, "The fish set the algae's soft cap, and plants raise it a little; algae climbs there quickly. Past it algae keeps creeping up, unless the filter and the algae eaters cover every fish (each eater covers a few). Feeding adds a little algae; whatever that puts over the soft cap is gone by the next time step.");
             var parts = new List<string>();
             if (tank.InBloom) parts.Add($"<color={UiTheme.CoralHex}>algal bloom</color>");
-            else if (Mathf.Abs(tank.Algae - max) < 0.005f) parts.Add($"steady at {max * 100f:0}%");
-            else parts.Add(tank.Algae < max ? $"climbing to {max * 100f:0}%" : $"falling to {max * 100f:0}%");
-            int load = Mathf.RoundToInt(tank.FishLoad);
-            if (!tank.HasFilter) parts.Add($"no filter ({load} fish' worth)");
+            else if (tank.Algae < cap - 0.005f) parts.Add($"climbing to {cap * 100f:0}%");
+            else if (held) parts.Add(tank.Algae > cap + 0.005f ? $"falling to {cap * 100f:0}%" : $"steady at {cap * 100f:0}%");
+            else parts.Add($"<color={UiTheme.CoralHex}>past its {cap * 100f:0}% soft cap, " + (tank.Algae >= Balance.Data.algae.bloomAbove ? "climbing fast" : "creeping up") + "</color>");
+            int load = Mathf.RoundToInt(tank.FishLoad), covered = tank.FishCovered;
+            parts.Add(load > covered ? $"<color={UiTheme.CoralHex}>{load} fish, {covered} covered</color>" : $"{load} fish, {covered} covered");
+            if (!tank.HasFilter) parts.Add("no filter");
             else if (!tank.FilterWorking) parts.Add($"<color={UiTheme.CoralHex}>filter broken</color>");
-            else
-            {
-                int cap = tank.FilterFishCapacity;
-                parts.Add(load > cap ? $"<color={UiTheme.CoralHex}>filter for {cap} fish, {load} here</color>" : $"filter for {cap} fish, {load} here");
-            }
+            else parts.Add($"filter for {tank.FilterFishCapacity}");
             int eaters = tank.AlgaeEaterCount, needed = tank.AlgaeEatersNeeded;
-            parts.Add($"{eaters} of {needed} algae eaters");
+            parts.Add($"{eaters} of {needed} algae eaters" + (eaters > 0 ? $" (cover {tank.EaterFishCovered})" : ""));
             float plants = tank.PlantAlgaeBonus;
             if (plants > 0.0005f) parts.Add($"plants +{plants * 100f:0}%");
             ui.Label(string.Join(" · ", parts), "fb-small");

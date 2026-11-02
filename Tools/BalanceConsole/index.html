@@ -256,18 +256,17 @@ const META = {
   litterMin: ["Litter / clutch min", ""], litterMax: ["Litter / clutch max", ""],
   gestationSteps: ["Pregnancy length (time steps)", "Livebearers: half days from getting pregnant to giving birth."],
   eggHatchSteps: ["Eggs hatch after (time steps)", "Egg-layers: half days from laying to hatching."],
-  eatsAlgae: ["Eats algae", "An algae eater: lives on the tank's algae and never eats flakes or other food. Fed at every time step the tank has at least its least algae, sick above its most. Each one takes a share off the tank's algae maximum (Algae & cleaning tab)."],
+  eatsAlgae: ["Eats algae", "An algae eater: lives on the tank's algae and never eats flakes or other food. Fed at every time step the tank has at least its least algae, sick above its most. Each one covers a few fish for the filter (Fish per algae eater on the Aquariums tab): while every fish is covered algae stays at its soft cap (Algae & cleaning tab)."],
   algaeMin: ["Least algae (0..1)", "Algae eaters: below this much algae in the tank it starves (algae wafers add some). 0 = picked from its name in the range on the Algae & cleaning tab."],
   algaeMax: ["Most algae (0..1)", "Algae eaters: above this much algae it gets sick (more illness, water stress). 0 = picked from its name."],
-  algaePerFish: ["Algae per fish (standard tank)", "Algae maximum each tiny fish adds in the standard tank with no filter and no eaters: 0.04 makes 5 fish reach 20%. Bigger tanks get less per fish, by their fish limit."],
+  algaePerFish: ["Soft cap per fish (standard tank)", "Soft cap each tiny fish adds in the standard tank: 0.04 makes 5 fish quickly reach 20%. Bigger tanks get less per fish, by their fish limit."],
   tinyFishLoad: ["Tiny fish count as", "For algae, in tiny fish."], smallFishLoad: ["Small fish count as", "For algae and filters, in tiny fish."],
   mediumFishLoad: ["Medium fish count as", "For algae and filters, in tiny fish."], largeFishLoad: ["Large fish count as", "For algae and filters, in tiny fish. Exhibits and holding tanks count every fish as one."],
-  eaterReduction: ["Eaters' share off", "Share of the algae maximum a tank's full set of algae eaters (Algae eaters on the Aquariums tab) takes off. 1/3 turns a filter's 30% into 20%."],
-  maxEaterReduction: ["Most eaters can take off", "Extra algae eaters keep taking a share off, up to this."],
-  riseShare: ["Climb per step (share of the gap)", "Each time step algae climbs this share of the way to its maximum."],
+  riseShare: ["Fast climb per step (share of the gap)", "Below the soft cap, each time step algae climbs this share of the way to it. From the bloom level it climbs this fast again (share of the way to 100%)."],
+  overCapRise: ["Creep per step past the soft cap", "Past the soft cap, with more fish than the filter and algae eaters cover, algae creeps up this much each time step (0.01 = 1%). With every fish covered it stays at the soft cap."],
   minRise: ["Least climb per step", ""], maxRise: ["Most climb per step", "So even a crowded tank takes a few days to go bad."],
-  risePerDecoration: ["Faster climb per decoration", "0.02 = each decoration makes algae climb 2% faster (never higher)."],
-  fallShare: ["Fall per step (share of the gap)", "Above its maximum (after wafers, or a new filter or eaters) algae falls back this share of the way."],
+  risePerDecoration: ["Faster climb per decoration", "0.02 = each decoration makes algae climb (and creep) 2% faster. The soft cap stays the same."],
+  fallShare: ["Fall per step (share of the gap)", "Above the soft cap with every fish covered (after wafers, or a new filter or eaters) algae falls back this share of the way."],
   minFall: ["Least fall per step", ""],
   greenStart: ["Water turns green at", ""], greenMore: ["Much greener from", ""],
   greenStartWithEaters: ["Green from, with all its eaters", "With the tank's full set of algae eaters the water stays clear until this (much greener 15% later)."],
@@ -290,16 +289,17 @@ const META = {
   deepCleanMinInjuryChance: ["Least chance of getting hurt", ""],
   deepCleanInjuries: ["Deep clean injuries", "What can happen to a fish in a deep clean, picked by weight."],
   amount: ["How much it hurts (0..1)", "Wounds heal a little every time step."],
-  feedAlgae: ["Algae per feeding", "Every feeding (except algae wafers, which add their own) adds this much algae. Whatever it puts over the tank's algae maximum is gone at the next time step."],
-  algaeMaxBonus: ["Algae max bonus (plants)", "Plants: each one in a tank raises its algae maximum this much (0.03 = 3%), before the algae eaters take their share off."],
+  feedAlgae: ["Algae per feeding", "Every feeding (except algae wafers, which add their own) adds this much algae. Whatever it puts over the tank's soft cap is gone at the next time step."],
+  algaeMaxBonus: ["Soft cap bonus (plants)", "Plants: each one in a tank raises its algae soft cap this much (0.03 = 3%)."],
   waferAlgae: ["Algae per wafer feeding", "Algae wafers add this much algae for the algae eaters to graze."],
   eaterMinFrom: ["Eaters' least algae from", "Algae eaters with 0 for their own numbers get a least algae between this and the next (picked from the species' name)."], eaterMinTo: ["...to", ""],
   eaterMaxFrom: ["Eaters' most algae from", "...and get sick above an algae level between this and the next."], eaterMaxTo: ["...to", ""],
   eaterOverIllness: ["Illness x over their most", "Algae eaters with too much algae fall ill this many times as easily."],
   eaterOverStressPer10: ["Stress per 10% over", "Water stress an algae eater gets for each 10% of algae over its most."],
-  fishCapacity: ["Fish it handles (filters)", "Filters: fish it keeps algae steady for, counted as tiny fish. More fish push the algae maximum up."],
-  algaeHold: ["Steady algae (filters)", "Filters: the algae level it holds a tank at while it has no more fish than it handles."],
-  algaeEaters: ["Algae eaters", "Algae eaters this size needs for the full share off its algae maximum (and clear water to 30%)."],
+  fishCapacity: ["Fish it handles (filters)", "Filters: fish it keeps algae at the soft cap for, counted as tiny fish (algae eaters cover more). One fish more and algae creeps on past the soft cap."],
+  algaeHold: ["Steady algae (filters)", "Filters: the highest a tank's soft cap gets while it works, however many fish."],
+  algaeEaters: ["Algae eaters", "Algae eaters this size needs to keep the water clear until 30% algae."],
+  algaeEaterFish: ["Fish per algae eater", "Fish (as tiny fish) one algae eater covers in this size, on top of the filter's. Kristian's rule: 2 / 3 / 5 on small / medium / large."],
   algaeFloor: ["Algae it keeps (eaters)", "A plant that grows algae film: in a tank with algae eaters, algae never falls below this. Enough to feed a tank of only algae eaters."],
   model: ["3D model", "Its model's name in Resources/Decor when that isn't the id (pieces can share a model). Empty = the id."],
   xpCleanTank: ["XP per clean", ""], xpDeepClean: ["XP per deep clean", ""],
@@ -1835,7 +1835,7 @@ function simulate(setup, B, seed) {
       const waste = t.filter && !t.filter.broken ? t.filter.info.effect : 1;
       t.wq = clamp01(t.wq - ts.waterQualityLossPerStep * waste - alive(t) * ts.wasteQualityLossPerFish * waste
         - t.corpses * ts.corpseQualityLoss - overLimit(t) * ts.overcrowdedWastePerFish);
-      // Algae: towards the maximum the fish, filter and eaters set (Algae & cleaning tab); past the bloom level it may bloom.
+      // Algae: fast to the soft cap, creeping past it unless filter + eaters cover every fish (Algae & cleaning tab); past the bloom level it may bloom.
       t.algaeAtStep = t.algae;
       const loads = [alg.tinyFishLoad, alg.smallFishLoad, alg.mediumFishLoad, alg.largeFishLoad];
       const load = t.residents.filter((f) => !f.s.eatsAlgae).reduce((n, f) => n + (loads[f.s.sizeGroup || 0] ?? 1), 0);
@@ -1844,9 +1844,10 @@ function simulate(setup, B, seed) {
       t.fedAlgae = 0;
       if (t.bloom) t.algae = Math.min(1, t.algae + Math.max(alg.minRise, (1 - t.algae) * alg.riseShare));
       else {
-        const max = algaeMaxFor(B, t.size, load, t.filter && !t.filter.broken ? t.filter.info : null, grazers, 0, hasPlants(t) ? plantAlgae : 0);
+        const filt = t.filter && !t.filter.broken ? t.filter.info : null;
+        const max = algaeMaxFor(B, t.size, load, filt, grazers, 0, hasPlants(t) ? plantAlgae : 0);
         if (t.algae > max && fed > 0) t.algae = Math.max(max, t.algae - fed);
-        t.algae = algaeStep(alg, t.algae, max, t.decor);
+        t.algae = algaeStep(alg, t.algae, max, t.decor, algaeHeldFor(t.size, load, filt, grazers));
         if (t.algae >= alg.bloomAbove && chance(alg.bloomChance + alg.bloomChancePer10 * (t.algae - alg.bloomAbove) / 0.1)) {
           t.bloom = true;
           t.algae = Math.min(1, t.algae + alg.bloomJump);
@@ -2701,7 +2702,8 @@ const AQUARIUM_STORE_KEYS = ["tankSizes", "wallAquarium", "wallAquariumHeights",
 const ROOM = { wall: 4, stand: 0.85, headroom: 0.3, lowestBase: 0.3, person: 1.75 };
 const wallBase = (h) => Math.min(ROOM.stand, Math.max(ROOM.lowestBase, ROOM.wall - ROOM.headroom - h));
 const TANK_FIELDS = [["width", "Length (m)"], ["height", "Height (m)"], ["depth", "Depth (m)"], ["capacity", "Tiny fish"], ["smallCapacity", "Small fish"], ["mediumCapacity", "Medium fish"], ["largeCapacity", "Large fish"],
-  ["decorationSlots", "Decoration spots"], ["upgradePrice", "Upgrade price ($)"], ["unlockLevel", "Level"], ["qualityNeeded", "Quality needed"]];
+  ["decorationSlots", "Decoration spots"], ["upgradePrice", "Upgrade price ($)"], ["unlockLevel", "Level"], ["qualityNeeded", "Quality needed"],
+  ["algaeEaters", "Algae eaters"], ["algaeEaterFish", "Fish per algae eater"]];
 // Oblique view: depth runs up and to the right at 30 degrees, drawn at half length.
 const OBLIQUE = { x: Math.cos(Math.PI / 6) * 0.5, y: Math.sin(Math.PI / 6) * 0.5 };
 
@@ -3044,25 +3046,32 @@ function diveOdds(scuba, gearLevel) {
 
 // ---------------------------------------------------------------- algae
 
-/** Algae maximum, as the game works it out (Tank.AlgaeMax): fish for the tank's size, the filter's steady level for its fish, plus the plants, less the eaters' share. */
+/** Fish (as tiny fish) the algae eaters cover in a tank of this size. */
+const eaterFish = (size, eaters) => eaters * Math.max(0, size.algaeEaterFish ?? 2);
+
+/** Every fish covered by the filter and algae eaters (Tank.AlgaeHeld): algae stays at the soft cap. */
+function algaeHeldFor(size, load, filter, eaters) {
+  return load <= (filter ? filter.fishCapacity || 0 : 0) + eaterFish(size, eaters) + 0.001;
+}
+
+/** Algae soft cap, as the game works it out (Tank.AlgaeSoftCap): the fish for the tank's size, no higher than a filter's steady level, plus the plants (eaters don't lower it, they cover fish). */
 function algaeMaxFor(B, size, load, filter, eaters, floor = 0, plants = 0) {
   const a = B.algae, sizes = B.store.tankSizes || [];
   const standard = Math.max(1, (sizes[0] || size).capacity);
   const per = a.algaePerFish * standard / Math.max(1, size.capacity);
-  let max;
-  if (filter) {
-    const handled = Math.min(load, filter.fishCapacity || 0);
-    max = Math.min(handled * per, filter.algaeHold) + (load - handled) * per;
-  } else max = load * per;
-  const share = eaters > 0 ? Math.min(a.maxEaterReduction, a.eaterReduction * eaters / Math.max(1, size.algaeEaters || 1)) : 0;
-  return clamp01(Math.max((max + plants) * (1 - share), eaters > 0 ? floor : 0));
+  let cap = load * per;
+  if (filter) cap = Math.min(cap, filter.algaeHold);
+  return clamp01(Math.max(cap + plants, eaters > 0 ? floor : 0));
 }
 
-/** One time step of algae towards its maximum (no bloom), as Tank.UpdateAlgae does it. */
-function algaeStep(a, algae, max, decor = 0) {
-  if (algae < max) return Math.min(max, algae + Math.min(Math.max(a.minRise, a.maxRise), Math.max(a.minRise, (max - algae) * a.riseShare)) * (1 + decor * a.risePerDecoration));
-  if (algae > max) return Math.max(max, algae - Math.max(a.minFall, (algae - max) * a.fallShare));
-  return algae;
+/** One time step of algae (no bloom), as Tank.UpdateAlgae does it: fast to the soft cap, then held there or creeping on (fast again from the bloom level). */
+function algaeStep(a, algae, max, decor = 0, held = true) {
+  const speed = 1 + decor * a.risePerDecoration;
+  const fast = (gap) => Math.min(Math.max(a.minRise, a.maxRise), Math.max(a.minRise, gap * a.riseShare));
+  if (algae < max) return Math.min(max, algae + fast(max - algae) * speed);
+  if (held) return algae > max ? Math.max(max, algae - Math.max(a.minFall, (algae - max) * a.fallShare)) : algae;
+  if (algae >= a.bloomAbove) return Math.min(1, algae + fast(1 - algae) * speed);
+  return Math.min(1, algae + Math.max(0, a.overCapRise ?? 0.01) * speed);
 }
 
 const algaeCalc = { size: 0, filter: 0, fish: 20, eaters: 2, decor: 4, plants: 0 };
@@ -3079,15 +3088,22 @@ function renderAlgae() {
       const filter = filters[Math.min(i, filters.length - 1)];
       const full = size.capacity, need = size.algaeEaters || 1;
       const max = algaeMaxFor(data, size, full, filter, need);
+      const covered = (filter ? filter.fishCapacity || 0 : 0) + eaterFish(size, need);
+      const held = algaeHeldFor(size, full, filter, need);
       let v = 0, steps = 0;
-      while (v < max - 0.005 && steps < 99) { v = algaeStep(a, v, max); steps++; }
-      return el("tr", {}, el("td", {}, size.name), el("td", {}, String(full)), el("td", {}, filter ? `${filter.name} (${filter.fishCapacity})` : "none"), el("td", {}, String(need)),
-        el("td", {}, pct(algaeMaxFor(data, size, 5, null, 0))), el("td", {}, pct(algaeMaxFor(data, size, full, null, 0))),
-        el("td", {}, pct(algaeMaxFor(data, size, full, filter, 0))), el("td", { class: "readout" }, pct(max)),
+      while (v < max - 0.005 && steps < 99) { v = algaeStep(a, v, max, 0, held); steps++; }
+      // Without its filter the soft cap is reached quickly, then it creeps: steps from the cap to the bloom level.
+      const bare = algaeMaxFor(data, size, full, null, 0);
+      let creep = 0;
+      for (let b = bare; b < a.bloomAbove && creep < 999; creep++) b = algaeStep(a, b, bare, 0, false);
+      return el("tr", {}, el("td", {}, size.name), el("td", {}, String(full)), el("td", {}, filter ? `${filter.name} (${filter.fishCapacity})` : "none"),
+        el("td", {}, `${need} x ${size.algaeEaterFish ?? 2}`), el("td", {}, String(covered)),
+        el("td", {}, pct(algaeMaxFor(data, size, 5, null, 0))), el("td", {}, bare >= a.bloomAbove ? `${pct(bare)} (bloom level)` : `${pct(bare)}, ${creep} steps to ${pct(a.bloomAbove)}`),
+        el("td", {}, pct(algaeMaxFor(data, size, full, filter, 0))), el("td", { class: "readout" }, `${pct(max)}${held ? " held" : " creeping"}`),
         el("td", {}, `${steps} (${(steps / 2).toFixed(1)} days)`));
     });
     preview.replaceChildren(el("div", { class: "scroll" }, el("table", {},
-      el("thead", {}, el("tr", {}, ["Tank", "Fish limit", "Its filter (fish)", "Eaters it needs", "5 fish, nothing else", "Full, nothing else", "Full + filter", "Full + filter + eaters", "Steps to get there"].map((h) => el("th", {}, h)))),
+      el("thead", {}, el("tr", {}, ["Tank", "Fish limit", "Its filter (fish)", "Eaters it needs x fish each", "Fish covered", "5 fish, nothing else", "Full, nothing else", "Full + filter (soft cap)", "Full + filter + eaters", "Steps to the soft cap"].map((h) => el("th", {}, h)))),
       el("tbody", {}, rows))));
   };
   // Try any tank: its algae maximum, where the water turns green, and the climb step by step.
@@ -3096,12 +3112,16 @@ function renderAlgae() {
     const c = algaeCalc, size = sizes[Math.min(c.size, sizes.length - 1)] || { capacity: 24, algaeEaters: 2 };
     const filter = c.filter >= 0 ? (data.supplier.filters || [])[c.filter] : null;
     const max = algaeMaxFor(data, size, c.fish, filter, c.eaters, 0, c.plants / 100);
+    const covered = (filter ? filter.fishCapacity || 0 : 0) + eaterFish(size, c.eaters);
+    const held = algaeHeldFor(size, c.fish, filter, c.eaters);
     const green = a.greenStart + (a.greenStartWithEaters - a.greenStart) * Math.min(1, c.eaters / Math.max(1, size.algaeEaters || 1));
     const climb = [];
     let v = 0;
-    for (let i = 0; i < 12; i++) { v = algaeStep(a, v, max, c.decor); climb.push(pct(v)); }
-    const warn = max >= a.bloomAbove ? ` From ${pct(a.bloomAbove)} it risks an algal bloom.` : max >= a.bothersAbove ? ` Customers start minding it at ${pct(a.bothersAbove)}.` : "";
-    calc.replaceChildren(el("p", {}, el("b", {}, `Algae maximum ${pct(max)}. `), `The water turns green from ${pct(green)}.${warn}`),
+    for (let i = 0; i < 16; i++) { v = algaeStep(a, v, max, c.decor, held); climb.push(pct(v)); }
+    const top = held ? max : 1;
+    const warn = top >= a.bloomAbove ? ` From ${pct(a.bloomAbove)} it risks an algal bloom.` : top >= a.bothersAbove ? ` Customers start minding it at ${pct(a.bothersAbove)}.` : "";
+    const how = held ? `The filter and eaters cover ${covered} fish, so it stays there.` : `The filter and eaters cover only ${covered} of ${c.fish} fish, so past it algae creeps up ${pct(a.overCapRise ?? 0.01)} a step.`;
+    calc.replaceChildren(el("p", {}, el("b", {}, `Soft cap ${pct(max)}. `), `${how} The water turns green from ${pct(green)}.${warn}`),
       el("p", { class: "hint" }, `From clean, time step by time step: ${climb.join(", ")}`));
   };
   const num = (key, label) => el("label", { class: "field" }, el("span", {}, label),
@@ -3119,9 +3139,9 @@ function renderAlgae() {
   const redraw = () => { drawPreview(); drawCalc(); };
   if (!a.deepCleanInjuries) a.deepCleanInjuries = [];
   return [
-    el("p", { class: "hint" }, "The fish in a tank set how high its algae can get (its maximum), and algae climbs there a bit at every time step. A filter holds algae at its steady level for as many fish as it handles (Equipment & repairs tab); each fish more pushes it up. Plants raise the maximum, each by its own Algae max bonus (Eggs, decor & quality tab). Algae eaters (Species tab) take a share off; each tank size needs its own number of them (Aquariums tab). Every feeding adds a little algae; whatever that puts over the maximum is gone at the next time step. The Algae control perk only slows the climb. From the bloom level a tank can burst into an algal bloom that only a deep clean clears. Algae eaters live on the algae: algae wafers add some, and the Java moss rock (Eggs, decor & quality tab) keeps enough for them."),
+    el("p", { class: "hint" }, "The fish in a tank set its algae soft cap, and algae climbs there quickly. Past the soft cap it creeps up slowly (Creep per step), and from the bloom level it climbs quickly again. A filter keeps the soft cap no higher than its steady level, and holds algae there for as many fish as it handles (Equipment & repairs tab). Each algae eater (Species tab) covers a few fish more: Fish per algae eater on the Aquariums tab, 2 / 3 / 5 on small / medium / large. While the filter and eaters cover every fish algae stays at the soft cap; one fish more and it creeps on. Plants raise the soft cap, each by its own bonus (Eggs, decor & quality tab). Every feeding adds a little algae; whatever that puts over the soft cap is gone at the next time step. The Algae control perk only slows the climb. From the bloom level a tank can burst into an algal bloom that only a deep clean clears. Algae eaters live on the algae: algae wafers add some, and the Java moss rock (Eggs, decor & quality tab) keeps enough for them."),
     el("div", { class: "card" }, el("h2", {}, "Every tank size, full of tiny fish"),
-      el("p", { class: "hint" }, "With the filter in the same place in the filter list and the algae eaters the size needs. The goal is 20% in the Full + filter + eaters column."), preview),
+      el("p", { class: "hint" }, "With the filter in the same place in the filter list and the algae eaters the size needs. Held means the filter and eaters cover every fish, so algae stays at its soft cap; creeping means it keeps going up past it."), preview),
     el("div", { class: "card" }, el("h2", {}, "Try a tank"), calcForm, calc),
     el("div", { class: "card", oninput: redraw }, el("h2", {}, "Algae settings"), objectForm(a, ["deepCleanInjuries"])),
     el("div", { class: "card" }, el("p", { class: "hint" }, "A deep clean nets the fish out: each fish may get one of these, picked by weight. Wounds heal a little every time step; bad ones can kill a weak fish."),

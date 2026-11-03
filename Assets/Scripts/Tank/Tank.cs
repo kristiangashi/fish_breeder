@@ -510,17 +510,28 @@ namespace FishBreeder
             }
         }
 
+        /// <summary>Water quality the next time step takes: a little on its own, more for every fish and dead fish (a filter takes most of the waste), and for crowding.</summary>
+        public float WaterQualityLoss
+        {
+            get
+            {
+                var balance = Balance.Data.timeStep;
+                float waste = (FilterWorking ? filter.Info.effect : 1f) * Perks.Less(PerkEffect.CleanerWater);
+                return balance.waterQualityLossPerStep * waste
+                       + residents.Count * balance.wasteQualityLossPerFish * waste
+                       + corpses.Count * balance.corpseQualityLoss
+                       + OverLimit * balance.overcrowdedWastePerFish;
+            }
+        }
+
+        /// <summary>How much the water quality will drop at the next time step (it can't go below 0%).</summary>
+        public float WaterQualityChangeNextStep => Mathf.Clamp01(waterQuality - WaterQualityLoss) - waterQuality;
+
         /// <summary>Called by the shop at every time step (opening and closing).</summary>
         public void OnTimeStep()
         {
             var balance = Balance.Data.timeStep;
-            float waste = (FilterWorking ? filter.Info.effect : 1f) * Perks.Less(PerkEffect.CleanerWater);
-
-            waterQuality = Mathf.Clamp01(waterQuality
-                - balance.waterQualityLossPerStep * waste
-                - residents.Count * balance.wasteQualityLossPerFish * waste
-                - corpses.Count * balance.corpseQualityLoss
-                - OverLimit * balance.overcrowdedWastePerFish);
+            waterQuality = Mathf.Clamp01(waterQuality - WaterQualityLoss);
             UpdateAlgae();
             float neutral = IsSaltwater ? 8.1f : 7f;
             ph = Mathf.MoveTowards(ph, neutral - 1.2f, balance.phDriftPerStep * (1f - waterQuality) * 2f);

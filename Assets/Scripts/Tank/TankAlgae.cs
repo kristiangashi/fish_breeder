@@ -220,18 +220,21 @@ namespace FishBreeder
         /// </summary>
         void UpdateAlgae()
         {
-            var a = AlgaeRules;
             algaeAtStep = algae;
+            algae = AlgaeAfterStep(out algaeFromFeeding);
+            CheckBloom();
+        }
+
+        /// <summary>What the next time step will make of the algae (before any bloom it sets off), and the feeding algae left after it.</summary>
+        float AlgaeAfterStep(out float feedingLeft)
+        {
+            var a = AlgaeRules;
             float gone = Mathf.Min(algaeFromFeeding, Mathf.Max(0f, a.feedAlgae));
-            algaeFromFeeding -= gone;
-            algae = Mathf.Max(0f, algae - gone);
-            if (bloom)
-            {
-                // A bloom feeds on itself until it's deep cleaned.
-                algae = Mathf.Min(1f, algae + Mathf.Max(0f, a.bloomGrowth));
-                return;
-            }
-            float settled = Mathf.Max(0f, algae - algaeFromFeeding), target = AlgaeTarget;
+            feedingLeft = algaeFromFeeding - gone;
+            float now = Mathf.Max(0f, algae - gone);
+            // A bloom feeds on itself until it's deep cleaned.
+            if (bloom) return Mathf.Min(1f, now + Mathf.Max(0f, a.bloomGrowth));
+            float settled = Mathf.Max(0f, now - feedingLeft), target = AlgaeTarget;
             if (settled < target)
             {
                 float rise = Mathf.Clamp((target - settled) * a.riseShare, a.minRise, Mathf.Max(a.minRise, a.maxRise)) * Perks.Less(PerkEffect.SlowerAlgae);
@@ -239,8 +242,18 @@ namespace FishBreeder
             }
             else if (AlgaeHeld) settled = Mathf.Max(target, settled - Mathf.Max(a.minFall, (settled - target) * a.fallShare));
             else settled += Mathf.Max(0f, a.overTargetRise);
-            algae = Mathf.Clamp01(settled + algaeFromFeeding);
-            CheckBloom();
+            return Mathf.Clamp01(settled + feedingLeft);
+        }
+
+        /// <summary>How much the algae will go up (or down, negative) at the next time step, a bloom it would set off included.</summary>
+        public float AlgaeChangeNextStep
+        {
+            get
+            {
+                float next = AlgaeAfterStep(out _);
+                if (!bloom && next >= AlgaeRules.bloomAbove) next = Mathf.Min(1f, next + AlgaeRules.bloomJump);
+                return next - algae;
+            }
         }
 
         /// <summary>The moment algae reaches the bloom level the tank blooms: there's no backing out of it.</summary>

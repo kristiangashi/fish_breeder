@@ -1509,6 +1509,14 @@
     white-space: nowrap;
 }
 
+.fb-stat__arrows {
+    width: 28px;
+    flex-shrink: 0;
+    padding-left: 4px;
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+}
+
 .fb-trend {
     align-items: center;
 }

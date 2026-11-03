@@ -19,6 +19,8 @@ namespace FishBreeder.Health
         public float companionship;
         /// <summary>Health lost because the tank holds more fish than its limit.</summary>
         public float overcrowding;
+        /// <summary>Health the algae takes (above the harmful level), or gives when negative (in the healthy range). Never for algae eaters.</summary>
+        public float algae;
         /// <summary>0..1 comfort level (not a penalty): tank mates, plants, decor, pests, crowding.</summary>
         public float comfortLevel;
         /// <summary>0..1 how far the water is from what the species needs.</summary>
@@ -37,6 +39,7 @@ namespace FishBreeder.Health
             if (injury > worst) { worst = injury; cause = string.IsNullOrEmpty(injuryCause) ? "its wounds" : $"wounds ({injuryCause})"; }
             if (medicineDamage > worst) { worst = medicineDamage; cause = "medicine poisoning"; }
             if (overcrowding > worst) { worst = overcrowding; cause = "an overcrowded tank"; }
+            if (algae > worst) { worst = algae; cause = "too much algae"; }
             if (deadTankmates > worst) cause = "rot from dead tank mates";
             return cause;
         }
@@ -273,6 +276,7 @@ namespace FishBreeder.Health
                 report.comfortLevel = Comfort(fish, tank, weights, null, out int liked);
                 report.companionship = liked * mates.preferredHealth;
                 report.environmentMismatch = EnvironmentMismatch(species, tank);
+                report.algae = AlgaeHealth(species, tank);
             }
             report.comfort = (1f - report.comfortLevel) * weights.comfortWeight;
             report.environment = report.environmentMismatch * weights.environmentWeight;
@@ -280,7 +284,7 @@ namespace FishBreeder.Health
             report.medicineDamage = MedicineDamage * Balance.Data.medicine.damageHealth;
 
             report.total = Mathf.Clamp01(1f - report.hunger - report.illness - report.comfort - report.environment - report.oldAge - report.deadTankmates
-                                         - report.injury - report.medicineDamage - report.overcrowding + report.companionship);
+                                         - report.injury - report.medicineDamage - report.overcrowding - report.algae + report.companionship);
             return report;
         }
 
@@ -424,6 +428,21 @@ namespace FishBreeder.Health
             float stress = tank.InBloom ? a.bloomStress : 0f;
             if (species.eatsAlgae && tank.Algae > species.AlgaeMax) stress += (tank.Algae - species.AlgaeMax) / 0.1f * a.eaterOverStressPer10;
             return stress;
+        }
+
+        /// <summary>
+        /// Health the algae takes from a fish (negative = gives): a little algae is good for it, a
+        /// bit more does nothing, and past the harmful level it costs more for every 10%. Algae
+        /// eaters have their own limits instead.
+        /// </summary>
+        public static float AlgaeHealth(Genetics.Species species, Tank tank)
+        {
+            if (species.eatsAlgae) return 0f;
+            var a = Balance.Data.algae;
+            float algae = Mathf.Round(tank.Algae * 100f) / 100f;
+            if (algae > a.harmfulAlgaeAbove) return (algae - a.harmfulAlgaeAbove) / 0.1f * a.harmfulAlgaePer10;
+            if (algae >= a.healthyAlgaeFrom && algae <= a.healthyAlgaeTo) return -a.healthyAlgaeBonus;
+            return 0f;
         }
 
         /// <summary>

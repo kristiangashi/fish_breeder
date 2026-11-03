@@ -587,9 +587,10 @@ namespace FishBreeder.Core
             foreach (var fish in tank.Residents) if (fish.IsPregnant) pregnant++;
             if (eggs > 0 || pregnant > 0)
                 ui.Label($"<color=#ffe9a8>{(eggs > 0 ? $"{eggs} eggs" : "")}{(eggs > 0 && pregnant > 0 ? ", " : "")}{(pregnant > 0 ? $"{pregnant} pregnant" : "")} (see Breeding)</color>");
-            Bar("Water quality", tank.WaterQuality, true);
+            float water = tank.WaterQualityChangeNextStep;
+            Bar("Water quality", tank.WaterQuality, true, null, StepArrows(water, true), StepTip(water));
             DrawAlgae();
-            Bar("Oxygen", tank.Oxygen, true);
+            Bar("Oxygen", tank.Oxygen, true, null, "");
             if (!tank.HasHeater) DrawTemperature();
             ui.Label($"Water: {(tank.IsSaltwater ? "salt" : "fresh")} ({tank.Salinity:0} ppt)");
             if (tank.HasPests) ui.Label("<color=#ff8080>Pests! Treat the water (above).</color>");
@@ -614,35 +615,39 @@ namespace FishBreeder.Core
             if (tank.InBloom) ui.Label($"<color={UiTheme.CoralHex}><b>Algal bloom!</b> It chokes every fish and keeps spreading. Only a deep clean clears it.</color>", "fb-small");
         }
 
-        /// <summary>The algae bar and what's driving it: its target and what makes it, where it's heading, the filter's fish limit and the feeding algae.</summary>
+        /// <summary>
+        /// The algae bar with arrows for how much it moves at the next time step, and a word only
+        /// when something's wrong: a bloom, or no filter (or not enough of one) for the fish.
+        /// </summary>
         void DrawAlgae()
         {
             var a = Balance.Data.algae;
-            Bar("Algae", tank.Algae, false, $"How much of the tank is covered in algae. It climbs to its target: {a.naturalAlgae * 100f:0}% on its own, more for fish, plants and decorations, less for algae eaters. A filter that handles the fish holds it at the target; otherwise it keeps creeping up. Each feeding adds a little that goes again over the next time steps. At {a.bloomAbove * 100f:0}% the tank blooms, and only a deep clean clears it.");
-            string Pct(float v) => $"{v * 100f:0.#}%";
-            float target = tank.AlgaeTarget, settled = tank.Algae - tank.FeedingAlgae;
+            float change = tank.AlgaeChangeNextStep;
+            Bar("Algae", tank.Algae, false, $"How much of the tank is covered in algae. A little ({a.healthyAlgaeFrom * 100f:0}-{a.healthyAlgaeTo * 100f:0}%) is good for fish; above {a.harmfulAlgaeAbove * 100f:0}% it harms them, and at {a.bloomAbove * 100f:0}% the tank blooms.",
+                StepArrows(change, false), StepTip(change));
             var parts = new List<string>();
-            if (tank.InBloom) parts.Add($"<color={UiTheme.CoralHex}>algal bloom</color>");
-            else if (settled < target - 0.005f) parts.Add($"climbing to {Pct(target)}");
-            else if (tank.AlgaeHeld) parts.Add(settled > target + 0.005f ? $"falling to {Pct(target)}" : $"steady at {Pct(target)}");
-            else parts.Add($"<color={UiTheme.CoralHex}>past its {Pct(target)} target, creeping up</color>");
+            if (tank.InBloom) parts.Add("algal bloom");
             int load = Mathf.RoundToInt(tank.FishLoad);
-            if (!tank.HasFilter) parts.Add($"no filter ({load} fish)");
-            else if (!tank.FilterWorking) parts.Add($"<color={UiTheme.CoralHex}>filter broken</color>");
-            else
-            {
-                int cap = tank.FilterFishCapacity;
-                parts.Add(load > cap ? $"<color={UiTheme.CoralHex}>filter for {cap} fish, {load} here</color>" : $"filter for {cap} fish, {load} here");
-            }
-            if (tank.FeedingAlgae > 0.0005f) parts.Add($"feeding +{Pct(tank.FeedingAlgae)} (gone in {tank.FeedingAlgaeSteps} step{(tank.FeedingAlgaeSteps == 1 ? "" : "s")})");
-            ui.Label(string.Join(" · ", parts), "fb-small");
-            var made = new List<string> { $"{Pct(a.naturalAlgae)} on its own" };
-            if (tank.FishAlgae > 0.0005f) made.Add($"fish +{Pct(tank.FishAlgae)}");
-            if (tank.PlantAlgae > 0.0005f) made.Add($"plants +{Pct(tank.PlantAlgae)}");
-            if (tank.DecorationAlgae > 0.0005f) made.Add($"decorations +{Pct(tank.DecorationAlgae)}");
-            if (tank.EaterAlgae > 0.0005f) made.Add($"algae eaters -{Pct(tank.EaterAlgae)}");
-            ui.Label("Target: " + string.Join(", ", made) + $" · {tank.AlgaeEaterCount} of {tank.AlgaeEatersNeeded} algae eaters", "fb-small");
+            if (load > 0 && !tank.HasFilter) parts.Add("no filter");
+            else if (tank.HasFilter && !tank.FilterWorking) parts.Add("filter broken");
+            else if (tank.HasFilter && load > tank.FilterFishCapacity) parts.Add($"filter for {tank.FilterFishCapacity} fish, {load} here");
+            if (parts.Count > 0) ui.Label($"<color={UiTheme.CoralHex}>{string.Join(" · ", parts)}</color>", "fb-small");
         }
+
+        /// <summary>
+        /// Arrows for how far a tank reading moves at the next time step: ^ a little (about 1%),
+        /// ^^ more (about 5%), ^^^ a lot (10% or more); v when it falls. Green when that's good news.
+        /// </summary>
+        static string StepArrows(float change, bool upIsGood)
+        {
+            float size = Mathf.Abs(change);
+            if (size < 0.005f) return "";
+            int count = size < 0.03f ? 1 : size < 0.075f ? 2 : 3;
+            bool good = change > 0f == upIsGood;
+            return $"<b><color={(good ? UiTheme.LeafHex : UiTheme.CoralHex)}>{new string(change > 0f ? '^' : 'v', count)}</color></b>";
+        }
+
+        static string StepTip(float change) => Mathf.Abs(change) < 0.005f ? "No change at the next time step" : $"{(change > 0f ? "+" : "-")}{Mathf.Abs(change) * 100f:0}% at the next time step";
 
         void DrawTemperature()
         {
@@ -1034,7 +1039,7 @@ namespace FishBreeder.Core
             if (info == null) return "";
             switch (kind)
             {
-                case EquipmentKind.Filter: return $"Leaves {info.effect * 100f:0}% of the waste and stops algae at its target for up to {info.fishCapacity} fish";
+                case EquipmentKind.Filter: return $"Helps keep the water quality higher and helps balance algae for up to {info.fishCapacity + Perks.Count(PerkEffect.FilterFish)} fish";
                 case EquipmentKind.Heater: return info.effect > 0.05f ? $"Holds the setting within {info.effect:0.#} C" : "Holds the exact setting";
                 default: return $"Air for {info.effect:0} fish";
             }
@@ -1590,14 +1595,19 @@ namespace FishBreeder.Core
             if (ui.Button(wall ? $"Raise to {info.height:0.0#} m  {Economy.Format(price)}" : $"Upgrade to {info.name.ToLower()} tank  {Economy.Format(price)}", "fb-button fb-button--wrap", can && reason == null)) upgradeTank(storeTank, next);
         }
 
-        /// <summary>A label, a bar coloured from red (bad) to green (good) and the percentage.</summary>
-        void Bar(string label, float value, bool highIsGood, string tooltip = null)
+        /// <summary>
+        /// A label, a bar coloured from red (bad) to green (good) and the percentage. With
+        /// <paramref name="arrows"/> (even empty, to line up with bars that have them) a short
+        /// column after it shows where it's heading next time step.
+        /// </summary>
+        void Bar(string label, float value, bool highIsGood, string tooltip = null, string arrows = null, string arrowsTip = null)
         {
             ui.BeginRow("fb-row fb-stat");
             ui.Label(label, "fb-text fb-stat__label");
             float good = highIsGood ? value : 1f - value;
             ui.Bar(value, Color.Lerp(new Color(0.9f, 0.3f, 0.25f), new Color(0.35f, 0.85f, 0.4f), good), "fb-bar fb-stat__bar", tooltip);
             ui.Label($"{value * 100f:0}%", "fb-text fb-stat__value");
+            if (arrows != null) ui.Label(arrows, "fb-text fb-stat__arrows").tooltip = arrowsTip ?? "";
             ui.Pop();
         }
 
@@ -1653,6 +1663,7 @@ namespace FishBreeder.Core
             }
             DrawFishHealth(fish);
             DrawFishComfort(fish);
+            DrawFishHunger(fish);
             DrawFishPrice(fish);
             ui.Space(6f);
             if (fish.IdentityHidden)
@@ -1717,6 +1728,11 @@ namespace FishBreeder.Core
             Penalty("Illness", report.illness, fish.Health.IsSick ? $"{fish.Health.Disease.displayName} ({fish.Health.Severity * 100f:0}%)" : "healthy");
             Penalty("Water", report.environment, report.environmentMismatch < 0.01f ? "suits it" : "not right for it");
             foreach (var note in FishHealth.EnvironmentNotes(species, tank)) SubLine(note, 0f, true);
+            if (!species.eatsAlgae)
+            {
+                if (report.algae < 0f) ui.Label($"<color=#9fe39f>Algae  {tank.Algae * 100f:0}%, just right  +{-report.algae * 100f:0}</color>");
+                else Penalty("Algae", report.algae, report.algae > 0f ? $"{tank.Algae * 100f:0}%, too much" : $"{tank.Algae * 100f:0}%");
+            }
             Penalty("Comfort", report.comfort, $"{report.comfortLevel * 100f:0}% comfortable");
             if (report.overcrowding > 0f) Penalty("Crowding", report.overcrowding, $"{tank.OverLimit} fish over the tank's limit");
             if (report.injury > 0f) Penalty("Wounds", report.injury, string.IsNullOrEmpty(fish.Health.InjuryCause) ? "healing" : fish.Health.InjuryCause);
@@ -1736,6 +1752,18 @@ namespace FishBreeder.Core
             if (!comfortOpen || !Research.Has(ResearchUnlock.HealthDetails)) return;
             ui.Label($"{why}.", "fb-small");
             foreach (var note in fish.Health.ComfortNotes()) SubLine(note.text, note.delta, false);
+        }
+
+        /// <summary>How hungry it is: empty right after a feeding, filling up at every time step.</summary>
+        void DrawFishHunger(Fish fish)
+        {
+            ui.BeginRow("fb-row fb-trend");
+            Bar("<b>Hunger</b>", fish.Hunger, false, fish.Species.eatsAlgae
+                ? "Algae eaters graze the tank's algae: they stay fed while there's enough of it"
+                : "Goes up at every time step and down when it eats. Very hungry fish lose health");
+            // Lines the bar up with the health and comfort bars, which have their arrow here.
+            ui.Label("", "fb-text fb-trend__arrow");
+            ui.Pop();
         }
 
         /// <summary>

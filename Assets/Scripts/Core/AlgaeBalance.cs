@@ -65,6 +65,16 @@ namespace FishBreeder.Core
         [Tooltip("How badly a bloom's choked water stresses every fish while it lasts (environment, 0..1). Only a deep clean ends it.")]
         [Range(0f, 1f)] public float bloomStress = 0.5f;
 
+        [Header("Algae and fish health (not algae eaters)")]
+        [Tooltip("Between these two algae levels the algae is good for fish: they gain health. Between the second and the harmful level it's neither good nor bad.")]
+        [Range(0f, 1f)] public float healthyAlgaeFrom = 0.1f, healthyAlgaeTo = 0.2f;
+        [Tooltip("Above this much algae it starts to cost fish health.")]
+        [Range(0f, 1f)] public float harmfulAlgaeAbove = 0.3f;
+        [Tooltip("Health a fish gains while the algae is in the healthy range (0.05 = +5).")]
+        public float healthyAlgaeBonus = 0.05f;
+        [Tooltip("Health a fish loses for every 10% of algae above the harmful level (0.08 = -8 at 40%, -16 at 50%).")]
+        public float harmfulAlgaePer10 = 0.08f;
+
         [Header("Clean tank")]
         [Tooltip("Cleans each tank gets per closed-shop session (more with the Tireless perk).")]
         public int cleansPerSession = 2;

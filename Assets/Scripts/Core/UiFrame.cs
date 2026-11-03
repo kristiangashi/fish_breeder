@@ -207,14 +207,22 @@ namespace FishBreeder.Core
         {
             var slider = Next("slider", classes, () =>
             {
-                var s = new Slider();
+                var s = new Slider(min, max);
+                s.SetValueWithoutNotify(value);
                 s.RegisterValueChangedCallback(e => { var tag = TagOf(s); tag.changed = true; tag.value = e.newValue; });
                 return s;
             });
-            slider.lowValue = min;
-            slider.highValue = max;
-            if (slider.enabledSelf != enabled) slider.SetEnabled(enabled);
             var tg = TagOf(slider);
+            // Changing the range clamps the value and sends a change event; that isn't the player
+            // moving it, so forget it (a new 0..10 slider used to drop the heater to its minimum).
+            if (slider.lowValue != min || slider.highValue != max)
+            {
+                bool changed = tg.changed; object was = tg.value;
+                slider.lowValue = min;
+                slider.highValue = max;
+                tg.changed = changed; tg.value = was;
+            }
+            if (slider.enabledSelf != enabled) slider.SetEnabled(enabled);
             if (tg.changed)
             {
                 tg.changed = false;

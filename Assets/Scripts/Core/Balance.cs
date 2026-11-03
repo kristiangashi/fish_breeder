@@ -1014,8 +1014,9 @@ namespace FishBreeder.Core
         /// 19: every tank size has four fish limits, one per size group (tiny, small, medium, large).
         /// 22: twelve fish from the reef collages (ten reef fish, two loaches): relationships, cross pairs, egg boxes and dive finds.
         /// 23: salt and fresh water kept apart: reef egg boxes of their own, saltwater fish out of the freshwater boxes, no relationships or cross pairs across the two.
+        /// 28: the Algae control perk becomes Water quality control (each fish dirties the water less), Elbow grease adds water quality instead of taking off algae, and the new Fine filtration perk.
         /// </summary>
-        public const int CurrentDataVersion = 27;
+        public const int CurrentDataVersion = 28;
         public const string AssetPath = "Assets/Resources/Balance/balance.json";
 
         static BalanceData data;
@@ -1480,6 +1481,7 @@ namespace FishBreeder.Core
             if (fromVersion < 23) SeparateWaters(data);
             if (fromVersion < 24) RarityBoxes(data);
             if (fromVersion < 27) UpgradeAlgaeTargets(data);
+            if (fromVersion < 28) UpgradeWaterPerks(data);
             data.dataVersion = CurrentDataVersion;
         }
 
@@ -1571,6 +1573,24 @@ namespace FishBreeder.Core
                         perk.percent = d.percent;
                     }
                 }
+        }
+
+        /// <summary>
+        /// Version 28: Algae control is replaced (in its place) by Water quality control, Elbow grease
+        /// adds water quality, and Fine filtration joins after Steady filters. Points spent on Algae
+        /// control come back, since that perk is gone.
+        /// </summary>
+        static void UpgradeWaterPerks(BalanceData data)
+        {
+            if (data.perks == null) return;
+            data.perks.RemoveAll(p => p != null && (p.id == "water_quality_control" || p.id == "fine_filtration"));
+            int algae = data.perks.FindIndex(p => p != null && p.id == "algae_control");
+            if (algae >= 0) data.perks[algae] = PerkBalance.WaterQualityControl();
+            else data.perks.Add(PerkBalance.WaterQualityControl());
+            int filters = data.perks.FindIndex(p => p != null && p.id == "steady_filters");
+            data.perks.Insert(filters >= 0 ? filters + 1 : data.perks.Count, PerkBalance.FineFiltration());
+            foreach (var perk in data.perks)
+                if (perk != null && perk.effect == PerkEffect.StrongerWipes) perk.text = PerkBalance.StrongerWipesText;
         }
 
         static void CopyAlgaeEaters(List<TankSizeBalance> saved, List<TankSizeBalance> defaults)

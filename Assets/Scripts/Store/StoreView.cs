@@ -129,6 +129,7 @@ namespace FishBreeder.Store
             bool escape = Input.GetKeyDown(KeyCode.Escape) && !PauseMenu.JustClosed;
             if (Input.GetKeyDown(KeyCode.V) && !UiPanels.Typing && panel != Panel.DayReport) ToggleWatch();
             if (Input.GetKeyDown(KeyCode.B) && !UiPanels.Typing && !shopDay.IsOpen) ToggleSupplier();
+            if (escape && hud.CloseInfo()) escape = false;
             if (escape && ViewMode.Watching)
             {
                 ViewMode.Set(false);
@@ -171,7 +172,7 @@ namespace FishBreeder.Store
             }
             // A right click zooms out one level too: from a fish or a close-up to the tank, from a
             // wheel zoom to the normal view, from the tank or a person to the store.
-            bool zoomOut = Input.GetMouseButtonDown(1) && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
+            bool zoomOut = Input.GetMouseButtonDown(1) && !hud.InfoOpen && !AnyWindowOpen && panel != Panel.DayReport && !ViewMode.Watching;
             if (focused != null && focused.Tank == null) ExitTank();
             else if (focused != null && (escape || zoomOut)) StepBackInTank();
             else if (focused == null && (escape || zoomOut) && following >= 0) following = -1;
@@ -746,14 +747,20 @@ namespace FishBreeder.Store
         enum PendingStep { None, Sleep, PassDay, StayClosed }
         PendingStep pendingStep;
         int pendingChores;
+        /// <summary>What the waiting chores are, so the warning can name them.</summary>
+        List<string> pendingChoreTitles = new List<string>();
 
         /// <summary>
         /// Asks before time moves on: always for staying closed, and for sleeping or letting the day
-        /// pass only when chores are still waiting.
+        /// pass only when chores are still waiting (ones already dealt with, like a tank that's had
+        /// its food, don't count).
         /// </summary>
         void AskStep(PendingStep step)
         {
-            int chores = new ToDoList().Build(store.Tanks);
+            var list = new ToDoList();
+            list.Build(store.Tanks);
+            int chores = list.Remaining;
+            pendingChoreTitles = list.RemainingTitles(5);
             if (step != PendingStep.StayClosed && chores == 0)
             {
                 if (step == PendingStep.Sleep) Sleep();
@@ -772,7 +779,11 @@ namespace FishBreeder.Store
             {
                 string text = pendingStep == PendingStep.StayClosed ? "The shop stays shut all day: no customers, no sales and no reviews, but the fish still grow and the water still gets dirtier." : "";
                 if (pendingChores > 0)
-                    text += (text.Length > 0 ? "\n\n" : "") + $"<color=#ffd27f>{(pendingChores == 1 ? "One chore is" : $"{pendingChores} chores are")} still waiting: hungry, sick or dead fish, dirty water or broken equipment.</color>";
+                {
+                    text += (text.Length > 0 ? "\n\n" : "") + $"<color=#ffd27f>{(pendingChores == 1 ? "One chore is" : $"{pendingChores} chores are")} still waiting:</color>";
+                    foreach (var title in pendingChoreTitles) text += $"\n• {title}";
+                    if (pendingChores > pendingChoreTitles.Count) text += $"\n<size=11>and {pendingChores - pendingChoreTitles.Count} more</size>";
+                }
                 frame.Label(text);
             }, () =>
             {

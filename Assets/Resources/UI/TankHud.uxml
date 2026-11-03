@@ -8,5 +8,8 @@
         <ui:VisualElement name="tank-bar" class="fb-tank-bar" />
         <ui:VisualElement name="log" picking-mode="Ignore" class="fb-strip fb-log fb-log--tank" />
         <ui:Label name="level-popup" class="fb-panel fb-level-popup" />
+        <ui:VisualElement name="info-popup" class="fb-info-shade">
+            <ui:VisualElement name="info-box" class="fb-panel fb-info-box" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

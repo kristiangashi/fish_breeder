@@ -1451,6 +1451,49 @@
     margin-right: 4px;
 }
 
+/* The (i) by a reading: a small round button that opens its explanation in the middle of the screen. */
+.unity-button.fb-info-button {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    border-radius: 8px;
+    padding: 0;
+    margin: 0 0 0 4px;
+    -unity-text-align: middle-center;
+}
+
+.fb-stat__name {
+    width: 95px;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+}
+
+.fb-info-shade {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.45);
+    align-items: center;
+    justify-content: center;
+}
+
+.fb-info-box {
+    width: 560px;
+    max-width: 90%;
+    max-height: 90%;
+}
+
+.fb-info-box .fb-text {
+    white-space: normal;
+    margin-bottom: 8px;
+}
+
 .fb-warning-box {
     background-color: rgba(115, 77, 13, 0.35);
     border-color: var(--sun);

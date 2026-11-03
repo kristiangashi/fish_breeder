@@ -87,7 +87,7 @@ namespace FishBreeder.Feeding
         /// <summary>
         /// Time is about to pass while food is still in the water. What we didn't get to watch is
         /// filled in: each piece goes to a hungry fish in its tank (the one already chasing it
-        /// first, otherwise the nearest), and pieces no fish wants rot on the floor.
+        /// first, otherwise the nearest), and pieces no fish wants are simply gone.
         /// </summary>
         public static void SettleAll()
         {
@@ -108,11 +108,7 @@ namespace FishBreeder.Feeding
                     }
                 }
                 if (eater != null) eater.Eat(pellet);
-                else
-                {
-                    pellet.tank.Pollute(GameConfig.Active.waterQualityLossPerRottenPellet);
-                    pellet.TryConsume();
-                }
+                else pellet.TryConsume();
             }
         }
 

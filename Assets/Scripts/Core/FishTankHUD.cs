@@ -142,6 +142,7 @@ namespace FishBreeder.Core
             heldPiece = dragPiece = -1;
             confirmText = null;
             confirmAction = null;
+            infoTitle = null;
         }
 
         void Update()
@@ -230,6 +231,7 @@ namespace FishBreeder.Core
         UIDocument hudDocument;
         VisualElement hudRoot, markersView, panelView, pickerView, fishView, tankBarView, logView;
         Label levelPopupView;
+        VisualElement infoPopupView, infoBoxView;
         UiFrame ui = new UiFrame();
         Button levelHelp;
         VisualElement levelBadge;
@@ -247,6 +249,10 @@ namespace FishBreeder.Core
             logView = hudRoot.Q("log");
             GameLogView.MakeClickable(logView);
             levelPopupView = hudRoot.Q<Label>("level-popup");
+            infoPopupView = hudRoot.Q("info-popup");
+            infoBoxView = hudRoot.Q("info-box");
+            // A click on the dimmed screen round the box closes it, like its Close button.
+            infoPopupView.RegisterCallback<PointerDownEvent>(e => { if (e.target == infoPopupView) CloseInfo(); });
             UiPanels.Show(hudRoot, false);
         }
 
@@ -292,6 +298,8 @@ namespace FishBreeder.Core
             Fill(tankBarView, !watching, DrawTankBar);
             Fill(logView, !watching, () => GameLogPanel.Fill(ui, 6));
             Fill(markersView, !watching, DrawMarkers);
+            UiPanels.Show(infoPopupView, !watching && infoTitle != null);
+            Fill(infoBoxView, !watching && infoTitle != null, DrawInfo);
             DrawLevelPopup(!watching);
             PlaceTankBar();
         }
@@ -486,6 +494,47 @@ namespace FishBreeder.Core
             return text.ToString();
         }
 
+        // ------------------------------------------------------------ (i) explanations
+
+        /// <summary>The explanation open in the middle of the screen (title and paragraphs), or null.</summary>
+        string infoTitle;
+        string[] infoText;
+
+        /// <summary>What the (i) by the algae bar says (Kristian's words).</summary>
+        static readonly string[] AlgaeInfo =
+        {
+            "Algae automatically increases over time. Fish need some algae to stay healthy, but let it get too high and the fish get sick. The more fish, decorations and plants you have, the faster your algae grows.",
+            "A filter allows you to halt the algae's growth beyond a certain amount. This ensures your fish can have some algae for the health of the water, but don't get sick from having too much. However, even filters have limits, and if you have too many fish, decorations or plants then you'll either need a bigger filter, or to take some things out of your tank.",
+            "Algae eaters can also support your tank by helping your filter balance the algae. Each algae eater can increase the amount of things you can keep in your tank without an algal bloom.",
+            "If an algal bloom does happen, beware. No filter or algae eater can save you and your fish will get ill or die. You'll have to do a deep clean of your tank which puts your already stressed-out fish at even more risk.",
+            "Learn to balance your algae and make sure to do your research!",
+        };
+
+        void OpenInfo(string title, string[] text)
+        {
+            infoTitle = title;
+            infoText = text;
+        }
+
+        /// <summary>Closes the explanation; false if none was open (so Esc can step back instead).</summary>
+        public bool CloseInfo()
+        {
+            if (infoTitle == null) return false;
+            infoTitle = null;
+            return true;
+        }
+
+        public bool InfoOpen => enabled && infoTitle != null;
+
+        void DrawInfo()
+        {
+            ui.Label(infoTitle, "fb-heading");
+            ui.BeginScroll("fb-scroll");
+            foreach (var paragraph in infoText) ui.Label(paragraph, "fb-text");
+            ui.Pop();
+            if (ui.Button("Close (Esc)", "fb-button fb-button--primary")) CloseInfo();
+        }
+
         // ------------------------------------------------------------ warnings before a change
 
         string confirmText;
@@ -600,16 +649,17 @@ namespace FishBreeder.Core
         void DrawCleaning(bool can)
         {
             var rules = Balance.Data.algae;
-            float removed = rules.cleanAlgaeRemoved * (1f + rules.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
+            float removed = rules.cleanAlgaeRemoved * (1f + rules.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1));
+            float freshened = Tank.CleanQualityRestored;
             int price = rules.deepCleanPrice;
             float risk = Tank.DeepCleanInjuryChance;
             ui.BeginRow("fb-row fb-pair");
             if (ui.Button($"Clean tank ({tank.CleansLeft} left)", "fb-button fb-grow", can && !tank.InBloom && tank.CleansLeft > 0,
-                    tank.InBloom ? "No use against an algal bloom: it needs a deep clean" : $"Scrubs off {removed * 100f:0.#}% algae and freshens the water"))
+                    tank.InBloom ? "No use against an algal bloom: it needs a deep clean" : $"Scrubs off {removed * 100f:0.#}% algae and adds {freshened * 100f:0.#}% water quality"))
                 tank.Clean();
             if (ui.Button($"Deep clean ({tank.DeepCleansLeft} left)" + (price > 0 ? $"  {Economy.Format(price)}" : ""), "fb-button fb-grow",
-                    can && tank.DeepCleansLeft > 0 && Economy.CanAfford(price), $"Nets the fish out and scrubs the tank down: clears nearly all the algae (and a bloom), but each fish has a {risk * 100f:0}% chance of getting hurt"))
-                Confirm(tank.Residents.Count > 0 ? $"Each fish has a {risk * 100f:0}% chance of getting hurt in a deep clean (torn fins, lost scales, shock and worse). It clears nearly all the algae{(tank.InBloom ? " and the bloom" : "")}." : null,
+                    can && tank.DeepCleansLeft > 0 && Economy.CanAfford(price), $"Nets the fish out and scrubs the tank down: algae goes to {rules.deepCleanAlgaeLeft * 100f:0}% (a bloom clears too), but each fish has a {risk * 100f:0}% chance of getting hurt"))
+                Confirm(tank.Residents.Count > 0 ? $"Each fish has a {risk * 100f:0}% chance of getting hurt in a deep clean (torn fins, lost scales, shock and worse). Algae goes to {rules.deepCleanAlgaeLeft * 100f:0}%{(tank.InBloom ? " and the bloom clears" : "")}." : null,
                     () => tank.DeepClean());
             ui.Pop();
             if (tank.InBloom) ui.Label($"<color={UiTheme.CoralHex}><b>Algal bloom!</b> It chokes every fish and keeps spreading. Only a deep clean clears it.</color>", "fb-small");
@@ -624,7 +674,7 @@ namespace FishBreeder.Core
             var a = Balance.Data.algae;
             float change = tank.AlgaeChangeNextStep;
             Bar("Algae", tank.Algae, false, $"How much of the tank is covered in algae. A little ({a.healthyAlgaeFrom * 100f:0}-{a.healthyAlgaeTo * 100f:0}%) is good for fish; above {a.harmfulAlgaeAbove * 100f:0}% it harms them, and at {a.bloomAbove * 100f:0}% the tank blooms.",
-                StepArrows(change, false), StepTip(change));
+                StepArrows(change, false), StepTip(change), () => OpenInfo("Algae", AlgaeInfo));
             var parts = new List<string>();
             if (tank.InBloom) parts.Add("algal bloom");
             int load = Mathf.RoundToInt(tank.FishLoad);
@@ -1600,10 +1650,18 @@ namespace FishBreeder.Core
         /// <paramref name="arrows"/> (even empty, to line up with bars that have them) a short
         /// column after it shows where it's heading next time step.
         /// </summary>
-        void Bar(string label, float value, bool highIsGood, string tooltip = null, string arrows = null, string arrowsTip = null)
+        void Bar(string label, float value, bool highIsGood, string tooltip = null, string arrows = null, string arrowsTip = null, Action info = null)
         {
             ui.BeginRow("fb-row fb-stat");
-            ui.Label(label, "fb-text fb-stat__label");
+            if (info == null) ui.Label(label, "fb-text fb-stat__label");
+            else
+            {
+                // The name with a little (i) after it that opens the explanation.
+                ui.BeginRow("fb-row fb-stat__name");
+                ui.Label(label, "fb-text");
+                if (ui.Button("i", "fb-button fb-info-button", true, "What is this?")) info();
+                ui.Pop();
+            }
             float good = highIsGood ? value : 1f - value;
             ui.Bar(value, Color.Lerp(new Color(0.9f, 0.3f, 0.25f), new Color(0.35f, 0.85f, 0.4f), good), "fb-bar fb-stat__bar", tooltip);
             ui.Label($"{value * 100f:0}%", "fb-text fb-stat__value");
@@ -1694,6 +1752,8 @@ namespace FishBreeder.Core
                 default: ui.Badge("FRY" + age, new Color(0.45f, 0.47f, 0.5f)); break;
             }
             if (fish.Stage != LifeStage.Fry) ui.Badge(fish.Size.ToString().ToUpper(), new Color(0.3f, 0.45f, 0.55f));
+            // The price set on it, just the dollars.
+            if (fish.Price > 0) ui.Badge(Economy.Format(fish.Price), new Color(0.2f, 0.5f, 0.35f));
             ui.Pop();
             if (fish.IsPregnant)
                 ui.Label($"<color=#ffb3d9><b>Pregnant</b>: about {fish.UnbornCount} fry due in {BreedingSystem.Steps(fish.StepsToBirth)}</color>", "fb-small");
@@ -1767,15 +1827,21 @@ namespace FishBreeder.Core
         }
 
         /// <summary>
-        /// The price the player set (editable in a For Sale tank). Seller's finds and exhibit fish
-        /// get the fish market and release buttons instead.
+        /// Setting the price, in a For Sale tank (elsewhere the price only shows as a badge by the
+        /// size). Seller's finds and exhibit fish get the fish market and release buttons instead.
         /// </summary>
         void DrawFishPrice(Fish fish)
         {
-            ui.Space(6f);
-            if (tank.IsHolding || tank.IsExhibit) DrawAquariumFish(fish);
-            else if (storeTank.Role == TankRole.ForSale) DrawPrice(fish);
-            else ui.Label(fish.Price > 0 ? $"Price: <b>{Economy.Format(fish.Price)}</b>  <size=11>(not for sale in this tank)</size>" : "Price: <size=11><i>not for sale; set one in a For Sale tank</i></size>");
+            if (tank.IsHolding || tank.IsExhibit)
+            {
+                ui.Space(6f);
+                DrawAquariumFish(fish);
+            }
+            else if (storeTank.Role == TankRole.ForSale)
+            {
+                ui.Space(6f);
+                DrawPrice(fish);
+            }
         }
 
         /// <summary>

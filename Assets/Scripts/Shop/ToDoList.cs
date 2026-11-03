@@ -84,6 +84,8 @@ namespace FishBreeder.Shop
             foreach (var storeTank in tanks)
             {
                 var tank = storeTank.Tank;
+                // Once food has gone in, feeding is done: the fish still swimming to it count as fed.
+                if (tank.FedSinceTimeStep) continue;
                 bool hungry = false, grazers = false;
                 foreach (var fish in tank.Residents)
                     if (fish.Hunger >= settings.hungryAbove)
@@ -159,6 +161,15 @@ namespace FishBreeder.Shop
 
         void Add(ToDo.Kind kind, StoreTank tank, Fish fish, string title, string hint)
             => items.Add(new ToDo { kind = kind, tank = tank, fish = fish, title = title, hint = hint });
+
+        /// <summary>The titles of the problems still waiting (the first <paramref name="max"/>).</summary>
+        public List<string> RemainingTitles(int max)
+        {
+            var titles = new List<string>();
+            foreach (var item in items)
+                if (!item.Resolved && titles.Count < max) titles.Add(item.title);
+            return titles;
+        }
 
         /// <summary>Moves to the next problem that still needs doing. False when there are none left.</summary>
         public bool Next()

@@ -156,7 +156,7 @@ namespace FishBreeder.Core
             string pips = $"<color={hex}>{new string('●', rank)}</color><color=#4a6a74>{new string('●', Mathf.Max(0, perk.maxRank - rank))}</color>";
             ui.Label($"<b>{perk.name}</b>  <size=11>{pips}  {rank}/{perk.maxRank}</size>");
             string now = rank > 0 ? perk.Describe(rank) : perk.Describe(1);
-            string next = rank > 0 && !maxed ? $"  <color=#9fb4bc>(next: {perk.FormatValue(perk.perRank * (rank + 1))})</color>" : "";
+            string next = rank > 0 && !maxed ? $"  <color=#9fb4bc>(next: {perk.FormatValue(perk.ValueAt(rank + 1))})</color>" : "";
             ui.Label($"{now}.{next}", "fb-text fb-text--small");
             ui.Pop();
             string button = maxed ? "Max" : rank == 0 ? "Learn" : "+1";

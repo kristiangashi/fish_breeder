@@ -510,15 +510,19 @@ namespace FishBreeder
             }
         }
 
-        /// <summary>Water quality the next time step takes: a little on its own, more for every fish and dead fish (a filter takes most of the waste), and for crowding.</summary>
+        /// <summary>
+        /// Water quality the next time step takes: a little on its own, more for every fish and dead
+        /// fish (a filter takes most of the waste, more with Fine filtration; Water quality control
+        /// shrinks each fish's share), and for crowding.
+        /// </summary>
         public float WaterQualityLoss
         {
             get
             {
                 var balance = Balance.Data.timeStep;
-                float waste = (FilterWorking ? filter.Info.effect : 1f) * Perks.Less(PerkEffect.CleanerWater);
+                float waste = (FilterWorking ? filter.Info.effect * Perks.Less(PerkEffect.FilterWaste) : 1f) * Perks.Less(PerkEffect.CleanerWater);
                 return balance.waterQualityLossPerStep * waste
-                       + residents.Count * balance.wasteQualityLossPerFish * waste
+                       + residents.Count * balance.wasteQualityLossPerFish * waste * Perks.Less(PerkEffect.FishWaste)
                        + corpses.Count * balance.corpseQualityLoss
                        + OverLimit * balance.overcrowdedWastePerFish;
             }

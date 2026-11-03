@@ -237,7 +237,7 @@ namespace FishBreeder
             float settled = Mathf.Max(0f, now - feedingLeft), target = AlgaeTarget;
             if (settled < target)
             {
-                float rise = Mathf.Clamp((target - settled) * a.riseShare, a.minRise, Mathf.Max(a.minRise, a.maxRise)) * Perks.Less(PerkEffect.SlowerAlgae);
+                float rise = Mathf.Clamp((target - settled) * a.riseShare, a.minRise, Mathf.Max(a.minRise, a.maxRise));
                 settled = Mathf.Min(target, settled + rise);
             }
             else if (AlgaeHeld) settled = Mathf.Max(target, settled - Mathf.Max(a.minFall, (settled - target) * a.fallShare));
@@ -300,18 +300,28 @@ namespace FishBreeder
                 return false;
             }
             CleansLeft--;
-            // Experienced fishkeepers get more out of every clean.
-            float skill = (1f + a.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
+            // Experienced fishkeepers get more out of every clean; the Stronger wipes perk freshens the water more.
+            float skill = 1f + a.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1);
             float before = algae;
             algae = Mathf.Clamp01(algae - a.cleanAlgaeRemoved * skill);
             algaeFromFeeding = Mathf.Min(algaeFromFeeding, algae);
-            waterQuality = Mathf.Clamp01(waterQuality + a.cleanQualityRestored * skill);
+            waterQuality = Mathf.Clamp01(waterQuality + CleanQualityRestored);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpCleanTank);
             Progression.Count(GoalKind.CleanTanks);
             Fx.Sparkle(InnerBounds);
             Fx.Text(InnerBounds.center + Vector3.up * innerSize.y * 0.3f, "Sparkling!", UiTheme.Aqua, 20f);
             GameLog.Add($"You cleaned {Title}: algae {before * 100f:0}% to {algae * 100f:0}%, water {waterQuality * 100f:0}%." + (CleansLeft > 0 ? $" {CleansLeft} more here this time." : " That's this tank's cleans until the next time step."));
             return true;
+        }
+
+        /// <summary>How much water quality one Clean gives back: more with Fishkeeping level and the Stronger wipes perk.</summary>
+        public static float CleanQualityRestored
+        {
+            get
+            {
+                var a = AlgaeRules;
+                return a.cleanQualityRestored * (1f + a.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
+            }
         }
 
         /// <summary>Chance each fish is hurt in a deep clean: less as your Fishkeeping level grows.</summary>
@@ -325,8 +335,8 @@ namespace FishBreeder
         }
 
         /// <summary>
-        /// Deep clean: the fish are netted out, the tank scrubbed down and the water changed. Almost
-        /// all the algae goes (a bloom too), but every fish risks getting hurt.
+        /// Deep clean: the fish are netted out, the tank scrubbed down and the water changed. The algae
+        /// goes to 2% (deepCleanAlgaeLeft) wherever it was, a bloom too, but every fish risks getting hurt.
         /// </summary>
         public bool DeepClean()
         {
@@ -341,7 +351,7 @@ namespace FishBreeder
             bool wasBloom = bloom;
             bloom = false;
             float before = algae;
-            algae = Mathf.Min(algae, a.deepCleanAlgaeLeft);
+            algae = a.deepCleanAlgaeLeft;
             algaeFromFeeding = 0f;
             waterQuality = Mathf.Clamp01(waterQuality + a.deepCleanQualityRestored);
             float chance = DeepCleanInjuryChance;

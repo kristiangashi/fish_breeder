@@ -28,6 +28,10 @@ namespace FishBreeder.Core
         StockBook, RareEggs,
         // Aquariums (added later)
         FilterFish,
+        /// <summary>Each fish dirties the water less (Water quality control).</summary>
+        FishWaste,
+        /// <summary>A working filter slows the water's decline even more (Fine filtration).</summary>
+        FilterWaste,
     }
 
     /// <summary>One perk in a skill tree. Each rank bought adds <see cref="perRank"/> to its effect.</summary>
@@ -43,24 +47,31 @@ namespace FishBreeder.Core
         public string text;
         public int maxRank = 3;
         public float perRank = 0.05f;
+        [Tooltip("Added once the first rank is taken, so ranks can go 10/15/20% (base 5%, 5% a rank).")]
+        public float baseValue;
         [Tooltip("Shows the value as a percentage (0.05 shows as 5%).")]
         public bool percent = true;
         public PerkEffect effect;
 
         public string FormatValue(float value) => percent ? $"{value * 100f:0.#}%" : $"{value:0.##}";
 
-        public string Describe(int rank) => string.Format(text ?? "", FormatValue(perRank * Mathf.Max(1, rank)));
+        /// <summary>The perk's effect at this many ranks (0 when none are taken).</summary>
+        public float ValueAt(int rank) => rank <= 0 ? 0f : baseValue + perRank * rank;
+
+        public string Describe(int rank) => string.Format(text ?? "", FormatValue(ValueAt(Mathf.Max(1, rank))));
 
         public const string SlowerAlgaeText = "Algae climbs to its target {0} slower";
+        public const string StrongerWipesText = "Clean tank adds {0} more water quality";
 
         public static List<PerkBalance> CreateDefaults() => new List<PerkBalance>
         {
             // Aquariums: keeping tanks clean, roomy and running.
             Make("clean_freak", PerkTree.Aquariums, 1, "Clean freak", "Water gets dirty {0} slower", 5, 0.06f, PerkEffect.CleanerWater),
-            Make("elbow_grease", PerkTree.Aquariums, 1, "Elbow grease", "Clean tank takes off {0} more algae", 3, 0.15f, PerkEffect.StrongerWipes),
-            Make("algae_control", PerkTree.Aquariums, 2, "Algae control", SlowerAlgaeText, 5, 0.08f, PerkEffect.SlowerAlgae),
+            Make("elbow_grease", PerkTree.Aquariums, 1, "Elbow grease", StrongerWipesText, 3, 0.15f, PerkEffect.StrongerWipes),
+            WaterQualityControl(),
             Make("aquascaper", PerkTree.Aquariums, 2, "Aquascaper", "{0} more decoration spots in every tank", 3, 2f, PerkEffect.DecorationSpots, false),
             Make("steady_filters", PerkTree.Aquariums, 3, "Steady filters", "Filters handle {0} more fish", 3, 2f, PerkEffect.FilterFish, false),
+            FineFiltration(),
             Make("tinkerer", PerkTree.Aquariums, 3, "Tinkerer", "Equipment breaks down {0} less often", 5, 0.08f, PerkEffect.SturdierEquipment),
             Make("handyman", PerkTree.Aquariums, 3, "Handyman", "Repairs cost {0} less", 3, 0.15f, PerkEffect.BetterRepairs),
             Make("roomy_tanks", PerkTree.Aquariums, 4, "Roomy tanks", "Tanks hold {0} more fish", 3, 0.1f, PerkEffect.RoomierTanks),
@@ -119,6 +130,18 @@ namespace FishBreeder.Core
             Make("loyal_regulars", PerkTree.PublicRelations, 4, "Loyal regulars", "{0} more customers come in", 3, 0.08f, PerkEffect.MoreCustomers),
             Make("local_celebrity", PerkTree.PublicRelations, 4, "Local celebrity", "Your reputation climbs {0} every night on its own", 1, 0.005f, PerkEffect.DailyReputation),
         };
+
+        /// <summary>Took the place of Algae control: each fish dirties the water 10/15/20% less.</summary>
+        public static PerkBalance WaterQualityControl()
+        {
+            var perk = Make("water_quality_control", PerkTree.Aquariums, 2, "Water quality control", "Each fish lowers water quality {0} less", 3, 0.05f, PerkEffect.FishWaste);
+            perk.baseValue = 0.05f;
+            return perk;
+        }
+
+        /// <summary>Filters slow the water's decline by another 10/20/30%.</summary>
+        public static PerkBalance FineFiltration() =>
+            Make("fine_filtration", PerkTree.Aquariums, 3, "Fine filtration", "Filters slow down water quality loss by another {0}", 3, 0.1f, PerkEffect.FilterWaste);
 
         static PerkBalance Make(string id, PerkTree tree, int tier, string name, string text, int maxRank, float perRank, PerkEffect effect, bool percent = true)
             => new PerkBalance { id = id, tree = tree, tier = tier, name = name, text = text, maxRank = maxRank, perRank = perRank, effect = effect, percent = percent };
@@ -245,7 +268,7 @@ namespace FishBreeder.Core
         {
             float total = 0f;
             foreach (var perk in All)
-                if (perk != null && perk.effect == effect) total += Rank(perk) * perk.perRank;
+                if (perk != null && perk.effect == effect) total += perk.ValueAt(Rank(perk));
             return total;
         }
 

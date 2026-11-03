@@ -5,31 +5,43 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// How algae works: every time step it moves by a net rate. Fish, feeding, plants and
-    /// decorations add to it, and it always grows a little on its own; algae eaters take it away.
-    /// A filter steadies it: while the net rate is within its window either way the algae stays
-    /// put, and only what's past the window moves it. Cleaning takes some off at once without
-    /// changing the rate. Past the bloom level a tank can burst into an algal bloom that only a
-    /// deep clean clears. Algae eaters live on the algae: they need a little of it and get sick on too much.
+    /// How algae works. Every tank has an algae target, the share of the tank it settles at: 10%
+    /// with nothing in it, more for every fish, plant and decoration, less for every algae eater.
+    /// Algae climbs quickly up to the target. Past it, a filter made for the tank's fish holds it
+    /// there; with no filter, or more fish than the filter handles, it keeps creeping up slowly.
+    /// Each feeding adds a little algae at once that goes again one feeding's worth per time step.
+    /// The moment algae reaches the bloom level the tank blooms, and only a deep clean clears it.
+    /// Algae eaters live on the algae: they need a little of it and get sick on too much.
     /// </summary>
     [Serializable]
     public class AlgaeBalance
     {
-        [Header("What makes it grow (in % of algae per time step)")]
-        [Tooltip("Algae every tank grows each time step with nothing in it (1 = 1%).")]
-        public float baseGrowth = 1f;
-        [Tooltip("Algae each tiny fish grows per time step in the standard tank (0.15 = 0.15%, so 20 fish make 3%). A tank with a bigger fish limit gets less per fish, in proportion. Algae eaters don't count.")]
-        public float fishGrowth = 0.15f;
-        [Tooltip("How many tiny fish each fish of a size group counts as for algae (tiny, small, medium, large). In the public aquarium's exhibits and holding tanks every fish counts as one.")]
+        [Header("The algae target (share of the tank covered)")]
+        [Tooltip("Where an empty tank's algae settles (0.1 = 10%). The game never says why.")]
+        [Range(0f, 1f)] public float naturalAlgae = 0.1f;
+        [Tooltip("How much each tiny fish raises the target in the standard tank (0.01 = 1%, so 10 fish make 10%). A tank with a bigger fish limit gets less per fish, in proportion. Algae eaters don't count.")]
+        public float fishAlgae = 0.01f;
+        [Tooltip("How many tiny fish each fish of a size group counts as, for algae and filters (tiny, small, medium, large). In the public aquarium's exhibits and holding tanks every fish counts as one.")]
         public float tinyFishLoad = 1f, smallFishLoad = 2f, mediumFishLoad = 3f, largeFishLoad = 6f;
-        [Tooltip("Each feeding adds this much to the next time step's growth (leftover food feeds the algae). Algae wafers add algae straight away instead.")]
-        public float feedAlgae = 1f;
-        [Tooltip("Each decoration that isn't a plant adds this much growth per time step (too many decorations speed algae). Plants add their own amount (Eggs, decor & quality tab).")]
-        public float decorationGrowth = 0.1f;
+        [Tooltip("How much each decoration that isn't a plant raises the target (too many decorations mean more algae). Plants have their own amount (Eggs, decor & quality tab).")]
+        public float decorationAlgae = 0.01f;
+        [Tooltip("How much each algae eater lowers the target in the standard tank (0.05 = 5%). Bigger tanks get less per eater, like the fish. A tank of only algae eaters ends up with too little for them, so they need wafers.")]
+        public float eaterAlgae = 0.05f;
 
-        [Header("What takes it away (in % of algae per time step)")]
-        [Tooltip("Algae each algae eater eats per time step in the standard tank (2 = 2%). Bigger tanks get less per eater, in proportion, like the fish. It can't eat below 0.")]
-        public float eaterRemoval = 2f;
+        [Header("How fast it moves")]
+        [Tooltip("Below the target, each time step algae climbs this share of the way to it...")]
+        [Range(0f, 1f)] public float riseShare = 0.3f;
+        [Tooltip("...but at least the first number and at most the second.")]
+        public float minRise = 0.02f, maxRise = 0.1f;
+        [Tooltip("Past the target with no working filter, or more fish than the filter handles, algae creeps up this much each time step (much slower than below it).")]
+        public float overTargetRise = 0.01f;
+        [Tooltip("Above the target with a filter that handles the fish (after algae wafers, a new filter, more eaters or fewer fish), algae falls this share of the way back each time step, at least the second number.")]
+        [Range(0f, 1f)] public float fallShare = 0.4f;
+        public float minFall = 0.02f;
+
+        [Header("Feeding")]
+        [Tooltip("Algae each feeding adds at once (0.02 = 2%). One feeding's worth goes again at each time step, so two feedings take two time steps to go. Algae wafers add their own amount and stay.")]
+        public float feedAlgae = 0.02f;
 
         [Header("How it looks and what customers think")]
         [Tooltip("The water starts turning green at this much algae, and gets much greener from the second number.")]
@@ -42,14 +54,12 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float bothersChance = 0.35f, bothersMoreChance = 0.85f;
 
         [Header("Algal bloom")]
-        [Tooltip("At this much algae a tank risks an algal bloom at every time step.")]
-        [Range(0f, 1f)] public float bloomAbove = 0.5f;
-        [Tooltip("Chance of a bloom at a time step right at the bloom level, plus the second number for every 10% more algae.")]
-        [Range(0f, 1f)] public float bloomChance = 0.15f, bloomChancePer10 = 0.15f;
+        [Tooltip("The moment a tank's algae reaches this (feeding included), it blooms. There's no undoing it: only a deep clean clears a bloom.")]
+        [Range(0f, 1f)] public float bloomAbove = 0.6f;
         [Tooltip("Algae a bloom adds the moment it starts (0.35 = 35%).")]
         public float bloomJump = 0.35f;
-        [Tooltip("Algae a bloom adds every time step until a deep clean (10 = 10%).")]
-        public float bloomGrowth = 10f;
+        [Tooltip("Algae a bloom adds every time step until a deep clean (0.1 = 10%).")]
+        public float bloomGrowth = 0.1f;
         [Tooltip("Chance each fish dies right away when a bloom starts, and the chance a survivor falls ill.")]
         [Range(0f, 1f)] public float bloomDeathChance = 0.12f, bloomIllnessChance = 0.5f;
         [Tooltip("How badly a bloom's choked water stresses every fish while it lasts (environment, 0..1). Only a deep clean ends it.")]

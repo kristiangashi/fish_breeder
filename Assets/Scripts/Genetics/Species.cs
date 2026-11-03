@@ -135,7 +135,7 @@ namespace FishBreeder.Genetics
         /// An algae eater: it lives on the tank's algae and never eats flakes or other food. It
         /// grazes all the time, so it's fed at every time step the tank has at least
         /// <see cref="algaeMin"/> algae, starves below that and gets sick above <see cref="algaeMax"/>.
-        /// Each one also eats some of the tank's algae every time step (see <see cref="Core.AlgaeBalance"/>).
+        /// Each one also lowers where the tank's algae settles (see <see cref="Core.AlgaeBalance"/>).
         /// </summary>
         public bool eatsAlgae;
         /// <summary>Algae eaters: the least algae (0..1) it can live on, and the most before it gets sick (0 = its own default, see <see cref="AlgaeMin"/>).</summary>

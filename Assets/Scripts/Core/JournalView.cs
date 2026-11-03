@@ -282,7 +282,7 @@ namespace FishBreeder.Core
                 Line("Lives on the algae in its tank and never eats flakes or any other food.");
                 Line($"Needs at least {species.AlgaeMin * 100f:0}% algae to graze, or it goes hungry: algae wafers add {algae.waferAlgae * 100f:0}% for it. A Java moss rock keeps some algae for it too.");
                 Line($"Falls sick above {species.AlgaeMax * 100f:0}% algae: too much is as bad for it as too little.");
-                Line($"Each one eats {algae.eaterRemoval:0.#}% algae a time step in a standard tank (less in bigger tanks) and keeps the water clear for longer. With other fish growing algae it keeps the tank in balance; on its own it eats the tank bare, so it needs algae wafers.");
+                Line($"Each one lowers where the tank's algae settles by {algae.eaterAlgae * 100f:0.#}% in a standard tank (less in bigger tanks) and keeps the water clear for longer. With other fish making algae it keeps the tank in balance; on its own it eats the tank down too far, so it needs algae wafers.");
             }
 
             Section("Favourite foods");

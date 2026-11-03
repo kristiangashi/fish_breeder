@@ -5,21 +5,20 @@ using UnityEngine;
 namespace FishBreeder
 {
     /// <summary>
-    /// A tank's algae (see <see cref="AlgaeBalance"/>). Each time step it moves by its net growth:
-    /// fish, feeding, plants and decorations add, it grows a little on its own, and algae eaters
-    /// eat it. A working filter keeps it put while that net is within its window either way. At
-    /// the bloom level it can burst into an algal bloom that only a deep clean clears.
+    /// A tank's algae (see <see cref="AlgaeBalance"/>). It climbs quickly to its target (10% on
+    /// its own, more for fish, plants and decorations, less for algae eaters). A filter that
+    /// handles the fish holds it there; otherwise it creeps on slowly. Feeding adds a little that
+    /// goes again over the next time steps. The moment it reaches the bloom level the tank blooms,
+    /// and only a deep clean clears it.
     /// </summary>
     public partial class Tank
     {
         bool bloom;
         float algaeAtStep = -1f;
-        /// <summary>Growth from feedings since the last time step, in % (added to the next one's).</summary>
+        /// <summary>Algae from feeding that's still in the tank (part of <see cref="algae"/>): one feeding's worth goes at each time step.</summary>
         float algaeFromFeeding;
 
         static AlgaeBalance AlgaeRules => Balance.Data.algae;
-        /// <summary>Growth numbers in the balance are in % of algae: this turns them into algae (0..1).</summary>
-        const float Percent = 0.01f;
 
         /// <summary>An algal bloom: the algae keeps climbing, fish are choked, and only a deep clean ends it.</summary>
         public bool InBloom => bloom;
@@ -97,24 +96,24 @@ namespace FishBreeder
             }
         }
 
-        /// <summary>Algae the plants grow per time step (each plant its own amount).</summary>
-        public float PlantAlgaeGrowth
+        /// <summary>How much the plants raise the algae target (each plant its own amount).</summary>
+        public float PlantAlgae
         {
             get
             {
                 if (decor == null) return 0f;
-                float growth = 0f;
+                float total = 0f;
                 foreach (var id in decor.Ids)
                 {
                     var item = TankDecor.Find(id);
-                    if (item != null && item.plant) growth += Mathf.Max(0f, item.algaeGrowth);
+                    if (item != null && item.plant) total += Mathf.Max(0f, item.algaeTarget);
                 }
-                return growth * Percent;
+                return total;
             }
         }
 
-        /// <summary>Algae the decorations that aren't plants grow per time step (too many speed algae).</summary>
-        public float DecorationAlgaeGrowth
+        /// <summary>How much the decorations that aren't plants raise the algae target.</summary>
+        public float DecorationAlgae
         {
             get
             {
@@ -125,41 +124,36 @@ namespace FishBreeder
                     var item = TankDecor.Find(id);
                     if (item != null && !item.plant) count++;
                 }
-                return count * Mathf.Max(0f, AlgaeRules.decorationGrowth) * Percent;
+                return count * Mathf.Max(0f, AlgaeRules.decorationAlgae);
             }
         }
 
         /// <summary>Per fish and per algae eater, algae counts less in a bigger tank: the standard tank's fish limit over this one's.</summary>
         float AlgaeScale => StandardCapacity / (float)Mathf.Max(1, Capacity);
 
-        /// <summary>Algae the fish grow per time step (algae eaters don't count).</summary>
-        public float FishAlgaeGrowth => FishLoad * AlgaeRules.fishGrowth * Percent * AlgaeScale;
+        /// <summary>How much the fish raise the algae target (algae eaters don't count).</summary>
+        public float FishAlgae => FishLoad * Mathf.Max(0f, AlgaeRules.fishAlgae) * AlgaeScale;
 
-        /// <summary>Growth from the feedings since the last time step.</summary>
-        public float FeedingAlgaeGrowth => algaeFromFeeding * Percent;
+        /// <summary>How much the algae eaters lower the algae target.</summary>
+        public float EaterAlgae => AlgaeEaterCount * Mathf.Max(0f, AlgaeRules.eaterAlgae) * AlgaeScale;
 
-        /// <summary>Everything that grows algae per time step, after the Algae control perk.</summary>
-        public float AlgaeGrowth => (Mathf.Max(0f, AlgaeRules.baseGrowth) * Percent + FishAlgaeGrowth + FeedingAlgaeGrowth + PlantAlgaeGrowth + DecorationAlgaeGrowth) * Perks.Less(PerkEffect.SlowerAlgae);
+        /// <summary>
+        /// Where the algae settles: the natural level plus the fish, plants and decorations, less the
+        /// algae eaters, and never below what a moss rock keeps for the eaters.
+        /// </summary>
+        public float AlgaeTarget => Mathf.Clamp01(Mathf.Max(AlgaeRules.naturalAlgae + FishAlgae + PlantAlgae + DecorationAlgae - EaterAlgae, AlgaeFloor));
 
-        /// <summary>Algae the algae eaters eat per time step.</summary>
-        public float AlgaeEaten => AlgaeEaterCount * Mathf.Max(0f, AlgaeRules.eaterRemoval) * Percent * AlgaeScale;
+        /// <summary>Fish the working filter handles, with the Steady filters perk (0 without one).</summary>
+        public int FilterFishCapacity => FilterWorking ? Mathf.Max(0, filter.Info.fishCapacity + Perks.Count(PerkEffect.FilterFish)) : 0;
 
-        /// <summary>Net algae growth per time step before the filter: growth less what the eaters eat.</summary>
-        public float NetAlgaeGrowth => AlgaeGrowth - AlgaeEaten;
+        /// <summary>A working filter handles every fish, so algae stops at its target instead of creeping past it.</summary>
+        public bool AlgaeHeld => FilterWorking && FishLoad <= FilterFishCapacity + 0.001f;
 
-        /// <summary>The working filter's stable window, widened by the Steady filters perk (0 without one).</summary>
-        public float FilterWindow => FilterWorking ? Mathf.Max(0f, filter.Info.stableWindow + Perks.Value(PerkEffect.WiderFilterWindow)) * Percent : 0f;
+        /// <summary>Algae from feeding still in the tank (it goes one feeding's worth per time step).</summary>
+        public float FeedingAlgae => algaeFromFeeding;
 
-        /// <summary>How much the algae moves at the next time step: the net growth past the filter's window (0 inside it).</summary>
-        public float AlgaeChange
-        {
-            get
-            {
-                float net = NetAlgaeGrowth, window = FilterWindow;
-                if (Mathf.Abs(net) <= window) return 0f;
-                return net - Mathf.Sign(net) * window;
-            }
-        }
+        /// <summary>Time steps until the feeding algae is all gone.</summary>
+        public int FeedingAlgaeSteps => algaeFromFeeding <= 0.0001f ? 0 : Mathf.CeilToInt(algaeFromFeeding / Mathf.Max(0.001f, AlgaeRules.feedAlgae) - 0.001f);
 
         /// <summary>The standard tank's fish limit: algae per fish is set for it, and bigger tanks get less per fish.</summary>
         static int StandardCapacity
@@ -220,28 +214,39 @@ namespace FishBreeder
         }
 
         /// <summary>
-        /// Time step: algae moves by its net growth past the filter's window, never below 0 (or what
-        /// a moss rock keeps for the eaters), and a tank past the bloom level may bloom.
+        /// Time step: one feeding's worth of feeding algae goes, then the rest climbs quickly to its
+        /// target, stays there with a filter that handles the fish, or creeps on past it. The moment
+        /// it reaches the bloom level the tank blooms.
         /// </summary>
         void UpdateAlgae()
         {
             var a = AlgaeRules;
             algaeAtStep = algae;
+            float gone = Mathf.Min(algaeFromFeeding, Mathf.Max(0f, a.feedAlgae));
+            algaeFromFeeding -= gone;
+            algae = Mathf.Max(0f, algae - gone);
             if (bloom)
             {
                 // A bloom feeds on itself until it's deep cleaned.
-                algae = Mathf.Min(1f, algae + Mathf.Max(0f, a.bloomGrowth) * Percent);
-                algaeFromFeeding = 0f;
+                algae = Mathf.Min(1f, algae + Mathf.Max(0f, a.bloomGrowth));
                 return;
             }
-            float change = AlgaeChange;
-            algaeFromFeeding = 0f;
-            if (change > 0f) algae = Mathf.Min(1f, algae + change);
-            else if (change < 0f) algae = Mathf.Max(Mathf.Min(algae, AlgaeFloor), algae + change);
+            float settled = Mathf.Max(0f, algae - algaeFromFeeding), target = AlgaeTarget;
+            if (settled < target)
+            {
+                float rise = Mathf.Clamp((target - settled) * a.riseShare, a.minRise, Mathf.Max(a.minRise, a.maxRise)) * Perks.Less(PerkEffect.SlowerAlgae);
+                settled = Mathf.Min(target, settled + rise);
+            }
+            else if (AlgaeHeld) settled = Mathf.Max(target, settled - Mathf.Max(a.minFall, (settled - target) * a.fallShare));
+            else settled += Mathf.Max(0f, a.overTargetRise);
+            algae = Mathf.Clamp01(settled + algaeFromFeeding);
+            CheckBloom();
+        }
 
-            if (algae < a.bloomAbove) return;
-            float chance = a.bloomChance + a.bloomChancePer10 * (algae - a.bloomAbove) / 0.1f;
-            if (GameRandom.Chance(chance)) StartBloom();
+        /// <summary>The moment algae reaches the bloom level the tank blooms: there's no backing out of it.</summary>
+        void CheckBloom()
+        {
+            if (!bloom && algae >= AlgaeRules.bloomAbove) StartBloom();
         }
 
         /// <summary>The algae bursts: much more of it at once, some fish die and many fall ill.</summary>
@@ -286,6 +291,7 @@ namespace FishBreeder
             float skill = (1f + a.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
             float before = algae;
             algae = Mathf.Clamp01(algae - a.cleanAlgaeRemoved * skill);
+            algaeFromFeeding = Mathf.Min(algaeFromFeeding, algae);
             waterQuality = Mathf.Clamp01(waterQuality + a.cleanQualityRestored * skill);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpCleanTank);
             Progression.Count(GoalKind.CleanTanks);
@@ -323,6 +329,7 @@ namespace FishBreeder
             bloom = false;
             float before = algae;
             algae = Mathf.Min(algae, a.deepCleanAlgaeLeft);
+            algaeFromFeeding = 0f;
             waterQuality = Mathf.Clamp01(waterQuality + a.deepCleanQualityRestored);
             float chance = DeepCleanInjuryChance;
             var hurt = new List<string>();
@@ -348,19 +355,25 @@ namespace FishBreeder
         {
             float before = algae;
             algae = Mathf.Clamp01(algae + amount);
+            CheckBloom();
             if (AlgaeEaterCount > 0) GameLog.Add($"Algae wafers in {Title}: algae {before * 100f:0}% to {algae * 100f:0}% for the algae eaters.");
         }
 
-        /// <summary>Feeding: leftover food feeds the algae, adding to the next time step's growth.</summary>
+        /// <summary>Feeding: leftover food feeds a little algae at once. One feeding's worth goes at each time step; reaching the bloom level blooms at once.</summary>
         public void AddFeedingAlgae(float amount)
         {
-            if (amount > 0f) algaeFromFeeding += amount;
+            if (amount <= 0f) return;
+            float before = algae;
+            algae = Mathf.Clamp01(algae + amount);
+            algaeFromFeeding += algae - before;
+            CheckBloom();
         }
 
         /// <summary>Developer: sets the algae (a bloom starts at once with <paramref name="startBloom"/>).</summary>
         public void DevSetAlgae(float value, bool startBloom)
         {
             algae = Mathf.Clamp01(value);
+            algaeFromFeeding = 0f;
             bloom = false;
             if (startBloom) StartBloom();
         }

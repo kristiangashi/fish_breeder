@@ -126,6 +126,7 @@ namespace FishBreeder.Core
                 EggBoxes.Save(data);
                 Milestones.Save(data);
                 GameLog.Save(data);
+                PlayLog.Save(data);
                 store.Save(data);
                 if (shopDay != null) shopDay.Save(data);
 
@@ -177,6 +178,7 @@ namespace FishBreeder.Core
             EggBoxes.Load(data);
             Milestones.Load(data);
             GameLog.Load(data);
+            PlayLog.Load(data);
             pending = data;
             return true;
         }
@@ -195,6 +197,7 @@ namespace FishBreeder.Core
         {
             string path = SlotPath(slot);
             if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(PlayLog.PathFor(slot))) File.Delete(PlayLog.PathFor(slot));
         }
 
         /// <summary>Deletes every save in this folder (developer use: editor saves from the editor).</summary>
@@ -264,6 +267,7 @@ namespace FishBreeder.Core
         void Update()
         {
             if (!ready) return;
+            PlayLog.Tick(Time.unscaledDeltaTime);
             if (!GameSettings.Autosave)
             {
                 timer = 0f;
@@ -369,6 +373,11 @@ namespace FishBreeder.Core
         public float[] complaintHeat = new float[0];
         public List<ReviewSave> reviews = new List<ReviewSave>();
         public List<KeyInt> latestWishes = new List<KeyInt>();
+
+        // Play log (balancing): real time played and today's counters
+        public double playSeconds;
+        public int[] playLogToday = new int[0];
+        public List<string> playLogUnlocks = new List<string>();
 
         // The public aquarium
         public AquariumSave aquarium;

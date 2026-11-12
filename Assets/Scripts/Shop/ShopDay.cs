@@ -156,6 +156,7 @@ namespace FishBreeder.Shop
             layout.BuildNavMesh();
             if (Aquarium != null) Aquarium.Open();
             Milestones.Add(MilestoneKind.OpenShop);
+            PlayLog.ShopOpened();
             Fx.Stamp("OPEN!", UiTheme.Leaf);
         }
 
@@ -172,6 +173,7 @@ namespace FishBreeder.Shop
             report.tanks = TimeStep.Run(layout.Tanks);
             // Nobody came in, so yesterday's complaints fade a little.
             Reputation.EndOfDay(0, null, 0f, null, report.day);
+            PlayLog.ShopClosed(0, 0, 0, 0f, true);
             StartEvening(report);
         }
 
@@ -192,6 +194,7 @@ namespace FishBreeder.Shop
             GameLog.Add("During the day in the tanks:");
             today.tanks = TimeStep.Run(layout.Tanks);
             Progression.Award(XpTrack.Shopkeeping, Mathf.RoundToInt(Balance.Data.progression.xpPerReviewStar * today.stars));
+            PlayLog.ShopClosed(today.visitors, today.fishSold, today.earnings, today.stars, false);
             var report = today;
             today = null;
             StartEvening(report);
@@ -212,7 +215,9 @@ namespace FishBreeder.Shop
             string night = TimeStep.Run(layout.Tanks);
             Research.OnNight();
             PublicAquarium.NewDay();
+            int endedDay = Economy.Day;
             Economy.NextDay();
+            PlayLog.EndOfDay(endedDay, layout.Tanks);
             Progression.NewDailyGoals();
             Phase = DayPhase.Morning;
             LastReport = new DayReport { day = Economy.Day, morning = true, tanks = night };
@@ -323,6 +328,7 @@ namespace FishBreeder.Shop
             int price = fish.Price;
             string name = $"{fish.FishName} the {fish.SpeciesLabel}";
             Finance.RecordSale(fish.SpeciesLabel, fish.Tank != null ? fish.Tank.Title : "?", price);
+            PlayLog.Sale(fish, price);
             fish.RemoveFromTank();
             Economy.Earn(price, $"sold {name}", MoneyKind.Sales);
             int tip = Mathf.RoundToInt(price * Perks.Value(PerkEffect.SaleTips));

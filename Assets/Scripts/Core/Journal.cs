@@ -64,6 +64,7 @@ namespace FishBreeder.Core
             unseen.Add(species.id);
             GameLog.Add($"New fish for your journal: the {species.displayName}!");
             Milestones.Report(MilestoneKind.DiscoverSpecies, discovered.Count);
+            PlayLog.Discovered(species.displayName);
             Fx.Discovery(species);
         }
     }

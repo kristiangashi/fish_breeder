@@ -119,7 +119,12 @@ namespace FishBreeder
                     Destroy(clutch.gameObject);
                     continue;
                 }
-                if (--clutch.StepsToHatch <= 0) born += clutch.Hatch();
+                if (--clutch.StepsToHatch <= 0)
+                {
+                    int hatched = clutch.Hatch();
+                    born += hatched;
+                    PlayLog.Born(hatched);
+                }
             }
             return born;
         }

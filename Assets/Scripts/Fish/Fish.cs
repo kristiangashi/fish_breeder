@@ -455,6 +455,7 @@ namespace FishBreeder
                     GameLog.Add($"{rarity} fry! {child.FishName}: {child.Phenotype.Describe()}.");
             }
             Progression.Count(GoalKind.BreedFish, born);
+            PlayLog.Born(born);
             ReportCrossBred(children);
             if (born > 0)
             {
@@ -477,6 +478,7 @@ namespace FishBreeder
             Reserved = false;
             if (Tank != null) Tank.AddCorpse(this);
             GameLog.Add($"{fishName} the {SpeciesLabel} died of {cause}.");
+            PlayLog.Death(this, cause);
             Fx.Text(transform.position + Vector3.up * 0.05f, "RIP", new Color(0.8f, 0.85f, 0.9f), 16f, 2f);
             Swimmer.enabled = false;
             Visual.ShowIllness(null, 0f);

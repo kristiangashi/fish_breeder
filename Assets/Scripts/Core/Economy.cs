@@ -115,12 +115,14 @@ namespace FishBreeder.Core
             if (settingUp)
             {
                 Earn(gift, "gift from Grandma", MoneyKind.Grandma);
+                PlayLog.Grandma(gift, false);
                 GameLog.Add($"Grandma sent {Format(gift)} with a note: \"I believe in you!\" You now have {Format(Money)}.");
                 GrandmaNote = $"Grandma sent {Format(gift)}";
             }
             else if (Money < store.brokeBelow)
             {
                 Earn(gift, "Grandma's rescue", MoneyKind.Grandma);
+                PlayLog.Grandma(gift, true);
                 GameLog.Add($"You were broke, so Grandma saved the day with {Format(gift)} to get you back on your feet. You now have {Format(Money)}.");
                 GrandmaNote = $"Grandma saved the day with {Format(gift)}";
             }

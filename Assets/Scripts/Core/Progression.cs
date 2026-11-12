@@ -103,6 +103,7 @@ namespace FishBreeder.Core
                 int points = track == XpTrack.Research ? 0 : Balance.Data.perkSettings.pointsPerLevel;
                 if (points > 0) unlocks.Insert(0, $"<color={UiTheme.SunHex}><b>{(points == 1 ? "a perk point" : points + " perk points")} (press P)</b></color>");
                 levelUps.Add(new LevelUp { track = track, level = level[t], unlocks = unlocks });
+                PlayLog.LevelUp(track, level[t], unlocks);
                 GameLog.Add($"{TrackName(track)} level {level[t]}!" + (unlocks.Count > 0 ? $" Unlocked: {string.Join(", ", unlocks)}." : ""));
             }
             if (level[t] >= Data.maxLevel) xp[t] = 0;

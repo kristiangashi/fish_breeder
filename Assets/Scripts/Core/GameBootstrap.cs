@@ -61,6 +61,7 @@ namespace FishBreeder.Core
             Journal.Reset();
             EggBoxes.Reset();
             Milestones.Reset();
+            PlayLog.Reset();
             // The picked save: everything but the store now, the store once it's built.
             SaveGame.UseSlot(slot);
             bool loaded = !isNew && SaveGame.LoadState();
@@ -91,6 +92,7 @@ namespace FishBreeder.Core
             gameObject.AddComponent<GameLogView>();
             if (loaded) SaveGame.LoadStore(store, shopDay);
             gameObject.AddComponent<AutoSave>().Initialize(store, shopDay);
+            PlayLog.StartSession(loaded);
             gameObject.AddComponent<PauseMenu>();
             int setup = Economy.DaysUntilOpening;
             if (loaded) GameLog.Add($"Welcome back! It's day {Economy.Day} and you have {Economy.Format(Economy.Money)}.");

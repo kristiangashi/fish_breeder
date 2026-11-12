@@ -1,0 +1,15 @@
+{
+  "_about": "Pacing targets: the day range (median run of the Cautious bot) each milestone should be reached in. Edit freely; the report marks each one early, on target or late.",
+  "targets": [
+    { "id": "fk3", "label": "Fishkeeping 3 (Uncommon eggs)", "metric": "fishkeeping", "atLeast": 3, "from": 5, "to": 8 },
+    { "id": "fk4", "label": "Fishkeeping 4 (breeder tanks)", "metric": "fishkeeping", "atLeast": 4, "from": 10, "to": 14 },
+    { "id": "firstSale", "label": "First fish sold", "metric": "soldTotal", "atLeast": 1, "from": 11, "to": 12 },
+    { "id": "rare", "label": "First Rare fish (Betta, Angelfish tier)", "metric": "bestRarity", "atLeast": 2, "from": 12, "to": 18 },
+    { "id": "money5k", "label": "$5,000 in the bank", "metric": "money", "atLeast": 5000, "from": 20, "to": 30 },
+    { "id": "fk8", "label": "Fishkeeping 8 (Rare eggs, wall aquarium)", "metric": "fishkeeping", "atLeast": 8, "from": 30, "to": 45 },
+    { "id": "fk10", "label": "Fishkeeping 10 (reef eggs)", "metric": "fishkeeping", "atLeast": 10, "from": 35, "to": 45 },
+    { "id": "fk15", "label": "Fishkeeping 15 (Legendary eggs)", "metric": "fishkeeping", "atLeast": 15, "from": 60, "to": 80 },
+    { "id": "fish1000", "label": "First $1,000+ fish", "metric": "bestFishValue", "atLeast": 1000, "from": 90, "to": 120 },
+    { "id": "fk45", "label": "Fishkeeping 45 (Ancient eggs)", "metric": "fishkeeping", "atLeast": 45, "from": 250, "to": 300 }
+  ]
+}

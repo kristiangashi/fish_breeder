@@ -159,37 +159,47 @@ def main():
                        f'<td>{statistics.median(d["deaths"] for d in last):g}</td><td>{sum(rescues)} in {sum(1 for x in rescues if x)} runs</td>'
                        f'<td>{broke}</td><td>{errors}</td><td>{secs * 1000:.0f} ms</td></tr>')
 
-    page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pacing Simulator Report</title>
+    notes = ""
+    if len(sys.argv) > 4:
+        notes = '<h2>What the bots found</h2><div class="notes">' + open(sys.argv[4], encoding="utf-8").read() + "</div>"
+    page = f"""<title>Pacing Simulator Report</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
-:root {{ --bg:#f7f8fa; --panel:#fff; --text:#1d2430; --muted:#5d6878; --line:#e3e7ee; --ok:#1f8a4c; --late:#c2412d; --early:#b07a10; }}
-@media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ --bg:#12161d; --panel:#1a2029; --text:#e6eaf0; --muted:#98a3b3; --line:#2b3340; --ok:#4cc17e; --late:#f07a62; --early:#e2b24a; }} }}
-:root[data-theme="dark"] {{ --bg:#12161d; --panel:#1a2029; --text:#e6eaf0; --muted:#98a3b3; --line:#2b3340; --ok:#4cc17e; --late:#f07a62; --early:#e2b24a; }}
-body {{ margin:0; background:var(--bg); color:var(--text); font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; }}
-main {{ max-width:1180px; margin:0 auto; padding:24px 16px 48px; }}
-h1 {{ font-size:24px; margin:0 0 4px; }} h2 {{ font-size:18px; margin:32px 0 10px; }}
-p.sub {{ color:var(--muted); margin:0 0 16px; }}
+/* One column of findings, a milestone table, then a grid of small-multiple charts. */
+:root {{ --bg:#f4f7f8; --panel:#ffffff; --text:#14232b; --muted:#566a74; --line:#dde5e9; --ok:#1f8a4c; --late:#c2412d; --early:#a8740c;
+  --display:"Space Grotesk", "Segoe UI", sans-serif; --body:Inter, "Segoe UI", system-ui, sans-serif; }}
+@media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{ --bg:#0f171b; --panel:#162228; --text:#e3edf1; --muted:#93a8b2; --line:#26363e; --ok:#4cc17e; --late:#f07a62; --early:#e2b24a; color-scheme:dark; }} }}
+:root[data-theme="dark"] {{ --bg:#0f171b; --panel:#162228; --text:#e3edf1; --muted:#93a8b2; --line:#26363e; --ok:#4cc17e; --late:#f07a62; --early:#e2b24a; color-scheme:dark; }}
+body {{ background:var(--bg); color:var(--text); font:15px/1.5 var(--body); }}
+main {{ max-width:1180px; margin:0 auto; padding-block:24px 48px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }}
+h1, h2 {{ font-family:var(--display); text-wrap:balance; }}
+h1 {{ font-size:26px; margin:0 0 4px; }} h2 {{ font-size:18px; margin:32px 0 10px; }}
+p.sub {{ color:var(--muted); margin:0 0 16px; max-width:70ch; }}
+.notes {{ max-width:72ch; }} .notes li {{ margin-bottom:8px; }}
 .legend {{ display:flex; flex-wrap:wrap; gap:14px; margin:8px 0 4px; }} .key i {{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px; }}
-.charts {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }}
-.chart {{ margin:0; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px 4px; }}
+.charts {{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:14px; }}
+.chart {{ margin:0; min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px 4px; }}
 .chart figcaption {{ font-weight:600; font-size:14px; margin-bottom:4px; }}
-svg {{ width:100%; height:auto; display:block; }} .grid {{ stroke:var(--line); }} .tick {{ fill:var(--muted); font-size:11px; }}
-.table {{ overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:10px; }}
-table {{ border-collapse:collapse; width:100%; font-size:14px; }} th, td {{ padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }}
-thead th {{ color:var(--muted); font-weight:600; }} tbody th {{ font-weight:500; }}
+svg {{ width:100%; height:auto; display:block; }} .grid {{ stroke:var(--line); }} .tick {{ fill:var(--muted); font-size:11px; font-family:var(--body); }}
+.table {{ overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:8px; }}
+table {{ border-collapse:collapse; width:100%; font-size:14px; font-variant-numeric:tabular-nums; }} th, td {{ padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }}
+thead th {{ color:var(--muted); font-weight:600; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }} tbody th {{ font-weight:500; }}
 td.ok {{ color:var(--ok); font-weight:600; }} td.late {{ color:var(--late); font-weight:600; }} td.early {{ color:var(--early); font-weight:600; }} td.none, td.target {{ color:var(--muted); }}
-</style></head><body><main>
+</style>
+<main>
 <h1>Pacing simulator</h1>
 <p class="sub">{len(runs)} games played by bots through the real game code, {days} days each. Lines are each bot's median run; the shaded band is the middle half of its runs.</p>
-<div class="legend">{legend}</div>
+{notes}
 <h2>Milestones: median first day</h2>
-<p class="sub">Targets are for the Cautious bot: <span style="color:var(--ok)">on target</span>, <span style="color:var(--early)">early</span>, <span style="color:var(--late)">late</span>.</p>
+<p class="sub">Targets are for the Cautious bot: <span style="color:var(--ok)">on target</span>, <span style="color:var(--early)">early</span>, <span style="color:var(--late)">late</span>. "Not reached" means no run got there in {days} days.</p>
 <div class="table"><table><thead><tr><th>Milestone</th><th>Target</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
 <h2>Curves</h2>
+<div class="legend">{legend}</div>
 <div class="charts">{charts}</div>
 <h2>End of the run (medians)</h2>
 <div class="table"><table><thead><tr><th>Bot</th><th>Money</th><th>Fishkeeping / Shopkeeping</th><th>Deaths</th><th>Grandma rescues</th><th>Runs ending broke</th><th>Errors</th><th>Time per day</th></tr></thead><tbody>{''.join(trouble)}</tbody></table></div>
-</main></body></html>"""
+</main>"""
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(page)
 

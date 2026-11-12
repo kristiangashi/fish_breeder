@@ -1,0 +1,1269 @@
+[
+ {
+  "round": "1",
+  "path": "progression.xpForLevel2",
+  "old": 100,
+  "new": 200,
+  "why": "Fishkeeping 10 came on day 11 and 15 by day 24; double the first step so level 10 lands near day 25 (rule 1) and level-gated boxes line up with rules 2 and 3"
+ },
+ {
+  "round": "1",
+  "path": "progression.xpGrowthPerLevel",
+  "old": 1.08,
+  "new": 1.09,
+  "why": "Same: each level a little steeper so mid levels (15+) don't arrive in the first month"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[id=Uncommon].unlockLevel",
+  "old": 3,
+  "new": 8,
+  "why": "Rule 2: Uncommon eggs unlocked at Fishkeeping 3 (day 4); with the new curve level 8 is about day 20, after the lucky-find window"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[id=Rare].unlockLevel",
+  "old": 8,
+  "new": 12,
+  "why": "Rule 3: Rare eggs at level 8 would come before day 30 on the new curve; level 12 is about day 30"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[id=WildTetra].unlockLevel",
+  "old": 1,
+  "new": 12,
+  "why": "Rule 3: the $220 wild tetra box was buyable from day 1 and hatches Rare tetras"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[FancyGoldfish].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[FancyGoldfish].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[TigerBarb].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[TigerBarb].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[Corydoras].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[Corydoras].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[RedTailShark].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[RedTailShark].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[SilverDollar].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[SilverDollar].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[GoldenMbuna].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[GoldenMbuna].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[Pumpkinseed].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[Pumpkinseed].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[ZebraLoach].fromDay",
+  "old": 0,
+  "new": 11,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Common].hatch[ZebraLoach].weight",
+  "old": 1.9,
+  "new": 0.8,
+  "why": "Rule 2: no Uncommon fry before the first opening (day 11); after it, rarer luck (about 8% of Common boxes instead of 30%)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[FancyGoldfish].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[TigerBarb].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[Corydoras].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[RedTailShark].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[SilverDollar].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[GoldenMbuna].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[Pumpkinseed].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[ZebraLoach].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[BloodfinTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[SerpaeTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[XRayTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[BlackSkirtTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[LemonTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[BuenosAiresTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[PenguinTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[GlowlightTetra].fromDay",
+  "old": 0,
+  "new": 20,
+  "why": "Rule 2: Uncommons from other boxes only after the lucky-find window (day 20)"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[Angelfish].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[Betta].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[Oscar].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[GreenTerror].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[BlueAcara].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[TexasCichlid].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[JackDempsey].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Uncommon].hatch[ClownLoach].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[Angelfish].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[Betta].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[Oscar].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[GreenTerror].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[BlueAcara].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[ArcticGrayling].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[TexasCichlid].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[Frontosa].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[JackDempsey].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[PeacockBass].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Rare].hatch[ClownLoach].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[RedeyeTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[BleedingHeartTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[EmperorTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[FlameTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[CongoTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[BucktoothTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[RubyTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[SilvertipTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[RummyNoseTetra].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[CrimsonJewelCichlid].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[WildTetra].hatch[SilverFlamefin].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Legendary].hatch[ArcticGrayling].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Legendary].hatch[Frontosa].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[Legendary].hatch[PeacockBass].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefUncommon].hatch[WatchmanGoby].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefUncommon].hatch[RoyalGramma].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[Clownfish].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[WatchmanGoby].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[RoyalGramma].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[BanggaiCardinal].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[CoralBeauty].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[YellowTang].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[PicassoTrigger].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[BlueTang].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefRare].hatch[ClownTrigger].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[Clownfish].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[BanggaiCardinal].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[CoralBeauty].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[YellowTang].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[PicassoTrigger].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[BlueTang].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "supplier.eggTiers[ReefLegendary].hatch[ClownTrigger].fromDay",
+  "old": 0,
+  "new": 30,
+  "why": "Rule 3: no Rare or rarer fish from any box before day 30, whatever the level"
+ },
+ {
+  "round": "1",
+  "path": "shop.minPriceTolerance",
+  "old": 0.95,
+  "new": 1.1,
+  "why": "Rule 1: shoppers refused fish at the appraised price ('Prices too high' 25k complaints); appraisal leaves out health, so true value runs below it"
+ },
+ {
+  "round": "1",
+  "path": "shop.maxPriceTolerance",
+  "old": 1.35,
+  "new": 1.5,
+  "why": "Same, keeping the 0.4 spread"
+ },
+ {
+  "round": "1",
+  "path": "shop.purchaseChance",
+  "old": 0.1,
+  "new": 0.15,
+  "why": "Rule 1: about 1 fish sold a day with a full For Sale tank; Commons can't pay their way"
+ },
+ {
+  "round": "1",
+  "path": "supplier.medicinePrice",
+  "old": 15,
+  "new": 8,
+  "why": "Rule 1: care (mostly medicine) cost 2.4x sales for the Cautious bot"
+ },
+ {
+  "round": "1",
+  "path": "supplier.waterTreatmentPrice",
+  "old": 5,
+  "new": 3,
+  "why": "Rule 1: same, water treatment is the other care cost"
+ },
+ {
+  "round": "1",
+  "path": "rules.baseInfectionChancePerMeal",
+  "old": 0.01,
+  "new": 0.006,
+  "why": "Rule 5: Commons should be easy early; infections (Aqua Flu, White Spot) were a top killer and the main care cost"
+ },
+ {
+  "round": "1",
+  "path": "algae.cleanAlgaeRemoved",
+  "old": 0.02,
+  "new": 0.04,
+  "why": "Rule 4: a wipe took off 2%, too little to matter; 'Dirty water and algae' was the top complaint by far"
+ },
+ {
+  "round": "1",
+  "path": "algae.cleanBonusPerFishkeepingLevel",
+  "old": 0.02,
+  "new": 0.06,
+  "why": "Rule 4: wipes get stronger with level (1.5x at level 9, about day 20) so algae and water ease with time"
+ },
+ {
+  "round": "1",
+  "path": "algae.extraCleanEveryFishkeepingLevels",
+  "old": 0,
+  "new": 8,
+  "why": "Rule 4: a third wipe per session from level 9 (about day 20)"
+ },
+ {
+  "round": "1",
+  "path": "timeStep.wasteQualityLossPerFish",
+  "old": 0.01,
+  "new": 0.015,
+  "why": "Rule 4: water was 91-100% all game, not a challenge early on; more waste per fish, eased later by the stronger wipes"
+ },
+ {
+  "round": "2",
+  "path": "supplier.filters[Sponge filter].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.filters[Hang-on-back filter].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.filters[Canister filter].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.filters[Sump system].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.filters[Plant-room sump].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.filters[Drum filter and UV system].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.heaters[Basic heater].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.heaters[Adjustable heater].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.heaters[Titanium heater].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.heaters[Smart heater controller].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.heaters[Twin inline heaters].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.heaters[Heat exchanger with controller].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.bubblers[Air stone].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.bubblers[Twin-outlet air pump].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.bubblers[Silent air pump].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.bubblers[Oxygen reactor].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.bubblers[Air blower and manifold].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.bubblers[Oxygen injection system].breakChancePerStep",
+  "old": 0.01,
+  "new": 0.004,
+  "why": "Rule 1: by day 40 about three pieces of gear broke every time step; repairs are booked as care and ate the Commons' profit"
+ },
+ {
+  "round": "2",
+  "path": "supplier.repairWearRemoved",
+  "old": 0.25,
+  "new": 0.5,
+  "why": "Rule 1: a repair only took off a quarter of the wear, so the same filter broke again the next step"
+ },
+ {
+  "round": "2",
+  "path": "progression.dailyGoalXpPerLevel",
+  "old": 12,
+  "new": 6,
+  "why": "Fishkeeping 15 came on day 36 (target 50-80): daily goals paid 100 + 12 per level (292 XP at level 16), most of the mid-game XP"
+ },
+ {
+  "round": "2",
+  "path": "algae.cleanAlgaeRemoved",
+  "old": 0.04,
+  "new": 0.035,
+  "why": "Rule 4: algae should be more of a fight in the first two weeks"
+ },
+ {
+  "round": "2",
+  "path": "algae.cleanBonusPerFishkeepingLevel",
+  "old": 0.06,
+  "new": 0.1,
+  "why": "Rule 4: algae stayed flat (16% early, 17% at days 20-30); wipes now almost double in strength by level 10 (about day 21)"
+ },
+ {
+  "round": "2",
+  "path": "algae.extraCleanEveryFishkeepingLevels",
+  "old": 8,
+  "new": 6,
+  "why": "Rule 4: a third wipe from level 7 and a fourth from 13, so tanks get easier to keep clean as you level"
+ },
+ {
+  "round": "2",
+  "path": "timeStep.wasteQualityLossPerFish",
+  "old": 0.015,
+  "new": 0.02,
+  "why": "Rule 4: early water was 86%, still easy; more waste per fish early, which the level-scaled wipes take care of later"
+ },
+ {
+  "round": "2",
+  "path": "species[FancyGoldfish].tempMin..tempMax",
+  "old": "18..23",
+  "new": "18.5..22.5",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[TigerBarb].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.15..7.35",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[Corydoras].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.15..7.35",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[SilverDollar].phMin..phMax",
+  "old": "5.5..7",
+  "new": "5.65..6.85",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[BloodfinTetra].tempMin..tempMax",
+  "old": "18..28",
+  "new": "21.0..25.0",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[BloodfinTetra].phMin..phMax",
+  "old": "6..8",
+  "new": "6.4..7.6",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[SerpaeTetra].tempMin..tempMax",
+  "old": "22..27",
+  "new": "22.5..26.5",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[SerpaeTetra].phMin..phMax",
+  "old": "5..7.5",
+  "new": "5.65..6.85",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[XRayTetra].phMin..phMax",
+  "old": "6..8",
+  "new": "6.4..7.6",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[BlackSkirtTetra].tempMin..tempMax",
+  "old": "20..26",
+  "new": "21.0..25.0",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[BlackSkirtTetra].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.15..7.35",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[LemonTetra].tempMin..tempMax",
+  "old": "22..28",
+  "new": "23.0..27.0",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[LemonTetra].phMin..phMax",
+  "old": "5.5..8",
+  "new": "6.15..7.35",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[BuenosAiresTetra].tempMin..tempMax",
+  "old": "18..28",
+  "new": "21.0..25.0",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[BuenosAiresTetra].phMin..phMax",
+  "old": "5.8..8.5",
+  "new": "6.55..7.75",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[PenguinTetra].tempMin..tempMax",
+  "old": "22..28",
+  "new": "23.0..27.0",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[PenguinTetra].phMin..phMax",
+  "old": "5.8..8.5",
+  "new": "6.55..7.75",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[GlowlightTetra].phMin..phMax",
+  "old": "5.5..7.5",
+  "new": "5.9..7.1",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[Pumpkinseed].tempMin..tempMax",
+  "old": "15..24",
+  "new": "17.5..21.5",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[Pumpkinseed].phMin..phMax",
+  "old": "6.5..8",
+  "new": "6.65..7.85",
+  "why": "Rule 5: Uncommons died no more often than Commons (2.0 vs 1.7 per 100 fish-days); a narrower comfort range makes a mixed or basic tank a struggle"
+ },
+ {
+  "round": "2",
+  "path": "species[Angelfish].tempMin..tempMax",
+  "old": "25..29",
+  "new": "25.75..28.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[Angelfish].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.3..7.2",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[Betta].tempMin..tempMax",
+  "old": "25..28",
+  "new": "25.25..27.75",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[Betta].phMin..phMax",
+  "old": "6.5..7.5",
+  "new": "6.55..7.45",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[Oscar].tempMin..tempMax",
+  "old": "24..27",
+  "new": "24.25..26.75",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[Oscar].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.3..7.2",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[GreenTerror].tempMin..tempMax",
+  "old": "21..25",
+  "new": "21.75..24.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[GreenTerror].phMin..phMax",
+  "old": "6.5..8",
+  "new": "6.8..7.7",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[BlueAcara].tempMin..tempMax",
+  "old": "23..27",
+  "new": "23.75..26.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[BlueAcara].phMin..phMax",
+  "old": "6.5..7.5",
+  "new": "6.55..7.45",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[RedeyeTetra].tempMin..tempMax",
+  "old": "22..28",
+  "new": "23.75..26.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[RedeyeTetra].phMin..phMax",
+  "old": "5.5..8.5",
+  "new": "6.55..7.45",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[BleedingHeartTetra].tempMin..tempMax",
+  "old": "22..28",
+  "new": "23.75..26.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[BleedingHeartTetra].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.3..7.2",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[EmperorTetra].tempMin..tempMax",
+  "old": "23..27",
+  "new": "23.75..26.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[EmperorTetra].phMin..phMax",
+  "old": "5..7.8",
+  "new": "5.95..6.85",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[FlameTetra].tempMin..tempMax",
+  "old": "22..28",
+  "new": "23.75..26.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[FlameTetra].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.3..7.2",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[SilvertipTetra].tempMin..tempMax",
+  "old": "22..28",
+  "new": "23.75..26.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[SilvertipTetra].phMin..phMax",
+  "old": "6..8",
+  "new": "6.55..7.45",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[RummyNoseTetra].tempMin..tempMax",
+  "old": "24..27",
+  "new": "24.25..26.75",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[RummyNoseTetra].phMin..phMax",
+  "old": "5.5..7",
+  "new": "5.8..6.7",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[TexasCichlid].tempMin..tempMax",
+  "old": "21..27",
+  "new": "22.75..25.25",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[TexasCichlid].phMin..phMax",
+  "old": "6.5..8",
+  "new": "6.8..7.7",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[JackDempsey].tempMin..tempMax",
+  "old": "22..29",
+  "new": "24.25..26.75",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[JackDempsey].phMin..phMax",
+  "old": "6.5..8",
+  "new": "6.8..7.7",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[ClownLoach].tempMin..tempMax",
+  "old": "25..30",
+  "new": "26.25..28.75",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "2",
+  "path": "species[ClownLoach].phMin..phMax",
+  "old": "6..7.5",
+  "new": "6.3..7.2",
+  "why": "Rule 5: Rares should need good gear: the basic heater drifts 1.5 C, more than a Rare's comfort range allows"
+ },
+ {
+  "round": "3",
+  "path": "supplier.filters[name=Sponge filter].maxBreakChance",
+  "old": 0.3,
+  "new": 0.15,
+  "why": "Rule 1: repairs were still about 40% of care spending; the cheapest gear could break 30% of time steps. Better gear stays more reliable, so upgrading still pays"
+ },
+ {
+  "round": "3",
+  "path": "supplier.heaters[name=Basic heater].maxBreakChance",
+  "old": 0.3,
+  "new": 0.15,
+  "why": "Rule 1: same as the sponge filter"
+ },
+ {
+  "round": "3",
+  "path": "supplier.bubblers[name=Air stone].maxBreakChance",
+  "old": 0.3,
+  "new": 0.15,
+  "why": "Rule 1: same as the sponge filter"
+ },
+ {
+  "round": "3",
+  "path": "supplier.heaters[name=Basic heater].breakChance",
+  "old": 0.03,
+  "new": 0.02,
+  "why": "Rule 1: the basic heater started out the most fragile piece (3% a step)"
+ },
+ {
+  "round": "3",
+  "path": "shop.purchaseChance",
+  "old": 0.15,
+  "new": 0.18,
+  "why": "Rule 1: still only 7% of visitors bought a fish; Commons sell for $10-20, so the pipeline needs volume"
+ },
+ {
+  "round": "3",
+  "path": "shop.fewFishComplaintChance",
+  "old": 0.5,
+  "new": 0.25,
+  "why": "Rule 1: 'Not enough fish for sale' became the second complaint and kept reputation at zero, which cuts visitors and what shoppers will pay"
+ },
+ {
+  "round": "3",
+  "path": "algae.cleanAlgaeRemoved",
+  "old": 0.035,
+  "new": 0.025,
+  "why": "Rule 4: algae didn't ease (16% before and after day 20); weaker wipes at low level..."
+ },
+ {
+  "round": "3",
+  "path": "algae.cleanBonusPerFishkeepingLevel",
+  "old": 0.1,
+  "new": 0.2,
+  "why": "Rule 4: ...and much stronger ones by level 10 (2.8x), so keeping algae down gets clearly easier around day 20"
+ },
+ {
+  "round": "3",
+  "path": "algae.cleanQualityRestored",
+  "old": 0.15,
+  "new": 0.18,
+  "why": "Rule 5: harder water (rule 4) made 'poor water' the top killer of Commons (1.07 deaths per 100 fish-days, target under 1); a wipe freshens the water a bit more"
+ },
+ {
+  "round": "3",
+  "path": "progression.xpGrowthPerLevel",
+  "old": 1.09,
+  "new": 1.1,
+  "why": "Fishkeeping 15 still came on day 40 (target 50-80)"
+ },
+ {
+  "round": "3",
+  "path": "progression.dailyGoalXp",
+  "old": 100,
+  "new": 80,
+  "why": "Same: daily goals are still the biggest single XP source"
+ }
+]

@@ -63,6 +63,15 @@ namespace FishBreeder.Sim
         public int GrandmaRescues { get; private set; }
         public List<string> Events { get; } = new List<string>();
         public Dictionary<string, int> DeathCauses { get; } = new Dictionary<string, int>();
+        readonly int[] deathsByRarity = new int[8];
+        /// <summary>Deaths so far of this rarity (Rare counts Rare and everything rarer).</summary>
+        public int DeathsOfRarity(int rarity)
+        {
+            if (rarity < 2) return deathsByRarity[rarity];
+            int n = 0;
+            for (int r = rarity; r < deathsByRarity.Length; r++) n += deathsByRarity[r];
+            return n;
+        }
 
         public PacingBot(BotStyle style, StoreLayout store, int seed)
         {
@@ -178,6 +187,7 @@ namespace FishBreeder.Sim
                     if (deadSeen.Add(corpse))
                     {
                         Deaths++;
+                        if (corpse.Species != null) deathsByRarity[Mathf.Clamp((int)corpse.Species.rarity, 0, deathsByRarity.Length - 1)]++;
                         string cause = string.IsNullOrEmpty(corpse.CauseOfDeath) ? "unknown" : corpse.CauseOfDeath;
                         DeathCauses.TryGetValue(cause, out int n);
                         DeathCauses[cause] = n + 1;
@@ -192,10 +202,16 @@ namespace FishBreeder.Sim
             {
                 var tank = t.Tank;
                 if (tank.Corpses.Count > 0 && Does()) PlayerActions.RemoveDead(t);
-                if (tank.Residents.Count == 0) continue;
+                // An empty tank still goes green and murky, and shoppers look in it too.
+                if (tank.Residents.Count == 0)
+                {
+                    if (tank.Algae > 0.3f && tank.CleansLeft > 0 && Does()) PlayerActions.Clean(t);
+                    if (tank.WaterQuality < 0.55f && Does()) PlayerActions.TreatWater(t);
+                    continue;
+                }
                 if (!tank.FedSinceTimeStep && Does()) PlayerActions.Feed(t, PickFood(t));
                 if (tank.InBloom) { if (Does()) PlayerActions.DeepClean(t); }
-                else while (tank.Algae > 0.2f && tank.CleansLeft > 0 && Does()) if (!PlayerActions.Clean(t)) break;
+                else while (tank.Algae > 0.12f && tank.CleansLeft > 0 && Does()) if (!PlayerActions.Clean(t)) break;
                 if ((tank.HasPests || tank.WaterQuality < 0.55f) && Does()) PlayerActions.TreatWater(t);
                 foreach (var kind in Equipment.Kinds)
                 {
@@ -208,6 +224,16 @@ namespace FishBreeder.Sim
 
         void Medicate(StoreTank t)
         {
+            // With a quarantine tank, the sick go there to be dosed, so the healthy aren't stressed and damaged by medicine they don't need.
+            if (t.Role != TankRole.Quarantine)
+            {
+                StoreTank quarantine = null;
+                foreach (var other in OwnTanks()) if (other.Role == TankRole.Quarantine && other.Tank.IsSaltwater == t.Tank.IsSaltwater) quarantine = other;
+                if (quarantine != null)
+                    foreach (var fish in new List<Fish>(t.Tank.Residents))
+                        if (!fish.IsDead && fish.Health.IsSick && fish.Health.Disease.cure != Health.Medicine.None && quarantine.Tank.FreeSpaceBeforeLimit > 0 && Does())
+                            PlayerActions.Move(fish, quarantine, Mathf.Max(1, fish.Price));
+            }
             var cures = new HashSet<Health.Medicine>();
             foreach (var fish in t.Tank.Residents)
                 if (!fish.IsDead && fish.Health.IsSick && fish.Health.Disease.cure != Health.Medicine.None) cures.Add(fish.Health.Disease.cure);
@@ -360,7 +386,7 @@ namespace FishBreeder.Sim
             }
         }
 
-        static readonly TankRole[] ExpandOrder = { TankRole.ForSale, TankRole.Breeder, TankRole.ForSale, TankRole.Display, TankRole.Quarantine };
+        static readonly TankRole[] ExpandOrder = { TankRole.ForSale, TankRole.Breeder, TankRole.Quarantine, TankRole.ForSale, TankRole.Display };
 
         void Expand()
         {

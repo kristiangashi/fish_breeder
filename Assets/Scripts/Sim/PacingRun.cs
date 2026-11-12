@@ -33,6 +33,15 @@ namespace FishBreeder.Sim
             /// <summary>Shoppers' complaints that day, "label: count; ...".</summary>
             public string complaints;
             public float stars;
+            /// <summary>Living Uncommon / Rare-or-better fish, and how many of each have died so far.</summary>
+            public int uncommon, rare, uncommonDeaths, rareDeaths;
+            /// <summary>Average algae (0..1) and water quality (0..1) over tanks with fish; tanks in bloom.</summary>
+            public float algae, water;
+            /// <summary>The worst tank: most algae, and lowest water health (what shoppers judge as dirty).</summary>
+            public float maxAlgae, minWater;
+            public int blooms;
+            /// <summary>Yesterday's money in from sales and out by kind (care = medicine + water treatment).</summary>
+            public int salesIn, foodOut, careOut, eggsOut, gearOut, net;
         }
 
         [Serializable]
@@ -232,7 +241,36 @@ namespace FishBreeder.Sim
                             row.bestFish = fish.Phenotype.SpeciesName;
                         }
                         row.bestRarity = Mathf.Max(row.bestRarity, (int)fish.Species.rarity);
+                        if (fish.Species.rarity == Genetics.SpeciesRarity.Uncommon) row.uncommon++;
+                        else if (fish.Species.rarity >= Genetics.SpeciesRarity.Rare) row.rare++;
                     }
+                row.uncommonDeaths = bot.DeathsOfRarity(1);
+                row.rareDeaths = bot.DeathsOfRarity(2);
+                int withFish = 0;
+                foreach (var t in store.Tanks)
+                {
+                    if (t.Role == TankRole.Exhibit || t.Role == TankRole.Holding || t.Tank.Residents.Count == 0) continue;
+                    withFish++;
+                    row.algae += t.Tank.Algae;
+                    row.water += t.Tank.WaterQuality;
+                    if (t.Tank.InBloom) row.blooms++;
+                    row.maxAlgae = Mathf.Max(row.maxAlgae, t.Tank.Algae);
+                    row.minWater = withFish == 1 ? t.Tank.WaterHealth : Mathf.Min(row.minWater, t.Tank.WaterHealth);
+                }
+                if (withFish > 0) { row.algae /= withFish; row.water /= withFish; }
+                var books = Finance.Recent(2);
+                if (books.Count > 1)
+                {
+                    var y = books[0];
+                    row.salesIn = y.income[(int)MoneyKind.Sales];
+                    row.foodOut = y.spending[(int)MoneyKind.Food];
+                    row.careOut = y.spending[(int)MoneyKind.Care];
+                    row.eggsOut = y.spending[(int)MoneyKind.FishAndEggs];
+                    row.gearOut = y.spending[(int)MoneyKind.Equipment];
+                    int inn = 0, outt = 0;
+                    for (int k = 0; k < Finance.KindCount; k++) { inn += y.income[k]; outt += y.spending[k]; }
+                    row.net = inn - outt;
+                }
                 return row;
             }
         }

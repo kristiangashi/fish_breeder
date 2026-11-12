@@ -10,6 +10,8 @@ import json
 import statistics
 import sys
 
+import rules as rulebook
+
 BOT_COLORS = {"Cautious": "#2a78d6", "Greedy": "#d6542a", "Breeder": "#2a9d6a", "Careless": "#9a5ad6"}
 FALLBACK = ["#c79a1e", "#3aa0b8", "#b8476e"]
 
@@ -38,6 +40,7 @@ def load(path):
             sold += d.get("sold", 0)
             d["soldTotal"] = sold
             d["reputation"] = round(d.get("reputation", 0) * 5, 2)
+        rulebook.enrich(run)
     return runs
 
 
@@ -116,7 +119,8 @@ def chart(title, unit, data, colors):
 
 def main():
     runs_path, out_path = sys.argv[1], sys.argv[2]
-    targets = json.load(open(sys.argv[3], encoding="utf-8"))["targets"] if len(sys.argv) > 3 else []
+    spec = json.load(open(sys.argv[3], encoding="utf-8")) if len(sys.argv) > 3 else {}
+    targets = spec.get("targets", [])
     runs = [r for r in load(runs_path) if r["days"]]
     bots = by_bot(runs)
     order = [b for b in BOT_COLORS if b in bots] + [b for b in bots if b not in BOT_COLORS]
@@ -144,6 +148,18 @@ def main():
             share = "" if len(got) == len(firsts) else f' <small>({len(got)}/{len(firsts)} runs)</small>'
             cells.append(f'<td class="{cls}">day {med:g}{share}</td>')
         rows.append(f'<tr><th>{html.escape(t["label"])}</th><td class="target">days {t["from"]} to {t["to"]}</td>{"".join(cells)}</tr>')
+
+    # Kristian's rules, pass or fail.
+    rule_rows = []
+    for rule in spec.get("rules", []):
+        ok, text = rulebook.check(rule, bots)
+        cls, mark = ("ok", "Pass") if ok else ("none", "n/a") if ok is None else ("late", "Fail")
+        rule_rows.append(f'<tr><td>{rule["rule"]}</td><th style="white-space:normal">{html.escape(rule["label"])}</th><td>{html.escape(rule.get("bot", "Cautious"))}</td><td class="{cls}">{mark}</td><td style="white-space:normal">{html.escape(text)}</td></tr>')
+    rules_html = ""
+    if rule_rows:
+        passed = sum(1 for r in rule_rows if ">Pass<" in r)
+        rules_html = (f'<h2>Pacing rules: {passed} of {len(rule_rows)} pass</h2><div class="table"><table><thead><tr><th>Rule</th><th>Check</th><th>Bot</th><th>Result</th><th>Measured</th></tr></thead>'
+                      f'<tbody>{"".join(rule_rows)}</tbody></table></div>')
 
     # Trouble: rescues, errors, money at the end.
     trouble = []
@@ -191,6 +207,7 @@ td.ok {{ color:var(--ok); font-weight:600; }} td.late {{ color:var(--late); font
 <h1>Pacing simulator</h1>
 <p class="sub">{len(runs)} games played by bots through the real game code, {days} days each. Lines are each bot's median run; the shaded band is the middle half of its runs.</p>
 {notes}
+{rules_html}
 <h2>Milestones: median first day</h2>
 <p class="sub">Targets are for the Cautious bot: <span style="color:var(--ok)">on target</span>, <span style="color:var(--early)">early</span>, <span style="color:var(--late)">late</span>. "Not reached" means no run got there in {days} days.</p>
 <div class="table"><table><thead><tr><th>Milestone</th><th>Target</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>

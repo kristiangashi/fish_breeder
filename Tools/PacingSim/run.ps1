@@ -2,11 +2,11 @@
 # writes a report. Runs on a copy of the project (in %LOCALAPPDATA%\FishBreederPacing) with its own
 # product name, so the Unity editor can stay open and the real saves are never touched.
 #
-#   powershell -File Tools/PacingSim/run.ps1 -Days 120 -Seeds 10 -Bots Cautious,Greedy,Breeder,Careless
+#   powershell -File Tools/PacingSim/run.ps1 -Days 120 -Seeds 10 -Bots Cautious,Greedy,Breeder,Careless,Mixer
 param(
     [int]$Days = 120,
     [int]$Seeds = 10,
-    [string]$Bots = "Cautious,Greedy,Breeder,Careless",
+    [string]$Bots = "Cautious,Greedy,Breeder,Careless,Mixer",
     [int]$FirstSeed = 1,
     [string]$Out = "",
     [string]$Unity = "C:\Program Files\Unity\Hub\Editor\6000.2.12f1\Editor\Unity.exe"

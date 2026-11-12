@@ -689,6 +689,8 @@ namespace FishBreeder.Core
         [Range(0f, 1f)] public float deathChanceAtZeroHealth = 0.7f;
         [Tooltip("Extra water quality lost per time step for each fish over the tank's limit.")]
         public float overcrowdedWastePerFish = 0.02f;
+        [Tooltip("Extra water quality lost per time step for each fish (counted as tiny fish, algae eaters left out) beyond what the tank's working filter handles. The soft fish limit: past the filter's limit, wipes can't keep up.")]
+        public float overFilterQualityLossPerFish = 0.03f;
         [Tooltip("Illness chances go up by this share for each fish over the tank's limit.")]
         public float overcrowdedIllnessPerFish = 0.1f;
     }

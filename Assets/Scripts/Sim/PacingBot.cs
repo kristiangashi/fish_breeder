@@ -26,9 +26,12 @@ namespace FishBreeder.Sim
         public bool bestEggs;
         /// <summary>Upgrades filters and heaters as soon as better ones unlock.</summary>
         public bool upgradesGear;
+        /// <summary>Sets up cross-breeding pairs (the most valuable mix it can make) in its breeder tanks, and stocks the For Sale tanks with its most valuable fish first.</summary>
+        public bool mixes;
 
         public static readonly BotStyle[] All =
         {
+            new BotStyle { name = "Mixer", care = 1f, markup = 1.05f, reserve = 200, tankCushion = 2f, keepPerSpecies = 2, bestEggs = true, mixes = true },
             new BotStyle { name = "Cautious", care = 1f, markup = 1f, reserve = 300, tankCushion = 3f, keepPerSpecies = 2 },
             new BotStyle { name = "Greedy", care = 0.9f, markup = 1.25f, reserve = 50, tankCushion = 1.2f, keepPerSpecies = 0, bestEggs = true },
             new BotStyle { name = "Breeder", care = 1f, markup = 1.05f, reserve = 200, tankCushion = 2f, keepPerSpecies = 4, bestEggs = true, upgradesGear = true },
@@ -56,6 +59,8 @@ namespace FishBreeder.Sim
         /// <summary>Days each fish has been on sale at its current price, to mark down what doesn't sell.</summary>
         readonly Dictionary<Fish, int> onSale = new Dictionary<Fish, int>();
         readonly HashSet<Fish> deadSeen = new HashSet<Fish>();
+        /// <summary>The mixer's cross-breeding parents: never sent to the For Sale tanks.</summary>
+        readonly HashSet<Fish> crossParents = new HashSet<Fish>();
 
         public string Name => style.name;
         public int Deaths { get; private set; }
@@ -67,6 +72,7 @@ namespace FishBreeder.Sim
         /// <summary>The to-do list's water line: below it a tank needs wiping.</summary>
         const float ChoreWater = 0.75f;
         /// <summary>Running counts over tank care sessions (one per tank with fish per closed session).</summary>
+        public int WipesOverloaded;
         public int Sessions, ChoreSessions, Wipes, OverloadedSessions, OverwhelmedOverloaded, OverwhelmedWithinFilter;
         /// <summary>Deaths so far of this rarity (Rare counts Rare and everything rarer).</summary>
         public int DeathsOfRarity(int rarity)
@@ -96,6 +102,7 @@ namespace FishBreeder.Sim
             Care();
             KeepFoodStocked();
             Equip();
+            if (style.mixes) PairForMixes();
             SortFish();
             Expand();
             Equip();
@@ -229,6 +236,7 @@ namespace FishBreeder.Sim
                     {
                         if (!PlayerActions.Clean(t)) break;
                         Wipes++;
+                        if (overloaded) WipesOverloaded++;
                     }
                     if (tank.WaterQuality < ChoreWater)
                     {
@@ -330,6 +338,59 @@ namespace FishBreeder.Sim
 
         // ---------------------------------------------------------------- fish
 
+        /// <summary>
+        /// Each breeder tank without a cross pair gets the most valuable one the bot can make: an
+        /// adult female and male of two different species that can cross-breed, from any of its tanks.
+        /// </summary>
+        void PairForMixes()
+        {
+            var adults = new List<(Fish fish, StoreTank tank)>();
+            foreach (var t in OwnTanks())
+                foreach (var fish in t.Tank.Residents)
+                    if (!fish.IsDead && !fish.IdentityHidden && fish.Stage == LifeStage.Adult && !fish.Health.IsSick && !fish.IsPregnant) adults.Add((fish, t));
+            var used = new HashSet<Fish>();
+            // The first breeder tank keeps breeding its own kinds (the stock); the others get cross pairs.
+            bool first = true;
+            foreach (var breeder in OwnTanks())
+            {
+                if (breeder.Role != TankRole.Breeder) continue;
+                if (first) { first = false; continue; }
+                bool hasCross = false;
+                foreach (var a in breeder.Tank.Residents)
+                    foreach (var b in breeder.Tank.Residents)
+                        if (a.Sex == Sex.Female && b.Sex == Sex.Male && !a.IsDead && !b.IsDead && a.Species != b.Species && CrossBreeding.Compatible(a.Species, b.Species))
+                        {
+                            hasCross = true;
+                            crossParents.Add(a);
+                            crossParents.Add(b);
+                        }
+                if (hasCross) continue;
+                (Fish, StoreTank) bestF = default, bestM = default;
+                int bestValue = 0;
+                foreach (var f in adults)
+                {
+                    if (f.fish.Sex != Sex.Female || used.Contains(f.fish) || f.tank.Tank.IsSaltwater != breeder.Tank.IsSaltwater) continue;
+                    foreach (var m in adults)
+                    {
+                        if (m.fish.Sex != Sex.Male || used.Contains(m.fish) || m.fish.Species == f.fish.Species || !CrossBreeding.Compatible(f.fish.Species, m.fish.Species)) continue;
+                        int value = Fish.Appraise(f.fish.Species, m.fish.Species, m.fish.Species, LifeStage.Adult);
+                        if (value > bestValue) { bestValue = value; bestF = f; bestM = m; }
+                    }
+                }
+                if (bestValue == 0) continue;
+                used.Add(bestF.Item1);
+                used.Add(bestM.Item1);
+                bool moved = (bestF.Item2 == breeder || PlayerActions.Move(bestF.Item1, breeder, Mathf.Max(1, bestF.Item1.Price)))
+                             && (bestM.Item2 == breeder || PlayerActions.Move(bestM.Item1, breeder, Mathf.Max(1, bestM.Item1.Price)));
+                if (moved)
+                {
+                    crossParents.Add(bestF.Item1);
+                    crossParents.Add(bestM.Item1);
+                    Events.Add($"paired {bestF.Item1.Species} x {bestM.Item1.Species} (${bestValue})");
+                }
+            }
+        }
+
         /// <summary>Grown fish go to the For Sale tanks, except breeding stock kept in the breeder tanks. Unsold fish are marked down.</summary>
         void SortFish()
         {
@@ -351,23 +412,27 @@ namespace FishBreeder.Sim
                 }
 
             var kept = new Dictionary<string, int>();
+            var waiting = new List<(Fish fish, StoreTank tank)>();
             foreach (var t in OwnTanks())
+                if (t.Role != TankRole.ForSale)
+                    foreach (var fish in t.Tank.Residents) waiting.Add((fish, t));
+            // A mixer stocks its dearest fish first, so cheap ones don't take the room.
+            if (style.mixes) waiting.Sort((a, b) => (b.tank.Role == TankRole.Breeder).CompareTo(a.tank.Role == TankRole.Breeder) != 0
+                ? (b.tank.Role == TankRole.Breeder).CompareTo(a.tank.Role == TankRole.Breeder) : b.fish.AppraisedPrice.CompareTo(a.fish.AppraisedPrice));
+            foreach (var (fish, t) in waiting)
             {
-                if (t.Role == TankRole.ForSale) continue;
-                foreach (var fish in new List<Fish>(t.Tank.Residents))
+                if (fish.IsDead || fish.Stage == LifeStage.Fry || fish.IsPregnant) continue;
+                string kind = fish.Phenotype.SpeciesName;
+                kept.TryGetValue(kind, out int have);
+                bool breederTank = t.Role == TankRole.Breeder;
+                if (breederTank && crossParents.Contains(fish)) continue;
+                if (breederTank && have < style.keepPerSpecies)
                 {
-                    if (fish.IsDead || fish.Stage == LifeStage.Fry || fish.IsPregnant) continue;
-                    string kind = fish.Phenotype.SpeciesName;
-                    kept.TryGetValue(kind, out int have);
-                    bool breederTank = t.Role == TankRole.Breeder;
-                    if (breederTank && have < style.keepPerSpecies)
-                    {
-                        kept[kind] = have + 1;
-                        continue;
-                    }
-                    foreach (var dest in forSale)
-                        if (PlayerActions.Move(fish, dest, Mathf.Max(1, Mathf.RoundToInt(fish.AppraisedPrice * style.markup)))) { onSale[fish] = 0; break; }
+                    kept[kind] = have + 1;
+                    continue;
                 }
+                foreach (var dest in forSale)
+                    if (PlayerActions.Move(fish, dest, Mathf.Max(1, Mathf.RoundToInt(fish.AppraisedPrice * style.markup)))) { onSale[fish] = 0; break; }
             }
         }
 
@@ -410,7 +475,7 @@ namespace FishBreeder.Sim
             }
         }
 
-        static readonly TankRole[] ExpandOrder = { TankRole.ForSale, TankRole.Breeder, TankRole.Quarantine, TankRole.ForSale, TankRole.Display };
+        static readonly TankRole[] ExpandOrder = { TankRole.ForSale, TankRole.Breeder, TankRole.Quarantine, TankRole.ForSale, TankRole.Breeder, TankRole.Display };
 
         void Expand()
         {
@@ -433,4 +498,5 @@ namespace FishBreeder.Sim
     public class GreedyBot : PacingBot { public GreedyBot() : base("Greedy") { } }
     public class BreederBot : PacingBot { public BreederBot() : base("Breeder") { } }
     public class CarelessBot : PacingBot { public CarelessBot() : base("Careless") { } }
+    public class MixerBot : PacingBot { public MixerBot() : base("Mixer") { } }
 }

@@ -143,6 +143,34 @@
       "label": "Fish cap: within the filter's limit, wipes keep water above 75% (under 10% of sessions fall short)"
     },
     {
+      "rule": 4,
+      "kind": "ratio",
+      "running": true,
+      "num": "wipesOverloaded",
+      "den": "overloadedSessions",
+      "days": [
+        1,
+        120
+      ],
+      "atLeast": 2.0,
+      "percent": false,
+      "label": "Fish cap: a tank over its filter's limit needs 2+ wipes every session"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "running": true,
+      "num": "wipesWithinFilter",
+      "den": "withinFilterSessions",
+      "days": [
+        1,
+        120
+      ],
+      "atMost": 1.0,
+      "percent": false,
+      "label": "Within the filter's limit, a tank needs at most 1 wipe a session on average"
+    },
+    {
       "rule": 5,
       "kind": "dieShare",
       "alive": "common",
@@ -211,8 +239,8 @@
         11,
         20
       ],
-      "atMost": 40,
-      "label": "Hard to get started: sales under $40 a day in the first 10 days of trading"
+      "atMost": 100,
+      "label": "Hard to get started: sales under $100 a day in the first 10 days of trading"
     },
     {
       "rule": 6,

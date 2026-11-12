@@ -2147,5 +2147,47 @@
   "old": 0.02,
   "new": 0.03,
   "why": "Rule 6: same, good days now build reputation faster, so a well-run shop draws more visitors over time (up to 1.75x at five stars)"
+ },
+ {
+  "round": "6",
+  "path": "timeStep.overFilterQualityLossPerFish",
+  "old": null,
+  "new": 0.03,
+  "why": "Fish cap (new setting, code change): each fish beyond what the working filter handles now costs 3% water quality a step, so an overloaded tank outruns its wipes; before, water quality ignored filter overload entirely"
+ },
+ {
+  "round": "6",
+  "path": "algae.cleanQualityBonusPerFishkeepingLevel",
+  "old": null,
+  "new": 0,
+  "why": "Fish cap (new setting, code change): a wipe's water quality boost no longer grows with Fishkeeping level (it was 2.8x by level 10 and made every tank easy); the level bonus now applies to algae only"
+ },
+ {
+  "round": "6",
+  "path": "algae.maxRise",
+  "old": 0.1,
+  "new": 0.15,
+  "why": "Rule 4 algae: early on 92% of fish-days were already in the healthy range; algae climbs back faster after a wipe, so early tanks need tending"
+ },
+ {
+  "round": "6",
+  "path": "algae.cleanAlgaeRemoved",
+  "old": 0.025,
+  "new": 0.02,
+  "why": "Rule 4 algae: weaker wipes at low level (2%)..."
+ },
+ {
+  "round": "6",
+  "path": "algae.cleanBonusPerFishkeepingLevel",
+  "old": 0.2,
+  "new": 0.25,
+  "why": "Rule 4 algae: ...about 3.25x as strong by level 10 (about day 22), so it eases with time"
+ },
+ {
+  "round": "7",
+  "path": "timeStep.overFilterQualityLossPerFish",
+  "old": 0.03,
+  "new": 0.05,
+  "why": "Fish cap: at 3% per fish over the filter, no overloaded tank was ever left under 75% water after its wipes (0 of 1,196 sessions); 5% makes a few fish over the limit outrun two wipes"
  }
 ]

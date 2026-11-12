@@ -40,7 +40,7 @@ namespace FishBreeder.Sim
             /// <summary>Fish in a tank whose algae suits them (healthy range, or an eater's own range), of all fish; tanks over the harmful level.</summary>
             public int fishAlgaeOk, fishAlgaeAll, tanksHarmfulAlgae, tanksWithFish;
             /// <summary>Running totals from the bot's care: tank sessions, those needing a wipe for water, wipes, filter-overloaded sessions, and sessions left under 75% water (overloaded / within the filter).</summary>
-            public int sessions, choreSessions, wipes, overloadedSessions, overwhelmedOverloaded, overwhelmedWithinFilter;
+            public int sessions, choreSessions, wipes, overloadedSessions, overwhelmedOverloaded, overwhelmedWithinFilter, wipesOverloaded;
             /// <summary>Average algae (0..1) and water quality (0..1) over tanks with fish; tanks in bloom.</summary>
             public float algae, water;
             /// <summary>The worst tank: most algae, and lowest water health (what shoppers judge as dirty).</summary>
@@ -87,7 +87,7 @@ namespace FishBreeder.Sim
         void Awake()
         {
             outFolder = Arg("-pacingSim");
-            foreach (var b in (Arg("-pacingBots") ?? "Cautious,Greedy,Breeder,Careless").Split(','))
+            foreach (var b in (Arg("-pacingBots") ?? "Cautious,Greedy,Breeder,Careless,Mixer").Split(','))
                 if (BotStyle.Find(b.Trim()) != null) bots.Add(b.Trim());
             if (int.TryParse(Arg("-pacingSeeds"), out var s)) seeds = Mathf.Max(1, s);
             if (int.TryParse(Arg("-pacingDays"), out var d)) days = Mathf.Max(1, d);
@@ -261,6 +261,7 @@ namespace FishBreeder.Sim
                 row.sessions = bot.Sessions;
                 row.choreSessions = bot.ChoreSessions;
                 row.wipes = bot.Wipes;
+                row.wipesOverloaded = bot.WipesOverloaded;
                 row.overloadedSessions = bot.OverloadedSessions;
                 row.overwhelmedOverloaded = bot.OverwhelmedOverloaded;
                 row.overwhelmedWithinFilter = bot.OverwhelmedWithinFilter;

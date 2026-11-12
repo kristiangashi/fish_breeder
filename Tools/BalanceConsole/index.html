@@ -287,8 +287,9 @@ const META = {
   cleansPerSession: ["Cleans per tank", "Clean tank presses each tank gets per closed session (the Tireless perk adds more)."],
   extraCleanEveryFishkeepingLevels: ["+1 clean every N Fishkeeping levels", "0 = never."],
   cleanAlgaeRemoved: ["Algae one clean takes off", "At level 1; the Elbow grease perk adds more."],
-  cleanBonusPerFishkeepingLevel: ["Clean bonus per level", "0.02 = each Fishkeeping level makes a clean 2% stronger."],
-  cleanQualityRestored: ["Water quality a clean gives back", ""],
+  cleanBonusPerFishkeepingLevel: ["Clean bonus per level", "0.02 = each Fishkeeping level makes a clean take off 2% more algae."],
+  cleanQualityRestored: ["Water quality a clean gives back", "The Elbow grease perk adds more."],
+  cleanQualityBonusPerFishkeepingLevel: ["Water bonus per level", "0 = a clean gives back the same water quality at every level, so the filter decides how many fish a tank can keep."],
   deepCleansPerSession: ["Deep cleans per tank", "Per closed session."], deepCleanPrice: ["Deep clean price ($)", "0 = free."],
   deepCleanAlgaeLeft: ["Algae left after a deep clean", "It also ends a bloom."], deepCleanQualityRestored: ["Water quality a deep clean gives back", ""],
   deepCleanInjuryChance: ["Hurt in a deep clean (chance)", "Each fish, at Fishkeeping level 1."], deepCleanInjuryLessPerLevel: ["Less per level", ""],
@@ -438,6 +439,7 @@ const META = {
   maxSadChance: ["Highest sad chance", ""],
   deadFishPurchaseMultiplier: ["Buying with dead fish around (x)", "Purchase chance multiplier while corpses are in the shop."],
   overcrowdedWastePerFish: ["Extra dirt per fish over", "Water quality lost per time step for each fish over capacity."],
+  overFilterQualityLossPerFish: ["Extra dirt per fish over the filter", "Water quality lost per time step for each fish (as tiny fish, algae eaters left out) beyond what the working filter handles: the soft fish limit."],
   overcrowdedIllnessPerFish: ["Extra illness per fish over", "Infection chance multiplier per fish over capacity."],
   overcrowdedHealthPerFish: ["Health lost per fish over", ""], overcrowdedMaxPenalty: ["Highest overcrowding penalty", ""],
   healthChangePerStep: ["Health change per step", "How far health moves toward its target at each time step."],
@@ -1519,6 +1521,13 @@ function simulate(setup, B, seed) {
 
   const alive = (t) => t.residents.length;
   const overLimit = (t) => Math.max(0, alive(t) - t.capacity);
+  // Fish (as tiny fish, algae eaters left out) beyond what a working filter handles; none with no working filter.
+  const overFilter = (t) => {
+    if (!t.filter || t.filter.broken) return 0;
+    const loads = [B.algae.tinyFishLoad, B.algae.smallFishLoad, B.algae.mediumFishLoad, B.algae.largeFishLoad];
+    const load = t.residents.filter((f) => !f.dead && !f.s.eatsAlgae).reduce((n, f) => n + (loads[f.s.sizeGroup || 0] ?? 1), 0);
+    return Math.max(0, load - (t.filter.info.fishCapacity || 0));
+  };
   const oxygenFor = (t) => (t.bubbler && !t.bubbler.broken ? Math.max(1, Math.round(t.bubbler.info.effect)) : Math.max(1, rules.fishPerTankWithoutBubbler));
   const oxygen = (t) => { const n = oxygenFor(t); return clamp01(1 - Math.max(0, alive(t) - n) / n); };
   const infectionMultiplier = (t) => lerp(rules.dirtyWaterInfectionMultiplier, 1, t.wq) * (t.pests ? 1.3 : 1) * (1 + overLimit(t) * ts.overcrowdedIllnessPerFish);
@@ -1792,7 +1801,7 @@ function simulate(setup, B, seed) {
     for (let i = 0; i < cfg.wipes && t.wipesLeft > 0 && !t.bloom; i++) {
       t.wipesLeft--;
       t.algae = clamp01(t.algae - alg.cleanAlgaeRemoved * wipeSkill);
-      t.wq = clamp01(t.wq + alg.cleanQualityRestored * wipeSkill);
+      t.wq = clamp01(t.wq + alg.cleanQualityRestored * (1 + (alg.cleanQualityBonusPerFishkeepingLevel || 0) * (setup.level - 1)));
     }
     for (let i = 0; i < cfg.feedings; i++) feed(t);
     if (cfg.heaterTemp <= 0) {
@@ -1838,7 +1847,7 @@ function simulate(setup, B, seed) {
     for (const t of tanks) {
       const waste = t.filter && !t.filter.broken ? t.filter.info.effect : 1;
       t.wq = clamp01(t.wq - ts.waterQualityLossPerStep * waste - alive(t) * ts.wasteQualityLossPerFish * waste
-        - t.corpses * ts.corpseQualityLoss - overLimit(t) * ts.overcrowdedWastePerFish);
+        - t.corpses * ts.corpseQualityLoss - overLimit(t) * ts.overcrowdedWastePerFish - overFilter(t) * (ts.overFilterQualityLossPerFish || 0));
       // Algae: one feeding's worth goes, then towards the target (held by a filter for its fish, else creeping); blooms at the bloom level.
       t.algaeAtStep = t.algae;
       const loads = [alg.tinyFishLoad, alg.smallFishLoad, alg.mediumFishLoad, alg.largeFishLoad];

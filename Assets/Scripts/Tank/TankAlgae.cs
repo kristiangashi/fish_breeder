@@ -314,13 +314,13 @@ namespace FishBreeder
             return true;
         }
 
-        /// <summary>How much water quality one Clean gives back: more with Fishkeeping level and the Stronger wipes perk.</summary>
+        /// <summary>How much water quality one Clean gives back: more with the Stronger wipes perk (and with Fishkeeping level only if the console's per-level water bonus is set).</summary>
         public static float CleanQualityRestored
         {
             get
             {
                 var a = AlgaeRules;
-                return a.cleanQualityRestored * (1f + a.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
+                return a.cleanQualityRestored * (1f + a.cleanQualityBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1)) * Perks.More(PerkEffect.StrongerWipes);
             }
         }
 

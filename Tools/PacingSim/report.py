@@ -12,8 +12,8 @@ import sys
 
 import rules as rulebook
 
-BOT_COLORS = {"Cautious": "#2a78d6", "Greedy": "#d6542a", "Breeder": "#2a9d6a", "Careless": "#9a5ad6"}
-FALLBACK = ["#c79a1e", "#3aa0b8", "#b8476e"]
+BOT_COLORS = {"Cautious": "#2a78d6", "Greedy": "#d6542a", "Breeder": "#2a9d6a", "Careless": "#9a5ad6", "Mixer": "#c79a1e"}
+FALLBACK = ["#3aa0b8", "#b8476e"]
 
 CHARTS = [
     ("money", "Money", "$"),

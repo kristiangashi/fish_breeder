@@ -513,7 +513,8 @@ namespace FishBreeder
         /// <summary>
         /// Water quality the next time step takes: a little on its own, more for every fish and dead
         /// fish (a filter takes most of the waste, more with Fine filtration; Water quality control
-        /// shrinks each fish's share), and for crowding.
+        /// shrinks each fish's share), for crowding, and for every fish beyond what a working filter
+        /// handles (the soft fish limit).
         /// </summary>
         public float WaterQualityLoss
         {
@@ -524,9 +525,13 @@ namespace FishBreeder
                 return balance.waterQualityLossPerStep * waste
                        + residents.Count * balance.wasteQualityLossPerFish * waste * Perks.Less(PerkEffect.FishWaste)
                        + corpses.Count * balance.corpseQualityLoss
-                       + OverLimit * balance.overcrowdedWastePerFish;
+                       + OverLimit * balance.overcrowdedWastePerFish
+                       + FishOverFilter * balance.overFilterQualityLossPerFish;
             }
         }
+
+        /// <summary>Fish (as tiny fish, algae eaters left out) beyond what the working filter handles; 0 with no working filter, whose fish already make full waste.</summary>
+        public float FishOverFilter => FilterWorking ? Mathf.Max(0f, FishLoad - FilterFishCapacity) : 0f;
 
         /// <summary>How much the water quality will drop at the next time step (it can't go below 0%).</summary>
         public float WaterQualityChangeNextStep => Mathf.Clamp01(waterQuality - WaterQualityLoss) - waterQuality;

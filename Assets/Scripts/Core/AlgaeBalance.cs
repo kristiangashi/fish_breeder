@@ -82,10 +82,12 @@ namespace FishBreeder.Core
         public int extraCleanEveryFishkeepingLevels;
         [Tooltip("Algae one clean takes off at Fishkeeping level 1 (more with the Elbow grease perk).")]
         public float cleanAlgaeRemoved = 0.05f;
-        [Tooltip("Each Fishkeeping level makes a clean this much more effective (0.02 = +2%).")]
+        [Tooltip("Each Fishkeeping level makes a clean take off this much more algae (0.02 = +2%).")]
         public float cleanBonusPerFishkeepingLevel = 0.02f;
-        [Tooltip("Water quality one clean gives back.")]
+        [Tooltip("Water quality one clean gives back (more with the Elbow grease perk).")]
         public float cleanQualityRestored = 0.2f;
+        [Tooltip("Each Fishkeeping level makes a clean give back this much more water quality (0 = the same at every level, so the filter, not the level, decides how many fish a tank can keep).")]
+        public float cleanQualityBonusPerFishkeepingLevel;
 
         [Header("Deep clean")]
         [Tooltip("Deep cleans each tank gets per closed-shop session.")]

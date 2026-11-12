@@ -15,6 +15,8 @@ def enrich(run):
         d["common"] = max(0, d["fish"] - d["uncommon"] - d["rare"])
         if "sessions" in d:
             d["withinFilterSessions"] = d["sessions"] - d["overloadedSessions"]
+            if "wipesOverloaded" in d:
+                d["wipesWithinFilter"] = d["wipes"] - d["wipesOverloaded"]
         d["commonDeaths"] =d["deaths"] - d.get("uncommonDeaths", 0) - d.get("rareDeaths", 0)
         # Running a shop of bred fish: sales against food, care and new eggs.
         d["operating"] = d.get("salesIn", 0) - d.get("foodOut", 0) - d.get("careOut", 0) - d.get("eggsOut", 0)
@@ -152,7 +154,7 @@ def check(rule, bots):
         num = den = 0
         for r in runs:
             rows = [d for d in r["days"] if a <= d["day"] <= b]
-            if not rows or rule["den"] not in rows[-1]:
+            if not rows or rule["den"] not in rows[-1] or rule["num"] not in rows[-1]:
                 continue
             if rule.get("running"):
                 before = [d for d in r["days"] if d["day"] < a]

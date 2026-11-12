@@ -116,6 +116,7 @@ namespace FishBreeder
                 if (clutch.genomes.Count == 0)
                 {
                     GameLog.Add($"A clutch of {clutch.Label} died in the dirty water.");
+                    all.Remove(clutch);
                     Destroy(clutch.gameObject);
                     continue;
                 }
@@ -168,6 +169,9 @@ namespace FishBreeder
                 }
                 if (Bred) Progression.Count(GoalKind.BreedFish, born);
             }
+            // Off the list now, not when Unity gets round to destroying it at the end of the frame:
+            // two time steps in one frame (the dev fast-forward) would hatch it twice.
+            all.Remove(this);
             Destroy(gameObject);
             return born;
         }

@@ -1427,6 +1427,32 @@ namespace FishBreeder.Store
             if (!Economy.CanOpenShop && w.Button("Skip the setup days (dev)", "fb-button fb-button--gap")) Economy.DevSkipSetup();
 #endif
             w.Pop();
+            if (DevMode.Available) DrawFastForward();
+        }
+
+        int fastForwardBot = DevFastForward.DefaultBot;
+        string fastForwardDays = "30";
+
+        /// <summary>Dev: play N whole days with a bot doing the chores, to try the game further along.</summary>
+        void DrawFastForward()
+        {
+            w.BeginRow("fb-row fb-wrap");
+            if (DevFastForward.Running)
+            {
+                w.Label($"Fast-forwarding: day {DevFastForward.Done} of {DevFastForward.Asked} (now day {Economy.Day}, {Economy.Format(Economy.Money)})");
+                if (w.Button("Stop", "fb-button fb-button--gap")) DevFastForward.Stop();
+                w.Pop();
+                return;
+            }
+            w.Label("Fast-forward", "fb-text fb-header-text");
+            fastForwardDays = w.TextField(fastForwardDays, 4);
+            w.Label("days, played by", "fb-text");
+            int bots = Mathf.Max(1, DevFastForward.BotTypes.Count);
+            if (w.Button(DevFastForward.BotName(fastForwardBot), "fb-button fb-button--gap", bots > 1, "Click for the next bot")) fastForwardBot = (fastForwardBot + 1) % bots;
+            bool valid = int.TryParse(fastForwardDays, out int days) && days > 0 && days <= 1000;
+            if (w.Button("Go (dev)", "fb-button fb-button--gap", valid, "Plays whole days as a player would (chores, open, the day's shoppers, close, sleep). The save moves on too."))
+                StartCoroutine(DevFastForward.RunOverFrames(shopDay, DevFastForward.Create(fastForwardBot), days));
+            w.Pop();
         }
 
         /// <summary>The phase buttons, wide, in the register (drawn with the window's frame there).</summary>

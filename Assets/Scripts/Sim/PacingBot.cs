@@ -64,6 +64,10 @@ namespace FishBreeder.Sim
         public List<string> Events { get; } = new List<string>();
         public Dictionary<string, int> DeathCauses { get; } = new Dictionary<string, int>();
         readonly int[] deathsByRarity = new int[8];
+        /// <summary>The to-do list's water line: below it a tank needs wiping.</summary>
+        const float ChoreWater = 0.75f;
+        /// <summary>Running counts over tank care sessions (one per tank with fish per closed session).</summary>
+        public int Sessions, ChoreSessions, Wipes, OverloadedSessions, OverwhelmedOverloaded, OverwhelmedWithinFilter;
         /// <summary>Deaths so far of this rarity (Rare counts Rare and everything rarer).</summary>
         public int DeathsOfRarity(int rarity)
         {
@@ -211,7 +215,27 @@ namespace FishBreeder.Sim
                 }
                 if (!tank.FedSinceTimeStep && Does()) PlayerActions.Feed(t, PickFood(t));
                 if (tank.InBloom) { if (Does()) PlayerActions.DeepClean(t); }
-                else while (tank.Algae > 0.12f && tank.CleansLeft > 0 && Does()) if (!PlayerActions.Clean(t)) break;
+                else
+                {
+                    // Wipe while algae is over the healthy range or the water is under the to-do list's 75%,
+                    // and note whether the water needed it and whether the wipes kept up (water chores, fish cap).
+                    var rules = Balance.Data.algae;
+                    bool overloaded = tank.FishLoad > tank.FilterFishCapacity;
+                    bool needed = tank.WaterQuality < ChoreWater;
+                    Sessions++;
+                    if (overloaded) OverloadedSessions++;
+                    if (needed) ChoreSessions++;
+                    while ((tank.Algae > rules.healthyAlgaeTo || tank.WaterQuality < ChoreWater) && tank.CleansLeft > 0 && Does())
+                    {
+                        if (!PlayerActions.Clean(t)) break;
+                        Wipes++;
+                    }
+                    if (tank.WaterQuality < ChoreWater)
+                    {
+                        if (overloaded) OverwhelmedOverloaded++;
+                        else OverwhelmedWithinFilter++;
+                    }
+                }
                 if ((tank.HasPests || tank.WaterQuality < 0.55f) && Does()) PlayerActions.TreatWater(t);
                 foreach (var kind in Equipment.Kinds)
                 {
@@ -299,7 +323,7 @@ namespace FishBreeder.Sim
                 int price = Perks.Supplier(info.price);
                 // A missing piece is care: only the cheapest, and the reserve may go on it.
                 if (missing) { if (Economy.Money >= price && (best < 0 || price < Perks.Supplier(Equipment.Tier(kind, best).price))) best = tier; }
-                else if (tier > installed.tier && Economy.Money - price >= style.reserve * 3) best = Mathf.Max(best, tier);
+                else if (tier > installed.tier && Economy.Money - price >= style.reserve) best = Mathf.Max(best, tier);
             }
             if (best >= 0) PlayerActions.BuyEquipment(t, kind, best);
         }

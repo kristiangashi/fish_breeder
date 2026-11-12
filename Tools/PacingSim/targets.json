@@ -1,42 +1,291 @@
 {
-  "_about": "Pacing targets. 'rules' are Kristian's five pacing rules (2026-11-12) as pass/fail checks, judged on the Cautious bot unless 'bot' says otherwise ('all' = every bot). 'targets' are milestone day ranges for the Cautious bot's median run (early / on target / late). The first opening is day 11 (shop.setupDays 10).",
+  "_about": "Pacing targets. 'rules' are Kristian's pacing rules (2026-11-12, revised the same day; rule 6 = prices grow with rarity) as pass/fail checks, judged on the Cautious bot unless 'bot' says otherwise ('all' = every bot). 'targets' are milestone day ranges for the Cautious bot's median run (early / on target / late). The first opening is day 11 (shop.setupDays 10).",
   "rules": [
-    { "rule": 1, "kind": "profitBy", "level": 10, "span": 20, "min": 0.6,
-      "label": "From Fishkeeping 10, breeding and selling Commons makes a small profit (sales beat food, care and eggs on most days)" },
-
-    { "rule": 2, "kind": "notBefore", "metric": "uncommon", "day": 11, "bot": "all",
-      "label": "No Uncommon fish before the shop first opens (day 11), whatever the play style" },
-    { "rule": 2, "kind": "shareBy", "metric": "uncommon", "day": 20, "min": 0.2, "max": 0.8,
-      "label": "After opening, an Uncommon turns up by lucky chance in some games (20-80% by day 20)" },
-    { "rule": 2, "kind": "maxIn", "metric": "uncommon", "from": 11, "to": 19, "atMost": 2,
-      "label": "No more than 2 Uncommons at a time before day 20" },
-    { "rule": 2, "kind": "keeps", "metric": "uncommon", "foundBy": 20, "aliveOn": 25, "min": 0.5,
-      "label": "A lucky Uncommon can be kept alive (still one alive on day 25 in most games that found one)" },
-
-    { "rule": 3, "kind": "notBefore", "metric": "rare", "day": 30, "bot": "all",
-      "label": "No Rare (or rarer) fish before day 30, whatever the play style" },
-
-    { "rule": 4, "kind": "eases", "metric": "algae", "early": [3, 15], "late": [20, 30], "ratio": 0.75, "earlyAtLeast": 0.12,
-      "label": "Algae is a fight early on (12%+ average) and at least 25% lower by days 20-30" },
-    { "rule": 4, "kind": "eases", "metric": "water", "early": [3, 15], "late": [20, 30], "higherIsBetter": true, "by": 0.05, "earlyAtMost": 0.85,
-      "label": "Water quality is hard to keep up early on and at least 5 points better by days 20-30" },
-
-    { "rule": 5, "kind": "deathRate", "alive": "common", "deaths": "commonDeaths", "days": [1, 30], "atMost": 1.0,
-      "label": "Commons are easy to keep alive early on (under 1 death per 100 fish-days, days 1-30)" },
-    { "rule": 5, "kind": "harder", "easy": ["common", "commonDeaths"], "hard": ["uncommon", "uncommonDeaths"], "days": [11, 120], "ratio": 1.5, "easyLabel": "Common", "hardLabel": "Uncommon",
-      "label": "Uncommons give trouble: they die at least 1.5x as often as Commons" },
-    { "rule": 5, "kind": "deathRate", "alive": "rare", "deaths": "rareDeaths", "days": [30, 120], "atLeast": 3.0,
-      "label": "Rares die without upgraded tanks (Cautious never upgrades gear): 3+ deaths per 100 fish-days" },
-    { "rule": 5, "kind": "deathRate", "alive": "rare", "deaths": "rareDeaths", "days": [30, 120], "atMost": 2.0, "bot": "Breeder",
-      "label": "Rares can be kept with upgraded tanks (Breeder upgrades gear): under 2 deaths per 100 fish-days" }
+    {
+      "rule": 1,
+      "kind": "profitBy",
+      "fromDay": 10,
+      "span": 20,
+      "min": 0.6,
+      "label": "From day 10, breeding and selling Commons makes a small profit (sales beat food, care and eggs on most days)"
+    },
+    {
+      "rule": 2,
+      "kind": "notBefore",
+      "metric": "uncommon",
+      "day": 11,
+      "bot": "all",
+      "label": "No Uncommon fish before the shop first opens (day 11), whatever the play style"
+    },
+    {
+      "rule": 2,
+      "kind": "shareBy",
+      "metric": "uncommon",
+      "day": 20,
+      "min": 0.2,
+      "max": 0.8,
+      "label": "After opening, an Uncommon turns up by lucky chance in some games (20-80% by day 20)"
+    },
+    {
+      "rule": 2,
+      "kind": "maxIn",
+      "metric": "maxUncommonInTank",
+      "from": 11,
+      "to": 19,
+      "atMost": 2,
+      "label": "No more than 2 Uncommons at a time in any one tank before day 20"
+    },
+    {
+      "rule": 2,
+      "kind": "keeps",
+      "metric": "uncommon",
+      "foundBy": 20,
+      "aliveOn": 25,
+      "min": 0.5,
+      "label": "A lucky Uncommon can be kept alive (still one alive on day 25 in most games that found one)"
+    },
+    {
+      "rule": 3,
+      "kind": "notBefore",
+      "metric": "rare",
+      "day": 30,
+      "bot": "all",
+      "label": "No Rare (or rarer) fish before day 30, whatever the play style"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "num": "fishAlgaeOk",
+      "den": "fishAlgaeAll",
+      "days": [
+        3,
+        15
+      ],
+      "atMost": 0.5,
+      "label": "Algae is a fight early on: under half of fish-days in the healthy algae range (10-20%, or an eater's own range), days 3-15"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "num": "fishAlgaeOk",
+      "den": "fishAlgaeAll",
+      "days": [
+        20,
+        30
+      ],
+      "atLeast": 0.75,
+      "label": "Algae is under control by days 20-30: 75%+ of fish-days in the healthy range"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "num": "tanksHarmfulAlgae",
+      "den": "tanksWithFish",
+      "days": [
+        20,
+        30
+      ],
+      "atMost": 0.1,
+      "label": "By days 20-30, under 10% of tank-days have harmful algae (over 30%)"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "running": true,
+      "num": "wipes",
+      "den": "sessions",
+      "days": [
+        3,
+        15
+      ],
+      "atLeast": 1.5,
+      "atMost": 2.5,
+      "percent": false,
+      "label": "Water chores early: about 1.5-2.5 wipes per tank per closed session, days 3-15"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "running": true,
+      "num": "choreSessions",
+      "den": "sessions",
+      "days": [
+        20,
+        30
+      ],
+      "atMost": 0.25,
+      "label": "Filters take over: by days 20-30, under a quarter of tank sessions need a wipe for water (below 75%)"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "running": true,
+      "num": "overwhelmedOverloaded",
+      "den": "overloadedSessions",
+      "days": [
+        1,
+        120
+      ],
+      "atLeast": 0.5,
+      "label": "Fish cap: a tank with more fish than its filter handles stays under 75% water after every wipe (half of its sessions or more)"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "running": true,
+      "num": "overwhelmedWithinFilter",
+      "den": "withinFilterSessions",
+      "days": [
+        1,
+        120
+      ],
+      "atMost": 0.1,
+      "label": "Fish cap: within the filter's limit, wipes keep water above 75% (under 10% of sessions fall short)"
+    },
+    {
+      "rule": 5,
+      "kind": "dieShare",
+      "alive": "common",
+      "deaths": "commonDeaths",
+      "seen": "seenCommon",
+      "days": [
+        1,
+        30
+      ],
+      "atLeast": 3,
+      "atMost": 15,
+      "label": "Commons are easy to keep alive early on: 3-15 of every 100 Commons owned in days 1-30 die"
+    },
+    {
+      "rule": 5,
+      "kind": "harder",
+      "easy": [
+        "common",
+        "commonDeaths"
+      ],
+      "hard": [
+        "uncommon",
+        "uncommonDeaths"
+      ],
+      "days": [
+        11,
+        120
+      ],
+      "ratio": 1.5,
+      "easyLabel": "Common",
+      "hardLabel": "Uncommon",
+      "label": "Uncommons give trouble: they die at least 1.5x as often as Commons"
+    },
+    {
+      "rule": 5,
+      "kind": "dieShare",
+      "alive": "rare",
+      "deaths": "rareDeaths",
+      "seen": "seenRare",
+      "days": [
+        30,
+        120
+      ],
+      "atLeast": 90,
+      "label": "Rares die without upgraded tanks (Cautious never upgrades gear): 90+ of every 100 Rares owned die"
+    },
+    {
+      "rule": 5,
+      "kind": "dieShare",
+      "alive": "rare",
+      "deaths": "rareDeaths",
+      "seen": "seenRare",
+      "days": [
+        30,
+        120
+      ],
+      "atMost": 10,
+      "bot": "Breeder",
+      "label": "Rares can be kept with upgraded gear and good care (Breeder upgrades gear): under 10 of every 100 Rares owned die"
+    },
+    {
+      "rule": 6,
+      "kind": "meanIn",
+      "metric": "salesIn",
+      "days": [
+        11,
+        20
+      ],
+      "atMost": 40,
+      "label": "Hard to get started: sales under $40 a day in the first 10 days of trading"
+    },
+    {
+      "rule": 6,
+      "kind": "grows",
+      "metric": "salesIn",
+      "early": [
+        11,
+        20
+      ],
+      "late": [
+        61,
+        120
+      ],
+      "ratio": 4,
+      "label": "Profit grows fast with rarer fish and mixes: sales on days 61-120 at least 4x days 11-20"
+    }
   ],
   "targets": [
-    { "id": "firstSale", "label": "First fish sold", "metric": "soldTotal", "atLeast": 1, "from": 11, "to": 12 },
-    { "id": "uncommon", "label": "First Uncommon fish owned", "metric": "uncommon", "atLeast": 1, "from": 11, "to": 25 },
-    { "id": "fk10", "label": "Fishkeeping 10 (Commons pipeline pays)", "metric": "fishkeeping", "atLeast": 10, "from": 20, "to": 35 },
-    { "id": "rare", "label": "First Rare fish", "metric": "rare", "atLeast": 1, "from": 30, "to": 45 },
-    { "id": "money5k", "label": "$5,000 in the bank", "metric": "money", "atLeast": 5000, "from": 30, "to": 50 },
-    { "id": "fk15", "label": "Fishkeeping 15 (Legendary eggs)", "metric": "fishkeeping", "atLeast": 15, "from": 50, "to": 80 },
-    { "id": "fish1000", "label": "First $1,000+ fish", "metric": "bestFishValue", "atLeast": 1000, "from": 90, "to": 120 }
+    {
+      "id": "firstSale",
+      "label": "First fish sold",
+      "metric": "soldTotal",
+      "atLeast": 1,
+      "from": 11,
+      "to": 12
+    },
+    {
+      "id": "uncommon",
+      "label": "First Uncommon fish owned",
+      "metric": "uncommon",
+      "atLeast": 1,
+      "from": 11,
+      "to": 25
+    },
+    {
+      "id": "fk10",
+      "label": "Fishkeeping 10 (Commons pipeline pays)",
+      "metric": "fishkeeping",
+      "atLeast": 10,
+      "from": 20,
+      "to": 35
+    },
+    {
+      "id": "rare",
+      "label": "First Rare fish",
+      "metric": "rare",
+      "atLeast": 1,
+      "from": 30,
+      "to": 45
+    },
+    {
+      "id": "money5k",
+      "label": "$5,000 in the bank",
+      "metric": "money",
+      "atLeast": 5000,
+      "from": 30,
+      "to": 50
+    },
+    {
+      "id": "fk15",
+      "label": "Fishkeeping 15 (Legendary eggs)",
+      "metric": "fishkeeping",
+      "atLeast": 15,
+      "from": 50,
+      "to": 80
+    },
+    {
+      "id": "fish1000",
+      "label": "First $1,000+ fish",
+      "metric": "bestFishValue",
+      "atLeast": 1000,
+      "from": 90,
+      "to": 120
+    }
   ]
 }

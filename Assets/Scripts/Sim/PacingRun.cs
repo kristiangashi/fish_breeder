@@ -35,6 +35,12 @@ namespace FishBreeder.Sim
             public float stars;
             /// <summary>Living Uncommon / Rare-or-better fish, and how many of each have died so far.</summary>
             public int uncommon, rare, uncommonDeaths, rareDeaths;
+            /// <summary>Most Uncommons in any one tank; fish of each rarity seen so far (Rare = Rare or rarer, fry included).</summary>
+            public int maxUncommonInTank, seenCommon, seenUncommon, seenRare;
+            /// <summary>Fish in a tank whose algae suits them (healthy range, or an eater's own range), of all fish; tanks over the harmful level.</summary>
+            public int fishAlgaeOk, fishAlgaeAll, tanksHarmfulAlgae, tanksWithFish;
+            /// <summary>Running totals from the bot's care: tank sessions, those needing a wipe for water, wipes, filter-overloaded sessions, and sessions left under 75% water (overloaded / within the filter).</summary>
+            public int sessions, choreSessions, wipes, overloadedSessions, overwhelmedOverloaded, overwhelmedWithinFilter;
             /// <summary>Average algae (0..1) and water quality (0..1) over tanks with fish; tanks in bloom.</summary>
             public float algae, water;
             /// <summary>The worst tank: most algae, and lowest water health (what shoppers judge as dirty).</summary>
@@ -175,6 +181,8 @@ namespace FishBreeder.Sim
             readonly ShopDay shopDay;
             readonly RunResult result;
             DayRow today;
+            readonly HashSet<Fish> seen = new HashSet<Fish>();
+            readonly int[] seenByRarity = new int[3];
 
             public Recorder(PacingBot bot, StoreLayout store, ShopDay shopDay, RunResult result)
             {
@@ -229,11 +237,15 @@ namespace FishBreeder.Sim
                     tanks = store.Tanks.Count,
                 };
                 foreach (var t in store.Tanks)
+                {
+                    int uncommonHere = 0;
                     foreach (var fish in t.Tank.Residents)
                     {
                         if (fish.IsDead) continue;
                         row.fish++;
+                        if (fish.Species != null && seen.Add(fish)) seenByRarity[Mathf.Clamp((int)fish.Species.rarity, 0, 2)]++;
                         if (fish.IdentityHidden) continue;
+                        if (fish.Species.rarity == Genetics.SpeciesRarity.Uncommon) uncommonHere++;
                         int value = fish.AppraisedPrice;
                         if (value > row.bestFishValue)
                         {
@@ -244,6 +256,17 @@ namespace FishBreeder.Sim
                         if (fish.Species.rarity == Genetics.SpeciesRarity.Uncommon) row.uncommon++;
                         else if (fish.Species.rarity >= Genetics.SpeciesRarity.Rare) row.rare++;
                     }
+                    row.maxUncommonInTank = Mathf.Max(row.maxUncommonInTank, uncommonHere);
+                }
+                row.sessions = bot.Sessions;
+                row.choreSessions = bot.ChoreSessions;
+                row.wipes = bot.Wipes;
+                row.overloadedSessions = bot.OverloadedSessions;
+                row.overwhelmedOverloaded = bot.OverwhelmedOverloaded;
+                row.overwhelmedWithinFilter = bot.OverwhelmedWithinFilter;
+                row.seenCommon = seenByRarity[0];
+                row.seenUncommon = seenByRarity[1];
+                row.seenRare = seenByRarity[2];
                 row.uncommonDeaths = bot.DeathsOfRarity(1);
                 row.rareDeaths = bot.DeathsOfRarity(2);
                 int withFish = 0;
@@ -254,6 +277,18 @@ namespace FishBreeder.Sim
                     row.algae += t.Tank.Algae;
                     row.water += t.Tank.WaterQuality;
                     if (t.Tank.InBloom) row.blooms++;
+                    var algaeRules = Balance.Data.algae;
+                    row.tanksWithFish++;
+                    if (t.Tank.Algae > algaeRules.harmfulAlgaeAbove + 0.005f) row.tanksHarmfulAlgae++;
+                    foreach (var fish in t.Tank.Residents)
+                    {
+                        if (fish.IsDead || fish.Species == null) continue;
+                        row.fishAlgaeAll++;
+                        float lo = fish.Species.eatsAlgae ? fish.Species.algaeMin : algaeRules.healthyAlgaeFrom;
+                        float hi = fish.Species.eatsAlgae ? fish.Species.algaeMax : algaeRules.healthyAlgaeTo;
+                        float a = Mathf.Round(t.Tank.Algae * 100f) / 100f;
+                        if (a >= lo && a <= hi) row.fishAlgaeOk++;
+                    }
                     row.maxAlgae = Mathf.Max(row.maxAlgae, t.Tank.Algae);
                     row.minWater = withFish == 1 ? t.Tank.WaterHealth : Mathf.Min(row.minWater, t.Tank.WaterHealth);
                 }

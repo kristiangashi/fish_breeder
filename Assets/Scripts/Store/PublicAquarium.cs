@@ -494,9 +494,8 @@ namespace FishBreeder.Store
             a.looks = a.fish > 0 ? d.looksPoints * Mathf.Clamp01(looks / a.fish) : 0f;
             a.quality = d.qualityPoints * Mathf.Clamp01(tank.Quality / 80f);
             var shop = Balance.Data.shop;
-            var algae = Balance.Data.algae;
-            bool dirty = tank.WaterHealth < shop.grossWaterQuality || tank.Algae >= algae.bothersMoreAbove || tank.InBloom;
-            a.clean = !dirty && tank.WaterHealth > 0.7f && tank.Algae < algae.bothersAbove ? d.cleanPoints : 0f;
+            bool dirty = tank.WaterHealth < shop.grossWaterQuality || tank.InBloom;
+            a.clean = !dirty && tank.WaterHealth > 0.7f && !tank.TooMuchAlgae ? d.cleanPoints : 0f;
             a.dead = -Mathf.Min(40f, 8f * tank.Corpses.Count);
             a.dirty = dirty ? -25f : 0f;
             a.sick = -30f * sick / Mathf.Max(1f, living);

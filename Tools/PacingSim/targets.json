@@ -62,7 +62,7 @@
         15
       ],
       "atMost": 0.5,
-      "label": "Algae is a fight early on: under half of fish-days in the healthy algae range (10-20%, or an eater's own range), days 3-15"
+      "label": "Algae is a fight early on: under half of fish-days in a Healthy green tank (algae eaters: grazing, no bloom), days 3-15"
     },
     {
       "rule": 4,
@@ -74,7 +74,7 @@
         30
       ],
       "atLeast": 0.75,
-      "label": "Algae is under control by days 20-30: 75%+ of fish-days in the healthy range"
+      "label": "Algae is under control by days 20-30: 75%+ of fish-days in a Healthy green tank"
     },
     {
       "rule": 4,
@@ -86,7 +86,31 @@
         30
       ],
       "atMost": 0.1,
-      "label": "By days 20-30, under 10% of tank-days have harmful algae (over 30%)"
+      "label": "By days 20-30, under 10% of tank-days Overgrown or in bloom"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "num": "tanksHarmfulAlgae",
+      "den": "tanksWithFish",
+      "days": [
+        3,
+        15
+      ],
+      "atLeast": 0.15,
+      "label": "Early on (days 3-15) at least 15% of tank-days are Overgrown or in bloom: algae is a real chore"
+    },
+    {
+      "rule": 4,
+      "kind": "ratio",
+      "num": "blooms",
+      "den": "tanksWithFish",
+      "days": [
+        20,
+        60
+      ],
+      "atMost": 0.03,
+      "label": "Blooms are rare for a careful player: under 3% of tank-days in bloom, days 20-60"
     },
     {
       "rule": 4,

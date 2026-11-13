@@ -503,9 +503,9 @@ namespace FishBreeder.Core
         /// <summary>What the (i) by the algae bar says (Kristian's words).</summary>
         static readonly string[] AlgaeInfo =
         {
-            "Algae automatically increases over time. Fish need some algae to stay healthy, but let it get too high and the fish get sick. The more fish, decorations and plants you have, the faster your algae grows.",
-            "A filter allows you to halt the algae's growth beyond a certain amount. This ensures your fish can have some algae for the health of the water, but don't get sick from having too much. However, even filters have limits, and if you have too many fish, decorations or plants then you'll either need a bigger filter, or to take some things out of your tank.",
-            "Algae eaters can also support your tank by helping your filter balance the algae. Each algae eater can increase the amount of things you can keep in your tank without an algal bloom.",
+            "Every tank's algae is in one of four stages: Clear, Healthy green, Overgrown or an Algal bloom. Fish need some algae to stay healthy, so Healthy green is best, but let it get overgrown and the fish get sick. The more fish, food, decorations and plants you have, the more your algae grows.",
+            "At each time step a tank moves one stage up, one stage down, or stays. A filter lets your tank hold more before the algae takes over. This ensures your fish can have some algae for the health of the water, but don't get sick from having too much. However, even filters have limits, and if you have too many fish, decorations or plants then you'll either need a bigger filter, or to take some things out of your tank.",
+            "Algae eaters can also support your tank by helping your filter balance the algae. Each algae eater can increase the amount of things you can keep in your tank without an algal bloom. Cleaning an overgrown tank scrubs it back down a stage.",
             "If an algal bloom does happen, beware. No filter or algae eater can save you and your fish will get ill or die. You'll have to do a deep clean of your tank which puts your already stressed-out fish at even more risk.",
             "Learn to balance your algae and make sure to do your research!",
         };
@@ -649,32 +649,46 @@ namespace FishBreeder.Core
         void DrawCleaning(bool can)
         {
             var rules = Balance.Data.algae;
-            float removed = rules.cleanAlgaeRemoved * (1f + rules.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1));
             float freshened = Tank.CleanQualityRestored;
             int price = rules.deepCleanPrice;
             float risk = Tank.DeepCleanInjuryChance;
             ui.BeginRow("fb-row fb-pair");
             if (ui.Button($"Clean tank ({tank.CleansLeft} left)", "fb-button fb-grow", can && !tank.InBloom && tank.CleansLeft > 0,
-                    tank.InBloom ? "No use against an algal bloom: it needs a deep clean" : $"Scrubs off {removed * 100f:0.#}% algae and adds {freshened * 100f:0.#}% water quality"))
+                    tank.InBloom ? "No use against an algal bloom: it needs a deep clean" : (tank.Algae >= AlgaeStage.Overgrown || tank.Algae == AlgaeStage.HealthyGreen && !Balance.Data.algae.cleanLeavesHealthy ? "Scrubs the algae down a stage and adds" : "Adds") + $" {freshened * 100f:0.#}% water quality"))
                 tank.Clean();
             if (ui.Button($"Deep clean ({tank.DeepCleansLeft} left)" + (price > 0 ? $"  {Economy.Format(price)}" : ""), "fb-button fb-grow",
-                    can && tank.DeepCleansLeft > 0 && Economy.CanAfford(price), $"Nets the fish out and scrubs the tank down: algae goes to {rules.deepCleanAlgaeLeft * 100f:0}% (a bloom clears too), but each fish has a {risk * 100f:0}% chance of getting hurt"))
-                Confirm(tank.Residents.Count > 0 ? $"Each fish has a {risk * 100f:0}% chance of getting hurt in a deep clean (torn fins, lost scales, shock and worse). Algae goes to {rules.deepCleanAlgaeLeft * 100f:0}%{(tank.InBloom ? " and the bloom clears" : "")}." : null,
+                    can && tank.DeepCleansLeft > 0 && Economy.CanAfford(price), $"Nets the fish out and scrubs the tank down: the algae goes back to Clear (a bloom clears too), but each fish has a {risk * 100f:0}% chance of getting hurt"))
+                Confirm(tank.Residents.Count > 0 ? $"Each fish has a {risk * 100f:0}% chance of getting hurt in a deep clean (torn fins, lost scales, shock and worse). The algae goes back to Clear{(tank.InBloom ? " and the bloom clears" : "")}." : null,
                     () => tank.DeepClean());
             ui.Pop();
             if (tank.InBloom) ui.Label($"<color={UiTheme.CoralHex}><b>Algal bloom!</b> It chokes every fish and keeps spreading. Only a deep clean clears it.</color>", "fb-small");
         }
 
         /// <summary>
-        /// The algae bar with arrows for how much it moves at the next time step, and a word only
-        /// when something's wrong: a bloom, or no filter (or not enough of one) for the fish.
+        /// The algae stage, with an arrow when the next time step moves it, and a word only when
+        /// something's wrong: a bloom, or no filter (or not enough of one) for the fish.
         /// </summary>
         void DrawAlgae()
         {
-            var a = Balance.Data.algae;
-            float change = tank.AlgaeChangeNextStep;
-            Bar("Algae", tank.Algae, false, $"How much of the tank is covered in algae. A little ({a.healthyAlgaeFrom * 100f:0}-{a.healthyAlgaeTo * 100f:0}%) is good for fish; above {a.harmfulAlgaeAbove * 100f:0}% it harms them, and at {a.bloomAbove * 100f:0}% the tank blooms.",
-                StepArrows(change, false), StepTip(change), () => OpenInfo("Algae", AlgaeInfo));
+            var stage = tank.Algae;
+            var next = tank.AlgaeNextStep;
+            ui.BeginRow("fb-row fb-stat");
+            ui.BeginRow("fb-row fb-stat__name");
+            ui.Label("Algae", "fb-text");
+            if (ui.Button("i", "fb-button fb-info-button", true, "What is this?")) OpenInfo("Algae", AlgaeInfo);
+            ui.Pop();
+            ui.Bar(((int)stage + 1) / 4f, StageColor(stage), "fb-bar fb-stat__bar",
+                "Clear, Healthy green, Overgrown, Algal bloom. Healthy green is good for fish; overgrown harms them, and a bloom far more.");
+            ui.Label($"<color={StageHex(stage)}>{Tank.StageName(stage)}</color>", "fb-text fb-stat__value");
+            if (next != stage)
+            {
+                // Good news when it heads for Healthy green (or down from overgrown).
+                bool good = next == AlgaeStage.HealthyGreen || next < stage && stage > AlgaeStage.HealthyGreen;
+                ui.Label($"<size=9><color={(good ? UiTheme.LeafHex : UiTheme.CoralHex)}>{(next > stage ? "\u25B2" : "\u25BC")}</color></size>", "fb-text fb-stat__arrows").tooltip
+                    = $"{Tank.StageName(next)} at the next time step";
+            }
+            else ui.Label("", "fb-text fb-stat__arrows").tooltip = "No change at the next time step";
+            ui.Pop();
             var parts = new List<string>();
             if (tank.InBloom) parts.Add("algal bloom");
             int load = Mathf.RoundToInt(tank.FishLoad);
@@ -696,6 +710,19 @@ namespace FishBreeder.Core
             bool good = change > 0f == upIsGood;
             return $"<b><color={(good ? UiTheme.LeafHex : UiTheme.CoralHex)}>{new string(change > 0f ? '^' : 'v', count)}</color></b>";
         }
+
+        static Color StageColor(AlgaeStage stage)
+        {
+            switch (stage)
+            {
+                case AlgaeStage.HealthyGreen: return new Color(0.35f, 0.85f, 0.4f);
+                case AlgaeStage.Overgrown: return new Color(0.95f, 0.7f, 0.25f);
+                case AlgaeStage.Bloom: return new Color(0.9f, 0.3f, 0.25f);
+                default: return new Color(0.55f, 0.85f, 0.95f);
+            }
+        }
+
+        static string StageHex(AlgaeStage stage) => "#" + ColorUtility.ToHtmlStringRGB(StageColor(stage));
 
         static string StepTip(float change) => Mathf.Abs(change) < 0.005f ? "No change at the next time step" : $"{(change > 0f ? "+" : "-")}{Mathf.Abs(change) * 100f:0}% at the next time step";
 
@@ -850,8 +877,9 @@ namespace FishBreeder.Core
             if (ui.Button("Dirty water", "fb-button fb-grow")) tank.DevMakeDirty();
             ui.Pop();
             ui.BeginRow("fb-row fb-wrap fb-pair");
-            if (ui.Button("Algae 45%", "fb-button fb-button--small")) tank.DevSetAlgae(0.45f, false);
-            if (ui.Button("Algal bloom", "fb-button fb-button--small")) tank.DevSetAlgae(0.55f, true);
+            if (ui.Button("Algae: healthy", "fb-button fb-button--small")) tank.DevSetAlgae(AlgaeStage.HealthyGreen);
+            if (ui.Button("Overgrown", "fb-button fb-button--small")) tank.DevSetAlgae(AlgaeStage.Overgrown);
+            if (ui.Button("Algal bloom", "fb-button fb-button--small")) tank.DevSetAlgae(AlgaeStage.Bloom);
             ui.Pop();
             ui.BeginRow("fb-row fb-wrap fb-pair");
             if (ui.Button("Grow all up", "fb-button fb-button--small"))
@@ -1073,7 +1101,7 @@ namespace FishBreeder.Core
             switch (kind)
             {
                 case EquipmentKind.Filter:
-                    return "Without a filter, fish waste builds up fast: the water gets dirty, algae climbs with every fish and fish fall ill.";
+                    return "Without a filter, fish waste builds up fast: the water gets dirty, algae soon overgrows the tank and fish fall ill.";
                 case EquipmentKind.Heater:
                     bool tropical = false;
                     foreach (var fish in tank.Residents)
@@ -1790,8 +1818,8 @@ namespace FishBreeder.Core
             foreach (var note in FishHealth.EnvironmentNotes(species, tank)) SubLine(note, 0f, true);
             if (!species.eatsAlgae)
             {
-                if (report.algae < 0f) ui.Label($"<color=#9fe39f>Algae  {tank.Algae * 100f:0}%, just right  +{-report.algae * 100f:0}</color>");
-                else Penalty("Algae", report.algae, report.algae > 0f ? $"{tank.Algae * 100f:0}%, too much" : $"{tank.Algae * 100f:0}%");
+                if (report.algae < 0f) ui.Label($"<color=#9fe39f>Algae  healthy green, just right  +{-report.algae * 100f:0}</color>");
+                else Penalty("Algae", report.algae, report.algae > 0f ? $"{Tank.StageName(tank.Algae).ToLowerInvariant()}, too much" : Tank.StageName(tank.Algae).ToLowerInvariant());
             }
             Penalty("Comfort", report.comfort, $"{report.comfortLevel * 100f:0}% comfortable");
             if (report.overcrowding > 0f) Penalty("Crowding", report.overcrowding, $"{tank.OverLimit} fish over the tank's limit");

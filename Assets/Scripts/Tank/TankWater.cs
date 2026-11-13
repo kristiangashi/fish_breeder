@@ -6,7 +6,7 @@ namespace FishBreeder
 {
     /// <summary>
     /// The visible water in a tank: a tinted see-through volume with surface highlights and
-    /// moving caustics on the sand. Both follow the tank's water colour, quality and algae.
+    /// moving caustics on the sand. Both follow the tank's water colour and quality (algae shows on the glass instead).
     /// </summary>
     public class TankWater : MonoBehaviour
     {
@@ -45,9 +45,9 @@ namespace FishBreeder
             return water;
         }
 
-        public void SetLook(Color color, float quality, float algae)
+        public void SetLook(Color color, float quality)
         {
-            float clarity = Mathf.Clamp01(Mathf.Min(quality, 1f - algae * 0.8f));
+            float clarity = Mathf.Clamp01(quality);
             if (volume != null)
             {
                 volume.SetColor(ColorId, color);

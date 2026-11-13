@@ -483,9 +483,12 @@ namespace FishBreeder.Core
         /// <summary>Cleans left this session (the old name for them was wipes).</summary>
         public int wipesLeft;
         public int deepCleansLeft = -1;
+        /// <summary>Saves from before algae stages: a bloom, and algae as a share of the tank (turned into a stage on loading).</summary>
         public bool bloom;
-        /// <summary>Algae added by feeding since the last time step (what's over the maximum goes at the next one).</summary>
-        public float algaeFromFeeding;
+        /// <summary>The algae stage (Clear 0 .. Bloom 3); -1 in a save from before stages, which has the old <see cref="algae"/> share instead.</summary>
+        public int algaeStage = -1;
+        /// <summary>Feedings and algae wafer feedings since the last time step, and in the one before (they feed the algae over two time steps).</summary>
+        public int feedings, feedingsBefore, wafers, wafersBefore;
         public bool hasFilter, hasHeater, hasBubbler;
         public InstalledEquipment filter, heater, bubbler;
         public string background, sideBackground;
@@ -969,8 +972,8 @@ namespace FishBreeder
             var s = new TankSave
             {
                 size = sizeIndex,
-                waterQuality = waterQuality, algae = algae, temperature = temperature, ph = ph, salinity = salinity,
-                heaterSetting = heaterSetting, pests = pests, fed = FedSinceTimeStep, wipesLeft = CleansLeft, deepCleansLeft = DeepCleansLeft, bloom = bloom, algaeFromFeeding = algaeFromFeeding,
+                waterQuality = waterQuality, temperature = temperature, ph = ph, salinity = salinity,
+                heaterSetting = heaterSetting, pests = pests, fed = FedSinceTimeStep, wipesLeft = CleansLeft, deepCleansLeft = DeepCleansLeft, algaeStage = (int)algaeStage, feedings = feedings, feedingsBefore = feedingsBefore, wafers = wafers, wafersBefore = wafersBefore,
                 hasFilter = filter != null, hasHeater = heater != null, hasBubbler = bubbler != null,
                 filter = filter, heater = heater, bubbler = bubbler,
                 background = backgroundId, sideBackground = sideBackgroundId,
@@ -987,7 +990,6 @@ namespace FishBreeder
         internal void Load(TankSave s)
         {
             waterQuality = Mathf.Clamp01(s.waterQuality);
-            algae = Mathf.Clamp01(s.algae);
             temperature = s.temperature;
             ph = s.ph;
             heaterSetting = s.heaterSetting;
@@ -995,8 +997,14 @@ namespace FishBreeder
             FedSinceTimeStep = s.fed;
             CleansLeft = Mathf.Max(0, s.wipesLeft);
             if (s.deepCleansLeft >= 0) DeepCleansLeft = s.deepCleansLeft;
-            bloom = s.bloom;
-            algaeFromFeeding = Mathf.Max(0f, s.algaeFromFeeding);
+            // An old save's algae share becomes the stage it was closest to (bloom aside, under 10% clear, under 30% healthy green).
+            algaeStage = s.algaeStage >= 0 ? (AlgaeStage)Mathf.Min(s.algaeStage, (int)AlgaeStage.Bloom)
+                : s.bloom ? AlgaeStage.Bloom : s.algae < 0.1f ? AlgaeStage.Clear : s.algae < 0.3f ? AlgaeStage.HealthyGreen : AlgaeStage.Overgrown;
+            stageAtStep = algaeStage;
+            feedings = Mathf.Max(0, s.feedings);
+            feedingsBefore = Mathf.Max(0, s.feedingsBefore);
+            wafers = Mathf.Max(0, s.wafers);
+            wafersBefore = Mathf.Max(0, s.wafersBefore);
             // JsonUtility writes empty objects for missing equipment, hence the flags.
             filter = s.hasFilter ? Kind(s.filter, EquipmentKind.Filter) : null;
             heater = s.hasHeater ? Kind(s.heater, EquipmentKind.Heater) : null;

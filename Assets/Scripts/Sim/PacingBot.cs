@@ -71,6 +71,8 @@ namespace FishBreeder.Sim
         readonly int[] deathsByRarity = new int[8];
         /// <summary>The to-do list's water line: below it a tank needs wiping.</summary>
         const float ChoreWater = 0.75f;
+        /// <summary>A tidy player tops the water up with a clean below this (cleans are free), not only once the to-do list asks.</summary>
+        const float TopUpWater = 0.85f;
         /// <summary>Running counts over tank care sessions (one per tank with fish per closed session).</summary>
         public int WipesOverloaded;
         public int Sessions, ChoreSessions, Wipes, OverloadedSessions, OverwhelmedOverloaded, OverwhelmedWithinFilter;
@@ -216,7 +218,7 @@ namespace FishBreeder.Sim
                 // An empty tank still goes green and murky, and shoppers look in it too.
                 if (tank.Residents.Count == 0)
                 {
-                    if (tank.Algae > 0.3f && tank.CleansLeft > 0 && Does()) PlayerActions.Clean(t);
+                    if (tank.TooMuchAlgae && tank.CleansLeft > 0 && Does()) PlayerActions.Clean(t);
                     if (tank.WaterQuality < 0.55f && Does()) PlayerActions.TreatWater(t);
                     continue;
                 }
@@ -224,15 +226,14 @@ namespace FishBreeder.Sim
                 if (tank.InBloom) { if (Does()) PlayerActions.DeepClean(t); }
                 else
                 {
-                    // Wipe while algae is over the healthy range or the water is under the to-do list's 75%,
+                    // Wipe while the algae is overgrown or the water is under 85% (the to-do list asks at 75%),
                     // and note whether the water needed it and whether the wipes kept up (water chores, fish cap).
-                    var rules = Balance.Data.algae;
                     bool overloaded = tank.FishLoad > tank.FilterFishCapacity;
                     bool needed = tank.WaterQuality < ChoreWater;
                     Sessions++;
                     if (overloaded) OverloadedSessions++;
                     if (needed) ChoreSessions++;
-                    while ((tank.Algae > rules.healthyAlgaeTo || tank.WaterQuality < ChoreWater) && tank.CleansLeft > 0 && Does())
+                    while ((tank.TooMuchAlgae || tank.WaterQuality < TopUpWater) && tank.CleansLeft > 0 && Does())
                     {
                         if (!PlayerActions.Clean(t)) break;
                         Wipes++;

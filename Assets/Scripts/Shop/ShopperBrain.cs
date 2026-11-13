@@ -65,7 +65,7 @@ namespace FishBreeder.Shop
             float tolerance = Perks.Value(PerkEffect.GrossTolerance);
             bool dirty = tank.WaterHealth < shop.grossWaterQuality * (1f - tolerance);
             if (dirty && GameRandom.Chance(0.85f)) return Reaction.Complain(Mood.Grossed, Complaint.DirtyWater);
-            // Algae only bothers people from 40%, and a lot more from 50% (Algae tab).
+            // Algae only bothers people once a tank is overgrown, and a lot more in a bloom (Algae tab).
             if (GameRandom.Chance(tank.AlgaeBotherChance * (1f - tolerance))) return Reaction.Complain(Mood.Grossed, Complaint.DirtyWater);
 
             // Sick fish put people off too, more of them the more sick fish they can see.

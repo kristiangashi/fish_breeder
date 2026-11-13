@@ -37,13 +37,15 @@ namespace FishBreeder.Sim
             public int uncommon, rare, uncommonDeaths, rareDeaths;
             /// <summary>Most Uncommons in any one tank; fish of each rarity seen so far (Rare = Rare or rarer, fry included).</summary>
             public int maxUncommonInTank, seenCommon, seenUncommon, seenRare;
-            /// <summary>Fish in a tank whose algae suits them (healthy range, or an eater's own range), of all fish; tanks over the harmful level.</summary>
+            /// <summary>Fish whose tank's algae suits them (Healthy green; algae eaters: grazing and no bloom), of all fish; tanks Overgrown or in bloom.</summary>
             public int fishAlgaeOk, fishAlgaeAll, tanksHarmfulAlgae, tanksWithFish;
+            /// <summary>Tanks with fish in each algae stage (in bloom is <see cref="blooms"/>).</summary>
+            public int tanksClear, tanksHealthy, tanksOvergrown;
             /// <summary>Running totals from the bot's care: tank sessions, those needing a wipe for water, wipes, filter-overloaded sessions, and sessions left under 75% water (overloaded / within the filter).</summary>
             public int sessions, choreSessions, wipes, overloadedSessions, overwhelmedOverloaded, overwhelmedWithinFilter, wipesOverloaded;
-            /// <summary>Average algae (0..1) and water quality (0..1) over tanks with fish; tanks in bloom.</summary>
+            /// <summary>Average algae stage (0 Clear .. 3 Bloom) and water quality (0..1) over tanks with fish.</summary>
             public float algae, water;
-            /// <summary>The worst tank: most algae, and lowest water health (what shoppers judge as dirty).</summary>
+            /// <summary>The worst tank: highest algae stage, and lowest water health (what shoppers judge as dirty).</summary>
             public float maxAlgae, minWater;
             public int blooms;
             /// <summary>Yesterday's money in from sales and out by kind (care = medicine + water treatment).</summary>
@@ -197,8 +199,21 @@ namespace FishBreeder.Sim
             public void Morning()
             {
                 bot.Events.Clear();
+                // Algae as the night's time steps left it, before the bot cleans (what the fish lived in).
+                var algae = new DayRow();
+                CountAlgae(algae);
                 bot.Morning();
                 today = Sample();
+                today.algae = algae.algae;
+                today.maxAlgae = algae.maxAlgae;
+                today.tanksWithFish = algae.tanksWithFish;
+                today.tanksClear = algae.tanksClear;
+                today.tanksHealthy = algae.tanksHealthy;
+                today.tanksOvergrown = algae.tanksOvergrown;
+                today.blooms = algae.blooms;
+                today.tanksHarmfulAlgae = algae.tanksHarmfulAlgae;
+                today.fishAlgaeOk = algae.fishAlgaeOk;
+                today.fishAlgaeAll = algae.fishAlgaeAll;
                 today.events = string.Join("; ", bot.Events);
                 result.days.Add(today);
             }
@@ -218,6 +233,35 @@ namespace FishBreeder.Sim
                     today.complaints = string.Join("; ", parts);
                 }
                 bot.Evening();
+            }
+
+            /// <summary>Algae stages over the tanks with fish (shop tanks, not the public aquarium's).</summary>
+            void CountAlgae(DayRow row)
+            {
+                foreach (var t in store.Tanks)
+                {
+                    if (t.Role == TankRole.Exhibit || t.Role == TankRole.Holding || t.Tank.Residents.Count == 0) continue;
+                    var stage = t.Tank.Algae;
+                    row.algae += (int)stage;
+                    row.tanksWithFish++;
+                    switch (stage)
+                    {
+                        case AlgaeStage.Clear: row.tanksClear++; break;
+                        case AlgaeStage.HealthyGreen: row.tanksHealthy++; break;
+                        case AlgaeStage.Overgrown: row.tanksOvergrown++; break;
+                        default: row.blooms++; break;
+                    }
+                    if (t.Tank.TooMuchAlgae) row.tanksHarmfulAlgae++;
+                    foreach (var fish in t.Tank.Residents)
+                    {
+                        if (fish.IsDead || fish.Species == null) continue;
+                        row.fishAlgaeAll++;
+                        bool ok = fish.Species.eatsAlgae ? !t.Tank.InBloom && t.Tank.AlgaeToGraze : stage == AlgaeStage.HealthyGreen;
+                        if (ok) row.fishAlgaeOk++;
+                    }
+                    row.maxAlgae = Mathf.Max(row.maxAlgae, (int)stage);
+                }
+                if (row.tanksWithFish > 0) row.algae /= row.tanksWithFish;
             }
 
             DayRow Sample()
@@ -275,25 +319,10 @@ namespace FishBreeder.Sim
                 {
                     if (t.Role == TankRole.Exhibit || t.Role == TankRole.Holding || t.Tank.Residents.Count == 0) continue;
                     withFish++;
-                    row.algae += t.Tank.Algae;
                     row.water += t.Tank.WaterQuality;
-                    if (t.Tank.InBloom) row.blooms++;
-                    var algaeRules = Balance.Data.algae;
-                    row.tanksWithFish++;
-                    if (t.Tank.Algae > algaeRules.harmfulAlgaeAbove + 0.005f) row.tanksHarmfulAlgae++;
-                    foreach (var fish in t.Tank.Residents)
-                    {
-                        if (fish.IsDead || fish.Species == null) continue;
-                        row.fishAlgaeAll++;
-                        float lo = fish.Species.eatsAlgae ? fish.Species.algaeMin : algaeRules.healthyAlgaeFrom;
-                        float hi = fish.Species.eatsAlgae ? fish.Species.algaeMax : algaeRules.healthyAlgaeTo;
-                        float a = Mathf.Round(t.Tank.Algae * 100f) / 100f;
-                        if (a >= lo && a <= hi) row.fishAlgaeOk++;
-                    }
-                    row.maxAlgae = Mathf.Max(row.maxAlgae, t.Tank.Algae);
                     row.minWater = withFish == 1 ? t.Tank.WaterHealth : Mathf.Min(row.minWater, t.Tank.WaterHealth);
                 }
-                if (withFish > 0) { row.algae /= withFish; row.water /= withFish; }
+                if (withFish > 0) row.water /= withFish;
                 var books = Finance.Recent(2);
                 if (books.Count > 1)
                 {

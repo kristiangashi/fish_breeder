@@ -17,6 +17,10 @@ def enrich(run):
             d["withinFilterSessions"] = d["sessions"] - d["overloadedSessions"]
             if "wipesOverloaded" in d:
                 d["wipesWithinFilter"] = d["wipes"] - d["wipesOverloaded"]
+        # Algae stages: share of tanks with fish in each (Clear, Healthy green, Overgrown, Bloom).
+        tanks = d.get("tanksWithFish", 0)
+        for key, count in (("shareClear", "tanksClear"), ("shareHealthy", "tanksHealthy"), ("shareOvergrown", "tanksOvergrown"), ("shareBloom", "blooms")):
+            d[key] = round(d.get(count, 0) / tanks, 3) if tanks else 0
         d["commonDeaths"] =d["deaths"] - d.get("uncommonDeaths", 0) - d.get("rareDeaths", 0)
         # Running a shop of bred fish: sales against food, care and new eggs.
         d["operating"] = d.get("salesIn", 0) - d.get("foodOut", 0) - d.get("careOut", 0) - d.get("eggsOut", 0)
@@ -180,8 +184,10 @@ def check(rule, bots):
         # Sales per day in a late window are at least `ratio` times an early one (median game).
         early = med([mean_in(r, rule["metric"], *rule["early"]) for r in runs])
         late = med([mean_in(r, rule["metric"], *rule["late"]) for r in runs])
+        if late is None:
+            return None, "the run is too short for this check"
         if not early:
-            return late is not None and late > 0, f"days {rule['early'][0]}-{rule['early'][1]}: {early}, later: {late}"
+            return late > 0, f"days {rule['early'][0]}-{rule['early'][1]}: {early}, later: {late}"
         ratio = late / early
         return ratio >= rule["ratio"], f"${early:,.0f}/day on days {rule['early'][0]}-{rule['early'][1]}, ${late:,.0f}/day on days {rule['late'][0]}-{rule['late'][1]} ({ratio:.1f}x)"
 

@@ -24,7 +24,25 @@ CHARTS = [
     ("soldTotal", "Fish sold (running total)", ""),
     ("fish", "Living fish", ""),
     ("deaths", "Deaths (running total)", ""),
+    ("shareHealthy", "Tanks Healthy green (share of tanks with fish)", ""),
+    ("shareOvergrown", "Tanks Overgrown (share)", ""),
+    ("shareBloom", "Tanks in an algal bloom (share)", ""),
 ]
+
+STAGES = [("tanksClear", "Clear"), ("tanksHealthy", "Healthy green"), ("tanksOvergrown", "Overgrown"), ("blooms", "Algal bloom")]
+STAGE_WINDOWS = [(1, 10), (11, 20), (21, 30), (31, 60), (61, 9999)]
+
+
+def stage_shares(runs, a, b):
+    """Share of tank-days (tanks with fish) in each algae stage between days a and b, over all the runs."""
+    totals = [0] * len(STAGES)
+    for r in runs:
+        for d in r["days"]:
+            if a <= d["day"] <= b:
+                for i, (key, _) in enumerate(STAGES):
+                    totals[i] += d.get(key, 0)
+    n = sum(totals)
+    return [t / n for t in totals] if n else None
 
 
 def load(path):
@@ -161,6 +179,24 @@ def main():
         rules_html = (f'<h2>Pacing rules: {passed} of {len(rule_rows)} pass</h2><div class="table"><table><thead><tr><th>Rule</th><th>Check</th><th>Bot</th><th>Result</th><th>Measured</th></tr></thead>'
                       f'<tbody>{"".join(rule_rows)}</tbody></table></div>')
 
+    # Algae stages: share of tank-days in each stage, by bot and stretch of days.
+    stage_rows = []
+    for b in order:
+        for a, z in STAGE_WINDOWS:
+            if a > days:
+                continue
+            shares = stage_shares(bots[b], a, z)
+            if shares is None:
+                continue
+            label = f"days {a}-{min(z, days)}"
+            cells = "".join(f"<td>{s * 100:.0f}%</td>" for s in shares)
+            stage_rows.append(f"<tr><th>{html.escape(b)}</th><td>{label}</td>{cells}</tr>")
+    stages_html = ""
+    if stage_rows:
+        stages_html = ('<h2>Algae stages: share of tank-days</h2><p class="sub">Tanks with fish, counted each morning before any cleaning (what the fish lived in overnight). Healthy green is good for fish; Overgrown and blooms hurt them.</p>'
+                       '<div class="table"><table><thead><tr><th>Bot</th><th>Days</th>' + "".join(f"<th>{n}</th>" for _, n in STAGES) + "</tr></thead>"
+                       f'<tbody>{"".join(stage_rows)}</tbody></table></div>')
+
     # Trouble: rescues, errors, money at the end.
     trouble = []
     for b in order:
@@ -211,6 +247,7 @@ td.ok {{ color:var(--ok); font-weight:600; }} td.late {{ color:var(--late); font
 <h2>Milestones: median first day</h2>
 <p class="sub">Targets are for the Cautious bot: <span style="color:var(--ok)">on target</span>, <span style="color:var(--early)">early</span>, <span style="color:var(--late)">late</span>. "Not reached" means no run got there in {days} days.</p>
 <div class="table"><table><thead><tr><th>Milestone</th><th>Target</th>{head}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+{stages_html}
 <h2>Curves</h2>
 <div class="legend">{legend}</div>
 <div class="charts">{charts}</div>

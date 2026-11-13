@@ -5,30 +5,43 @@ using UnityEngine;
 namespace FishBreeder
 {
     /// <summary>
-    /// A tank's algae (see <see cref="AlgaeBalance"/>). It climbs quickly to its target (10% on
-    /// its own, more for fish, plants and decorations, less for algae eaters). A filter that
-    /// handles the fish holds it there; otherwise it creeps on slowly. Feeding adds a little that
-    /// goes again over the next time steps. The moment it reaches the bloom level the tank blooms,
-    /// and only a deep clean clears it.
+    /// A tank's algae (see <see cref="AlgaeBalance"/>): one of four stages, Clear, Healthy green,
+    /// Overgrown and Bloom. Load (fish, feedings, plants, decorations) over capacity (the tank,
+    /// its filter and algae eaters) picks the stage the tank heads for, and at each time step it
+    /// moves one stage towards it. A clean takes it down a stage; only a deep clean ends a bloom.
     /// </summary>
     public partial class Tank
     {
-        bool bloom;
-        float algaeAtStep = -1f;
-        /// <summary>Algae from feeding that's still in the tank (part of <see cref="algae"/>): one feeding's worth goes at each time step.</summary>
-        float algaeFromFeeding;
+        AlgaeStage algaeStage;
+        /// <summary>The stage as the last time step found it, before it moved (algae eaters graze on this).</summary>
+        AlgaeStage stageAtStep;
+        /// <summary>Feedings (and wafer feedings) since the last time step, and in the time step before that.</summary>
+        int feedings, feedingsBefore, wafers, wafersBefore;
 
         static AlgaeBalance AlgaeRules => Balance.Data.algae;
 
-        /// <summary>An algal bloom: the algae keeps climbing, fish are choked, and only a deep clean ends it.</summary>
-        public bool InBloom => bloom;
+        /// <summary>The tank's algae stage.</summary>
+        public AlgaeStage Algae => algaeStage;
+        /// <summary>An algal bloom: fish are choked, and only a deep clean ends it.</summary>
+        public bool InBloom => algaeStage == AlgaeStage.Bloom;
+        /// <summary>Overgrown or in bloom: too much algae for fish and customers.</summary>
+        public bool TooMuchAlgae => algaeStage >= AlgaeStage.Overgrown;
         /// <summary>Cleans left this closed-shop session.</summary>
         public int CleansLeft { get; private set; }
         /// <summary>Deep cleans left this closed-shop session.</summary>
         public int DeepCleansLeft { get; private set; }
 
-        /// <summary>Algae as the time step found it (algae eaters graze on this before it moves on).</summary>
-        public float AlgaeForGrazing => algaeAtStep >= 0f ? algaeAtStep : algae;
+        /// <summary>The stage's name as the game says it.</summary>
+        public static string StageName(AlgaeStage stage)
+        {
+            switch (stage)
+            {
+                case AlgaeStage.HealthyGreen: return "Healthy green";
+                case AlgaeStage.Overgrown: return "Overgrown";
+                case AlgaeStage.Bloom: return "Algal bloom";
+                default: return "Clear";
+            }
+        }
 
         /// <summary>Cleans every tank gets per closed-shop session: two, and more with the Tireless perk.</summary>
         public static int CleansPerSession
@@ -77,27 +90,23 @@ namespace FishBreeder
             }
         }
 
-        /// <summary>Algae eaters this tank's size needs to keep the water clear for longer.</summary>
-        public int AlgaeEatersNeeded => Mathf.Max(1, SizeInfo.algaeEaters);
-
-        /// <summary>The least algae a plant like the Java moss rock keeps for the algae eaters (0 with none, or no eaters).</summary>
-        public float AlgaeFloor
+        /// <summary>A plant like the Java moss rock keeps a tank with algae eaters at least Healthy green.</summary>
+        public bool HasAlgaeFilm
         {
             get
             {
-                if (decor == null || AlgaeEaterCount == 0) return 0f;
-                float floor = 0f;
+                if (decor == null || AlgaeEaterCount == 0) return false;
                 foreach (var id in decor.Ids)
                 {
                     var item = TankDecor.Find(id);
-                    if (item != null) floor = Mathf.Max(floor, item.algaeFloor);
+                    if (item != null && item.algaeFilm) return true;
                 }
-                return floor;
+                return false;
             }
         }
 
-        /// <summary>How much the plants raise the algae target (each plant its own amount).</summary>
-        public float PlantAlgae
+        /// <summary>Load from the plants (each its own amount; a negative one soaks up algae).</summary>
+        public float PlantLoad
         {
             get
             {
@@ -106,14 +115,14 @@ namespace FishBreeder
                 foreach (var id in decor.Ids)
                 {
                     var item = TankDecor.Find(id);
-                    if (item != null && item.plant) total += Mathf.Max(0f, item.algaeTarget);
+                    if (item != null && item.plant) total += item.algaeLoad;
                 }
                 return total;
             }
         }
 
-        /// <summary>How much the decorations that aren't plants raise the algae target.</summary>
-        public float DecorationAlgae
+        /// <summary>Load from the decorations that aren't plants.</summary>
+        public float DecorationLoad
         {
             get
             {
@@ -124,150 +133,119 @@ namespace FishBreeder
                     var item = TankDecor.Find(id);
                     if (item != null && !item.plant) count++;
                 }
-                return count * Mathf.Max(0f, AlgaeRules.decorationAlgae);
+                return count * Mathf.Max(0f, AlgaeRules.decorationLoad);
             }
         }
 
-        /// <summary>Per fish and per algae eater, algae counts less in a bigger tank: the standard tank's fish limit over this one's.</summary>
-        float AlgaeScale => StandardCapacity / (float)Mathf.Max(1, Capacity);
+        /// <summary>How much bigger this tank is than the standard one, by fish limit (its own load and capacity grow with it).</summary>
+        float AlgaeSizeScale => Mathf.Max(1, Capacity) / (float)StandardCapacity;
 
-        /// <summary>How much the fish raise the algae target (algae eaters don't count).</summary>
-        public float FishAlgae => FishLoad * Mathf.Max(0f, AlgaeRules.fishAlgae) * AlgaeScale;
+        /// <summary>Load from feedings: each one counts half at each of the next two time steps.</summary>
+        public float FeedingLoad
+        {
+            get
+            {
+                var a = AlgaeRules;
+                return 0.5f * ((feedings + feedingsBefore) * Mathf.Max(0f, a.feedingLoad) + (wafers + wafersBefore) * Mathf.Max(0f, a.waferLoad));
+            }
+        }
 
-        /// <summary>How much the algae eaters lower the algae target.</summary>
-        public float EaterAlgae => AlgaeEaterCount * Mathf.Max(0f, AlgaeRules.eaterAlgae) * AlgaeScale;
-
-        /// <summary>
-        /// Where the algae settles: the natural level plus the fish, plants and decorations, less the
-        /// algae eaters, and never below what a moss rock keeps for the eaters.
-        /// </summary>
-        public float AlgaeTarget => Mathf.Clamp01(Mathf.Max(AlgaeRules.naturalAlgae + FishAlgae + PlantAlgae + DecorationAlgae - EaterAlgae, AlgaeFloor));
+        /// <summary>Everything that feeds algae, in tiny fish.</summary>
+        public float AlgaeLoad => Mathf.Max(0f, AlgaeRules.naturalLoad * AlgaeSizeScale + FishLoad + FeedingLoad + PlantLoad + DecorationLoad);
 
         /// <summary>Fish the working filter handles, with the Steady filters perk (0 without one).</summary>
         public int FilterFishCapacity => FilterWorking ? Mathf.Max(0, filter.Info.fishCapacity + Perks.Count(PerkEffect.FilterFish)) : 0;
 
-        /// <summary>A working filter handles every fish, so algae stops at its target instead of creeping past it.</summary>
-        public bool AlgaeHeld => FilterWorking && FishLoad <= FilterFishCapacity + 0.001f;
+        /// <summary>Everything that holds algae back, in tiny fish: the tank, its working filter, its algae eaters (and Fishkeeping level if the console says so).</summary>
+        public float AlgaeCapacity
+        {
+            get
+            {
+                var a = AlgaeRules;
+                return Mathf.Max(0.5f, a.tankCapacity * AlgaeSizeScale + FilterFishCapacity * a.filterCapacityShare + AlgaeEaterCount * a.eaterCapacity
+                                       + a.capacityPerFishkeepingLevel * (Progression.Fishkeeping - 1));
+            }
+        }
 
-        /// <summary>Algae from feeding still in the tank (it goes one feeding's worth per time step).</summary>
-        public float FeedingAlgae => algaeFromFeeding;
+        /// <summary>Load over capacity: under 1 the tank copes.</summary>
+        public float AlgaeRatio => AlgaeLoad / AlgaeCapacity;
 
-        /// <summary>Time steps until the feeding algae is all gone.</summary>
-        public int FeedingAlgaeSteps => algaeFromFeeding <= 0.0001f ? 0 : Mathf.CeilToInt(algaeFromFeeding / Mathf.Max(0.001f, AlgaeRules.feedAlgae) - 0.001f);
+        /// <summary>The stage the tank is heading for, from load over capacity (never below Healthy green with an algae film for eaters).</summary>
+        public AlgaeStage AlgaeHeading
+        {
+            get
+            {
+                var a = AlgaeRules;
+                float r = AlgaeRatio;
+                var stage = r >= a.bloomFrom ? AlgaeStage.Bloom : r >= a.overgrownFrom ? AlgaeStage.Overgrown : r >= a.healthyFrom ? AlgaeStage.HealthyGreen : AlgaeStage.Clear;
+                if (stage == AlgaeStage.Clear && HasAlgaeFilm) stage = AlgaeStage.HealthyGreen;
+                return stage;
+            }
+        }
 
-        /// <summary>The standard tank's fish limit: algae per fish is set for it, and bigger tanks get less per fish.</summary>
+        /// <summary>The stage after the next time step: one towards where it's heading, and a bloom stays until a deep clean.</summary>
+        public AlgaeStage AlgaeNextStep
+        {
+            get
+            {
+                if (InBloom) return AlgaeStage.Bloom;
+                var heading = AlgaeHeading;
+                if (heading > algaeStage) return algaeStage + 1;
+                if (heading < algaeStage) return algaeStage - 1;
+                return algaeStage;
+            }
+        }
+
+        /// <summary>The standard tank's fish limit: a tank's own algae load and capacity are set for it.</summary>
         static int StandardCapacity
         {
             get
             {
                 var sizes = Balance.Data.store.tankSizes;
-                return sizes != null && sizes.Count > 0 ? CapacityOf(sizes[0]) : CapacityOf(new TankSizeBalance());
+                return Mathf.Max(1, sizes != null && sizes.Count > 0 ? CapacityOf(sizes[0]) : CapacityOf(new TankSizeBalance()));
             }
         }
 
-        /// <summary>Algae where the water starts to turn green: later with the tank's full set of algae eaters.</summary>
-        public float GreenStart
-        {
-            get
-            {
-                var a = AlgaeRules;
-                return Mathf.Lerp(a.greenStart, a.greenStartWithEaters, Mathf.Clamp01(AlgaeEaterCount / (float)AlgaeEatersNeeded));
-            }
-        }
-
-        /// <summary>How green the water looks, 0..1: none until <see cref="GreenStart"/>, a tinge, then much greener.</summary>
-        public float AlgaeGreen
-        {
-            get
-            {
-                var a = AlgaeRules;
-                float start = GreenStart;
-                float more = start + Mathf.Max(0.01f, a.greenMore - a.greenStart);
-                if (algae <= start) return 0f;
-                if (algae < more) return 0.35f * (algae - start) / (more - start);
-                return Mathf.Lerp(0.35f, 1f, (algae - more) / Mathf.Max(0.01f, 1f - more));
-            }
-        }
-
-        /// <summary>How much the algae puts customers off the look of the water, 0..1: nothing until they start minding it.</summary>
-        public float AlgaeNuisance
-        {
-            get
-            {
-                var a = AlgaeRules;
-                if (algae <= a.bothersAbove) return 0f;
-                float more = Mathf.Max(a.bothersAbove + 0.01f, a.bothersMoreAbove);
-                if (algae < more) return 0.15f * (algae - a.bothersAbove) / (more - a.bothersAbove);
-                return Mathf.Lerp(0.15f, 1f, (algae - more) / Mathf.Max(0.01f, 1f - more));
-            }
-        }
-
-        /// <summary>Chance a customer looking at the tank minds its algae.</summary>
-        public float AlgaeBotherChance
-        {
-            get
-            {
-                var a = AlgaeRules;
-                if (bloom || algae >= a.bothersMoreAbove) return a.bothersMoreChance;
-                return algae >= a.bothersAbove ? a.bothersChance : 0f;
-            }
-        }
-
-        /// <summary>
-        /// Time step: one feeding's worth of feeding algae goes, then the rest climbs quickly to its
-        /// target, stays there with a filter that handles the fish, or creeps on past it. The moment
-        /// it reaches the bloom level the tank blooms.
-        /// </summary>
-        void UpdateAlgae()
-        {
-            algaeAtStep = algae;
-            algae = AlgaeAfterStep(out algaeFromFeeding);
-            CheckBloom();
-        }
-
-        /// <summary>What the next time step will make of the algae (before any bloom it sets off), and the feeding algae left after it.</summary>
-        float AlgaeAfterStep(out float feedingLeft)
+        /// <summary>How much of the glass the algae covers for this stage (looks only).</summary>
+        public static float GlassCover(AlgaeStage stage)
         {
             var a = AlgaeRules;
-            float gone = Mathf.Min(algaeFromFeeding, Mathf.Max(0f, a.feedAlgae));
-            feedingLeft = algaeFromFeeding - gone;
-            float now = Mathf.Max(0f, algae - gone);
-            // A bloom feeds on itself until it's deep cleaned.
-            if (bloom) return Mathf.Min(1f, now + Mathf.Max(0f, a.bloomGrowth));
-            float settled = Mathf.Max(0f, now - feedingLeft), target = AlgaeTarget;
-            if (settled < target)
+            switch (stage)
             {
-                float rise = Mathf.Clamp((target - settled) * a.riseShare, a.minRise, Mathf.Max(a.minRise, a.maxRise));
-                settled = Mathf.Min(target, settled + rise);
-            }
-            else if (AlgaeHeld) settled = Mathf.Max(target, settled - Mathf.Max(a.minFall, (settled - target) * a.fallShare));
-            else settled += Mathf.Max(0f, a.overTargetRise);
-            return Mathf.Clamp01(settled + feedingLeft);
-        }
-
-        /// <summary>How much the algae will go up (or down, negative) at the next time step, a bloom it would set off included.</summary>
-        public float AlgaeChangeNextStep
-        {
-            get
-            {
-                float next = AlgaeAfterStep(out _);
-                if (!bloom && next >= AlgaeRules.bloomAbove) next = Mathf.Min(1f, next + AlgaeRules.bloomJump);
-                return next - algae;
+                case AlgaeStage.HealthyGreen: return a.healthyGlass;
+                case AlgaeStage.Overgrown: return a.overgrownGlass;
+                case AlgaeStage.Bloom: return a.bloomGlass;
+                default: return a.clearGlass;
             }
         }
 
-        /// <summary>The moment algae reaches the bloom level the tank blooms: there's no backing out of it.</summary>
-        void CheckBloom()
+        /// <summary>How much the algae puts customers off the look of the water, 0..1.</summary>
+        public float AlgaeNuisance => algaeStage == AlgaeStage.Bloom ? AlgaeRules.bloomNuisance : algaeStage == AlgaeStage.Overgrown ? AlgaeRules.overgrownNuisance : 0f;
+
+        /// <summary>Chance a customer looking at the tank minds its algae.</summary>
+        public float AlgaeBotherChance => algaeStage == AlgaeStage.Bloom ? AlgaeRules.bloomBotherChance : algaeStage == AlgaeStage.Overgrown ? AlgaeRules.overgrownBotherChance : 0f;
+
+        /// <summary>Algae eaters graze in a Healthy green or Overgrown tank (as the last time step found it), or on wafers from the last two time steps.</summary>
+        public bool AlgaeToGraze => stageAtStep == AlgaeStage.HealthyGreen || stageAtStep == AlgaeStage.Overgrown || wafers + wafersBefore > 0 || HasAlgaeFilm;
+
+        /// <summary>Time step: one stage towards where the tank is heading. Reaching Bloom starts a bloom.</summary>
+        void UpdateAlgae()
         {
-            if (!bloom && algae >= AlgaeRules.bloomAbove) StartBloom();
+            stageAtStep = algaeStage;
+            var next = AlgaeNextStep;
+            feedingsBefore = feedings;
+            wafersBefore = wafers;
+            feedings = wafers = 0;
+            if (next == algaeStage) return;
+            if (next == AlgaeStage.Bloom) StartBloom();
+            else algaeStage = next;
         }
 
-        /// <summary>The algae bursts: much more of it at once, some fish die and many fall ill.</summary>
+        /// <summary>The algae bursts: some fish die and many fall ill.</summary>
         void StartBloom()
         {
             var a = AlgaeRules;
-            bloom = true;
-            algae = Mathf.Min(1f, algae + a.bloomJump);
+            algaeStage = AlgaeStage.Bloom;
             int died = 0, ill = 0;
             foreach (var fish in new List<Fish>(residents))
             {
@@ -280,16 +258,16 @@ namespace FishBreeder
                 else if (GameRandom.Chance(a.bloomIllnessChance) && fish.Health.Infect(Health.DiseaseDefinition.PickWeighted(Balance.Data.diseases, GameRandom.Value), "the algal bloom"))
                     ill++;
             }
-            GameLog.Add($"An algal bloom has broken out in {Title}! Algae {algae * 100f:0}%" + (died > 0 ? $", {died} fish died" : "") + (ill > 0 ? $", {ill} fell ill" : "")
+            GameLog.Add($"An algal bloom has broken out in {Title}!" + (died > 0 ? $" {died} fish died" : "") + (ill > 0 ? $"{(died > 0 ? "," : "")} {ill} fell ill" : "")
                         + ". Only a deep clean (Care tab) can clear it.");
             Fx.Text(InnerBounds.center + Vector3.up * innerSize.y * 0.3f, "Algal bloom!", UiTheme.Coral, 22f, 2.5f);
         }
 
-        /// <summary>Clean tank: scrubs off a little algae and freshens the water. Limited per closed-shop session; no use against a bloom.</summary>
+        /// <summary>Clean tank: scrubs the algae down a stage and freshens the water. Limited per closed-shop session; no use against a bloom.</summary>
         public bool Clean()
         {
             var a = AlgaeRules;
-            if (bloom)
+            if (InBloom)
             {
                 GameLog.Add($"{Title} has an algal bloom: a clean can't touch it. It needs a deep clean.");
                 return false;
@@ -300,17 +278,16 @@ namespace FishBreeder
                 return false;
             }
             CleansLeft--;
-            // Experienced fishkeepers get more out of every clean; the Stronger wipes perk freshens the water more.
-            float skill = 1f + a.cleanBonusPerFishkeepingLevel * (Progression.Fishkeeping - 1);
-            float before = algae;
-            algae = Mathf.Clamp01(algae - a.cleanAlgaeRemoved * skill);
-            algaeFromFeeding = Mathf.Min(algaeFromFeeding, algae);
+            var before = algaeStage;
+            int floor = a.cleanLeavesHealthy ? Mathf.Min((int)algaeStage, (int)AlgaeStage.HealthyGreen) : 0;
+            algaeStage = (AlgaeStage)Mathf.Max(floor, (int)algaeStage - Mathf.Max(0, a.cleanStages));
             waterQuality = Mathf.Clamp01(waterQuality + CleanQualityRestored);
             Progression.Award(XpTrack.Fishkeeping, Balance.Data.progression.xpCleanTank);
             Progression.Count(GoalKind.CleanTanks);
             Fx.Sparkle(InnerBounds);
             Fx.Text(InnerBounds.center + Vector3.up * innerSize.y * 0.3f, "Sparkling!", UiTheme.Aqua, 20f);
-            GameLog.Add($"You cleaned {Title}: algae {before * 100f:0}% to {algae * 100f:0}%, water {waterQuality * 100f:0}%." + (CleansLeft > 0 ? $" {CleansLeft} more here this time." : " That's this tank's cleans until the next time step."));
+            GameLog.Add($"You cleaned {Title}: " + (before != algaeStage ? $"algae {StageName(before)} to {StageName(algaeStage)}, " : "") + $"water {waterQuality * 100f:0}%."
+                        + (CleansLeft > 0 ? $" {CleansLeft} more here this time." : " That's this tank's cleans until the next time step."));
             return true;
         }
 
@@ -336,7 +313,7 @@ namespace FishBreeder
 
         /// <summary>
         /// Deep clean: the fish are netted out, the tank scrubbed down and the water changed. The algae
-        /// goes to 2% (deepCleanAlgaeLeft) wherever it was, a bloom too, but every fish risks getting hurt.
+        /// goes to Clear wherever it was, a bloom too, but every fish risks getting hurt.
         /// </summary>
         public bool DeepClean()
         {
@@ -348,11 +325,9 @@ namespace FishBreeder
             }
             if (a.deepCleanPrice > 0 && !Economy.TrySpend(a.deepCleanPrice, $"a deep clean of {Title}", MoneyKind.Care)) return false;
             DeepCleansLeft--;
-            bool wasBloom = bloom;
-            bloom = false;
-            float before = algae;
-            algae = a.deepCleanAlgaeLeft;
-            algaeFromFeeding = 0f;
+            bool wasBloom = InBloom;
+            var before = algaeStage;
+            algaeStage = AlgaeStage.Clear;
             waterQuality = Mathf.Clamp01(waterQuality + a.deepCleanQualityRestored);
             float chance = DeepCleanInjuryChance;
             var hurt = new List<string>();
@@ -368,37 +343,24 @@ namespace FishBreeder
             Progression.Count(GoalKind.CleanTanks);
             Fx.Sparkle(InnerBounds, 14);
             Fx.Text(InnerBounds.center + Vector3.up * innerSize.y * 0.3f, wasBloom ? "Bloom cleared!" : "Deep cleaned!", UiTheme.Aqua, 20f);
-            GameLog.Add($"You deep cleaned {Title}" + (wasBloom ? " and cleared the algal bloom" : "") + $": algae {before * 100f:0}% to {algae * 100f:0}%, water {waterQuality * 100f:0}%."
+            GameLog.Add($"You deep cleaned {Title}" + (wasBloom ? " and cleared the algal bloom" : "") + $": algae {StageName(before)} to {StageName(algaeStage)}, water {waterQuality * 100f:0}%."
                         + (hurt.Count > 0 ? $" Hurt in the clean: {string.Join(", ", hurt)}." : " No fish were hurt."));
             return true;
         }
 
-        /// <summary>Algae wafers: algae for the algae eaters to graze.</summary>
-        public void AddAlgae(float amount)
+        /// <summary>A feeding: it feeds the algae a little over the next two time steps (algae wafers feed the algae eaters too).</summary>
+        public void CountFeeding(bool algaeWafers)
         {
-            float before = algae;
-            algae = Mathf.Clamp01(algae + amount);
-            CheckBloom();
-            if (AlgaeEaterCount > 0) GameLog.Add($"Algae wafers in {Title}: algae {before * 100f:0}% to {algae * 100f:0}% for the algae eaters.");
+            if (algaeWafers) wafers++;
+            else feedings++;
         }
 
-        /// <summary>Feeding: leftover food feeds a little algae at once. One feeding's worth goes at each time step; reaching the bloom level blooms at once.</summary>
-        public void AddFeedingAlgae(float amount)
+        /// <summary>Developer: sets the algae stage (Bloom starts a bloom at once, with its deaths and illness).</summary>
+        public void DevSetAlgae(AlgaeStage stage)
         {
-            if (amount <= 0f) return;
-            float before = algae;
-            algae = Mathf.Clamp01(algae + amount);
-            algaeFromFeeding += algae - before;
-            CheckBloom();
-        }
-
-        /// <summary>Developer: sets the algae (a bloom starts at once with <paramref name="startBloom"/>).</summary>
-        public void DevSetAlgae(float value, bool startBloom)
-        {
-            algae = Mathf.Clamp01(value);
-            algaeFromFeeding = 0f;
-            bloom = false;
-            if (startBloom) StartBloom();
+            if (stage == AlgaeStage.Bloom) { if (!InBloom) StartBloom(); }
+            else algaeStage = stage;
+            stageAtStep = algaeStage;
         }
     }
 }

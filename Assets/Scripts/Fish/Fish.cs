@@ -90,10 +90,10 @@ namespace FishBreeder
         public bool IsStarving => hunger >= GameConfig.Active.starvingThreshold;
         /// <summary>Goes after food dropped in the tank. Algae eaters never do: they live on the tank's algae.</summary>
         public bool WantsFood => hunger > 0.25f && !Species.eatsAlgae;
-        /// <summary>An algae eater whose tank has less algae than it can live on.</summary>
-        public bool ShortOfAlgae => Species.eatsAlgae && Tank != null && Tank.AlgaeForGrazing < Species.AlgaeMin;
-        /// <summary>An algae eater whose tank has more algae than is good for it.</summary>
-        public bool TooMuchAlgae => Species.eatsAlgae && Tank != null && Tank.Algae > Species.AlgaeMax;
+        /// <summary>An algae eater in a clear tank with no wafers: nothing to graze.</summary>
+        public bool ShortOfAlgae => Species.eatsAlgae && Tank != null && !Tank.AlgaeToGraze;
+        /// <summary>An algae eater in an algal bloom: too much algae even for it.</summary>
+        public bool TooMuchAlgae => Species.eatsAlgae && Tank != null && Tank.InBloom;
         public int BreedCooldown { get; set; }
         /// <summary>Time steps since it last ate one of its favourite foods (large = not lately).</summary>
         int stepsSinceFavourite = 99;
@@ -162,7 +162,7 @@ namespace FishBreeder
             ageDays += daysPerStep;
             hunger = Mathf.Clamp01(hunger + daysPerStep / Mathf.Max(0.5f, species.hungerToleranceDays) * GameConfig.Active.starvingThreshold * Perks.Less(PerkEffect.SlowerHunger));
             // Algae eaters graze all the time: with enough algae in the tank they're never hungry.
-            if (species.eatsAlgae && Tank != null && Tank.AlgaeForGrazing >= species.AlgaeMin) hunger = 0f;
+            if (species.eatsAlgae && Tank != null && Tank.AlgaeToGraze) hunger = 0f;
             if (growth < 1f && !IsStarving)
             {
                 bool wasFry = Stage == LifeStage.Fry;

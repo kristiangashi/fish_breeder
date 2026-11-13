@@ -5,85 +5,83 @@ using UnityEngine;
 namespace FishBreeder.Core
 {
     /// <summary>
-    /// How algae works. Every tank has an algae target, the share of the tank it settles at: 10%
-    /// with nothing in it, more for every fish, plant and decoration, less for every algae eater.
-    /// Algae climbs quickly up to the target. Past it, a filter made for the tank's fish holds it
-    /// there; with no filter, or more fish than the filter handles, it keeps creeping up slowly.
-    /// Each feeding adds a little algae at once that goes again one feeding's worth per time step.
-    /// The moment algae reaches the bloom level the tank blooms, and only a deep clean clears it.
-    /// Algae eaters live on the algae: they need a little of it and get sick on too much.
+    /// The four moods a tank's algae can be in, from none to an algal bloom. The player only
+    /// ever sees the stage, never a number.
+    /// </summary>
+    public enum AlgaeStage { Clear, HealthyGreen, Overgrown, Bloom }
+
+    /// <summary>
+    /// How algae works. Every tank has an algae load (what feeds algae: its fish, feedings, plants
+    /// and decorations, and a little on its own) and an algae capacity (what holds algae back: the
+    /// tank itself, its filter and its algae eaters), both counted in tiny fish. Load over capacity
+    /// picks the stage the tank is heading for, and at each time step the tank moves one stage
+    /// towards it (or stays). Healthy green is good for fish; overgrown harms them; a bloom harms
+    /// them badly and only a deep clean ends it. A clean takes the tank down a stage.
     /// </summary>
     [Serializable]
     public class AlgaeBalance
     {
-        [Header("The algae target (share of the tank covered)")]
-        [Tooltip("Where an empty tank's algae settles (0.1 = 10%). The game never says why.")]
-        [Range(0f, 1f)] public float naturalAlgae = 0.1f;
-        [Tooltip("How much each tiny fish raises the target in the standard tank (0.01 = 1%, so 10 fish make 10%). A tank with a bigger fish limit gets less per fish, in proportion. Algae eaters don't count.")]
-        public float fishAlgae = 0.01f;
-        [Tooltip("How many tiny fish each fish of a size group counts as, for algae and filters (tiny, small, medium, large). In the public aquarium's exhibits and holding tanks every fish counts as one.")]
+        [Header("Algae load: what feeds algae (in tiny fish)")]
+        [Tooltip("Load every tank has on its own, even empty, in the standard tank (bigger tanks get more, by their fish limit). The game never says why.")]
+        public float naturalLoad = 2f;
+        [Tooltip("How many tiny fish each fish of a size group counts as, for algae and filters (tiny, small, medium, large). Algae eaters don't count. In the public aquarium's exhibits and holding tanks every fish counts as one.")]
         public float tinyFishLoad = 1f, smallFishLoad = 2f, mediumFishLoad = 3f, largeFishLoad = 6f;
-        [Tooltip("How much each decoration that isn't a plant raises the target (too many decorations mean more algae). Plants have their own amount (Eggs, decor & quality tab).")]
-        public float decorationAlgae = 0.01f;
-        [Tooltip("How much each algae eater lowers the target in the standard tank (0.05 = 5%). Bigger tanks get less per eater, like the fish. A tank of only algae eaters ends up with too little for them, so they need wafers.")]
-        public float eaterAlgae = 0.05f;
+        [Tooltip("Load from one feeding a day (not algae wafers): it counts half at each of the next two time steps, so one feeding a day adds this all the time and three feedings add three times as much.")]
+        public float feedingLoad = 2f;
+        [Tooltip("Load from one feeding of algae wafers, counted the same way.")]
+        public float waferLoad = 1f;
+        [Tooltip("Load from each decoration that isn't a plant (too many decorations mean more algae). Plants have their own number (Algae load, Eggs, decor & quality tab).")]
+        public float decorationLoad = 0.5f;
 
-        [Header("How fast it moves")]
-        [Tooltip("Below the target, each time step algae climbs this share of the way to it...")]
-        [Range(0f, 1f)] public float riseShare = 0.3f;
-        [Tooltip("...but at least the first number and at most the second.")]
-        public float minRise = 0.02f, maxRise = 0.1f;
-        [Tooltip("Past the target with no working filter, or more fish than the filter handles, algae creeps up this much each time step (much slower than below it).")]
-        public float overTargetRise = 0.01f;
-        [Tooltip("Above the target with a filter that handles the fish (after algae wafers, a new filter, more eaters or fewer fish), algae falls this share of the way back each time step, at least the second number.")]
-        [Range(0f, 1f)] public float fallShare = 0.4f;
-        public float minFall = 0.02f;
+        [Header("Algae capacity: what holds it back (in tiny fish)")]
+        [Tooltip("Capacity of the standard tank on its own, with no filter or algae eaters (bigger tanks get more, by their fish limit).")]
+        public float tankCapacity = 6f;
+        [Tooltip("A working filter adds its Fish it handles (Equipment & repairs tab, with the Steady filters perk) times this.")]
+        public float filterCapacityShare = 0.75f;
+        [Tooltip("Capacity each algae eater adds (whatever the tank's size). A tank of only algae eaters ends up clear, so they need wafers.")]
+        public float eaterCapacity = 4f;
+        [Tooltip("Capacity added for every Fishkeeping level past 1 (0 = none: only gear and eaters help).")]
+        public float capacityPerFishkeepingLevel;
 
-        [Header("Feeding")]
-        [Tooltip("Algae each feeding adds at once (0.02 = 2%). One feeding's worth goes again at each time step, so two feedings take two time steps to go. Algae wafers add their own amount and stay.")]
-        public float feedAlgae = 0.02f;
+        [Header("Stages: load divided by capacity")]
+        [Tooltip("Below this the tank heads for Clear; from here it heads for Healthy green...")]
+        public float healthyFrom = 0.25f;
+        [Tooltip("...from here for Overgrown...")]
+        public float overgrownFrom = 1f;
+        [Tooltip("...and from here for an algal bloom. A tank moves one stage a time step, so it is overgrown for at least one time step first.")]
+        public float bloomFrom = 2f;
+
+        [Header("Algae and fish health (not algae eaters)")]
+        [Tooltip("Health a fish gains while its tank is Healthy green (0.05 = +5).")]
+        public float healthyAlgaeBonus = 0.05f;
+        [Tooltip("Health a fish loses while its tank is Overgrown (0.08 = -8).")]
+        public float overgrownHealthLoss = 0.08f;
+        [Tooltip("Health a fish loses during an algal bloom (on top of the bloom's stress).")]
+        public float bloomHealthLoss = 0.16f;
 
         [Header("How it looks and what customers think")]
-        [Tooltip("The water starts turning green at this much algae, and gets much greener from the second number.")]
-        [Range(0f, 1f)] public float greenStart = 0.15f, greenMore = 0.3f;
-        [Tooltip("With the tank's full set of algae eaters cleaning the glass, the water stays clear until this much algae (and gets much greener 15% later).")]
-        [Range(0f, 1f)] public float greenStartWithEaters = 0.3f;
-        [Tooltip("Customers start minding algae at this level, and mind it a lot more from the second.")]
-        [Range(0f, 1f)] public float bothersAbove = 0.4f, bothersMoreAbove = 0.5f;
-        [Tooltip("Chance a customer looking at the tank is put off by its algae, between the two levels above and past the second.")]
-        [Range(0f, 1f)] public float bothersChance = 0.35f, bothersMoreChance = 0.85f;
+        [Tooltip("How much of the glass algae covers at each stage, growing in from the edges and corners (Clear, Healthy green, Overgrown, Bloom). Looks only.")]
+        [Range(0f, 1f)] public float clearGlass = 0f, healthyGlass = 0.12f, overgrownGlass = 0.45f, bloomGlass = 0.88f;
+        [Tooltip("Chance a customer looking at an overgrown tank is put off by the algae, and at a tank in bloom.")]
+        [Range(0f, 1f)] public float overgrownBotherChance = 0.35f, bloomBotherChance = 0.85f;
+        [Tooltip("How much the algae spoils the look of the water for customers and the public aquarium (0..1), overgrown and in bloom.")]
+        [Range(0f, 1f)] public float overgrownNuisance = 0.15f, bloomNuisance = 0.85f;
 
         [Header("Algal bloom")]
-        [Tooltip("The moment a tank's algae reaches this (feeding included), it blooms. There's no undoing it: only a deep clean clears a bloom.")]
-        [Range(0f, 1f)] public float bloomAbove = 0.6f;
-        [Tooltip("Algae a bloom adds the moment it starts (0.35 = 35%).")]
-        public float bloomJump = 0.35f;
-        [Tooltip("Algae a bloom adds every time step until a deep clean (0.1 = 10%).")]
-        public float bloomGrowth = 0.1f;
         [Tooltip("Chance each fish dies right away when a bloom starts, and the chance a survivor falls ill.")]
         [Range(0f, 1f)] public float bloomDeathChance = 0.12f, bloomIllnessChance = 0.5f;
         [Tooltip("How badly a bloom's choked water stresses every fish while it lasts (environment, 0..1). Only a deep clean ends it.")]
         [Range(0f, 1f)] public float bloomStress = 0.5f;
-
-        [Header("Algae and fish health (not algae eaters)")]
-        [Tooltip("Between these two algae levels the algae is good for fish: they gain health. Between the second and the harmful level it's neither good nor bad.")]
-        [Range(0f, 1f)] public float healthyAlgaeFrom = 0.1f, healthyAlgaeTo = 0.2f;
-        [Tooltip("Above this much algae it starts to cost fish health.")]
-        [Range(0f, 1f)] public float harmfulAlgaeAbove = 0.3f;
-        [Tooltip("Health a fish gains while the algae is in the healthy range (0.05 = +5).")]
-        public float healthyAlgaeBonus = 0.05f;
-        [Tooltip("Health a fish loses for every 10% of algae above the harmful level (0.08 = -8 at 40%, -16 at 50%).")]
-        public float harmfulAlgaePer10 = 0.08f;
 
         [Header("Clean tank")]
         [Tooltip("Cleans each tank gets per closed-shop session (more with the Tireless perk).")]
         public int cleansPerSession = 2;
         [Tooltip("One more clean per session every this many Fishkeeping levels (0 = never).")]
         public int extraCleanEveryFishkeepingLevels;
-        [Tooltip("Algae one clean takes off at Fishkeeping level 1 (more with the Elbow grease perk).")]
-        public float cleanAlgaeRemoved = 0.05f;
-        [Tooltip("Each Fishkeeping level makes a clean take off this much more algae (0.02 = +2%).")]
-        public float cleanBonusPerFishkeepingLevel = 0.02f;
+        [Tooltip("Stages one clean takes the algae down (no use against a bloom).")]
+        public int cleanStages = 1;
+        [Tooltip("A clean never takes the algae below Healthy green, so cleaning for the water doesn't scrub off the algae that's good for fish (a Clear tank stays Clear).")]
+        public bool cleanLeavesHealthy = true;
         [Tooltip("Water quality one clean gives back (more with the Elbow grease perk).")]
         public float cleanQualityRestored = 0.2f;
         [Tooltip("Each Fishkeeping level makes a clean give back this much more water quality (0 = the same at every level, so the filter, not the level, decides how many fish a tank can keep).")]
@@ -93,8 +91,7 @@ namespace FishBreeder.Core
         [Tooltip("Deep cleans each tank gets per closed-shop session.")]
         public int deepCleansPerSession = 1;
         public int deepCleanPrice;
-        [Tooltip("Algae left after a deep clean. It ends an algal bloom and gives the water back this much quality.")]
-        [Range(0f, 1f)] public float deepCleanAlgaeLeft = 0.02f;
+        [Tooltip("A deep clean takes the algae to Clear (it ends a bloom too) and gives the water back this much quality.")]
         public float deepCleanQualityRestored = 0.5f;
         [Tooltip("Chance each fish gets hurt in a deep clean at Fishkeeping level 1, how much less per level, and the least it gets to.")]
         [Range(0f, 1f)] public float deepCleanInjuryChance = 0.3f;
@@ -104,14 +101,8 @@ namespace FishBreeder.Core
         public List<InjuryBalance> deepCleanInjuries = InjuryBalance.DeepCleanDefaults();
 
         [Header("Algae eaters")]
-        [Tooltip("Algae one feeding of algae wafers adds to the tank, for algae eaters to graze.")]
-        public float waferAlgae = 0.1f;
-        [Tooltip("Algae eaters without their own numbers (Species tab) get a least algae between these two (each species its own, picked from its name)...")]
-        [Range(0f, 1f)] public float eaterMinFrom = 0.1f, eaterMinTo = 0.16f;
-        [Tooltip("...and get sick above an algae level between these two.")]
-        [Range(0f, 1f)] public float eaterMaxFrom = 0.42f, eaterMaxTo = 0.5f;
-        [Tooltip("Too much algae for an algae eater: illness chance multiplied by this, and this much stress (environment) for every 10% over its limit.")]
-        public float eaterOverIllness = 3f, eaterOverStressPer10 = 0.25f;
+        [Tooltip("Algae eaters graze when the tank is Healthy green or Overgrown, or had algae wafers in the last two time steps; a Clear tank leaves them hungry. In a bloom they get sick: illness chance times this, and this much stress (environment).")]
+        public float eaterBloomIllness = 3f, eaterBloomStress = 0.5f;
 
         /// <summary>How many tiny fish one fish of this size group counts as.</summary>
         public float LoadOf(Genetics.SizeGroup group)

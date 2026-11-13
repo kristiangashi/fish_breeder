@@ -29,7 +29,7 @@ namespace FishBreeder.Shop
                     case Kind.DeadFish: return t.Corpses.Count == 0;
                     case Kind.SickFish: return fish == null || fish.IsDead || !fish.Health.IsSick;
                     case Kind.DirtyWater:
-                        bool clean = t.WaterHealth >= settings.dirtyWaterBelow && t.Algae <= settings.algaeAbove && !t.HasPests && !t.InBloom;
+                        bool clean = t.WaterHealth >= settings.dirtyWaterBelow && !t.TooMuchAlgae && !t.HasPests;
                         // Out of cleans (and nothing left to treat pests with) is as far as it can go today; a bloom needs its deep clean.
                         bool doneAllYouCan = (t.InBloom ? t.DeepCleansLeft == 0 : t.CleansLeft == 0) && (!t.HasPests || !Economy.CanAfford(Core.FishTankHUD.WaterTreatmentPrice));
                         return clean || doneAllYouCan;
@@ -44,7 +44,7 @@ namespace FishBreeder.Shop
     /// <summary>
     /// The list of problems to sort through after closing the shop: always feeding first, then sick
     /// fish, then cleanliness (dead fish, dirty water), then broken equipment, and last any tank
-    /// that needs a clean (over 40% algae or under 75% water quality by default); tank by tank within
+    /// that needs a clean (algae about to overgrow, or under 75% water quality by default); tank by tank within
     /// each. The store view takes the player to each one in turn and moves on by itself once it's
     /// dealt with.
     /// </summary>
@@ -69,9 +69,12 @@ namespace FishBreeder.Shop
             }
         }
 
-        /// <summary>A tank worth telling the player to clean: too much algae, or the water quality has dropped.</summary>
+        /// <summary>A tank worth telling the player to clean: its algae will be overgrown at the next time step, or the water quality has dropped.</summary>
         public static bool NeedsClean(Tank tank, NotificationBalance settings) =>
-            tank.Algae > settings.cleanAlgaeAbove || tank.WaterQuality < settings.cleanQualityBelow;
+            AlgaeOvergrowsNext(tank) || tank.WaterQuality < settings.cleanQualityBelow;
+
+        /// <summary>Not overgrown yet, but it will be at the next time step.</summary>
+        static bool AlgaeOvergrowsNext(Tank tank) => !tank.TooMuchAlgae && tank.AlgaeNextStep >= AlgaeStage.Overgrown;
 
         /// <summary>Looks at every tank and lists what needs doing. Returns how many problems there are.</summary>
         public int Build(IReadOnlyList<StoreTank> tanks)
@@ -98,7 +101,7 @@ namespace FishBreeder.Shop
                         "Feed them: any food works, and each kind has favourites." + (grazers ? " The algae eaters only graze algae: algae wafers add some for them." : ""));
                 else if (grazers)
                     Add(ToDo.Kind.HungryFish, storeTank, null, $"The algae eaters in {storeTank.Title} are going hungry.",
-                        $"There isn't enough algae for them to graze ({tank.Algae * 100f:0}%). Feed algae wafers: each adds {Balance.Data.algae.waferAlgae * 100f:0}% algae.");
+                        "The tank is too clear for them to graze. Feed algae wafers: they feed them for the next two time steps.");
             }
 
             foreach (var storeTank in tanks)
@@ -125,8 +128,8 @@ namespace FishBreeder.Shop
                         "Only a deep clean clears it, and it may hurt some fish. Then a filter and algae eaters keep the algae down.");
                     continue;
                 }
-                bool dirty = tank.WaterHealth < settings.dirtyWaterBelow || tank.Algae > settings.algaeAbove || tank.HasPests;
-                bool algae = tank.Algae > settings.algaeAbove;
+                bool algae = tank.TooMuchAlgae;
+                bool dirty = tank.WaterHealth < settings.dirtyWaterBelow || algae || tank.HasPests;
                 if (dirty && (tank.Residents.Count > 0 || algae))
                     Add(ToDo.Kind.DirtyWater, storeTank, null, $"{storeTank.Title} is dirty" + (tank.HasPests ? " and has pests." : "."),
                         tank.HasPests ? "Treat the water to get rid of the pests, then clean the tank."
@@ -153,7 +156,7 @@ namespace FishBreeder.Shop
                 foreach (var item in items) if (item.kind == ToDo.Kind.DirtyWater && item.tank == storeTank) listed = true;
                 if (!listed)
                     Add(ToDo.Kind.GrimyTank, storeTank, null,
-                        tank.Algae > settings.cleanAlgaeAbove ? $"{storeTank.Title} has {tank.Algae * 100f:0}% algae." : $"{storeTank.Title}'s water is down to {tank.WaterQuality * 100f:0}%.",
+                        AlgaeOvergrowsNext(tank) ? $"{storeTank.Title}'s algae will be overgrown at the next time step." : $"{storeTank.Title}'s water is down to {tank.WaterQuality * 100f:0}%.",
                         "Give it a clean before it gets worse and customers notice.");
             }
             return items.Count;

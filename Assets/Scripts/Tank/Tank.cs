@@ -14,7 +14,6 @@ namespace FishBreeder
         [SerializeField] Vector3 innerSize = new Vector3(1.6f, 0.9f, 0.7f);
         [SerializeField] int sizeIndex;
         [SerializeField, Range(0f, 1f)] float waterQuality = 1f;
-        [SerializeField, Range(0f, 1f)] float algae;
         [SerializeField] float temperature = 22f;
         [SerializeField] float ph = 7.2f;
         [SerializeField] float salinity;
@@ -97,6 +96,7 @@ namespace FishBreeder
             backgroundMaterial.mainTextureOffset = backgroundCenter - scale * 0.5f;
         }
         TankWater water;
+        TankAlgaeGlass algaeGlass;
         Transform visuals;
         TankDecor decor;
         TankBubbles bubbles;
@@ -105,7 +105,6 @@ namespace FishBreeder
         readonly GameObject[] equipmentModels = new GameObject[3];
         static readonly Color ClearWater = new Color(0.12f, 0.35f, 0.55f);
         static readonly Color MurkyWater = new Color(0.25f, 0.33f, 0.12f);
-        static readonly Color AlgaeWater = new Color(0.18f, 0.42f, 0.16f);
 
         /// <summary>The tank the camera is looking into; null in the store view.</summary>
         public static Tank Focused;
@@ -115,7 +114,6 @@ namespace FishBreeder
         /// <summary>Dead fish floating at the top until the player removes them.</summary>
         public IReadOnlyList<Fish> Corpses => corpses;
         public float WaterQuality => waterQuality;
-        public float Algae => algae;
         public float Temperature => temperature;
         public float Ph => ph;
         public float Salinity => salinity;
@@ -445,15 +443,14 @@ namespace FishBreeder
         public void DevMakeClean()
         {
             waterQuality = 1f;
-            algae = 0f;
-            bloom = false;
+            algaeStage = stageAtStep = AlgaeStage.Clear;
             pests = false;
         }
 
         public void DevMakeDirty()
         {
             waterQuality = 0.15f;
-            algae = 0.55f;
+            if (!InBloom) algaeStage = AlgaeStage.Overgrown;
             GameLog.Add("(dev) Water made dirty.");
         }
 
@@ -608,8 +605,8 @@ namespace FishBreeder
         {
             get
             {
-                var color = Color.Lerp(MurkyWater, ClearWater, waterQuality);
-                return Color.Lerp(color, AlgaeWater, AlgaeGreen * 0.7f);
+                // Algae shows on the glass (TankAlgaeGlass), never as green water.
+                return Color.Lerp(MurkyWater, ClearWater, waterQuality);
             }
         }
 
@@ -622,7 +619,8 @@ namespace FishBreeder
             if (backgroundMaterial != null) backgroundMaterial.color = tint;
             foreach (var side in sideMaterials) side.color = tint;
             // Dirty water shows only inside the glass, through the water volume's murk.
-            if (water != null) water.SetLook(color, waterQuality, AlgaeGreen);
+            if (water != null) water.SetLook(color, waterQuality);
+            if (algaeGlass != null) algaeGlass.SetCover(GlassCover(algaeStage));
         }
 
         /// <summary>Puts in new equipment of this model, replacing any old one of the same kind.</summary>
@@ -955,6 +953,7 @@ namespace FishBreeder
             decor.Rebuild(root, b, DecorationSlots);
             BuildSubstrate();
             water = TankWater.Build(root, b);
+            algaeGlass = TankAlgaeGlass.Build(root, b, BaseDepth, IsWallAquarium, GlassCover(algaeStage));
             // New colliders must be in the physics scene before fish pick spawn points.
             Physics.SyncTransforms();
         }
